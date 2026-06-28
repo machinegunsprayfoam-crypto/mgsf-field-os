@@ -133,7 +133,7 @@ module.exports = async (req, res) => {
       const text = String((body && body.text) || '').slice(0, 8000);
       if (!text.trim()) { sendJson(res, 400, { ok: false, error: 'NO_TEXT' }); return; }
       const reply = await callAnthropic(apiKey, {
-        model: 'claude-3-5-haiku-latest',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 512,
         system: PARSE_SYSTEM,
         messages: [{ role: 'user', content: 'Job description:\n' + text }]
@@ -160,7 +160,7 @@ module.exports = async (req, res) => {
       if (!content.length) { sendJson(res, 400, { ok: false, error: 'NO_USABLE_FILES' }); return; }
       content.push({ type: 'text', text: 'Produce the DRAFT takeoff JSON for the attached plan/spec files. Remember: draft for human review.' });
       const reply = await callAnthropic(apiKey, {
-        model: 'claude-3-5-sonnet-latest',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         system: TAKEOFF_SYSTEM,
         messages: [{ role: 'user', content: content }]
