@@ -410,6 +410,25 @@ textarea{resize:vertical;min-height:54px}
         </div>
       </div>
 
+      <!-- PHASE 2: Describe the job (AI parse) -->
+      <div class="card" id="qb-ai2">
+        <div class="ct">🗣️ Describe the job (AI)</div>
+        <div class="hint" style="margin-bottom:6px">Tap the box, then your iPhone keyboard's 🎤 to talk, or type it. Example: "Sarah Lee, 614-555-1212, 2400 sq ft closed cell, 2 inches, Columbus Ohio."</div>
+        <textarea id="qb-desc" rows="3" placeholder="Tap here, then use the mic on your keyboard..." style="width:100%;box-sizing:border-box"></textarea>
+        <button class="btn btn-g btn-full" id="qb-desc-btn" style="margin-top:6px" onclick="qbAIParse()">✨ Build from description</button>
+        <div class="hint" id="qb-desc-msg" style="margin-top:6px"></div>
+      </div>
+
+      <!-- PHASE 3: Upload plans / specs (AI takeoff) -->
+      <div class="card" id="qb-ai3">
+        <div class="ct">📄 Upload plans / specs (AI draft)</div>
+        <div class="hint" style="margin-bottom:6px">PDF or photos of plan sets or spec sheets. AI drafts a takeoff you review and edit before building.</div>
+        <input type="file" id="qb-files" accept="application/pdf,image/*" multiple style="width:100%">
+        <button class="btn btn-g btn-full" id="qb-files-btn" style="margin-top:6px" onclick="qbAITakeoff()">🔍 Read files & draft bid</button>
+        <div class="hint" id="qb-files-msg" style="margin-top:6px"></div>
+        <div id="qb-takeoff" style="margin-top:8px"></div>
+      </div>
+
       <div class="card">
         <button class="btn btn-p btn-full" onclick="qbBuild()">⚡ Build Bid</button>
         <div class="hint" id="qb2-msg" style="margin-top:8px"></div>
@@ -844,6 +863,123 @@ function qbBuild(){
  ['qb2-name','qb2-phone','qb2-addr','qb2-state','qb2-foam-sf','qb2-foam-l','qb2-foam-w','qb2-roof-sf','qb2-roof-l','qb2-roof-w','qb2-conc-sf','qb2-coat-sf'].forEach(function(id){var e=$(id);if(e)e.value='';});
  if($('qb2-foam-tb'))$('qb2-foam-tb').checked=false;
 }
+/* ===== AI BIDDER (Phase 2 parse + Phase 3 takeoff). Network-only; degrades gracefully. ===== */
+function qbAINotice(elId,err){var e=$(elId);if(!e)return;
+ if(err==='AI_NOT_CONFIGURED'){e.style.color='var(--yellow)';e.textContent='AI not set up yet — add your Anthropic key in Vercel.';}
+ else if(err==='OFFLINE'){e.style.color='var(--yellow)';e.textContent='You appear offline. Quick Bid still works — fill it in manually.';}
+ else{e.style.color='var(--red)';e.textContent='AI could not help right now — please use Quick Bid manually.';}}
+function qbAIOnline(){return (typeof navigator==='undefined')||navigator.onLine!==false;}
+function qbAIPost(payload){return fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(r){return r.json();});}
+/* map a foam product hint to a real active FOAM key for a category set */
+function qbMatchFoam(hint,cats){try{var act=_act(FOAM.filter(function(f){return cats.indexOf(f.cat)>=0;}));if(!act.length)return '';
+ if(hint){var hs=String(hint).toLowerCase();for(var i=0;i<act.length;i++){var n=(act[i].n||'').toLowerCase(),k=(act[i].k||'').toLowerCase();if(n.indexOf(hs)>=0||hs.indexOf(n)>=0||k.indexOf(hs)>=0)return act[i].k;}
+  if(/open\s*cell|\b0\.5|half.?pound/.test(hs)){for(var j=0;j<act.length;j++)if(act[j].cat==='Open Cell')return act[j].k;}
+  if(/closed\s*cell|\b2\s*pound|2lb/.test(hs)){for(var m=0;m<act.length;m++)if(act[m].cat==='Closed Cell')return act[m].k;}}
+ return act[0].k;}catch(e){return '';}}
+function qbMatchCoat(hint){try{var act=_act(COAT);if(!act.length)return '';if(hint){var hs=String(hint).toLowerCase();for(var i=0;i<act.length;i++){var n=(act[i].n||'').toLowerCase();if(n.indexOf(hs)>=0||hs.indexOf(n)>=0)return act[i].k;}}return act[0].k;}catch(e){return '';}}
+/* PHASE 2: parse a spoken/typed description into Quick Bid fields, then qbBuild() */
+function qbAIParse(){var msgId='qb-desc-msg';var m=$(msgId);if(m){m.style.color='var(--mut)';m.textContent='Thinking…';}
+ var text=str('qb-desc').trim();if(!text){if(m){m.style.color='var(--red)';m.textContent='Type or speak a job description first.';}return;}
+ if(!qbAIOnline()){qbAINotice(msgId,'OFFLINE');return;}
+ qbAIPost({mode:'parse',text:text}).then(function(d){
+  if(!d||!d.ok){qbAINotice(msgId,(d&&d.error)||'AI_ERROR');return;}
+  qbApplyParsed(d.parsed||{});
+  if(m){m.style.color='var(--mut)';m.textContent='Applied — building bid…';}
+  try{qbBuild();}catch(e){if(m){m.style.color='var(--red)';m.textContent='Build error: '+e.message;}}
+ }).catch(function(){qbAINotice(msgId,qbAIOnline()?'AI_ERROR':'OFFLINE');});}
+/* write a parsed object into the existing Quick Bid inputs (reuses qbPick + sets DOM fields) */
+function qbApplyParsed(p){p=p||{};var c=p.customer||{};
+ if(c.name)$('qb2-name').value=c.name;
+ if(c.phone&&$('qb2-phone'))$('qb2-phone').value=c.phone;
+ if(c.address&&$('qb2-addr'))$('qb2-addr').value=c.address;
+ if(c.state&&$('qb2-state'))$('qb2-state').value=String(c.state).toUpperCase().slice(0,2);
+ if(p.market&&$('qb2-market'))$('qb2-market').value=p.market;
+ var svc=p.service||'foam';if(['foam','roof','concrete','coatings'].indexOf(svc)<0)svc='foam';
+ try{qbPick(svc,{target:{classList:{add:function(){},remove:function(){}}}});}catch(_){}
+ var area=Number(p.areaSqft)||0,L=Number(p.lengthFt)||0,W=Number(p.widthFt)||0;
+ if(svc==='foam'){
+  if($('qb2-foam-product'))$('qb2-foam-product').value=qbMatchFoam(p.foamProductHint,['Closed Cell','Open Cell']);
+  if(p.thickness&&$('qb2-foam-thick'))$('qb2-foam-thick').value=p.thickness;
+  if(area&&$('qb2-foam-sf'))$('qb2-foam-sf').value=area;
+  if(L&&$('qb2-foam-l'))$('qb2-foam-l').value=L;if(W&&$('qb2-foam-w'))$('qb2-foam-w').value=W;
+  if((L>0&&W>0))qbLW('foam');
+  if(p.zones&&$('qb2-foam-zones'))$('qb2-foam-zones').value=p.zones;
+ }else if(svc==='roof'){
+  if($('qb2-roof-product'))$('qb2-roof-product').value=qbMatchFoam(p.foamProductHint,['Roofing']);
+  if(p.thickness&&$('qb2-roof-thick'))$('qb2-roof-thick').value=p.thickness;
+  if(area&&$('qb2-roof-sf'))$('qb2-roof-sf').value=area;
+  if(L&&$('qb2-roof-l'))$('qb2-roof-l').value=L;if(W&&$('qb2-roof-w'))$('qb2-roof-w').value=W;
+  if((L>0&&W>0))qbLW('roof');
+  if(p.roofShape&&$('qb2-roof-shape'))$('qb2-roof-shape').value=p.roofShape;
+  if(p.coats&&$('qb2-roof-coats'))$('qb2-roof-coats').value=p.coats;
+ }else if(svc==='concrete'){
+  if(area&&$('qb2-conc-sf'))$('qb2-conc-sf').value=area;
+ }else if(svc==='coatings'){
+  if($('qb2-coat-product'))$('qb2-coat-product').value=qbMatchCoat(p.foamProductHint);
+  if(area&&$('qb2-coat-sf'))$('qb2-coat-sf').value=area;
+  if(p.coats&&$('qb2-coat-coats'))$('qb2-coat-coats').value=p.coats;
+ }}
+/* PHASE 3: read files to base64, POST takeoff, render editable review list */
+function qbAITakeoff(){var msgId='qb-files-msg';var m=$(msgId);
+ var inp=$('qb-files');var files=inp&&inp.files?Array.prototype.slice.call(inp.files):[];
+ if(!files.length){if(m){m.style.color='var(--red)';m.textContent='Choose one or more PDF or image files first.';}return;}
+ if(!qbAIOnline()){qbAINotice(msgId,'OFFLINE');return;}
+ if(m){m.style.color='var(--mut)';m.textContent='Reading files…';}
+ var total=files.reduce(function(a,f){return a+f.size;},0);
+ if(total>8*1024*1024){if(m){m.style.color='var(--red)';m.textContent='Files too large (max ~8MB total).';}return;}
+ var reads=files.map(function(f){return new Promise(function(res){var r=new FileReader();r.onload=function(){var s=String(r.result||'');var b=s.indexOf(',')>=0?s.slice(s.indexOf(',')+1):s;res({name:f.name,mime:f.type||'application/octet-stream',dataB64:b});};r.onerror=function(){res(null);};r.readAsDataURL(f);});});
+ Promise.all(reads).then(function(arr){var clean=arr.filter(Boolean);
+  if(m)m.textContent='Asking AI to draft a takeoff…';
+  return qbAIPost({mode:'takeoff',files:clean});
+ }).then(function(d){
+  if(!d||!d.ok){qbAINotice(msgId,(d&&d.error)||'AI_ERROR');return;}
+  if(m){m.style.color='var(--mut)';m.textContent='Draft ready — verify every line below.';}
+  qbRenderTakeoff(d.scopes||[],d.warnings||[]);
+ }).catch(function(){qbAINotice(msgId,qbAIOnline()?'AI_ERROR':'OFFLINE');});}
+function qbScopeRow(s,i){s=s||{};var svc=(['foam','roof','concrete','coatings'].indexOf(s.service)>=0)?s.service:'foam';
+ var foamOpts=_act(FOAM.filter(function(f){return f.cat==='Closed Cell'||f.cat==='Open Cell';})).map(function(f){return '<option value="'+f.k+'">'+f.n+'</option>';}).join('');
+ var roofOpts=_act(FOAM.filter(function(f){return f.cat==='Roofing';})).map(function(f){return '<option value="'+f.k+'">'+f.n+'</option>';}).join('');
+ var coatOpts=_act(COAT).map(function(c){return '<option value="'+c.k+'">'+c.n+'</option>';}).join('');
+ var prodSel='';
+ if(svc==='foam')prodSel='<label>Foam Product</label><select id="qto-prod-'+i+'">'+foamOpts+'</select>';
+ else if(svc==='roof')prodSel='<label>Roof Foam</label><select id="qto-prod-'+i+'">'+roofOpts+'</select>';
+ else if(svc==='coatings')prodSel='<label>Coating</label><select id="qto-prod-'+i+'">'+coatOpts+'</select>';
+ else prodSel='<label>&nbsp;</label><div class="hint">Concrete lift</div>';
+ var conf=(s.confidence||'low');
+ return '<div class="card" style="border-color:var(--yellow)" data-qto="'+i+'">'+
+  '<div class="row"><div><label>Service</label><select id="qto-svc-'+i+'">'+
+   ['foam','roof','concrete','coatings'].map(function(x){return '<option value="'+x+'"'+(x===svc?' selected':'')+'>'+x+'</option>';}).join('')+
+   '</select></div><div><label>Area (SF)</label><input type="number" id="qto-sf-'+i+'" value="'+(Number(s.sqft)||Number(s.area)||0)+'"></div></div>'+
+  '<div class="row"><div>'+prodSel+'</div><div><label>Thickness (in)</label><input type="number" id="qto-thk-'+i+'" value="'+(Number(s.thickness)||(svc==='roof'?1.5:2))+'" step="0.5"></div></div>'+
+  '<div class="hint" style="margin-top:4px">confidence: '+conf+(s.notes?(' — '+String(s.notes)):'')+'</div>'+
+  '<div class="btnrow" style="margin-top:6px"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="qto-use-'+i+'" checked style="width:auto"> Include this line</label>'+
+  '<button class="btn btn-p" onclick="qbBuildScope('+i+')">Build this line →</button></div></div>';}
+function qbRenderTakeoff(scopes,warnings){var box=$('qb-takeoff');if(!box)return;window._qbTakeoff=scopes||[];
+ var html='<div class="card" style="border-color:var(--red)"><div class="ct" style="color:var(--red)">⚠ AI DRAFT — verify every line</div>'+
+  '<div class="hint">This is an AI-generated draft from your files. Check service, product, thickness and area on every line before building. Nothing is saved or sent until you build and approve on the Console.</div>';
+ if(warnings&&warnings.length)html+='<ul class="hint" style="margin:6px 0 0 16px">'+warnings.map(function(w){return '<li>'+String(w)+'</li>';}).join('')+'</ul>';
+ html+='</div>';
+ if(!scopes||!scopes.length){html+='<div class="hint">No scopes detected. Try a clearer plan/spec, or use Quick Bid manually.</div>';}
+ else{for(var i=0;i<scopes.length;i++)html+=qbScopeRow(scopes[i],i);}
+ box.innerHTML=html;
+ // restore the AI-suggested product/service selection where possible
+ for(var j=0;j<(scopes||[]).length;j++){(function(k){var s=scopes[k];var sel=$('qto-svc-'+k);if(sel)sel.onchange=function(){qbRenderTakeoff(qbCollectTakeoff(),warnings);};
+  var ps=$('qto-prod-'+k);if(ps){var hint=s.foamProductHint;var key=(s.service==='coatings')?qbMatchCoat(hint):(s.service==='roof'?qbMatchFoam(hint,['Roofing']):qbMatchFoam(hint,['Closed Cell','Open Cell']));if(key)ps.value=key;}})(j);} }
+function qbCollectTakeoff(){var arr=window._qbTakeoff||[];return arr.map(function(s,i){var svcEl=$('qto-svc-'+i),sfEl=$('qto-sf-'+i),thkEl=$('qto-thk-'+i);return {service:svcEl?svcEl.value:s.service,sqft:sfEl?(parseFloat(sfEl.value)||0):s.sqft,thickness:thkEl?(parseFloat(thkEl.value)||0):s.thickness,foamProductHint:s.foamProductHint,notes:s.notes,confidence:s.confidence};});}
+/* build one reviewed takeoff line through the existing engine via qbBuild() */
+function qbBuildScope(i){var use=$('qto-use-'+i);if(use&&!use.checked){toast('Line not included',true);return;}
+ if(!str('qb2-name').trim()){toast('Enter customer name (top of Quick Bid) first',true);var n=$('qb2-name');if(n)n.focus();return;}
+ var svc=$('qto-svc-'+i)?$('qto-svc-'+i).value:'foam';
+ var sf=$('qto-sf-'+i)?(parseFloat($('qto-sf-'+i).value)||0):0;
+ var thk=$('qto-thk-'+i)?(parseFloat($('qto-thk-'+i).value)||0):0;
+ var prod=$('qto-prod-'+i)?$('qto-prod-'+i).value:'';
+ if(sf<=0){toast('Enter area (SF) for this line',true);return;}
+ try{qbPick(svc,{target:{classList:{add:function(){},remove:function(){}}}});}catch(_){}
+ if(svc==='foam'){if($('qb2-foam-product')&&prod)$('qb2-foam-product').value=prod;if($('qb2-foam-thick'))$('qb2-foam-thick').value=thk||2;if($('qb2-foam-sf'))$('qb2-foam-sf').value=sf;if($('qb2-foam-zones'))$('qb2-foam-zones').value=1;}
+ else if(svc==='roof'){if($('qb2-roof-product')&&prod)$('qb2-roof-product').value=prod;if($('qb2-roof-thick'))$('qb2-roof-thick').value=thk||1.5;if($('qb2-roof-sf'))$('qb2-roof-sf').value=sf;}
+ else if(svc==='concrete'){if($('qb2-conc-sf'))$('qb2-conc-sf').value=sf;}
+ else if(svc==='coatings'){if($('qb2-coat-product')&&prod)$('qb2-coat-product').value=prod;if($('qb2-coat-sf'))$('qb2-coat-sf').value=sf;}
+ try{qbBuild();}catch(e){toast('Build error: '+e.message,true);}}
 function setSvc(x,e){svc=x;document.querySelectorAll('.svc').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
  document.querySelectorAll('.svcpanel').forEach(p=>p.style.display='none');$('p-'+x).style.display='';recalc();}
 function setZone(z,e){zone=z;e.target.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');renderZone();recalc();}
