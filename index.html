@@ -499,7 +499,7 @@ textarea{resize:vertical;min-height:54px}
           <div class="row"><div><label>Status</label><select id="d-status"><option value="draft">Draft</option><option value="approved">Approved</option><option value="sent">Sent</option><option value="won">Won</option><option value="lost">Lost</option></select></div><div><label>Win/Loss reason</label><select id="d-reason"><option value="">—</option><option>Price too high</option><option>Timing / scheduling</option><option>Chose competitor</option><option>No financing</option><option>Went DIY</option><option>Ghosted / no response</option><option>Out of area</option><option>Fast response</option><option>Trust / veteran-owned</option><option>Referral</option><option>Other</option></select></div></div>
           <div class="btnrow"><button class="btn btn-green" onclick="approveBid()">✓ Approve → Proposal</button><button class="btn btn-s btn-sm" onclick="dupBid()">⧉ Duplicate</button><button class="btn btn-red btn-sm" onclick="deleteBid()">Delete</button></div>
         </div>
-        <div class="card" id="prop-sec" style="display:none">
+        <div class="card" id="roi-es-card"><div class="ct">Estimated ROI</div><div class="hint" style="margin-bottom:6px">Auto from this bid; customer-facing estimate. Model auto-selected from job type.</div><div class="btnrow" id="roi-es-modelsel" style="margin-bottom:8px"><button type="button" class="btn btn-s btn-sm" data-m="insulation" onclick="roiESSetModel('insulation')">Insulation</button><button type="button" class="btn btn-s btn-sm" data-m="roofing" onclick="roiESSetModel('roofing')">SPF Roof</button><button type="button" class="btn btn-s btn-sm" data-m="coatings" onclick="roiESSetModel('coatings')">Coatings</button><button type="button" class="btn btn-s btn-sm" data-m="concrete" onclick="roiESSetModel('concrete')">Concrete Lift</button></div><div class="row"><div><label>Job cost (from bid) $</label><input type="number" id="roi-es-jobcost" readonly></div><div><label>Annual energy cost $</label><input type="number" id="roi-es-annual" placeholder="e.g. 3800" oninput="roiESCalc()"></div></div><div class="btnrow" style="margin:4px 0 8px"><label class="btn btn-s btn-sm" style="position:relative;overflow:hidden">📄 Read utility bill<input type="file" id="roi-es-bill" accept="image/*,application/pdf" capture="environment" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="roiESReadBill(this)"></label><button class="btn btn-s btn-sm" onclick="roiESEstimate()">🔍 Estimate it</button></div><div class="row"><div><label>Fuel type</label><select id="roi-es-fuel"><option value="propane">Propane</option><option value="electric">Electric</option><option value="natural gas">Natural gas</option><option value="fuel oil">Fuel oil</option></select></div><div><label>State</label><select id="roi-es-state"><option>MT</option><option>ND</option><option>SD</option><option>WY</option><option>OH</option><option>Other</option></select></div></div><div class="row"><div><label>Building sqft (from bid)</label><input type="number" id="roi-es-sqft" placeholder="optional"></div><div><label>Heating+cooling share</label><input type="number" id="roi-es-share" value="0.50" step="0.05" min="0" max="1" oninput="roiESCalc()"></div></div><div class="fld"><label>Reduction %</label><div class="btnrow" id="roi-es-presets" style="margin-bottom:6px"><button type="button" class="btn btn-s btn-sm" onclick="roiESPreset(0.15)">Conservative 15%</button><button type="button" class="btn btn-s btn-sm" onclick="roiESPreset(0.25)">Typical 25%</button><button type="button" class="btn btn-s btn-sm" onclick="roiESPreset(0.35)">Aggressive 35%</button></div><input type="number" id="roi-es-reduction" value="0.15" step="0.01" min="0" max="1" oninput="roiESCalc()"></div><div class="fld"><label>Financing monthly payment $ (optional)</label><input type="number" id="roi-es-fin" placeholder="if known" oninput="roiESCalc()"></div><div class="blk" id="roi-es-blk-insulation"><div class="statrow" style="border-top:2px solid var(--gold);margin-top:6px"><span>Est. annual savings</span><span class="v" id="roi-es-annsav">$0</span></div><div class="statrow"><span>Est. monthly savings</span><span class="v" id="roi-es-mosav">$0</span></div><div class="statrow"><span>Simple payback</span><span class="v" id="roi-es-payback">—</span></div></div><div class="blk" id="roi-es-blk-roofing" style="display:none"><div class="row"><div><label>Replacement cost $ (tear-off)</label><input type="number" id="roi-es-roof-repl" placeholder="optional - implied if blank" oninput="roiESCalc()"></div><div><label>Restore fraction of replace</label><input type="number" id="roi-es-roof-frac" value="0.50" step="0.05" min="0.1" max="1" oninput="roiESCalc()"></div></div><label style="display:block;margin:4px 0"><input type="checkbox" id="roi-es-roof-energy" onchange="roiESCalc()"> Replacing a poor / uninsulated roof (show minor energy savings)</label><div class="row"><div><label>Roof energy reduction %</label><input type="number" id="roi-es-roof-red" value="0.07" step="0.01" min="0.05" max="0.10" oninput="roiESCalc()"></div><div></div></div><div class="statrow" style="border-top:2px solid var(--gold);margin-top:6px"><span>Est. savings vs. replacement</span><span class="v" id="roi-es-roof-savings">$0</span></div><div class="statrow"><span>Replacement cost basis</span><span class="v" id="roi-es-roof-repl-out">$0</span></div><div class="statrow" id="roi-es-roof-energyrow" style="display:none"><span>Minor energy savings</span><span class="v" id="roi-es-roof-energy-out">$0/yr</span></div><div class="hint" style="margin-top:4px;font-size:.72rem;color:var(--mut)">20-30 yr service life, renewed by recoat every 10-15 yrs. Restoration ≈ 40-60% less than tear-off.</div></div><div class="blk" id="roi-es-blk-coatings" style="display:none"><div class="row"><div><label>Replacement cost $</label><input type="number" id="roi-es-coat-repl" placeholder="optional - implied if blank" oninput="roiESCalc()"></div><div><label>Restore fraction of replace</label><input type="number" id="roi-es-coat-frac" value="0.50" step="0.05" min="0.1" max="1" oninput="roiESCalc()"></div></div><label style="display:block;margin:4px 0"><input type="checkbox" id="roi-es-coat-bonus" onchange="roiESCalc()"> Show optional cooling energy bonus</label><div class="row"><div><label>Energy bonus %</label><input type="number" id="roi-es-coat-bonuspct" value="0.07" step="0.01" min="0" max="0.15" oninput="roiESCalc()"></div><div></div></div><div class="statrow" style="border-top:2px solid var(--gold);margin-top:6px"><span>Est. savings vs. replacement</span><span class="v" id="roi-es-coat-savings">$0</span></div><div class="statrow"><span>Replacement cost basis</span><span class="v" id="roi-es-coat-repl-out">$0</span></div><div class="statrow" id="roi-es-coat-bonusrow" style="display:none"><span>Energy bonus</span><span class="v" id="roi-es-coat-bonus-out">$0/yr</span></div><div class="hint" style="margin-top:4px;font-size:.72rem;color:var(--mut)">+10 yrs per recoat cycle; proactive maintenance ≈ 30% longer life / 40% lower lifecycle cost.</div></div><div class="blk" id="roi-es-blk-concrete" style="display:none"><div class="row"><div><label>Replacement cost $ (tear-out)</label><input type="number" id="roi-es-conc-repl" placeholder="optional - implied if blank" oninput="roiESCalc()"></div><div><label>Lift fraction of replace</label><input type="number" id="roi-es-conc-frac" value="0.50" step="0.05" min="0.1" max="1" oninput="roiESCalc()"></div></div><div class="statrow" style="border-top:2px solid var(--gold);margin-top:6px"><span>Est. savings vs. replacement</span><span class="v" id="roi-es-conc-savings">$0</span></div><div class="statrow"><span>Replacement cost basis</span><span class="v" id="roi-es-conc-repl-out">$0</span></div><div class="hint" style="margin-top:4px;font-size:.72rem;color:var(--mut)">Usable same day. Polyurethane is waterproof — won't wash out like mudjacking. Removes a fall hazard and its liability. Lifting ≈ half the cost of tear-out (50-85% less).</div></div><div class="hint" id="roi-es-finline" style="display:none;margin-top:4px"></div><div class="btnrow" style="margin-top:8px"><button class="btn btn-s btn-sm" onclick="roiESNarrative()">✍️ Write customer summary</button></div><div class="fld" id="roi-es-narrwrap" style="display:none"><label>Customer summary</label><textarea id="roi-es-narr" rows="3"></textarea></div><div class="hint" id="roi-es-status" style="margin-top:4px"></div><div class="hint" style="margin-top:8px;font-size:.7rem;color:var(--mut);line-height:1.5"><strong>Estimated — actual results vary.</strong> <span id="roi-es-basis">Estimated energy savings based on ENERGY STAR averages (air sealing + insulation ≈ 15% of heating &amp; cooling cost). Actual results vary by building, climate, fuel prices, and usage.</span></div></div><div class="card" id="prop-sec" style="display:none">
           <div class="ct">Proposal</div>
           <div id="prop-prev" style="background:#fff;color:#111;border-radius:8px;padding:16px;font-size:.8rem;line-height:1.6"></div>
           <div class="btnrow" style="margin-top:10px"><button class="btn btn-p btn-full" onclick="printProposal()">🖨️ Print / Save PDF</button><button class="btn btn-s" onclick="emailCustomer()">✉️ Email</button><button class="btn btn-s" onclick="location.href='https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply'">💳 Financing</button><button class="btn btn-s" onclick="window.open('https://app.gethearth.com/requests/a49d1406-80c4-491a-923e-c7729748699a','_blank')" title="Your incoming Hearth financing requests">📥 Hearth Requests</button></div>
@@ -870,6 +870,264 @@ function qbAINotice(elId,err){var e=$(elId);if(!e)return;
  else{e.style.color='var(--red)';e.textContent='AI could not help right now — please use Quick Bid manually.';}}
 function qbAIOnline(){return (typeof navigator==='undefined')||navigator.onLine!==false;}
 function qbAIPost(payload){return fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(r){return r.json();});}
+/* ===== Module 1: Customer Energy-Savings ROI (ENERGY STAR) ===== */
+function roiESCompute(jobCost, annualEnergyCost, share, reductionPct, financingMonthly){
+  jobCost=Number(jobCost)||0; annualEnergyCost=Number(annualEnergyCost)||0;
+  share=Number(share); if(!(share>=0)) share=0.50;
+  reductionPct=Number(reductionPct); if(!(reductionPct>=0)) reductionPct=0.15;
+  var annualHeatCoolCost=annualEnergyCost*share;
+  var annualSavings=annualHeatCoolCost*reductionPct;
+  var monthlySavings=annualSavings/12;
+  var paybackYears=annualSavings>0 ? jobCost/annualSavings : 0;
+  var out={annualHeatCoolCost:annualHeatCoolCost,annualSavings:annualSavings,monthlySavings:monthlySavings,paybackYears:paybackYears,pctOfPaymentCovered:null};
+  var fin=Number(financingMonthly)||0;
+  if(fin>0) out.pctOfPaymentCovered=monthlySavings/fin;
+  return out;
+}
+/* ===== JOB-TYPE-AWARE ROI: conservative, sourced defaults (editable in card) ===== */
+var ROI_DEF={ share:0.50, redIns:0.15, roofRed:0.07, restoreFrac:0.50, coatRestoreFrac:0.50, coatBonus:0.07, liftFrac:0.50 };
+/* Model B - SPF Roofing: restore-vs-replace primary, optional minor energy secondary */
+function roiRoofCompute(jobCost, replacementCost, restoreFrac, energyOn, annualEnergyCost, share, roofRed, financingMonthly){
+  jobCost=Number(jobCost)||0;
+  restoreFrac=Number(restoreFrac); if(!(restoreFrac>0)) restoreFrac=ROI_DEF.restoreFrac;
+  var repl=Number(replacementCost)||0; var implied=false;
+  if(!(repl>0)){ repl = restoreFrac>0 ? jobCost/restoreFrac : 0; implied=true; }
+  var savingsVsReplace=Math.max(0, repl-jobCost);
+  share=Number(share); if(!(share>=0)) share=ROI_DEF.share;
+  roofRed=Number(roofRed); if(!(roofRed>=0)) roofRed=ROI_DEF.roofRed;
+  var annualSavings=0, monthlySavings=0;
+  if(energyOn){ annualSavings=(Number(annualEnergyCost)||0)*share*roofRed; monthlySavings=annualSavings/12; }
+  var out={replacementCost:repl, impliedReplacement:implied, savingsVsReplace:savingsVsReplace,
+           annualSavings:annualSavings, monthlySavings:monthlySavings, pctOfPaymentCovered:null};
+  var fin=Number(financingMonthly)||0;
+  if(fin>0) out.pctOfPaymentCovered=(savingsVsReplace/12)/fin; // savings spread over 12 mo vs payment
+  return out;
+}
+/* Model C - Protective/elastomeric/polyurea coatings: asset-life + restore-vs-replace */
+function roiCoatCompute(jobCost, replacementCost, restoreFrac, bonusOn, annualEnergyCost, share, coatBonus, financingMonthly){
+  jobCost=Number(jobCost)||0;
+  restoreFrac=Number(restoreFrac); if(!(restoreFrac>0)) restoreFrac=ROI_DEF.coatRestoreFrac;
+  var repl=Number(replacementCost)||0; var implied=false;
+  if(!(repl>0)){ repl = restoreFrac>0 ? jobCost/restoreFrac : 0; implied=true; }
+  var savingsVsReplace=Math.max(0, repl-jobCost);
+  share=Number(share); if(!(share>=0)) share=ROI_DEF.share;
+  coatBonus=Number(coatBonus); if(!(coatBonus>=0)) coatBonus=ROI_DEF.coatBonus;
+  var annualSavings=0, monthlySavings=0;
+  if(bonusOn){ annualSavings=(Number(annualEnergyCost)||0)*share*coatBonus; monthlySavings=annualSavings/12; }
+  var out={replacementCost:repl, impliedReplacement:implied, savingsVsReplace:savingsVsReplace,
+           annualSavings:annualSavings, monthlySavings:monthlySavings, pctOfPaymentCovered:null};
+  var fin=Number(financingMonthly)||0;
+  if(fin>0) out.pctOfPaymentCovered=(savingsVsReplace/12)/fin;
+  return out;
+}
+/* Model D - Concrete lifting/leveling/void fill: lift-vs-replace */
+function roiConcreteCompute(liftCost, replacementCost, liftFrac, financingMonthly){
+  liftCost=Number(liftCost)||0;
+  liftFrac=Number(liftFrac); if(!(liftFrac>0)) liftFrac=ROI_DEF.liftFrac;
+  var repl=Number(replacementCost)||0; var implied=false;
+  if(!(repl>0)){ repl = liftFrac>0 ? liftCost/liftFrac : 0; implied=true; }
+  var savingsVsReplace=Math.max(0, repl-liftCost);
+  var out={replacementCost:repl, impliedReplacement:implied, savingsVsReplace:savingsVsReplace, pctOfPaymentCovered:null};
+  var fin=Number(financingMonthly)||0;
+  if(fin>0) out.pctOfPaymentCovered=(savingsVsReplace/12)/fin;
+  return out;
+}
+/* Detect the dominant service model for a bid. Returns insulation|roofing|coatings|concrete. */
+function roiESServiceToModel(sv){
+  sv=String(sv||'').toLowerCase();
+  if(sv==='roof') return 'roofing';
+  if(sv==='coatings'||sv==='polyurea') return 'coatings';
+  if(sv==='concrete'||sv==='soil') return 'concrete';
+  if(sv==='foam'||sv==='insulation'||sv==='removal') return 'insulation';
+  return 'insulation';
+}
+function roiESDetectModel(b){
+  if(!b||!b.scopes||!b.scopes.length) return 'insulation';
+  var tally={}; var best=null, bestV=-1;
+  (b.scopes||[]).forEach(function(s){
+    var m=roiESServiceToModel(s.service);
+    var w=Number(s.sell)||Number(s.sqft)||Number(s.area)||1;
+    tally[m]=(tally[m]||0)+w;
+    if(tally[m]>bestV){ bestV=tally[m]; best=m; }
+  });
+  return best||'insulation';
+}
+function roiESCurrentBid(){ return bids.find(function(x){return x.id===selId;}); }
+function roiESBidSqft(b){ if(!b||!b.scopes) return 0; var t=0; (b.scopes||[]).forEach(function(s){ t+=Number(s.sqft)||Number(s.area)||0; }); return t; }
+function roiESFill(b){
+  if(!$('roi-es-card')) return;
+  b=b||roiESCurrentBid(); if(!b) return;
+  var r=b.roiES||{};
+  $('roi-es-jobcost').value=Number(b.sellPrice||b.bidTotal||0).toFixed(2);
+  $('roi-es-annual').value = (r.annualEnergyCost!=null? r.annualEnergyCost : '');
+  $('roi-es-share').value = (r.heatingCoolingShare!=null? r.heatingCoolingShare : 0.50);
+  $('roi-es-reduction').value = (r.reductionPct!=null? r.reductionPct : 0.15);
+  $('roi-es-fin').value = (r.financingMonthly? r.financingMonthly : '');
+  var sq = (r.sqft!=null? r.sqft : roiESBidSqft(b));
+  $('roi-es-sqft').value = sq>0? sq : '';
+  if(r.fuelType){ try{$('roi-es-fuel').value=r.fuelType;}catch(e){} }
+  var st = r.state || b.state || 'MT';
+  try{ var sel=$('roi-es-state'); var found=false; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===st){found=true;break;} } sel.value=found?st:'Other'; }catch(e){}
+  if(r.narrative){ $('roi-es-narr').value=r.narrative; $('roi-es-narrwrap').style.display=''; }
+  else { $('roi-es-narr').value=''; $('roi-es-narrwrap').style.display='none'; }
+  // model-specific persisted inputs
+  if($('roi-es-roof-repl')) $('roi-es-roof-repl').value = (r.replacementCost!=null? r.replacementCost : '');
+  if($('roi-es-roof-frac')) $('roi-es-roof-frac').value = (r.restoreFrac!=null? r.restoreFrac : ROI_DEF.restoreFrac);
+  if($('roi-es-roof-red')) $('roi-es-roof-red').value = (r.roofReductionPct!=null? r.roofReductionPct : ROI_DEF.roofRed);
+  if($('roi-es-roof-energy')) $('roi-es-roof-energy').checked = !!r.roofEnergyOn;
+  if($('roi-es-coat-repl')) $('roi-es-coat-repl').value = (r.replacementCost!=null? r.replacementCost : '');
+  if($('roi-es-coat-frac')) $('roi-es-coat-frac').value = (r.restoreFrac!=null? r.restoreFrac : ROI_DEF.coatRestoreFrac);
+  if($('roi-es-coat-bonuspct')) $('roi-es-coat-bonuspct').value = (r.coatBonusPct!=null? r.coatBonusPct : ROI_DEF.coatBonus);
+  if($('roi-es-coat-bonus')) $('roi-es-coat-bonus').checked = !!r.coatBonusOn;
+  if($('roi-es-conc-repl')) $('roi-es-conc-repl').value = (r.replacementCost!=null? r.replacementCost : '');
+  if($('roi-es-conc-frac')) $('roi-es-conc-frac').value = (r.liftFrac!=null? r.liftFrac : ROI_DEF.liftFrac);
+  $('roi-es-status').textContent='';
+  // auto-select model from dominant scope (or restore saved choice)
+  roiESSetModel(r.model || roiESDetectModel(b));
+}
+function roiESPreset(p){ $('roi-es-reduction').value=p; roiESCalc(); }
+var roiESModel='insulation';
+var ROI_BASIS={
+  insulation:'ENERGY STAR: air sealing + insulation ≈ 15% of heating & cooling cost. Actual results vary by building, climate, fuel prices, and usage.',
+  roofing:'Restoration ≈ 40-60% less than tear-off & replacement; 20-30 yr service life, renewed by recoat every 10-15 yrs. Cool-roof cooling savings are minimal in cold climates (ORNL/LBL) — value is roof life + restoration + added R-6/in insulation. Estimated; actual results vary.',
+  coatings:'Restore-vs-replace ≈ 50% of replacement cost (industry); proactive maintenance ≈ 30% longer life / 40% lower lifecycle cost (NRCA-cited). Estimated; actual results vary.',
+  concrete:'Lifting typically ≈ half the cost of tear-out & replacement (range 50-85% less). Polyurethane is waterproof and usable same day. Estimated; actual results vary.'
+};
+function roiESSetModel(m){
+  m=String(m||'insulation'); if(['insulation','roofing','coatings','concrete'].indexOf(m)<0) m='insulation';
+  roiESModel=m;
+  // toggle model-specific UI blocks
+  ['insulation','roofing','coatings','concrete'].forEach(function(k){
+    var blk=$('roi-es-blk-'+k); if(blk) blk.style.display = (k===m)?'':'none';
+  });
+  // reflect selector buttons
+  try{ var sel=$('roi-es-modelsel'); if(sel){ var bs=sel.getElementsByTagName('button'); for(var i=0;i<bs.length;i++){ bs[i].classList.toggle('active', bs[i].getAttribute('data-m')===m); } } }catch(e){}
+  // basis disclaimer line
+  var bl=$('roi-es-basis'); if(bl) bl.textContent=ROI_BASIS[m]||ROI_BASIS.insulation;
+  // persist chosen model
+  var b=roiESCurrentBid(); if(b){ b.roiES=Object.assign({}, b.roiES||{}, {model:m}); try{ lsSet(KB, JSON.stringify(bids)); }catch(e){} }
+  roiESCalc();
+}
+function _roiSetStat(id,txt){ var e=$(id); if(e) e.textContent=txt; }
+function _roiFinLine(pct, label){
+  var fl=$('roi-es-finline');
+  if(!fl) return;
+  if(pct!=null){ fl.style.display=''; fl.textContent=(label||'Your est. monthly savings')+' cover ~'+Math.round(pct*100)+'% of the payment.'; }
+  else { fl.style.display='none'; fl.textContent=''; }
+}
+function roiESCalc(){
+  if(!$('roi-es-card')) return null;
+  var b=roiESCurrentBid();
+  var jobCost=Number($('roi-es-jobcost').value)|| (b? Number(b.sellPrice||b.bidTotal||0):0);
+  var fin=val('roi-es-fin');
+  var m=roiESModel;
+  var c=null, persist={model:m, financingMonthly:fin||null};
+
+  if(m==='insulation'){
+    var annual=val('roi-es-annual'), share=val('roi-es-share'), reduction=val('roi-es-reduction');
+    c=roiESCompute(jobCost, annual, share, reduction, fin);
+    $('roi-es-annsav').textContent=money(c.annualSavings);
+    $('roi-es-mosav').textContent=money(c.monthlySavings);
+    $('roi-es-payback').textContent=(c.annualSavings>0 ? c.paybackYears.toFixed(1)+' yrs' : '—');
+    _roiFinLine(c.pctOfPaymentCovered,'Your est. monthly energy savings');
+    persist=Object.assign(persist,{annualEnergyCost:annual||null, heatingCoolingShare:share, reductionPct:reduction, sqft:val('roi-es-sqft')||null, fuelType:$('roi-es-fuel').value, state:$('roi-es-state').value, annualSavings:c.annualSavings, monthlySavings:c.monthlySavings, paybackYears:c.paybackYears});
+  } else if(m==='roofing'){
+    var rRepl=val('roi-es-roof-repl'), rFrac=val('roi-es-roof-frac')||ROI_DEF.restoreFrac;
+    var eOn=!!($('roi-es-roof-energy')&&$('roi-es-roof-energy').checked);
+    var rAnnual=val('roi-es-annual'), rShare=val('roi-es-share'), rRed=val('roi-es-roof-red')||ROI_DEF.roofRed;
+    c=roiRoofCompute(jobCost, rRepl, rFrac, eOn, rAnnual, rShare, rRed, fin);
+    _roiSetStat('roi-es-roof-savings', money(c.savingsVsReplace));
+    _roiSetStat('roi-es-roof-repl-out', money(c.replacementCost)+(c.impliedReplacement?' (implied)':''));
+    var eRow=$('roi-es-roof-energyrow');
+    if(eRow){ if(eOn && c.annualSavings>0){ eRow.style.display=''; _roiSetStat('roi-es-roof-energy-out', money(c.annualSavings)+'/yr'); } else { eRow.style.display='none'; } }
+    _roiFinLine(c.pctOfPaymentCovered,'Your est. savings vs. replacement');
+    persist=Object.assign(persist,{replacementCost:rRepl||null, restoreFrac:rFrac, roofEnergyOn:eOn, annualEnergyCost:rAnnual||null, heatingCoolingShare:rShare, roofReductionPct:rRed, savingsVsReplace:c.savingsVsReplace, annualSavings:c.annualSavings});
+  } else if(m==='coatings'){
+    var cRepl=val('roi-es-coat-repl'), cFrac=val('roi-es-coat-frac')||ROI_DEF.coatRestoreFrac;
+    var bOn=!!($('roi-es-coat-bonus')&&$('roi-es-coat-bonus').checked);
+    var cAnnual=val('roi-es-annual'), cShare=val('roi-es-share'), cB=val('roi-es-coat-bonuspct')||ROI_DEF.coatBonus;
+    c=roiCoatCompute(jobCost, cRepl, cFrac, bOn, cAnnual, cShare, cB, fin);
+    _roiSetStat('roi-es-coat-savings', money(c.savingsVsReplace));
+    _roiSetStat('roi-es-coat-repl-out', money(c.replacementCost)+(c.impliedReplacement?' (implied)':''));
+    var cRow=$('roi-es-coat-bonusrow');
+    if(cRow){ if(bOn && c.annualSavings>0){ cRow.style.display=''; _roiSetStat('roi-es-coat-bonus-out', money(c.annualSavings)+'/yr'); } else { cRow.style.display='none'; } }
+    _roiFinLine(c.pctOfPaymentCovered,'Your est. savings vs. replacement');
+    persist=Object.assign(persist,{replacementCost:cRepl||null, restoreFrac:cFrac, coatBonusOn:bOn, annualEnergyCost:cAnnual||null, heatingCoolingShare:cShare, coatBonusPct:cB, savingsVsReplace:c.savingsVsReplace, annualSavings:c.annualSavings});
+  } else if(m==='concrete'){
+    var dRepl=val('roi-es-conc-repl'), dFrac=val('roi-es-conc-frac')||ROI_DEF.liftFrac;
+    c=roiConcreteCompute(jobCost, dRepl, dFrac, fin);
+    _roiSetStat('roi-es-conc-savings', money(c.savingsVsReplace));
+    _roiSetStat('roi-es-conc-repl-out', money(c.replacementCost)+(c.impliedReplacement?' (implied)':''));
+    _roiFinLine(c.pctOfPaymentCovered,'Your est. savings vs. replacement');
+    persist=Object.assign(persist,{replacementCost:dRepl||null, liftFrac:dFrac, savingsVsReplace:c.savingsVsReplace});
+  }
+
+  if(b){ b.roiES=Object.assign({}, b.roiES||{}, persist); try{ lsSet(KB, JSON.stringify(bids)); }catch(e){} }
+  return c;
+}
+function roiESStatus(m){ var e=$('roi-es-status'); if(e) e.textContent=m||''; }
+function roiESFileToB64(file){ return new Promise(function(res,rej){ var rd=new FileReader(); rd.onload=function(){ var s=String(rd.result||''); var i=s.indexOf(','); res(i>=0? s.slice(i+1): s); }; rd.onerror=rej; rd.readAsDataURL(file); }); }
+function roiESReadBill(input){
+  var f=input&&input.files&&input.files[0]; if(!f) return;
+  roiESStatus('Reading bill…');
+  roiESFileToB64(f).then(function(b64){
+    return qbAIPost({mode:'roi_bill', files:[{mime:f.type||'application/octet-stream', dataB64:b64}]});
+  }).then(function(j){
+    if(!j||!j.ok){ roiESStatus(j&&j.error==='AI_NOT_CONFIGURED' ? 'AI setup needed — enter annual cost manually.' : 'Could not read bill — enter manually.'); return; }
+    var bill=j.bill||{};
+    if(typeof bill.annualEnergyCost==='number'){ $('roi-es-annual').value=Math.round(bill.annualEnergyCost); }
+    if(typeof bill.heatingCoolingShare==='number' && bill.heatingCoolingShare>0 && bill.heatingCoolingShare<=1){ $('roi-es-share').value=bill.heatingCoolingShare; }
+    if(bill.fuelType){ try{$('roi-es-fuel').value=String(bill.fuelType).toLowerCase();}catch(e){} }
+    roiESStatus(bill.notes? ('Bill read. '+bill.notes) : 'Bill read.');
+    roiESCalc();
+  }).catch(function(){ roiESStatus('Offline — enter annual cost manually.'); })
+   .then(function(){ try{input.value='';}catch(e){} });
+}
+function roiESEstimate(){
+  roiESStatus('Estimating…');
+  var payload={mode:'roi_estimate', sqft:val('roi-es-sqft'), state:$('roi-es-state').value, fuelType:$('roi-es-fuel').value};
+  qbAIPost(payload).then(function(j){
+    if(!j||!j.ok){ roiESStatus(j&&j.error==='AI_NOT_CONFIGURED' ? 'AI setup needed — enter annual cost manually.' : 'Estimate unavailable — enter manually.'); return; }
+    var est=j.estimate||{};
+    if(typeof est.annualEnergyCost==='number'){ $('roi-es-annual').value=Math.round(est.annualEnergyCost); roiESCalc(); }
+    roiESStatus('Estimate (confirm w/ bills): '+(est.assumptions||''));
+  }).catch(function(){ roiESStatus('Offline — enter annual cost manually.'); });
+}
+function roiESNarrative(){
+  var c=roiESCalc(); if(!c){ return; }
+  var b=roiESCurrentBid();
+  var m=roiESModel;
+  var jobCost=Number($('roi-es-jobcost').value)|| (b? Number(b.sellPrice||b.bidTotal||0):0);
+  var fin=val('roi-es-fin')||null;
+  var numbers={ jobCost:Math.round(jobCost), financingMonthly:fin };
+  var hasValue=false;
+  if(m==='insulation'){
+    if(!(c.annualSavings>0)){ roiESStatus('Enter an annual energy cost first.'); return; }
+    numbers.annualSavings=Math.round(c.annualSavings); numbers.monthlySavings=Math.round(c.monthlySavings); numbers.paybackYears=Number(c.paybackYears.toFixed(1)); hasValue=true;
+  } else if(m==='roofing'){
+    numbers.replacementCost=Math.round(c.replacementCost||0); numbers.savingsVsReplace=Math.round(c.savingsVsReplace||0);
+    numbers.serviceLife='20-30 yr life, recoat every 10-15 yrs';
+    if(c.annualSavings>0) numbers.annualSavings=Math.round(c.annualSavings);
+    hasValue=(c.savingsVsReplace>0||c.annualSavings>0);
+  } else if(m==='coatings'){
+    numbers.replacementCost=Math.round(c.replacementCost||0); numbers.savingsVsReplace=Math.round(c.savingsVsReplace||0);
+    numbers.lifeExtension='+10 yrs per recoat cycle; ~30% longer life / 40% lower lifecycle cost';
+    if(c.annualSavings>0) numbers.annualSavings=Math.round(c.annualSavings);
+    hasValue=(c.savingsVsReplace>0||c.annualSavings>0);
+  } else if(m==='concrete'){
+    numbers.replacementCost=Math.round(c.replacementCost||0); numbers.savingsVsReplace=Math.round(c.savingsVsReplace||0);
+    hasValue=(c.savingsVsReplace>0);
+  }
+  if(!hasValue){ roiESStatus('Enter the job/replacement numbers first.'); return; }
+  roiESStatus('Writing summary…');
+  qbAIPost({mode:'roi_narrative', model:m, numbers:numbers}).then(function(j){
+    if(!j||!j.ok || !j.narrative){ roiESStatus(j&&j.error==='AI_NOT_CONFIGURED' ? 'AI setup needed — summary unavailable.' : 'Could not write summary.'); return; }
+    $('roi-es-narrwrap').style.display=''; $('roi-es-narr').value=j.narrative;
+    if(b){ b.roiES=Object.assign({}, b.roiES||{}, {narrative:j.narrative}); try{lsSet(KB,JSON.stringify(bids));}catch(e){} }
+    roiESStatus('Summary written.');
+  }).catch(function(){ roiESStatus('Offline — summary unavailable.'); });
+}
+
 /* map a foam product hint to a real active FOAM key for a category set */
 function qbMatchFoam(hint,cats){try{var act=_act(FOAM.filter(function(f){return cats.indexOf(f.cat)>=0;}));if(!act.length)return '';
  if(hint){var hs=String(hint).toLowerCase();for(var i=0;i<act.length;i++){var n=(act[i].n||'').toLowerCase(),k=(act[i].k||'').toLowerCase();if(n.indexOf(hs)>=0||hs.indexOf(n)>=0||k.indexOf(hs)>=0)return act[i].k;}
@@ -1234,7 +1492,7 @@ function openBid(id){selId=id;const b=bids.find(x=>x.id===id);if(!b)return;$('c-
  $('d-cust').innerHTML=`<strong>${b.customer?.name||''}</strong><br>${b.customer?.phone||''} ${b.customer?.email?'· '+b.customer.email:''}<br>${b.customer?.address||''}, ${b.state||''}<br>Market: ${b.market} · Date: ${b.jobDate||'TBD'}`;
  const L=(b.scopes||[]).map(s=>[scopeLabel(s.service)+' — '+s.product+(s.substrate?' · '+s.substrate:''),s.qty||'',money(s.sell)]);
  $('d-lines').innerHTML=L.map(l=>`<div class="li"><div>${l[0]}</div><div style="color:var(--mut)">${l[1]}</div><div style="text-align:right;font-weight:700">${l[2]}</div></div>`).join('');
- $('d-cost').textContent=money(b.totalCost);$('ov-price').value=(b.sellPrice||0).toFixed(2);$('c-notes').value=b.consoleNotes||'';$('d-status').value=b.status||'draft';if($('d-reason'))$('d-reason').value=b.lossReason||b.winReason||'';if($('bpi-report-sec'))$('bpi-report-sec').style.display=(b.scopes||[]).some(x=>x.bpi)?'':'none';ovUpd();initSig();showSign(b);}
+ $('d-cost').textContent=money(b.totalCost);$('ov-price').value=(b.sellPrice||0).toFixed(2);$('c-notes').value=b.consoleNotes||'';$('d-status').value=b.status||'draft';if($('d-reason'))$('d-reason').value=b.lossReason||b.winReason||'';if($('bpi-report-sec'))$('bpi-report-sec').style.display=(b.scopes||[]).some(x=>x.bpi)?'':'none';ovUpd();initSig();showSign(b);try{roiESFill(b);}catch(e){}}
 function ovUpd(){const b=bids.find(x=>x.id===selId);if(!b)return;const p=val('ov-price');const cost=b.totalCost||0;const gm=p>0?(p-cost)/p*100:0;const floor=(SET.minMargin||0)*100;const e=$('ov-gm');let lab=gm.toFixed(1)+'% GM',col='var(--green)';if(p>0&&p<cost){lab='⚠ BELOW COST '+gm.toFixed(1)+'%';col='var(--red)';}else if(gm<floor){lab=gm.toFixed(1)+'% GM ⚠ under '+floor.toFixed(0)+'% floor';col='var(--red)';}else if(gm<(b.gmTarget||50)){col='var(--yellow)';}e.value=lab;e.style.color=col;}
 let sigCtx=null,sigDrawing=false,sigDirty=false,sigBound=false;
 function initSig(){const cv=$('sigpad');if(!cv)return;let ctx;try{ctx=cv.getContext('2d');}catch(_){return;}if(!ctx)return;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';sigCtx=ctx;if(sigBound)return;sigBound=true;
