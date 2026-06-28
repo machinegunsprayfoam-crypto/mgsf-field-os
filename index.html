@@ -146,6 +146,7 @@ textarea{resize:vertical;min-height:54px}
       <button class="mbtn" id="m-stock" onclick="setMode('stock')">Stock</button>
       <button class="mbtn" id="m-clients" onclick="setMode('clients')">Clients</button>
       <button class="mbtn" id="m-console" onclick="setMode('console')">Console</button>
+      <button class="mbtn" id="m-qbid" onclick="setMode('qbid')">⚡ Quick Bid</button>
       <button class="mbtn" id="m-admin" onclick="setMode('admin')">Admin</button>
     </div>
     <div class="tuser" onclick="logout()"><span class="chip" id="rolechip">—</span> <b id="ulabel">—</b> · Lock</div>
@@ -358,6 +359,62 @@ textarea{resize:vertical;min-height:54px}
       <div class="card" id="install-card"><div class="ct">📲 Add to Home Screen</div><div class="hint"><b>iPhone:</b> Share button → "Add to Home Screen". &nbsp;<b>Android:</b> menu ⋮ → "Install app" / "Add to Home screen". Opens full-screen like a native app.</div><div class="btnrow" style="margin-top:6px"><button class="btn btn-p btn-full" id="install-btn" style="display:none" onclick="doInstall()">⬇ Install app</button>
 <button class="btn btn-p btn-full" style="margin-top:8px" onclick="shareReview()">⭐ Send Google Review Link</button></div></div>
     </div><!-- /field -->
+
+    <!-- QUICK BID -->
+    <div id="qbid" style="display:none">
+      <div class="card">
+        <div class="ct">⚡ Quick Bid</div>
+        <div class="hint" style="margin-bottom:8px">Fast, fully-priced draft bid. Pick a service, enter a few numbers, hit Build Bid. Uses the same pricing engine as the full estimator. Review &amp; approve on the Console.</div>
+        <div class="row"><div><label>Customer Name *</label><input id="qb2-name" placeholder="Jane Smith"></div><div><label>Phone</label><input id="qb2-phone" placeholder="(555) 555-1234"></div></div>
+        <div class="row"><div><label>Address (optional)</label><input id="qb2-addr" placeholder="123 Main St, City"></div><div><label>State</label><input id="qb2-state" placeholder="e.g. OH" maxlength="2" style="text-transform:uppercase"></div></div>
+        <div class="row"><div><label>Market</label><select id="qb2-market"><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="government">Government</option><option value="agricultural">Agricultural</option></select></div><div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="ct">Service</div>
+        <div class="svcs" id="qb2-svcs">
+          <div class="svc active" data-qs="foam" onclick="qbPick('foam',event)">🫧 Spray Foam</div>
+          <div class="svc" data-qs="roof" onclick="qbPick('roof',event)">🏠 SPF Roofing</div>
+          <div class="svc" data-qs="concrete" onclick="qbPick('concrete',event)">🪨 Concrete Lifting</div>
+          <div class="svc" data-qs="coatings" onclick="qbPick('coatings',event)">🛡️ Coatings</div>
+        </div>
+
+        <!-- FOAM -->
+        <div class="qbpanel" id="qb2-foam" style="margin-top:10px">
+          <div class="row"><div><label>Foam Product</label><select id="qb2-foam-product"></select></div><div><label>Thickness (in)</label><input type="number" id="qb2-foam-thick" value="2" step="0.5"></div></div>
+          <div class="row"><div><label>Area (sq ft)</label><input type="number" id="qb2-foam-sf" placeholder="e.g. 2400" oninput="qbLW('foam')"></div><div><label># Areas / Zones</label><input type="number" id="qb2-foam-zones" value="1" min="1"></div></div>
+          <div class="hint" style="margin:4px 0">Or enter length × width and area auto-fills:</div>
+          <div class="row"><div><label>Length ft</label><input type="number" id="qb2-foam-l" oninput="qbLW('foam')"></div><div><label>Width ft</label><input type="number" id="qb2-foam-w" oninput="qbLW('foam')"></div></div>
+          <div class="row"><div style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="qb2-foam-tb" style="width:auto"><label style="margin:0">Add DC-315 thermal barrier</label></div><div></div></div>
+        </div>
+
+        <!-- ROOF -->
+        <div class="qbpanel" id="qb2-roof" style="display:none;margin-top:10px">
+          <div class="row"><div><label>Roof Foam</label><select id="qb2-roof-product"></select></div><div><label>Thickness (in)</label><input type="number" id="qb2-roof-thick" value="1.5" step="0.5"></div></div>
+          <div class="row"><div><label>Roof Area (sq ft)</label><input type="number" id="qb2-roof-sf" placeholder="e.g. 5000" oninput="qbLW('roof')"></div><div><label>Roof Shape</label><select id="qb2-roof-shape"><option>Flat / Low-slope</option><option>Shed</option><option>Gable</option><option>Hip</option><option>Gambrel</option><option>Mansard</option><option>Quonset</option></select></div></div>
+          <div class="hint" style="margin:4px 0">Or enter footprint length × width (shape multiplier applies):</div>
+          <div class="row"><div><label>Length ft</label><input type="number" id="qb2-roof-l" oninput="qbLW('roof')"></div><div><label>Width ft</label><input type="number" id="qb2-roof-w" oninput="qbLW('roof')"></div></div>
+          <div class="row"><div><label>Coating</label><select id="qb2-roof-coat"></select></div><div><label>Coats</label><input type="number" id="qb2-roof-coats" value="2" min="1"></div></div>
+        </div>
+
+        <!-- CONCRETE -->
+        <div class="qbpanel" id="qb2-concrete" style="display:none;margin-top:10px">
+          <div class="row"><div><label>Application</label><select id="qb2-conc-app"><option>Driveway / Slab Lift</option><option>Sidewalk / Walkway</option><option>Garage / Shop Floor</option><option>Void Fill / Trench</option><option>Soil Stabilization</option></select></div><div><label>$ / cubic foot</label><input type="number" id="qb2-conc-cost" value="75"></div></div>
+          <div class="row"><div><label>Area (SF)</label><input type="number" id="qb2-conc-sf" placeholder="e.g. 600"></div><div><label>Avg void (in)</label><input type="number" id="qb2-conc-depth" value="1.25" step="0.25"></div></div>
+        </div>
+
+        <!-- COATINGS -->
+        <div class="qbpanel" id="qb2-coatings" style="display:none;margin-top:10px">
+          <div class="row"><div><label>Coating</label><select id="qb2-coat-product"></select></div><div><label>Coats</label><input type="number" id="qb2-coat-coats" value="2" min="1"></div></div>
+          <div class="row"><div><label>Area (SF)</label><input type="number" id="qb2-coat-sf" placeholder="e.g. 1200"></div><div></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="btn btn-p btn-full" onclick="qbBuild()">⚡ Build Bid</button>
+        <div class="hint" id="qb2-msg" style="margin-top:8px"></div>
+      </div>
+    </div>
 
     <!-- CONSOLE -->
     <div id="console" style="display:none">
@@ -667,7 +724,7 @@ function adCancel(){var o=document.getElementById('adlock');if(o)o.style.display
 function adUnlock(){var pw=(document.getElementById('adlock-pw')||{}).value||'';if(pw!=='Clifton'){var er=document.getElementById('adlock-err');if(er)er.textContent='Wrong password';return;}window.__adminUnlocked=true;role='owner';try{applyRole();}catch(e){}var o=document.getElementById('adlock');if(o)o.style.display='none';setMode('admin');}
 
 /* ============ NAV ============ */
-function setMode(m){if(m==='console'&&!['owner','office','estimator'].includes(role))return;if(m==='stock'&&!['owner','office','estimator'].includes(role))return;if(m==='clients'&&!['owner','office','estimator'].includes(role))return;if(m==='admin'){if(!window.__adminUnlocked){showAdlock();return;}}mode=m;['field','jobs','stock','clients','console','admin'].forEach(x=>{$(x).style.display=x===m?'':'none';const mb=$('m-'+x);if(mb)mb.classList.toggle('active',x===m);});
+function setMode(m){if(m==='console'&&!['owner','office','estimator'].includes(role))return;if(m==='stock'&&!['owner','office','estimator'].includes(role))return;if(m==='clients'&&!['owner','office','estimator'].includes(role))return;if(m==='admin'){if(!window.__adminUnlocked){showAdlock();return;}}mode=m;['field','qbid','jobs','stock','clients','console','admin'].forEach(x=>{$(x).style.display=x===m?'':'none';const mb=$('m-'+x);if(mb)mb.classList.toggle('active',x===m);});
  if(m==='jobs'){renderJobs();} if(m==='stock'){renderStock();} if(m==='clients'){renderClients();} if(m==='console'){renderKpis();renderBidList();showList();renderGov();backupReminder();renderInsights();renderAR();renderRec();} if(m==='admin'){fillAdmin();}}
 function bidAgeDays(b){const t=b.statusAt||b.approvedAt||b.createdAt;return t?(Date.now()-new Date(t).getTime())/86400000:0;}
 function isFollowup(b){return b.status==='sent'&&bidAgeDays(b)>=FOLLOW_DAYS;}
@@ -703,6 +760,90 @@ function renderKpis(){const active=bids.filter(b=>['draft','approved','sent'].in
  const won=bids.filter(b=>b.status==='won').length,lost=bids.filter(b=>b.status==='lost').length;const wr=(won+lost)>0?Math.round(won/(won+lost)*100):0;
  const fu=bids.filter(isFollowup).reduce((a,b)=>a+(b.sellPrice||0),0);
  $('kpis').innerHTML=`<div class="kpi"><div class="kpi-v">${money(active)}</div><div class="kpi-l">Active pipeline</div></div><div class="kpi"><div class="kpi-v">${money(wonMo)}</div><div class="kpi-l">Won this mo</div></div><div class="kpi"><div class="kpi-v">${wr}%</div><div class="kpi-l">Win rate</div></div><div class="kpi"><div class="kpi-v">${money(fu)}</div><div class="kpi-l">Follow-up $</div></div>`;}
+/* ============ QUICK BID (Phase 1) ============ */
+var qbSvc='foam';
+function qbFill(){try{
+ var foamOpts=_act(FOAM.filter(function(f){return f.cat==='Closed Cell'||f.cat==='Open Cell';})).map(function(f){return '<option value="'+f.k+'">'+f.n+'</option>';}).join('');
+ var roofOpts=_act(FOAM.filter(function(f){return f.cat==='Roofing';})).map(function(f){return '<option value="'+f.k+'">'+f.n+'</option>';}).join('');
+ var coatOpts=_act(COAT).map(function(c){return '<option value="'+c.k+'">'+c.n+'</option>';}).join('');
+ var fp=$('qb2-foam-product'); if(fp)fp.innerHTML=foamOpts;
+ var rp=$('qb2-roof-product'); if(rp)rp.innerHTML=roofOpts;
+ var rc=$('qb2-roof-coat'); if(rc)rc.innerHTML='<option value="none">None</option>'+coatOpts;
+ var cp=$('qb2-coat-product'); if(cp)cp.innerHTML=coatOpts;
+}catch(e){console.error('qbFill',e);}}
+function qbPick(x,e){qbSvc=x;try{document.querySelectorAll('#qb2-svcs .svc').forEach(function(t){t.classList.remove('active');});if(e&&e.target)e.target.classList.add('active');}catch(_){}
+ ['foam','roof','concrete','coatings'].forEach(function(p){var el=$('qb2-'+p);if(el)el.style.display=(p===x?'':'none');});}
+function qbLW(which){var l=val('qb2-'+which+'-l'),w=val('qb2-'+which+'-w');if(l>0&&w>0){var sf=$('qb2-'+which+'-sf');if(sf)sf.value=Math.round(l*w);}}
+function qbBuild(){
+ var msg=$('qb2-msg'); var setMsg=function(t,bad){if(msg){msg.textContent=t;msg.style.color=bad?'var(--red)':'var(--mut)';}};
+ var name=str('qb2-name').trim(); if(!name){setMsg('Enter a customer name first.',true);toast('Enter customer name',true);return;}
+ // 1) push Quick Bid inputs into the real estimator fields the engine reads
+ $('cust-name').value=name;
+ if($('cust-phone'))$('cust-phone').value=str('qb2-phone');
+ if($('cust-addr'))$('cust-addr').value=str('qb2-addr');
+ if($('cust-state'))$('cust-state').value=str('qb2-state').toUpperCase();
+ if($('market'))$('market').value=str('qb2-market')||'residential';
+ // 2) reset builder state so only the Quick Bid scope is priced
+ cart=[]; bidPhotos=[];
+ foamSec={walls:[],gable:[],attic:[],base:[],crawl:[],rim:[],other:[]};
+ roofSec=[{shape:'Flat / Low-slope',q:1}];
+ roofPen=[]; consQty={};
+ if($('cons-on'))$('cons-on').checked=false;
+ var ok=true;
+ if(qbSvc==='foam'){
+   svc='foam';
+   var fsf=val('qb2-foam-sf'); var zones=Math.max(1,val('qb2-foam-zones')||1);
+   if(fsf<=0){setMsg('Enter the foam area (sq ft) or length × width.',true);return;}
+   foamSec.other=[{sf:fsf,q:zones}];
+   $('foam-product').value=str('qb2-foam-product');
+   $('foam-thick').value=val('qb2-foam-thick')||2;
+   if($('foam-tb'))$('foam-tb').checked=!!($('qb2-foam-tb')&&$('qb2-foam-tb').checked);
+ } else if(qbSvc==='roof'){
+   svc='roof';
+   var rsf=val('qb2-roof-sf');
+   if(rsf<=0){setMsg('Enter the roof area (sq ft) or length × width.',true);return;}
+   // drive roofTotalSF directly: l=SF, w=1, chosen shape applies its multiplier
+   roofSec=[{shape:str('qb2-roof-shape')||'Flat / Low-slope',l:rsf,w:1,q:1}];
+   $('roof-product').value=str('qb2-roof-product');
+   $('roof-thick').value=val('qb2-roof-thick')||1.5;
+   if($('roof-coat'))$('roof-coat').value=str('qb2-roof-coat')||'none';
+   if($('roof-coats'))$('roof-coats').value=val('qb2-roof-coats')||2;
+   if($('roof-existing'))$('roof-existing').selectedIndex=0;
+   if($('roof-scarf'))$('roof-scarf').checked=false;
+ } else if(qbSvc==='concrete'){
+   svc='concrete';
+   var csf=val('qb2-conc-sf');
+   if(csf<=0){setMsg('Enter the concrete area (SF).',true);return;}
+   $('conc-sf').value=csf;
+   $('conc-depth').value=val('qb2-conc-depth')||1.25;
+   $('conc-cf-cost').value=val('qb2-conc-cost')||75;
+   if($('conc-app'))$('conc-app').value=str('qb2-conc-app');
+ } else if(qbSvc==='coatings'){
+   svc='coatings';
+   var ksf=val('qb2-coat-sf');
+   if(ksf<=0){setMsg('Enter the coating area (SF).',true);return;}
+   $('coat-sf').value=ksf;
+   $('coat-coats').value=val('qb2-coat-coats')||2;
+   $('coat-product').value=str('qb2-coat-product');
+ } else {setMsg('Pick a service.',true);return;}
+ // 3) sync foam zone/roof UI (harmless if hidden) and price via the existing engine
+ try{renderZone();}catch(_){}
+ try{renderRoof();}catch(_){}
+ try{recalc();}catch(_){}
+ // 4) add the priced scope using the existing builder, then save with the existing guard
+ var before=bids.length;
+ try{addScope();}catch(e){console.error('addScope',e);}
+ if(!cart.length){setMsg('Could not price this scope — check your inputs.',true);return;}
+ try{saveBid();}catch(e){console.error('saveBid',e);setMsg('Save failed: '+e.message,true);return;}
+ if(bids.length<=before){setMsg('Bid not saved (margin guard cancelled or missing input).',true);return;}
+ var nb=bids[0];
+ setMsg('Bid built: '+money(nb.sellPrice)+' — opening proposal…');
+ // saveBid() schedules setMode('console') ~700ms out; route to the proposal after that
+ setTimeout(function(){try{setMode('console');openBid(nb.id);}catch(e){console.error('route',e);}},760);
+ // clear Quick Bid form fields
+ ['qb2-name','qb2-phone','qb2-addr','qb2-state','qb2-foam-sf','qb2-foam-l','qb2-foam-w','qb2-roof-sf','qb2-roof-l','qb2-roof-w','qb2-conc-sf','qb2-coat-sf'].forEach(function(id){var e=$(id);if(e)e.value='';});
+ if($('qb2-foam-tb'))$('qb2-foam-tb').checked=false;
+}
 function setSvc(x,e){svc=x;document.querySelectorAll('.svc').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
  document.querySelectorAll('.svcpanel').forEach(p=>p.style.display='none');$('p-'+x).style.display='';recalc();}
 function setZone(z,e){zone=z;e.target.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');renderZone();recalc();}
@@ -1394,7 +1535,7 @@ function renderSug(){const l=$('sug-list');if(!l)return;const arr=[...SUG].sort(
 let deferredPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;const b=$('install-btn');if(b)b.style.display='';});
 function shareReview(){var u='https://www.google.com/search?q=Machine+Gun+Spray+Foam+%26+Concrete+Lifting+Glendive+MT';var msg='Thanks for choosing Machine Gun Spray Foam & Concrete Lifting! If you were happy with the work, a quick Google review really helps our veteran-owned crew: '+u;try{if(navigator.share){navigator.share({title:'Leave us a review',text:msg});return;}}catch(e){}try{var sms='sms:?&body='+encodeURIComponent(msg);window.location.href=sms;return;}catch(e){}try{navigator.clipboard.writeText(msg);toast('Review message copied');}catch(e){toast('Review link: '+u);}}
 function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;const b=$('install-btn');if(b)b.style.display='none';});}else{toast('Use your browser menu → Add to Home Screen');}}
-fillProducts();fillCons();renderUsers();renderZone();renderRoof();renderPen();drawPin();fillTpl();renderSug();renderBidPhotos();renderFuelLog();renderGov();renderRec();
+fillProducts();qbFill();fillCons();renderUsers();renderZone();renderRoof();renderPen();drawPin();fillTpl();renderSug();renderBidPhotos();renderFuelLog();renderGov();renderRec();
 role='estimator';try{document.getElementById('pin').style.display='none';}catch(e){}try{var _a=document.getElementById('app');if(_a)_a.style.display='flex';}catch(e){}try{var _ul=document.getElementById('ulabel');if(_ul)_ul.textContent='MGSF';var _rc=document.getElementById('rolechip');if(_rc){_rc.textContent='crew';_rc.className='chip';}}catch(e){}window.__adminUnlocked=false;try{applyRole();}catch(e){}try{setMode('field');}catch(e){}try{var _jd=document.getElementById('job-date');if(_jd&&!_jd.value)_jd.value=new Date().toISOString().split('T')[0];}catch(e){}try{restoreDraft();}catch(e){}
 if('serviceWorker' in navigator && location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(function(){});}
 </script>
