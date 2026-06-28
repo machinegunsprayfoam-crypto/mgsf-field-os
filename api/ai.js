@@ -1,6 +1,8 @@
 // MGSF "AI Bidder" serverless proxy (Vercel Node function, Node 18+ global fetch)
 // SECURITY: the Anthropic API key is read ONLY from process.env and is NEVER echoed.
-// POST { mode:"parse"|"takeoff", text?, files? } -> JSON. Non-POST rejected.
+// POST { mode:"parse"|"takeoff"|"roi_bill"|"roi_estimate"|"roi_narrative", ... } -> JSON.
+// roi_narrative is JOB-TYPE-AWARE: pass model=insulation|roofing|coatings|concrete + computed numbers.
+// Non-POST rejected.
 // If the key is missing/empty -> HTTP 200 {ok:false,error:"AI_NOT_CONFIGURED"} so the app
 // can show a friendly "AI setup needed" message instead of crashing.
 
@@ -107,6 +109,54 @@ const TAKEOFF_SYSTEM =
   'Each scope is one measurable area. Put assumptions and anything ambiguous in notes/warnings. ' +
   'Use conservative confidence when measurements are inferred rather than labeled.';
 
+// --- ROI (Customer Energy-Savings) system prompts ---
+// NOTE: the app computes ALL ROI math deterministically. These modes only help the
+// user FILL one input (annual energy cost) or WRITE a customer-facing paragraph.
+const ROI_BILL_SYSTEM =
+  'You read a customer utility bill (image or PDF) for a home-energy contractor and extract the ' +
+  "customer's TOTAL annual energy cost. Be conservative. Output ONLY strict JSON, no prose, no markdown " +
+  'fences. Shape: {"annualEnergyCost":number,"heatingCoolingShare":number,"fuelType":string,"notes":string}. ' +
+  'annualEnergyCost is total annual energy spend in US dollars (number only, no symbols). ' +
+  'If the bill shows only ONE month, multiply by 12 to annualize and SAY SO in notes (note that monthly ' +
+  'bills vary by season, so this is a rough annualization). If an annual/12-month total is printed, use it ' +
+  'directly. heatingCoolingShare is optional (0..1) only if the bill itemizes it; otherwise omit it. ' +
+  'fuelType is one of propane, electric, natural gas, fuel oil when identifiable. Omit fields you cannot ' +
+  'determine. Never invent a number you cannot support from the document.';
+
+const ROI_ESTIMATE_SYSTEM =
+  'You estimate a CONSERVATIVE typical TOTAL annual energy cost (all fuels) for a building in the ' +
+  'upper-Midwest United States (MT/ND/SD/WY and similar cold climates), given square footage, US state, ' +
+  'and primary heating fuel. Output ONLY strict JSON, no prose, no markdown fences. ' +
+  'Shape: {"annualEnergyCost":number,"assumptions":string}. annualEnergyCost is a single conservative ' +
+  'whole-dollar number (no symbols). Lean LOW rather than high. In assumptions, briefly state the ' +
+  "climate zone, fuel, and that this is a rough ESTIMATE to be confirmed by the customer's actual bills.";
+
+// roi_narrative is JOB-TYPE-AWARE. The user message supplies a `model`
+// (insulation|roofing|coatings|concrete) plus ONLY the computed numbers. The
+// prompt frames the note correctly per service type and enforces claims-to-avoid.
+const ROI_NARRATIVE_SYSTEM =
+  'You write a short, warm, NON-exaggerated customer-facing note for Machine Gun Spray Foam & Concrete ' +
+  'Lifting (spray foam, SPF roofing, protective coatings, and concrete lifting). The user message names a ' +
+  'service MODEL and supplies the only numbers you may use. ' +
+  'HARD RULES: (1) Use ONLY the numbers given; never invent, add, round differently, or imply any other ' +
+  'figure (no tax credits, no rebates, no lawsuit/liability dollars, no "save 30-50% energy" claims). ' +
+  '(2) You MUST use the word "estimated" \u2014 these are estimates, not guarantees. ' +
+  '(3) Write 2-3 plain sentences a contractor can show a customer. Output ONLY the paragraph text \u2014 no JSON, ' +
+  'no markdown, no headings. ' +
+  'FRAME BY MODEL: ' +
+  '- insulation: frame around estimated annual/monthly ENERGY savings and simple payback from air sealing + ' +
+  'insulation. ' +
+  '- roofing: frame around RESTORE-VS-REPLACE savings (recoating costs far less than tear-off & replacement) ' +
+  'and added roof service life. Do NOT claim large cooling/energy savings; in cold climates cool-roof cooling ' +
+  'savings are minimal, so emphasize roof life, restoration value, and added insulation \u2014 mention energy ONLY ' +
+  'if an energy number is explicitly provided, and keep it modest. ' +
+  '- coatings: frame around protecting the asset, extending its service life, and restoration costing far ' +
+  'less than replacement. Do NOT claim it repairs structurally failed assets. ' +
+  '- concrete: frame around LIFT-VS-REPLACE savings (lifting costs about half of tear-out & replacement), ' +
+  'same-day usability, and that polyurethane is waterproof and will not wash out. Trip hazards are a safety ' +
+  'benefit only \u2014 never attach a dollar figure to them. Do NOT claim it fixes structurally failed slabs. ' +
+  'Never over-promise.';
+
 module.exports = async (req, res) => {
   setCors(req, res);
 
@@ -171,6 +221,101 @@ module.exports = async (req, res) => {
         scopes: Array.isArray(draft.scopes) ? draft.scopes : [],
         warnings: Array.isArray(draft.warnings) ? draft.warnings : []
       });
+      return;
+    }
+
+    if (mode === 'roi_bill') {
+      const files = Array.isArray(body && body.files) ? body.files : [];
+      if (!files.length) { sendJson(res, 400, { ok: false, error: 'NO_FILES' }); return; }
+      const content = [];
+      for (const f of files.slice(0, 10)) {
+        if (!f || !f.dataB64) continue;
+        const mime = String(f.mime || '');
+        if (mime === 'application/pdf') {
+          content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.dataB64 } });
+        } else if (mime.indexOf('image/') === 0) {
+          content.push({ type: 'image', source: { type: 'base64', media_type: mime, data: f.dataB64 } });
+        }
+      }
+      if (!content.length) { sendJson(res, 400, { ok: false, error: 'NO_USABLE_FILES' }); return; }
+      content.push({ type: 'text', text: 'Extract the total annual energy cost from this utility bill as strict JSON.' });
+      const reply = await callAnthropic(apiKey, {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 512,
+        system: ROI_BILL_SYSTEM,
+        messages: [{ role: 'user', content: content }]
+      });
+      const bill = extractJson(reply);
+      if (!bill || typeof bill.annualEnergyCost !== 'number') {
+        sendJson(res, 200, { ok: false, error: 'AI_ERROR', detail: 'unparseable_model_output' }); return;
+      }
+      sendJson(res, 200, { ok: true, bill: bill });
+      return;
+    }
+
+    if (mode === 'roi_estimate') {
+      const sqft = Number((body && body.sqft) || 0);
+      const state = String((body && body.state) || '').slice(0, 4);
+      const fuelType = String((body && body.fuelType) || '').slice(0, 32);
+      const prompt = 'Estimate conservative total annual energy cost. ' +
+        'Square footage: ' + (sqft > 0 ? sqft : 'unknown') + '. ' +
+        'State: ' + (state || 'unknown') + '. ' +
+        'Primary heating fuel: ' + (fuelType || 'unknown') + '. ' +
+        'Output strict JSON {annualEnergyCost, assumptions}.';
+      const reply = await callAnthropic(apiKey, {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 384,
+        system: ROI_ESTIMATE_SYSTEM,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      const est = extractJson(reply);
+      if (!est || typeof est.annualEnergyCost !== 'number') {
+        sendJson(res, 200, { ok: false, error: 'AI_ERROR', detail: 'unparseable_model_output' }); return;
+      }
+      sendJson(res, 200, { ok: true, estimate: est });
+      return;
+    }
+
+    if (mode === 'roi_narrative') {
+      const n = (body && body.numbers) || {};
+      let model = String((body && body.model) || 'insulation').toLowerCase();
+      if (['insulation', 'roofing', 'coatings', 'concrete'].indexOf(model) < 0) model = 'insulation';
+      const fmt = (v) => (v == null ? 'n/a' : String(v));
+      const has = (v) => (v != null && !(typeof v === 'number' && isNaN(v)));
+      const lines = ['Service model: ' + model];
+      if (has(n.jobCost)) lines.push('This job cost (sell price): $' + fmt(n.jobCost));
+
+      if (model === 'insulation') {
+        if (has(n.annualSavings)) lines.push('Estimated annual energy savings: $' + fmt(n.annualSavings));
+        if (has(n.monthlySavings)) lines.push('Estimated monthly energy savings: $' + fmt(n.monthlySavings));
+        if (has(n.paybackYears)) lines.push('Estimated simple payback: ' + fmt(n.paybackYears) + ' years');
+      } else if (model === 'roofing') {
+        if (has(n.replacementCost)) lines.push('Estimated tear-off & replacement cost: $' + fmt(n.replacementCost));
+        if (has(n.savingsVsReplace)) lines.push('Estimated savings vs. replacement: $' + fmt(n.savingsVsReplace));
+        if (has(n.serviceLife)) lines.push('Restored roof service life note: ' + fmt(n.serviceLife));
+        if (has(n.annualSavings)) lines.push('Minor estimated annual energy savings: $' + fmt(n.annualSavings));
+      } else if (model === 'coatings') {
+        if (has(n.replacementCost)) lines.push('Estimated replacement cost: $' + fmt(n.replacementCost));
+        if (has(n.savingsVsReplace)) lines.push('Estimated savings vs. replacement: $' + fmt(n.savingsVsReplace));
+        if (has(n.lifeExtension)) lines.push('Estimated added service life note: ' + fmt(n.lifeExtension));
+        if (has(n.annualSavings)) lines.push('Optional minor estimated energy bonus: $' + fmt(n.annualSavings));
+      } else if (model === 'concrete') {
+        if (has(n.replacementCost)) lines.push('Estimated tear-out & replacement cost: $' + fmt(n.replacementCost));
+        if (has(n.savingsVsReplace)) lines.push('Estimated savings vs. replacement: $' + fmt(n.savingsVsReplace));
+        lines.push('Advantages: usable same day; polyurethane is waterproof and will not wash out.');
+      }
+      if (has(n.financingMonthly)) lines.push('Customer financing monthly payment: $' + fmt(n.financingMonthly));
+      const prompt = 'Write the customer note for the "' + model +
+        '" model using ONLY these estimated numbers:\n' + lines.join('\n');
+      const reply = await callAnthropic(apiKey, {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 384,
+        system: ROI_NARRATIVE_SYSTEM,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      const narrative = String(reply || '').trim();
+      if (!narrative) { sendJson(res, 200, { ok: false, error: 'AI_ERROR', detail: 'empty_model_output' }); return; }
+      sendJson(res, 200, { ok: true, narrative: narrative });
       return;
     }
 
