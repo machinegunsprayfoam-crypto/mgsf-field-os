@@ -321,9 +321,9 @@ module.exports = async (req, res) => {
       // VERBATIM-NUMBERS GUARD: collect every dollar figure we provided so the prompt can
       // forbid any other dollar amount. The model may reuse these EXACTLY or omit them, but
       // must never introduce a dollar figure that is not in this list.
-      const allowedNums = [];
+      const allowedNums = []; const allowedVals = [];
       ['jobCost','financingMonthly','annualSavings','monthlySavings','replacementCost','savingsVsReplace']
-        .forEach(function (k) { if (has(n[k]) && typeof n[k] === 'number') allowedNums.push('$' + fmt(n[k])); });
+        .forEach(function (k) { if (has(n[k]) && typeof n[k] === 'number') { allowedNums.push('$' + fmt(n[k])); allowedVals.push(Math.round(Number(n[k]))); } });
       const allowedLine = allowedNums.length
         ? ('\nThe ONLY dollar amounts you may write are exactly: ' + allowedNums.join(', ') +
            '. Do NOT write any other dollar figure, and do NOT re-round these. Omit any number not listed here.')
@@ -338,6 +338,16 @@ module.exports = async (req, res) => {
       });
       const narrative = String(reply || '').trim();
       if (!narrative) { sendJson(res, 200, { ok: false, error: 'AI_ERROR', detail: 'empty_model_output' }); return; }
+      // DETERMINISTIC NUMBER GUARD: every $ figure in the note must match a dollar amount we
+      // supplied (compared as whole dollars). If the model invented or mis-rounded any dollar
+      // figure, reject so the app shows plain numbers instead of a wrong figure to a customer.
+      const found = narrative.match(/\$\s?\d[\d,]*(?:\.\d+)?/g) || [];
+      const bad = found.some(function (tok) {
+        const val = Math.round(Number(tok.replace(/[^0-9.]/g, '')));
+        if (!isFinite(val)) return false;
+        return allowedVals.indexOf(val) < 0;
+      });
+      if (bad) { sendJson(res, 200, { ok: false, error: 'AI_ERROR', detail: 'fabricated_number' }); return; }
       sendJson(res, 200, { ok: true, narrative: narrative });
       return;
     }
