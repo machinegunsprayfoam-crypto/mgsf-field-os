@@ -1,7 +1,10 @@
 // MGSF "Call List" serverless proxy (Vercel Node function, Node 18+ global fetch)
 // SECURITY: the HubSpot private-app token is read ONLY from process.env and is NEVER echoed.
 // POST { mode:"leads" }  -> { ok:true, leads:[...] }   (default)
-// POST { mode:"logcall", contactId, note } -> { ok:true }  (logs a CALL or NOTE)
+// POST { mode:"logcall", contactId, note[, outcome] } -> { ok:true, logged:"status", status }
+//   Updates the contact's hs_lead_status from the call outcome (scope: crm.objects.contacts.write).
+//   HubSpot service keys don't expose a calls/notes engagement-write scope, so the field outcome
+//   is recorded as a lead-status change on the contact (visible everywhere in the CRM).
 // Non-POST rejected (405). CORS preflight (OPTIONS) -> 204.
 // If the token is missing/empty -> HTTP 200 {ok:false,error:"HUBSPOT_NOT_CONFIGURED"} so the
 // app can show a friendly "Connect HubSpot to see your call list" message instead of crashing.
@@ -147,42 +150,36 @@ module.exports = async (req, res) => {
     if (mode === 'logcall') {
       const contactId = String((body && body.contactId) || '').trim();
       const note = String((body && body.note) || '').slice(0, 4000);
+      const outcome = String((body && body.outcome) || '').trim();
       if (!contactId) { sendJson(res, 400, { ok: false, error: 'NO_CONTACT_ID' }); return; }
-      const ts = new Date().toISOString();
 
-      // Preferred: create a CALL engagement associated to the contact.
-      // Association typeId 194 = call -> contact (HubSpot default). If the call
-      // create fails for any reason, fall back to creating a NOTE on the contact.
+      // Derive the call outcome from an explicit field or the note's leading text,
+      // then map it to a standard HubSpot lead status (default internal values).
+      const hay = (outcome + ' ' + note).toLowerCase();
+      let status = 'IN_PROGRESS';
+      if (hay.indexOf('book') >= 0) status = 'OPEN_DEAL';
+      else if (hay.indexOf('not interested') >= 0 || hay.indexOf('uninterested') >= 0 || hay.indexOf('no thank') >= 0) status = 'UNQUALIFIED';
+      else if (hay.indexOf('no answer') >= 0 || hay.indexOf('no-answer') >= 0 || hay.indexOf('voicemail') >= 0 || hay.indexOf('left message') >= 0 || hay.indexOf('left a message') >= 0 || hay.indexOf('no pickup') >= 0) status = 'ATTEMPTED_TO_CONTACT';
+      else if (hay.indexOf('callback') >= 0 || hay.indexOf('call back') >= 0 || hay.indexOf('connected') >= 0 || hay.indexOf('follow up') >= 0 || hay.indexOf('follow-up') >= 0) status = 'CONNECTED';
+
+      // Update the contact's lead status. Uses PATCH (callHubSpot is POST-only),
+      // so issue a dedicated request here. Token is never echoed.
       try {
-        const callPayload = {
-          properties: {
-            hs_timestamp: ts,
-            hs_call_title: 'Call logged from Field OS',
-            hs_call_body: note,
-            hs_call_direction: 'OUTBOUND'
-          },
-          associations: [{
-            to: { id: contactId },
-            types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 194 }]
-          }]
-        };
-        await callHubSpot(token, '/crm/v3/objects/calls', callPayload);
-        sendJson(res, 200, { ok: true, logged: 'call' });
+        const r = await fetch(HUBSPOT_BASE + '/crm/v3/objects/contacts/' + encodeURIComponent(contactId), {
+          method: 'PATCH',
+          headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+          body: JSON.stringify({ properties: { hs_lead_status: status } })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          const safe = (data && (data.category || data.message)) ? String(data.category || ('http_' + r.status)) : ('http_' + r.status);
+          sendJson(res, 200, { ok: false, error: 'HUBSPOT_ERROR', detail: safe });
+          return;
+        }
+        sendJson(res, 200, { ok: true, logged: 'status', status: status });
         return;
-      } catch (callErr) {
-        // Fall back to a NOTE (association typeId 202 = note -> contact).
-        const notePayload = {
-          properties: {
-            hs_timestamp: ts,
-            hs_note_body: note || 'Call logged from Field OS'
-          },
-          associations: [{
-            to: { id: contactId },
-            types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }]
-          }]
-        };
-        await callHubSpot(token, '/crm/v3/objects/notes', notePayload);
-        sendJson(res, 200, { ok: true, logged: 'note' });
+      } catch (patchErr) {
+        sendJson(res, 200, { ok: false, error: 'HUBSPOT_ERROR', detail: 'patch_failed' });
         return;
       }
     }
