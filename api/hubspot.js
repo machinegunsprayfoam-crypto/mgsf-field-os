@@ -96,6 +96,7 @@ function mapContact(c) {
     city: (p.city || '').trim(),
     state: (p.state || '').trim(),
     updated: (p.lastmodifieddate || '').trim(),
+    created: (p.createdate || '').trim(),
     url: HUBSPOT_BASE.indexOf('hubapi') >= 0
       ? ('https://app.hubspot.com/contacts/' + PORTAL_ID + '/record/0-1/' + c.id)
       : ''
@@ -133,7 +134,7 @@ module.exports = async (req, res) => {
         ],
         sorts: [{ propertyName: 'lastmodifieddate', direction: 'DESCENDING' }],
         properties: ['firstname', 'lastname', 'phone', 'mobilephone', 'email',
-          'lifecyclestage', 'hs_lead_status', 'city', 'state', 'lastmodifieddate'],
+          'lifecyclestage', 'hs_lead_status', 'city', 'state', 'lastmodifieddate', 'createdate'],
         limit: 50
       };
       const data = await callHubSpot(token, '/crm/v3/objects/contacts/search', search);
