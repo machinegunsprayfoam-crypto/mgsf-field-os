@@ -454,6 +454,7 @@ textarea{resize:vertical;min-height:54px}
       <div id="c-list">
         <div class="card" id="backup-banner" style="display:none;border-color:var(--yellow)"><div class="ct" style="color:var(--yellow)">⚠ Back up your data</div><div class="hint">It's been over a week since your last full backup. One tap protects every bid, job, photo &amp; signature.</div><div class="btnrow" style="margin-top:6px"><button class="btn btn-g btn-full" onclick="exportFull()">⬇ Full Backup now</button></div></div>
         <div class="kpis" id="kpis"></div>
+        <div class="card" id="calllist-card"><div class="ct">📞 Call List</div><div class="hint" style="margin-bottom:8px">Recent HubSpot contacts with a phone number. Tap to call or text right from the field. Works offline once loaded.</div><div class="btnrow" style="margin-bottom:8px"><button class="btn btn-p btn-full" id="calllist-load" onclick="loadCallList()">📞 Load Call List</button></div><div id="calllist-body"></div></div>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">📊 Sales insights</summary><div id="sales-insights" style="margin-top:8px"></div></details>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">💵 A/R / Collections</summary><div id="ar-list" style="margin-top:8px"></div></details>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">🔁 Recurring / Maintenance</summary>
@@ -812,6 +813,60 @@ function recLead(id){const r=REC.find(x=>x.id===id);if(!r)return;const b={id:'bi
 function renderRec(){const el=$('rec-list');if(!el)return;if(!REC.length){el.innerHTML='<div class="hint">No recurring contracts yet.</div>';return;}
  const arr=REC.slice().sort((a,b)=>(a.due||'').localeCompare(b.due||''));
  el.innerHTML=arr.map(r=>{const[fl,days]=expFlag(r.due);const due=days<=60;return `<div class="li" style="${days<0?'border-left:3px solid var(--scarlet)':''}"><div>${fl} ${r.cust}<br><span style="color:var(--mut);font-size:.7rem">${r.type||''} · every ${r.interval}mo · due ${r.due||'—'}</span></div><div></div><div style="text-align:right;white-space:nowrap">${due?`<button class="btn btn-s btn-sm" onclick="recLead('${r.id}')">→ Lead</button>`:''}<button class="btn btn-s btn-sm" onclick="recServiced('${r.id}')">✓</button><button class="x" onclick="recRm('${r.id}')">✕</button></div></div>`;}).join('');}
+/* ===== Call List (HubSpot leads) — Console module ===== */
+var __callListCache=null; var __callListLoading=false;
+function clEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function clTel(p){p=String(p||'');var plus=p.trim().charAt(0)==='+';var d=p.replace(/[^0-9]/g,'');return (plus?'+':'')+d;}
+function clStageBadge(stage){var s=String(stage||'').toLowerCase();var cls='b-followup',lbl=stage||'';
+ if(s.indexOf('customer')>=0){cls='b-done';lbl='Customer';}
+ else if(s.indexOf('opportunity')>=0){cls='b-progress';lbl='Opportunity';}
+ else if(s.indexOf('lead')>=0||s.indexOf('subscriber')>=0){cls='b-scheduled';lbl='Lead';}
+ if(!lbl)return '';
+ return '<span class="badge '+cls+'">'+clEsc(lbl)+'</span>';}
+function clCard(ld){
+ var tel=clTel(ld.phone);
+ var nameH='<div style="font-weight:800;font-size:.95rem">'+clEsc(ld.name||'Unknown')+'</div>';
+ var badges=clStageBadge(ld.stage);
+ if(ld.status)badges+=' <span class="badge b-followup">'+clEsc(ld.status)+'</span>';
+ var loc='';var cs=[ld.city,ld.state].filter(Boolean).join(', ');if(cs)loc='<div class="hint" style="margin-top:2px">'+clEsc(cs)+'</div>';
+ var ph=ld.phone?('<div class="hint" style="margin-top:2px">'+clEsc(ld.phone)+'</div>'):'';
+ var btns='<div class="btnrow" style="margin-top:8px;gap:6px">';
+ if(tel){btns+='<a class="btn btn-green btn-full" href="tel:'+clEsc(tel)+'">📞 Call</a>';
+ btns+='<a class="btn btn-p" href="sms:'+clEsc(tel)+'">💬 Text</a>';}
+ if(ld.url)btns+='<a class="btn btn-s btn-sm" target="_blank" rel="noopener" href="'+clEsc(ld.url)+'">HubSpot ↗</a>';
+ btns+='</div>';
+ return '<div class="card" style="padding:10px;margin-bottom:8px">'+nameH+(badges?('<div style="margin-top:4px">'+badges+'</div>'):'')+loc+ph+btns+'</div>';}
+function clRender(leads,cached){
+ var b=$('calllist-body');if(!b)return;
+ if(!leads||!leads.length){b.innerHTML='<div class="hint">No leads with phone numbers yet.</div>';return;}
+ var head=cached?'<div class="hint" style="margin-bottom:6px;color:var(--yellow)">Showing last loaded list (cached)</div>':'';
+ b.innerHTML=head+leads.map(clCard).join('');}
+function loadCallList(){
+ var b=$('calllist-body');var btn=$('calllist-load');if(!b)return;
+ if(__callListLoading)return;
+ if((typeof navigator!=='undefined')&&navigator.onLine===false){
+   if(__callListCache){clRender(__callListCache,true);}
+   else{b.innerHTML='<div class="hint">You appear offline and no call list is loaded yet. Reconnect to load your leads.</div>';}
+   return;}
+ __callListLoading=true;if(btn){btn.disabled=true;}
+ b.innerHTML='<div class="hint">⏳ Loading your call list…</div>';
+ fetch('/api/hubspot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'leads'})})
+  .then(function(r){return r.json();})
+  .then(function(j){
+    if(j&&j.ok&&Array.isArray(j.leads)){__callListCache=j.leads;clRender(j.leads,false);}
+    else if(j&&j.error==='HUBSPOT_NOT_CONFIGURED'){
+      b.innerHTML='<div class="hint">🔌 Connect HubSpot to see your call list. Add your HubSpot token in the deployment settings, then tap Load again.</div>';}
+    else{
+      if(__callListCache){clRender(__callListCache,true);}
+      else{b.innerHTML='<div class="hint" style="color:var(--red)">Could not load the call list right now. Please try again.</div>';}}
+  })
+  .catch(function(){
+    if(__callListCache){clRender(__callListCache,true);}
+    else{b.innerHTML='<div class="hint" style="color:var(--red)">Could not reach the server. Check your connection and try again.</div>';}
+  })
+  .then(function(){__callListLoading=false;if(btn){btn.disabled=false;}});
+}
+
 function renderInsights(){const el=$('sales-insights');if(!el)return;const won=bids.filter(b=>b.status==='won'),lost=bids.filter(b=>b.status==='lost');
  const tally=(arr,key)=>{const m={};arr.forEach(b=>{const k=b[key]||'(none)';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
  const loss=tally(lost,'lossReason'),src=tally(bids,'leadSource');
