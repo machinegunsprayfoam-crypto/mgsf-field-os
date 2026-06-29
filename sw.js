@@ -1,6 +1,6 @@
 /* MGSF FieldOS — offline-first service worker
    Bump CACHE on every deploy so crews pull the new build. */
-const CACHE = 'mgsf-fieldos-2026-06-28f-ai-roi2';
+const CACHE = 'mgsf-fieldos-2026-06-28f-ai-roi5-profit';
 const CORE = ['./', './index.html'];
 
 self.addEventListener('install', e => {
