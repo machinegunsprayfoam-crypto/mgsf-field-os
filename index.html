@@ -454,7 +454,7 @@ textarea{resize:vertical;min-height:54px}
       <div id="c-list">
         <div class="card" id="backup-banner" style="display:none;border-color:var(--yellow)"><div class="ct" style="color:var(--yellow)">⚠ Back up your data</div><div class="hint">It's been over a week since your last full backup. One tap protects every bid, job, photo &amp; signature.</div><div class="btnrow" style="margin-top:6px"><button class="btn btn-g btn-full" onclick="exportFull()">⬇ Full Backup now</button></div></div>
         <div class="kpis" id="kpis"></div>
-        <div class="card" id="calllist-card"><div class="ct">📞 Call List</div><div class="hint" style="margin-bottom:8px">Recent HubSpot contacts with a phone number. Tap to call or text right from the field. Works offline once loaded.</div><div class="btnrow" style="margin-bottom:8px"><button class="btn btn-p btn-full" id="calllist-load" onclick="loadCallList()">📞 Load Call List</button></div><div id="calllist-body"></div></div>
+        <div class="card" id="calllist-card"><div class="ct">📞 Call List</div><div class="hint" style="margin-bottom:8px">Recent HubSpot contacts with a phone number. Tap to call or text right from the field. Works offline once loaded.</div><div class="btnrow" style="margin-bottom:8px"><button class="btn btn-p btn-full" id="calllist-load" onclick="loadCallList()">📞 Load Call List</button></div><div id="calllist-controls" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><button type="button" class="chip" id="cl-new-today" onclick="clToggleNewToday()" style="cursor:pointer;background:transparent;color:var(--mut)">🔥 New today</button><select id="cl-sort" onchange="clOnSortChange()" style="width:auto;flex:1;min-width:120px"><option value="hot">Hottest</option><option value="new">Newest</option><option value="town">By town</option></select><span class="hint" id="cl-count" style="white-space:nowrap"></span></div><div id="calllist-body"></div></div>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">📊 Sales insights</summary><div id="sales-insights" style="margin-top:8px"></div></details>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">💵 A/R / Collections</summary><div id="ar-list" style="margin-top:8px"></div></details>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">🔁 Recurring / Maintenance</summary>
@@ -813,10 +813,20 @@ function recLead(id){const r=REC.find(x=>x.id===id);if(!r)return;const b={id:'bi
 function renderRec(){const el=$('rec-list');if(!el)return;if(!REC.length){el.innerHTML='<div class="hint">No recurring contracts yet.</div>';return;}
  const arr=REC.slice().sort((a,b)=>(a.due||'').localeCompare(b.due||''));
  el.innerHTML=arr.map(r=>{const[fl,days]=expFlag(r.due);const due=days<=60;return `<div class="li" style="${days<0?'border-left:3px solid var(--scarlet)':''}"><div>${fl} ${r.cust}<br><span style="color:var(--mut);font-size:.7rem">${r.type||''} · every ${r.interval}mo · due ${r.due||'—'}</span></div><div></div><div style="text-align:right;white-space:nowrap">${due?`<button class="btn btn-s btn-sm" onclick="recLead('${r.id}')">→ Lead</button>`:''}<button class="btn btn-s btn-sm" onclick="recServiced('${r.id}')">✓</button><button class="x" onclick="recRm('${r.id}')">✕</button></div></div>`;}).join('');}
-/* ===== Call List (HubSpot leads) — Console module ===== */
+/* ===== Call List v2 (HubSpot leads) — Console module ===== */
 var __callListCache=null; var __callListLoading=false;
+var __clSort='hot'; var __clNewToday=false;
+var CL_CACHE_KEY='mgsf_callcache'; var CL_QUEUE_KEY='mgsf_callqueue';
 function clEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function clTel(p){p=String(p||'');var plus=p.trim().charAt(0)==='+';var d=p.replace(/[^0-9]/g,'');return (plus?'+':'')+d;}
+function clTime(v){if(!v)return 0;var t=(typeof v==='number')?v:Date.parse(v);return isNaN(t)?0:t;}
+function clLS(){try{return window.localStorage;}catch(e){return null;}}
+function clLoadCache(){var ls=clLS();if(!ls)return null;try{var j=JSON.parse(ls.getItem(CL_CACHE_KEY)||'null');return (j&&Array.isArray(j.leads))?j.leads:null;}catch(e){return null;}}
+function clSaveCache(leads){var ls=clLS();if(!ls)return;try{ls.setItem(CL_CACHE_KEY,JSON.stringify({ts:Date.now(),leads:leads}));}catch(e){}}
+function clQueueGet(){var ls=clLS();if(!ls)return [];try{var a=JSON.parse(ls.getItem(CL_QUEUE_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function clQueueSet(a){var ls=clLS();if(!ls)return;try{ls.setItem(CL_QUEUE_KEY,JSON.stringify(a||[]));}catch(e){}}
+function clQueueAdd(id,outcome){var a=clQueueGet();a.push({id:id,outcome:outcome,ts:Date.now()});clQueueSet(a);}
+function clStageRank(stage){var s=String(stage||'').toLowerCase();if(s.indexOf('opportunity')>=0)return 0;if(s.indexOf('lead')>=0||s.indexOf('subscriber')>=0)return 1;return 2;}
 function clStageBadge(stage){var s=String(stage||'').toLowerCase();var cls='b-followup',lbl=stage||'';
  if(s.indexOf('customer')>=0){cls='b-done';lbl='Customer';}
  else if(s.indexOf('opportunity')>=0){cls='b-progress';lbl='Opportunity';}
@@ -835,27 +845,81 @@ function clCard(ld){
  btns+='<a class="btn btn-p" href="sms:'+clEsc(tel)+'">💬 Text</a>';}
  if(ld.url)btns+='<a class="btn btn-s btn-sm" target="_blank" rel="noopener" href="'+clEsc(ld.url)+'">HubSpot ↗</a>';
  btns+='</div>';
- return '<div class="card" style="padding:10px;margin-bottom:8px">'+nameH+(badges?('<div style="margin-top:4px">'+badges+'</div>'):'')+loc+ph+btns+'</div>';}
+ var idA=clEsc(String(ld.id||''));
+ var oc='<div class="btnrow" style="margin-top:6px;gap:6px;flex-wrap:wrap" data-clrow="'+idA+'">'+
+  '<button type="button" class="btn btn-s btn-sm" onclick="clLogOutcome(\''+idA+'\',\'Booked\',this)">Booked</button>'+
+  '<button type="button" class="btn btn-s btn-sm" onclick="clLogOutcome(\''+idA+'\',\'Callback\',this)">Callback</button>'+
+  '<button type="button" class="btn btn-s btn-sm" onclick="clLogOutcome(\''+idA+'\',\'No answer\',this)">No answer</button>'+
+  '<button type="button" class="btn btn-s btn-sm" onclick="clLogOutcome(\''+idA+'\',\'Not interested\',this)">Not interested</button>'+
+  '<span class="hint" data-clstatus="'+idA+'" style="white-space:nowrap"></span></div>';
+ return '<div class="card" style="padding:10px;margin-bottom:8px">'+nameH+(badges?('<div style="margin-top:4px">'+badges+'</div>'):'')+loc+ph+btns+oc+'</div>';}
+function clFilter(leads){
+ if(!__clNewToday)return leads.slice();
+ var cut=Date.now()-86400000;
+ return leads.filter(function(ld){return clTime(ld.created)>=cut;});}
+function clSortLeads(leads){
+ var a=leads.slice();
+ if(__clSort==='new'){a.sort(function(x,y){return (clTime(y.created)||clTime(y.updated))-(clTime(x.created)||clTime(x.updated));});}
+ else{a.sort(function(x,y){var r=clStageRank(x.stage)-clStageRank(y.stage);if(r)return r;return clTime(y.updated)-clTime(x.updated);});}
+ return a;}
 function clRender(leads,cached){
  var b=$('calllist-body');if(!b)return;
- if(!leads||!leads.length){b.innerHTML='<div class="hint">No leads with phone numbers yet.</div>';return;}
+ var ctrl=$('calllist-controls');if(ctrl)ctrl.style.display=(leads&&leads.length)?'flex':'none';
+ if(!leads||!leads.length){b.innerHTML='<div class="hint">No leads with phone numbers yet.</div>';var cnt0=$('cl-count');if(cnt0)cnt0.textContent='';return;}
+ var filtered=clFilter(leads);
+ var cnt=$('cl-count');if(cnt)cnt.textContent=filtered.length+(filtered.length===1?' lead':' leads');
  var head=cached?'<div class="hint" style="margin-bottom:6px;color:var(--yellow)">Showing last loaded list (cached)</div>':'';
- b.innerHTML=head+leads.map(clCard).join('');}
+ if(!filtered.length){b.innerHTML=head+'<div class="hint">No leads match this filter.</div>';return;}
+ var html;
+ if(__clSort==='town'){
+   var groups={};var order=[];
+   filtered.forEach(function(ld){var cs=[ld.city,ld.state].filter(Boolean).join(', ')||'No location';if(!groups[cs]){groups[cs]=[];order.push(cs);}groups[cs].push(ld);});
+   order.sort(function(a,c){return a.localeCompare(c);});
+   html=order.map(function(cs){var inner=clSortLeads(groups[cs]).map(clCard).join('');
+     return '<div class="hint" style="margin:8px 0 4px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)">'+clEsc(cs)+'</div>'+inner;}).join('');
+ } else {
+   html=clSortLeads(filtered).map(clCard).join('');
+ }
+ b.innerHTML=head+html;}
+function clToggleNewToday(){__clNewToday=!__clNewToday;var btn=$('cl-new-today');if(btn){if(__clNewToday){btn.style.background='var(--scarlet)';btn.style.color='#fff';}else{btn.style.background='transparent';btn.style.color='var(--mut)';}}if(__callListCache)clRender(__callListCache,false);}
+function clOnSortChange(){var sel=$('cl-sort');if(sel)__clSort=sel.value;if(__callListCache)clRender(__callListCache,false);}
+function clSetStatus(id,txt,color){var el=document.querySelector('[data-clstatus="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]');if(!el){var rows=document.querySelectorAll('[data-clstatus]');for(var i=0;i<rows.length;i++){if(rows[i].getAttribute('data-clstatus')===id){el=rows[i];break;}}}if(el){el.textContent=txt;el.style.color=color||'var(--mut)';}}
+function clPostOutcome(id,outcome){
+ var d=new Date();var date=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+ var note=outcome+' — logged from Field Call List '+date;
+ return fetch('/api/hubspot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'logcall',contactId:String(id),note:note})}).then(function(r){return r.json();});}
+function clLogOutcome(id,outcome,btn){
+ clSetStatus(id,'⏳ logging…','var(--mut)');
+ clPostOutcome(id,outcome).then(function(j){
+   if(j&&j.ok){clSetStatus(id,'✓ logged','var(--green)');}
+   else{clQueueAdd(id,outcome);clSetStatus(id,'⏳ pending sync','var(--yellow)');}
+ }).catch(function(){clQueueAdd(id,outcome);clSetStatus(id,'⏳ pending sync','var(--yellow)');});}
+function clFlushQueue(){
+ var q=clQueueGet();if(!q.length)return Promise.resolve();
+ var remaining=[];
+ return q.reduce(function(chain,item){
+   return chain.then(function(){
+     return clPostOutcome(item.id,item.outcome).then(function(j){if(!(j&&j.ok))remaining.push(item);}).catch(function(){remaining.push(item);});
+   });
+ },Promise.resolve()).then(function(){clQueueSet(remaining);});}
 function loadCallList(){
  var b=$('calllist-body');var btn=$('calllist-load');if(!b)return;
  if(__callListLoading)return;
+ if(!__callListCache){var cc=clLoadCache();if(cc&&cc.length){__callListCache=cc;clRender(cc,true);}}
  if((typeof navigator!=='undefined')&&navigator.onLine===false){
    if(__callListCache){clRender(__callListCache,true);}
    else{b.innerHTML='<div class="hint">You appear offline and no call list is loaded yet. Reconnect to load your leads.</div>';}
    return;}
  __callListLoading=true;if(btn){btn.disabled=true;}
- b.innerHTML='<div class="hint">⏳ Loading your call list…</div>';
- fetch('/api/hubspot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'leads'})})
+ if(!__callListCache)b.innerHTML='<div class="hint">⏳ Loading your call list…</div>';
+ clFlushQueue().then(function(){
+ return fetch('/api/hubspot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'leads'})})
   .then(function(r){return r.json();})
   .then(function(j){
-    if(j&&j.ok&&Array.isArray(j.leads)){__callListCache=j.leads;clRender(j.leads,false);}
+    if(j&&j.ok&&Array.isArray(j.leads)){__callListCache=j.leads;clSaveCache(j.leads);clRender(j.leads,false);}
     else if(j&&j.error==='HUBSPOT_NOT_CONFIGURED'){
-      b.innerHTML='<div class="hint">🔌 Connect HubSpot to see your call list. Add your HubSpot token in the deployment settings, then tap Load again.</div>';}
+      if(__callListCache){clRender(__callListCache,true);}
+      else{b.innerHTML='<div class="hint">🔌 Connect HubSpot to see your call list. Add your HubSpot token in the deployment settings, then tap Load again.</div>';}}
     else{
       if(__callListCache){clRender(__callListCache,true);}
       else{b.innerHTML='<div class="hint" style="color:var(--red)">Could not load the call list right now. Please try again.</div>';}}
@@ -863,8 +927,8 @@ function loadCallList(){
   .catch(function(){
     if(__callListCache){clRender(__callListCache,true);}
     else{b.innerHTML='<div class="hint" style="color:var(--red)">Could not reach the server. Check your connection and try again.</div>';}
-  })
-  .then(function(){__callListLoading=false;if(btn){btn.disabled=false;}});
+  });
+ }).then(function(){__callListLoading=false;if(btn){btn.disabled=false;}});
 }
 
 function renderInsights(){const el=$('sales-insights');if(!el)return;const won=bids.filter(b=>b.status==='won'),lost=bids.filter(b=>b.status==='lost');
