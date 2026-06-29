@@ -96,9 +96,22 @@ const PARSE_SYSTEM =
   'Shape: {"customer":{"name":string,"phone":string,"address":string,"state":string},"market":' +
   '"residential"|"commercial"|"government"|"agricultural","service":"foam"|"roof"|"concrete"|"coatings",' +
   '"foamProductHint":string,"thickness":number,"areaSqft":number,"lengthFt":number,"widthFt":number,' +
-  '"zones":number,"roofShape":string,"coats":number,"notes":string}. ' +
+  '"zones":number,"roofShape":string,"coats":number,' +
+  '"wallHeight":number,"perimeter":number,"roofPitch":string,' +
+  '"gableCount":number,"pitch":number,' +
+  '"heavyPrep":boolean,"occupied":boolean,"maskWindows":boolean,"maskFloors":boolean,' +
+  '"prepCues":string,"maskingCues":string,"notes":string}. ' +
   'Include ONLY fields you can infer from the text. Numbers must be JSON numbers, not strings. ' +
-  'Omit anything unknown. state is the 2-letter US code. If unsure of service, pick the best guess.';
+  'Omit anything unknown. state is the 2-letter US code. If unsure of service, pick the best guess. ' +
+  'wallHeight (ft) is the wall/ceiling height when the job is FOAMING WALLS rather than a flat ceiling/floor. ' +
+  'perimeter (ft) is the building perimeter if stated; otherwise omit (the app derives 2x(L+W)). ' +
+  'roofPitch is the roof slope when mentioned, as a string like "4:12","6:12","8:12", or "flat" for low-slope. ' +
+  'gableCount (0,1, or 2) is the number of gable ends to foam when the description mentions gable ' +
+  'walls/ends on a pitched building; omit or 0 if none. pitch is the numeric rise per 12 of run as a ' +
+  'number (e.g. 6 for a 6:12 roof) — used only to size the gable triangle; omit when unknown. ' +
+  'Set heavyPrep/occupied/maskWindows/maskFloors to true ONLY when the text clearly indicates the space is ' +
+  'occupied/in use, that windows/floors/contents must be masked or covered, or that extra prep is required; ' +
+  'put any supporting phrases in prepCues / maskingCues. All of these new fields are OPTIONAL — omit when unknown.';
 
 const TAKEOFF_SYSTEM =
   'You are assisting a spray-foam contractor by producing a DRAFT takeoff from plan sets or spec sheets ' +
@@ -305,8 +318,18 @@ module.exports = async (req, res) => {
         lines.push('Advantages: usable same day; polyurethane is waterproof and will not wash out.');
       }
       if (has(n.financingMonthly)) lines.push('Customer financing monthly payment: $' + fmt(n.financingMonthly));
+      // VERBATIM-NUMBERS GUARD: collect every dollar figure we provided so the prompt can
+      // forbid any other dollar amount. The model may reuse these EXACTLY or omit them, but
+      // must never introduce a dollar figure that is not in this list.
+      const allowedNums = [];
+      ['jobCost','financingMonthly','annualSavings','monthlySavings','replacementCost','savingsVsReplace']
+        .forEach(function (k) { if (has(n[k]) && typeof n[k] === 'number') allowedNums.push('$' + fmt(n[k])); });
+      const allowedLine = allowedNums.length
+        ? ('\nThe ONLY dollar amounts you may write are exactly: ' + allowedNums.join(', ') +
+           '. Do NOT write any other dollar figure, and do NOT re-round these. Omit any number not listed here.')
+        : '\nDo NOT write any dollar figures (none were provided).';
       const prompt = 'Write the customer note for the "' + model +
-        '" model using ONLY these estimated numbers:\n' + lines.join('\n');
+        '" model using ONLY these estimated numbers:\n' + lines.join('\n') + allowedLine;
       const reply = await callAnthropic(apiKey, {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 384,
