@@ -148,6 +148,7 @@ textarea{resize:vertical;min-height:54px}
       <button class="mbtn" id="m-console" onclick="setMode('console')">Console</button>
       <button class="mbtn" id="m-qbid" onclick="setMode('qbid')">⚡ Quick Bid</button>
       <button class="mbtn" id="m-profit" onclick="setMode('profit')">💰 Profit</button>
+      <button class="mbtn" id="m-mroi" onclick="setMode('mroi')">📈 Marketing ROI</button>
       <button class="mbtn" id="m-admin" onclick="setMode('admin')">Admin</button>
     </div>
     <div class="tuser" onclick="logout()"><span class="chip" id="rolechip">—</span> <b id="ulabel">—</b> · Lock</div>
@@ -591,6 +592,25 @@ textarea{resize:vertical;min-height:54px}
       <div class="card"><div style="overflow-x:auto"><table id="pf-table" style="width:100%;border-collapse:collapse;font-size:13px"></table></div></div>
     </div><!-- /profit -->
 
+    <!-- MARKETING ROI -->
+    <div id="mroi" style="display:none">
+      <div class="card">
+        <div class="ct">📈 Marketing ROI</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div><label>Ad spend ($)</label><input type="number" id="mroi-spend" step="1" min="0" placeholder="0" oninput="renderMroi()"></div>
+          <div><label>Leads generated (#)</label><input type="number" id="mroi-leads" step="1" min="0" placeholder="0" oninput="renderMroi()"></div>
+          <div><label>Jobs won (#)</label><input type="number" id="mroi-jobs" step="1" min="0" placeholder="0" oninput="renderMroi()"></div>
+        </div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
+          <div><label>Avg revenue / job ($)</label><input type="number" id="mroi-arpj" step="1" min="0" placeholder="0" oninput="renderMroi()"></div>
+          <div><label>Total revenue ($) <span style="font-size:10px;color:var(--mut)">overrides avg×jobs</span></label><input type="number" id="mroi-rev" step="1" min="0" placeholder="0" oninput="renderMroi()"></div>
+          <div><label>Gross margin (%)</label><input type="number" id="mroi-margin" step="1" min="0" max="100" placeholder="45" oninput="renderMroi()"></div>
+        </div>
+      </div>
+      <div id="mroi-kpis" class="row" style="gap:8px;flex-wrap:wrap;margin:6px 0"></div>
+      <div class="card"><div id="mroi-summary" style="font-size:13px;color:var(--mut);line-height:1.5"></div></div>
+    </div><!-- /mroi -->
+
     <!-- ADMIN -->
     <div id="admin" style="display:none">
       <div class="card">
@@ -770,8 +790,8 @@ function adCancel(){var o=document.getElementById('adlock');if(o)o.style.display
 function adUnlock(){var pw=(document.getElementById('adlock-pw')||{}).value||'';if(pw!=='Clifton'){var er=document.getElementById('adlock-err');if(er)er.textContent='Wrong password';return;}window.__adminUnlocked=true;role='owner';try{applyRole();}catch(e){}var o=document.getElementById('adlock');if(o)o.style.display='none';setMode('admin');}
 
 /* ============ NAV ============ */
-function setMode(m){if(m==='profit'&&role!=='owner')return;if(m==='console'&&!['owner','office','estimator'].includes(role))return;if(m==='stock'&&!['owner','office','estimator'].includes(role))return;if(m==='clients'&&!['owner','office','estimator'].includes(role))return;if(m==='admin'){if(!window.__adminUnlocked){showAdlock();return;}}mode=m;['field','qbid','jobs','stock','clients','console','profit','admin'].forEach(x=>{$(x).style.display=x===m?'':'none';const mb=$('m-'+x);if(mb)mb.classList.toggle('active',x===m);});
- if(m==='jobs'){renderJobs();} if(m==='stock'){renderStock();} if(m==='clients'){renderClients();} if(m==='console'){renderKpis();renderBidList();showList();renderGov();backupReminder();renderInsights();renderAR();renderRec();} if(m==='profit'){renderProfit();} if(m==='admin'){fillAdmin();}}
+function setMode(m){if(m==='profit'&&role!=='owner')return;if(m==='console'&&!['owner','office','estimator'].includes(role))return;if(m==='stock'&&!['owner','office','estimator'].includes(role))return;if(m==='clients'&&!['owner','office','estimator'].includes(role))return;if(m==='admin'){if(!window.__adminUnlocked){showAdlock();return;}}mode=m;['field','qbid','jobs','stock','clients','console','profit','mroi','admin'].forEach(x=>{$(x).style.display=x===m?'':'none';const mb=$('m-'+x);if(mb)mb.classList.toggle('active',x===m);});
+ if(m==='jobs'){renderJobs();} if(m==='stock'){renderStock();} if(m==='clients'){renderClients();} if(m==='console'){renderKpis();renderBidList();showList();renderGov();backupReminder();renderInsights();renderAR();renderRec();} if(m==='profit'){renderProfit();} if(m==='mroi'){renderMroi();} if(m==='admin'){fillAdmin();}}
 function bidAgeDays(b){const t=b.statusAt||b.approvedAt||b.createdAt;return t?(Date.now()-new Date(t).getTime())/86400000:0;}
 function isFollowup(b){return b.status==='sent'&&bidAgeDays(b)>=FOLLOW_DAYS;}
 function renderAR(){const el=$('ar-list');if(!el)return;const now=Date.now();const open=[];jobs.forEach(j=>{const py=j.payment||{};if(py.balancePaid)return;const dep=Math.round((j.sell||0)*(py.depositPct||50)/100);const owed=(j.sell||0)-(py.depositPaid?dep:0);if(owed<=0)return;const ref=new Date(j.date||j.createdAt).getTime()||now;open.push({name:j.customer.name||'Job',owed:owed,days:Math.floor((now-ref)/86400000),phone:(j.customer.phone||'').replace(/[^0-9+]/g,'')});});
@@ -1682,6 +1702,51 @@ function renderProfit(){
     }).join('');
     const empty='<tr><td colspan="9" style="padding:10px;color:var(--mut)">No jobs match the current filters.</td></tr>';
     tb.innerHTML=head+'<tbody>'+(rows.length?body:empty)+'</tbody>';
+  }
+}
+function renderMroi(){
+  const num=id=>{const v=parseFloat(($(id)&&$(id).value)||'');return isFinite(v)&&v>0?v:0;};
+  const spend=num('mroi-spend'), leads=num('mroi-leads'), jobs=num('mroi-jobs');
+  const arpj=num('mroi-arpj'), revIn=num('mroi-rev');
+  let marginPct=num('mroi-margin'); if(!marginPct){ marginPct=Math.round((SET&&SET.minMargin?SET.minMargin:0.45)*100); }
+  const margin=marginPct/100;
+  const dash='—';
+  const revenue = revIn>0 ? revIn : (jobs>0 && arpj>0 ? jobs*arpj : 0);
+  const hasRev = revenue>0;
+  const grossProfit = hasRev ? revenue*margin : 0;
+  const profitAfter = hasRev ? grossProfit - spend : (spend>0? -spend : 0);
+  const cpl = leads>0 ? spend/leads : null;
+  const cac = jobs>0 ? spend/jobs : null;
+  const conv = leads>0 ? (jobs/leads)*100 : null;
+  const roas = spend>0 && hasRev ? revenue/spend : null;
+  const roiPct = spend>0 && hasRev ? ((grossProfit - spend)/spend)*100 : null;
+  const beJobs = (spend>0 && arpj>0 && margin>0) ? Math.ceil(spend/(arpj*margin)) : null;
+  const pct=v=>v==null?dash:v.toFixed(1)+'%';
+  const mny=v=>v==null?dash:money(v);
+  const kp=$('mroi-kpis');
+  if(kp){ kp.innerHTML=
+    pfKpiCard('Cost / Lead', cpl==null?dash:money(cpl))+
+    pfKpiCard('Cost / Job (CAC)', cac==null?dash:money(cac))+
+    pfKpiCard('Lead→Job Conv.', pct(conv))+
+    pfKpiCard('Total Revenue', hasRev?money(revenue):dash)+
+    pfKpiCard('Gross Profit', hasRev?money(grossProfit):dash)+
+    pfKpiCard('Profit After Ad Spend', (hasRev||spend>0)?money(profitAfter):dash, profitAfter>=0?'var(--green)':'var(--red,#c0392b)')+
+    pfKpiCard('ROAS', roas==null?dash:roas.toFixed(2)+'×')+
+    pfKpiCard('Return on Ad Spend %', roiPct==null?dash:roiPct.toFixed(1)+'%', (roiPct!=null&&roiPct>=0)?'var(--green)':(roiPct!=null?'var(--red,#c0392b)':''))+
+    pfKpiCard('Break-even Jobs', beJobs==null?dash:String(beJobs));
+  }
+  const sm=$('mroi-summary');
+  if(sm){
+    if(spend<=0 && !hasRev && jobs<=0){ sm.textContent='Enter your ad spend, leads, jobs and revenue to see your marketing ROI.'; }
+    else {
+      const parts=[];
+      parts.push('At '+money(spend)+' spend you booked '+jobs+' job'+(jobs===1?'':'s')+(cac!=null?' at '+money(cac)+' each':'')+'.');
+      if(roas!=null){ parts.push('Every $1 of ads returned $'+roas.toFixed(2)+' in revenue'+(hasRev?' and '+money(profitAfter)+' in net profit'+(spend>0?' after ad spend':''):'')+'.'); }
+      else if(hasRev){ parts.push('Estimated gross profit '+money(grossProfit)+' at '+marginPct+'% margin.'); }
+      if(conv!=null){ parts.push('Your lead→job conversion is '+conv.toFixed(1)+'%.'); }
+      if(beJobs!=null){ parts.push('You need '+beJobs+' job'+(beJobs===1?'':'s')+' for this ad spend to pay for itself.'); }
+      sm.textContent=parts.join(' ');
+    }
   }
 }
 function renderBidList(){const list=$('bid-list');const q=(str('bid-q')||'').toLowerCase(),fs=str('bid-fs');
