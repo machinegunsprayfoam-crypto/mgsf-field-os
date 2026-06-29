@@ -2122,6 +2122,113 @@ function renderStock(){const al=$('stock-alert');if(!al)return;fillStockCats();c
 function invAdj(k,d){const i=INV.find(x=>x.k===k);if(!i)return;i.onHand=Math.max(0,(+i.onHand||0)+d);invSave();renderStock();}
 function invSet(k,f,v){const i=INV.find(x=>x.k===k);if(!i)return;i[f]=(f==='supplier')?v:(parseFloat(v)||0);invSave();renderStock();}
 /* ============ PROPOSAL ============ */
+function mgsfPropId(b){if(b&&b.proposalId)return b.proposalId;var base=(b&&b.createdAt)?new Date(b.createdAt).getTime():Date.now();var id='MG-'+base.toString(36).toUpperCase().slice(-6);if(b){try{b.proposalId=id;if(typeof bids!=='undefined'&&typeof KB!=='undefined'&&typeof lsSet==='function'){lsSet(KB,JSON.stringify(bids));}}catch(_){}}return id;}
+function mgsfHash(str){var h=5381,i=(str||'').length;while(i){h=(h*33)^(str||'').charCodeAt(--i);}return ('00000000'+(h>>>0).toString(16)).slice(-8);}
+function mgsfGetSigs(){try{return JSON.parse(localStorage.getItem('mgsf_signatures')||'[]');}catch(_){return [];}}
+function mgsfFindSig(pid){var a=mgsfGetSigs();for(var i=a.length-1;i>=0;i--){if(a[i]&&a[i].proposalId===pid)return a[i];}return null;}
+function depositAcceptHTML(b,opt){opt=opt||{};
+ var total=Number((b&&b.sellPrice)||0);
+ var deposit=Math.round(total*0.5);
+ var balance=Math.round(total-deposit);
+ var pid=mgsfPropId(b);
+ var cust=(b&&b.customer&&b.customer.name)||'[customer name]';
+ var addr=((b&&b.customer&&b.customer.address)||'')+((b&&b.state)?', '+b.state:'');
+ var email=(b&&b.customer&&b.customer.email)||'';
+ var dt=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+ var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+ var existing=mgsfFindSig(pid);
+ var consent='By typing my name below and tapping ACCEPT, I, '+esc(cust)+', agree this is my legal electronic signature under the federal E-SIGN Act and Montana’s Uniform Electronic Transactions Act, and that it has the same effect as a handwritten signature. I have read and accept Proposal #'+esc(pid)+', dated '+esc(dt)+', including the scope of work, exclusions, total price of '+esc(money(total))+', and all terms and conditions on this document. I understand a deposit of '+esc(money(deposit))+' (50%) is due to schedule and begin work, and that the remaining balance of '+esc(money(balance))+' is due on completion. I consent to receive and sign this agreement electronically.';
+ var depositBlock='<div class="ps" style="margin-top:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px"><h3 style="color:#b45309">Deposit &amp; Acceptance</h3>'
+   +'<div style="font-size:.72rem;color:#777;margin-bottom:8px">Proposal #'+esc(pid)+'</div>'
+   +'<div style="font-size:.92rem;font-weight:700;color:#111">Deposit to schedule: '+esc(money(deposit))+' <span style="font-weight:500;color:#666">(50% of '+esc(money(total))+')</span>.</div>'
+   +'<div style="font-size:.82rem;color:#374151;margin-top:2px">Balance '+esc(money(balance))+' due on completion.</div>';
+ if(opt.print){
+   depositBlock+='<div style="font-size:.8rem;color:#16a34a;margin-top:10px;font-weight:700">Pay your 50% deposit online — ask us to text or email your secure Stripe payment link.</div>';
+ } else {
+   depositBlock+='<div style="margin-top:12px"><button type="button" class="btn btn-green btn-full" style="font-size:1rem;padding:14px" onclick="mgsfPayDeposit(this,'+esc(deposit)+',&quot;'+esc(pid)+'&quot;)">💳 Pay 50% deposit online ('+esc(money(deposit))+')</button></div>'
+     +'<div id="mgsf-deposit-out" style="margin-top:10px;font-size:.8rem;color:#374151"></div>';
+ }
+ // E-sign section
+ if(existing){
+   depositBlock+='<div class="ps" style="margin-top:16px;margin-bottom:0"><h3 style="color:#0a7d33">Signed &amp; Accepted</h3>'
+     +'<div style="font-size:.9rem;font-weight:700;color:#0a7d33">✓ Signed by '+esc(existing.name)+' — '+esc(existing.localTime||existing.iso||'')+' (Proposal #'+esc(existing.proposalId)+')</div>'
+     +'<div style="font-size:.7rem;color:#888;margin-top:4px">Electronic signature recorded under the E-SIGN Act &amp; Montana UETA. Document hash '+esc(existing.hash||'')+'.</div></div>';
+ } else if(opt.print){
+   depositBlock+='<div class="ps" style="margin-top:16px;margin-bottom:0"><h3>Acceptance</h3><div style="font-size:.78rem;color:#374151;line-height:1.6">'+esc(consent)+'</div>'
+     +'<div style="display:flex;gap:30px;margin-top:26px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Typed/handwritten signature</div><div style="width:150px;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Date</div></div></div>';
+ } else {
+   depositBlock+='<div class="ps" id="mgsf-esign" style="margin-top:18px;margin-bottom:0"><h3 style="color:#b45309">Accept &amp; Sign</h3>'
+     +'<div style="font-size:.76rem;color:#374151;line-height:1.6;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px">'+esc(consent)+'</div>'
+     +'<label style="display:block;margin-top:10px;font-size:.78rem;color:#374151;font-weight:700">Type your full name to accept</label>'
+     +'<input id="mgsf-sign-name" type="text" autocomplete="name" placeholder="Full legal name" style="width:100%;box-sizing:border-box;font-size:1rem;padding:13px;border:1px solid #cbd5e1;border-radius:8px;margin-top:5px">'
+     +'<div style="font-size:.68rem;color:#888;margin:6px 0 8px">Typed name = signature. Time, date, device, and proposal version are recorded.</div>'
+     +'<button type="button" class="btn btn-green btn-full" style="font-size:1rem;padding:14px" onclick="mgsfAcceptSign(this,&quot;'+esc(pid)+'&quot;,'+esc(total)+','+esc(deposit)+')">✓ Accept &amp; Sign</button>'
+     +'<div id="mgsf-sign-out" style="margin-top:8px;font-size:.78rem"></div></div>';
+ }
+ depositBlock+='<div class="ps" style="margin-top:18px;margin-bottom:0"><h3 style="color:#b45309">Deposit &amp; Cancellation Policy</h3>'
+   +'<div style="font-size:.74rem;color:#4b5563;line-height:1.65">A deposit of 50% of the total contract price is due upon acceptance to reserve your project date and cover materials. Work is scheduled only after the deposit is received. If you cancel within 3 business days of signing, your deposit is fully refundable. After 3 business days, the deposit is refundable less non-recoverable costs already incurred (custom-ordered materials, restocking, travel/mobilization, permit/engineering fees). Once materials are ordered or work has started, the deposit is non-refundable to the extent of materials purchased and labor/mobilization performed; any remainder is refunded. If Machine Gun Spray Foam &amp; Concrete Lifting LLC cancels before work begins, the deposit is refunded in full. Deposits are processed by Stripe; refunds, when due, return to the original payment method in 5–10 business days. This proposal is valid for 30 days.</div>'
+   +'<div style="font-size:.76rem;color:#111;font-weight:700;margin-top:10px">Notice of 3-Day Right to Cancel:</div>'
+   +'<div style="font-size:.74rem;color:#4b5563;line-height:1.6">For home-solicited residential jobs, you, the buyer, may cancel this transaction at any time prior to midnight of the third business day after the date of this transaction. See the deposit policy above for refund handling.</div>'
+   +'<div style="font-size:.72rem;color:#6b7280;margin-top:10px;border-top:1px solid #e5e7eb;padding-top:8px">Machine Gun Spray Foam &amp; Concrete Lifting LLC · Veteran-owned · $1M liability insured · BPI-certified · 406-939-8301 · serving MT/ND/SD/WY. License/registration #: ____ (fill in).</div></div>';
+ depositBlock+='</div>';
+ return depositBlock;
+}
+function mgsfPayDeposit(btn,amount,pid){
+ var out=$('mgsf-deposit-out');
+ var b=(typeof bids!=='undefined')?bids.find(function(x){return x.proposalId===pid;}):null;
+ var payload={mode:'deposit',amount:amount,proposalId:pid};
+ if(b&&b.customer){payload.customerName=b.customer.name||'';payload.jobAddress=(b.customer.address||'')+((b.state)?', '+b.state:'');payload.email=b.customer.email||'';}
+ if(btn){btn.disabled=true;btn.textContent='⏳ Creating link…';}
+ if(out)out.innerHTML='';
+ fetch('/api/stripe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)})
+  .then(function(r){return r.json();})
+  .then(function(j){
+    if(btn){btn.disabled=false;btn.textContent='💳 Pay 50% deposit online ('+money(amount)+')';}
+    if(j&&j.ok&&j.url){
+      try{window.open(j.url,'_blank');}catch(_){}
+      var u=j.url;var safe=u.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      if(out)out.innerHTML='<div style="font-weight:700;color:#0a7d33">Deposit link ready:</div>'
+        +'<div style="margin-top:4px;word-break:break-all"><a href="'+safe+'" target="_blank" rel="noopener" style="color:#1d4ed8">'+safe+'</a></div>'
+        +'<button type="button" class="btn btn-s btn-sm" style="margin-top:8px" onclick="mgsfCopyLink(this,&quot;'+safe+'&quot;)">📋 Copy link</button>';
+    } else if(j&&j.error==='STRIPE_NOT_CONFIGURED'){
+      if(out)out.innerHTML='<div style="color:#b45309">Online deposits not set up yet — add your Stripe key in Vercel.</div>';
+    } else {
+      if(out)out.innerHTML='<div style="color:#C8102E">Couldn’t create the deposit link — try again.</div>';
+    }
+  })
+  .catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='💳 Pay 50% deposit online ('+money(amount)+')';}
+    if(out)out.innerHTML='<div style="color:#C8102E">Couldn’t create the deposit link — try again.</div>';
+  });
+}
+function mgsfCopyLink(btn,url){
+ var done=function(){if(btn){var t=btn.textContent;btn.textContent='✓ Copied';setTimeout(function(){btn.textContent=t;},1500);}};
+ try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,function(){mgsfFallbackCopy(url);done();});return;}}catch(_){}
+ mgsfFallbackCopy(url);done();
+}
+function mgsfFallbackCopy(url){try{var ta=document.createElement('textarea');ta.value=url;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}catch(_){}}
+function mgsfAcceptSign(btn,pid,total,deposit){
+ var nameEl=$('mgsf-sign-name');var out=$('mgsf-sign-out');
+ var name=nameEl?(nameEl.value||'').trim():'';
+ if(!name){if(out)out.innerHTML='<span style="color:#C8102E">Please type your full name to accept.</span>';if(nameEl)nameEl.focus();return;}
+ var now=new Date();
+ var snapEl=$('prop-prev');
+ var snapText=snapEl?(snapEl.innerText||snapEl.textContent||''):'';
+ var snapHash=mgsfHash(snapText+'|'+pid+'|'+total+'|'+name);
+ var rec={proposalId:pid,name:name,iso:now.toISOString(),localTime:now.toLocaleString(),total:total,deposit:deposit,hash:snapHash,userAgent:(typeof navigator!=='undefined'?navigator.userAgent:'')};
+ var sigs=mgsfGetSigs();sigs.push(rec);
+ try{localStorage.setItem('mgsf_signatures',JSON.stringify(sigs));}catch(_){}
+ // Mirror onto the bid record so it persists with the proposal/print.
+ try{var b=(typeof bids!=='undefined')?bids.find(function(x){return x.proposalId===pid;}):null;
+   if(b){b.eSign=rec;if(b.status==='draft')b.status='approved';if(typeof KB!=='undefined'&&typeof lsSet==='function')lsSet(KB,JSON.stringify(bids));if(typeof upsertEstimate==='function'){try{upsertEstimate(b);}catch(_){}}if(typeof renderBidList==='function'){try{renderBidList();}catch(_){}}}
+ }catch(_){}
+ var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+ var box=$('mgsf-esign');
+ if(box){box.innerHTML='<h3 style="color:#0a7d33">Signed &amp; Accepted</h3>'
+   +'<div style="font-size:.9rem;font-weight:700;color:#0a7d33">✓ Signed by '+esc(name)+' — '+esc(rec.localTime)+' (Proposal #'+esc(pid)+')</div>'
+   +'<div style="font-size:.7rem;color:#888;margin-top:4px">Electronic signature recorded under the E-SIGN Act &amp; Montana UETA. Document hash '+esc(snapHash)+'.</div>';}
+ if(typeof toast==='function'){try{toast('Signed ✓');}catch(_){}}
+}
 function propHTML(b,opt){opt=opt||{};
  const dt=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
  const L=(b.scopes||[]).map(s=>[scopeLabel(s.service)+' — '+s.product+(s.substrate?' · '+s.substrate:''),s.qty||'1',money(s.sell)]);
@@ -2134,6 +2241,7 @@ function propHTML(b,opt){opt=opt||{};
  ${roi}
  <div class="ps"><h3>Terms</h3><div style="font-size:.78rem;color:#666;line-height:1.7">• 50% deposit to schedule; balance on completion.<br>• Valid 30 days. Material pricing subject to change thereafter.<br>• Manufacturer-backed materials. 1-year workmanship warranty.<br>• Excludes hidden/structural damage, electrical/plumbing/HVAC, abatement, and permits unless stated.</div></div>
  ${opt.print?`<div style="text-align:center;margin-top:14px"><a href="https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply" target="_blank"><img src="https://hearth.imgix.net/contractor-v2/banners/home_improvement-v2/700x110_blue.png?dpr=2&auto=compress,format" alt="0% financing available through Hearth — apply in minutes" style="max-width:100%;height:auto;border:0"/></a><div style="font-size:.8rem;color:#16a34a;margin-top:6px">💳 0% &amp; low-rate financing — apply: <a href="https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply" style="color:#16a34a">https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply</a></div></div>`:`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:11px;margin-top:14px;font-size:.82rem">💳 <b>Financing Available — 0% options through Hearth.</b> <a href="https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply" style="color:#16a34a">Apply in minutes</a></div>`}
+ ${depositAcceptHTML(b,opt)}
  ${b.signature?`<div class="ps" style="margin-top:16px"><h3>Accepted</h3><div style="font-size:.82rem">Accepted by <b>${b.signature.name}</b> on ${b.signature.date}</div><img src="${b.signature.img}" style="height:60px;margin-top:6px"></div>`:`<div class="ps" style="margin-top:22px"><h3>Acceptance</h3><div style="display:flex;gap:30px;margin-top:26px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Customer signature</div><div style="width:150px;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Date</div></div></div>`}
  <div style="margin-top:18px;font-size:.72rem;color:#999;text-align:center">Machine Gun Spray Foam &amp; Concrete Lifting, LLC · EIN 33-3866517 · UEI H63EELL3K7Z4 · SAM Active · VOSB</div>`;
 }
@@ -2306,9 +2414,9 @@ function renderGov(){const l=$('gov-list');if(!l)return;if(!GOV.length){l.innerH
  l.innerHTML=GOV.map(o=>{const due=o.due?new Date(o.due):null;const days=due?Math.ceil((due.getTime()-Date.now())/86400000):null;const soon=days!==null&&days<=10;
   return `<div class="bidi"><div class="h"><div><div class="bn">${o.title||'Opportunity'}</div><div class="bm">${o.agency||''} ${o.naics?'· NAICS '+o.naics:''} ${o.setAside?'· '+o.setAside:''}${due?' · due '+o.due:''}${days!==null?` <span class="badge b-${soon?'followup':'sent'}">${days>=0?days+'d left':'closed'}</span>`:''}</div></div><div><span class="badge b-${o.status==='pursuing'?'won':'draft'}">${(o.status||'new').toUpperCase()}</span></div></div><div class="btnrow" style="margin-top:7px">${o.url?`<a class="qa" href="${o.url}" target="_blank" rel="noopener">↗ SAM.gov</a>`:''}<button class="btn btn-s btn-sm" onclick="govToLead('${o.id}')">→ Create bid lead</button><button class="x" onclick="govRm('${o.id}')">✕</button></div></div>`;}).join('');}
 function renderFuelLog(){const l=$('fuellog-list');if(!l)return;const recent=FUELLOG.slice(0,12);
- l.innerHTML=recent.length?recent.map(f=>`<div class="li"><div>${f.date} \u00b7 ${f.by||''}${f.veh?' \u00b7 '+f.veh:''}</div><div style="color:var(--mut)">${f.miles||0} mi${f.gal?' \u00b7 '+f.gal+' gal':''}</div><div style="text-align:right;font-weight:700;white-space:nowrap">${money(f.cost||0)} <button class="x" onclick="fuelRm('${f.id}')">\u2715</button></div></div>`).join(''):'<div class="hint">No fuel logged yet.</div>';
+ l.innerHTML=recent.length?recent.map(f=>`<div class="li"><div>${f.date} · ${f.by||''}${f.veh?' · '+f.veh:''}</div><div style="color:var(--mut)">${f.miles||0} mi${f.gal?' · '+f.gal+' gal':''}</div><div style="text-align:right;font-weight:700;white-space:nowrap">${money(f.cost||0)} <button class="x" onclick="fuelRm('${f.id}')">✕</button></div></div>`).join(''):'<div class="hint">No fuel logged yet.</div>';
  const tm=FUELLOG.reduce((a,f)=>a+(+f.miles||0),0),tc=FUELLOG.reduce((a,f)=>a+(+f.cost||0),0),tg=FUELLOG.reduce((a,f)=>a+(+f.gal||0),0);
- const t=$('fuellog-tot');if(t)t.innerHTML=`<span>Total</span><span class="v">${tm} mi \u00b7 ${tg.toFixed(1)} gal \u00b7 ${money(tc)}</span>`;}
+ const t=$('fuellog-tot');if(t)t.innerHTML=`<span>Total</span><span class="v">${tm} mi · ${tg.toFixed(1)} gal · ${money(tc)}</span>`;}
 function addSug(){const t=(str('sug-text')||'').trim();if(!t){toast('Type an idea first',true);return;}const cu=curUser();SUG.unshift({id:'sg'+Date.now(),by:(cu.name||user),role:role,text:t,votes:1,voters:[user],done:false,at:new Date().toISOString()});sugSave();const e=$('sug-text');if(e)e.value='';renderSug();toast('Idea submitted — thanks!');}
 function voteSug(id){const s=SUG.find(x=>x.id===id);if(!s)return;s.voters=s.voters||[];const i=s.voters.indexOf(user);if(i>=0){s.voters.splice(i,1);s.votes=Math.max(0,(s.votes||1)-1);}else{s.voters.push(user);s.votes=(s.votes||0)+1;}sugSave();renderSug();}
 function doneSug(id){if(role!=='owner')return;const s=SUG.find(x=>x.id===id);if(s){s.done=!s.done;sugSave();renderSug();}}
