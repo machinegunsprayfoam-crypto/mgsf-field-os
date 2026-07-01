@@ -195,7 +195,7 @@ module.exports = async (req, res) => {
       const ests = Array.isArray(estData) ? estData : [];
       const counts = {
         customers: Array.isArray(custData) ? custData.length : 0,
-        estimates: ests.length,
+        total_leads: ests.length,
         draft: ests.filter(e => e.status === 'draft').length,
         sent: ests.filter(e => e.status === 'sent').length,
         approved: ests.filter(e => e.status === 'approved').length,

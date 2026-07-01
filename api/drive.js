@@ -164,7 +164,7 @@ module.exports = async (req, res) => {
 
     // ── CREATE JOB FOLDER ─────────────────────────────────────────────────
     if (mode === 'create_folder') {
-      const rawName = String(body.jobName || 'New Job').replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').trim().slice(0, 200);
+      const rawName = String(body.jobName || 'New Job').replace(/[<>:"/\\|?*\x00-\x1f']/g, '-').replace(/-+/g, '-').trim().slice(0, 200);
       const parentId = (body.parentFolderId || rootId) || undefined;
 
       const folder = await createFolder(token, rawName, parentId);
@@ -182,10 +182,12 @@ module.exports = async (req, res) => {
 
     // ── LIST FOLDERS ──────────────────────────────────────────────────────
     if (mode === 'list_folders') {
-      const parentId = (body.parentFolderId || rootId) || null;
+      const parentIdRaw = (body.parentFolderId || rootId) || null;
+      // Drive folder IDs are alphanumeric + hyphen + underscore only; strip anything else.
+      const parentId = parentIdRaw ? parentIdRaw.replace(/[^A-Za-z0-9_-]/g, '') : null;
       let q = "mimeType='application/vnd.google-apps.folder' and trashed=false";
       if (parentId) {
-        q += " and '" + parentId.replace(/'/g, "\\'") + "' in parents";
+        q += " and '" + parentId + "' in parents";
       }
       const url = DRIVE_API + '/files?q=' + encodeURIComponent(q)
         + '&orderBy=name&fields=files(id,name,webViewLink,createdTime)&pageSize=100';

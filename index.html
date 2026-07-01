@@ -2560,12 +2560,22 @@ async function loadLeadsRemote(){
     list.innerHTML=d.leads.map(l=>{
       const name=[(l.customers||{}).first_name,(l.customers||{}).last_name].filter(Boolean).join(' ')||'—';
       const date=l.created_at?new Date(l.created_at).toLocaleDateString():'';
-      return `<div class="statrow" style="cursor:pointer" onclick="clientOpenBid('${l.id||''}')"><span>${name} — ${l.service_type||'—'}</span><span class="v" style="font-size:11px">${l.status||''} ${date}</span></div>`;
+      return `<div class="statrow" style="cursor:pointer" onclick="openLeadFromSb('${l.id||''}')"><span>${name} — ${l.service_type||'—'}</span><span class="v" style="font-size:11px">${l.status||''} ${date}</span></div>`;
     }).join('');
   }catch(e){card.style.display='none';}
 }
 
 function renderLeadsList(){loadLeadsRemote();}
+
+function openLeadFromSb(sbId){
+  // Try to find local bid that was synced to this Supabase estimate ID
+  const local=bids.find(b=>b.sbEstimateId===sbId);
+  if(local){clientOpenBid(local.id);}else{
+    // Not in local storage — just show a toast pointing to console
+    toast('Lead not in local bids — check console for full list');
+    setMode('console');
+  }
+}
 
 // ── DRIVE ──────────────────────────────────────────────────────────────────
 async function createDriveFolder(){
