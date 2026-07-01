@@ -112,3 +112,52 @@ create index if not exists idx_estimates_property_id on public.estimates(propert
 create index if not exists idx_estimates_status on public.estimates(status);
 create index if not exists idx_field_photos_estimate_id on public.field_photos(estimate_id);
 create index if not exists idx_sync_events_entity on public.sync_events(entity_type, entity_id);
+
+-- Active job execution tracker (linked to an approved/won estimate)
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid not null references public.estimates(id) on delete cascade,
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  property_id uuid references public.properties(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  status text not null default 'scheduled',
+  scheduled_date date,
+  completed_date date,
+  crew_lead text,
+  crew_members text[],
+  google_drive_folder_id text,
+  drive_before_folder_id text,
+  drive_during_folder_id text,
+  drive_after_folder_id text,
+  drive_docs_folder_id text,
+  notes text,
+  invoice_number text,
+  invoice_total numeric,
+  invoice_paid boolean not null default false,
+  invoice_paid_at timestamptz
+);
+
+create index if not exists idx_projects_estimate_id on public.projects(estimate_id);
+create index if not exists idx_projects_customer_id on public.projects(customer_id);
+create index if not exists idx_projects_status on public.projects(status);
+
+-- Per-project closeout checklist
+create table if not exists public.closeout_checklist (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  before_photos_done boolean not null default false,
+  during_photos_done boolean not null default false,
+  after_photos_done boolean not null default false,
+  contract_signed boolean not null default false,
+  materials_noted boolean not null default false,
+  invoice_ready boolean not null default false,
+  site_clean boolean not null default false,
+  customer_walkthrough boolean not null default false,
+  review_requested boolean not null default false,
+  notes text
+);
+
+create index if not exists idx_closeout_project_id on public.closeout_checklist(project_id);

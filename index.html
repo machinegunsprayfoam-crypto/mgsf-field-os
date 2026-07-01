@@ -163,6 +163,8 @@ textarea{resize:vertical;min-height:54px}
       <button class="mbtn" id="m-profit" onclick="setMode('profit')">💰 Profit</button>
       <button class="mbtn" id="m-mroi" onclick="setMode('mroi')">📈 Marketing ROI</button>
       <button class="mbtn" id="m-admin" onclick="setMode('admin')">Admin</button>
+      <button class="mbtn" id="m-leads" onclick="setMode('leads')">📋 Leads</button>
+      <button class="mbtn" id="m-crew" onclick="setMode('crew')">🦺 Crew</button>
     </div>
     <div class="tuser" onclick="openProfile()"><span class="chip" id="rolechip">—</span> <b id="ulabel">—</b> · Profile</div>
   </div>
@@ -467,6 +469,7 @@ textarea{resize:vertical;min-height:54px}
       <div id="c-list">
         <div class="card" id="backup-banner" style="display:none;border-color:var(--yellow)"><div class="ct" style="color:var(--yellow)">⚠ Back up your data</div><div class="hint">It's been over a week since your last full backup. One tap protects every bid, job, photo &amp; signature.</div><div class="btnrow" style="margin-top:6px"><button class="btn btn-g btn-full" onclick="exportFull()">⬇ Full Backup now</button></div></div>
         <div class="kpis" id="kpis"></div>
+        <div class="card" id="sb-counts-card" style="display:none"><div class="ct">☁️ Supabase Live Counts</div><div class="kpis" id="sb-kpis"></div><div class="hint" id="sb-counts-hint" style="margin-top:4px"></div></div>
         <div class="card" id="calllist-card"><div class="ct">📞 Call List</div><div class="hint" style="margin-bottom:8px">Recent HubSpot contacts with a phone number. Tap to call or text right from the field. Works offline once loaded.</div><div class="btnrow" style="margin-bottom:8px"><button class="btn btn-p btn-full" id="calllist-load" onclick="loadCallList()">📞 Load Call List</button></div><div id="calllist-controls" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><button type="button" class="chip" id="cl-new-today" onclick="clToggleNewToday()" style="cursor:pointer;background:transparent;color:var(--mut)">🔥 New today</button><select id="cl-sort" onchange="clOnSortChange()" style="width:auto;flex:1;min-width:120px"><option value="hot">Hottest</option><option value="new">Newest</option><option value="town">By town</option></select><span class="hint" id="cl-count" style="white-space:nowrap"></span></div><div id="calllist-body"></div></div>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">📊 Sales insights</summary><div id="sales-insights" style="margin-top:8px"></div></details>
         <details class="card"><summary style="cursor:pointer;font-weight:700;font-size:.85rem">💵 A/R / Collections</summary><div id="ar-list" style="margin-top:8px"></div></details>
@@ -531,6 +534,9 @@ textarea{resize:vertical;min-height:54px}
           <div class="ct">Proposal</div>
           <div id="prop-prev" style="background:#fff;color:#111;border-radius:8px;padding:16px;font-size:.8rem;line-height:1.6"></div>
           <div class="btnrow" style="margin-top:10px"><button class="btn btn-p btn-full" onclick="printProposal()">🖨️ Print / Save PDF</button><button class="btn btn-s" onclick="emailCustomer()">✉️ Email</button><button class="btn btn-s" onclick="location.href='https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply'">💳 Financing</button><button class="btn btn-s" onclick="window.open('https://app.gethearth.com/requests/a49d1406-80c4-491a-923e-c7729748699a','_blank')" title="Your incoming Hearth financing requests">📥 Hearth Requests</button></div>
+          <div class="btnrow" style="margin-top:6px"><button class="btn btn-s" onclick="createDriveFolder()" id="drive-btn">📁 Drive Folder</button><button class="btn btn-s" onclick="sendFollowupEmail('proposal')">📧 Email Proposal</button><button class="btn btn-s" onclick="sendFollowupEmail('review')">⭐ Review Request</button><button class="btn btn-s" onclick="sendFollowupEmail('followup')">📬 Follow-up</button></div>
+          <div id="drive-status" style="font-size:12px;color:var(--mut);margin-top:3px"></div>
+          <div id="email-status" style="font-size:12px;color:var(--mut);margin-top:2px"></div>
         </div>
         <div class="card" id="sign-sec">
           <div class="ct">✍️ Customer Acceptance</div>
@@ -625,7 +631,49 @@ textarea{resize:vertical;min-height:54px}
       <div class="card"><div id="mroi-summary" style="font-size:13px;color:var(--mut);line-height:1.5"></div></div>
     </div><!-- /mroi -->
 
-    <!-- ADMIN -->
+    <!-- LEADS -->
+    <div id="leads" style="display:none">
+      <div class="card"><div class="ct">📋 Lead Intake</div>
+        <div class="row"><div><label>First name</label><input type="text" id="li-first" placeholder="Jane"></div><div><label>Last name</label><input type="text" id="li-last" placeholder="Smith"></div></div>
+        <div class="row"><div><label>Phone</label><input type="tel" id="li-phone" placeholder="(406) 555-1234"></div><div><label>Email</label><input type="email" id="li-email" placeholder="jane@example.com"></div></div>
+        <div class="row"><div><label>Customer type</label><select id="li-ctype"><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="government">Government</option><option value="agricultural">Agricultural</option></select></div><div><label>Lead source</label><select id="li-source"><option value="">— select —</option><option>Google</option><option>Facebook</option><option>Referral</option><option>Direct call</option><option>Door knock</option><option>Yard sign</option><option>Contractor</option><option>Government bid</option><option>Repeat customer</option><option>Other</option></select></div></div>
+        <div class="fld"><label>Street address</label><input type="text" id="li-street" placeholder="123 Main St"></div>
+        <div class="row"><div><label>City</label><input type="text" id="li-city" placeholder="Glendive"></div><div><label>State</label><select id="li-state"><option>MT</option><option>ND</option><option>SD</option><option>WY</option><option>Other</option></select></div></div>
+        <div class="row"><div><label>Service type</label><select id="li-svc"><option value="spray_foam">Spray foam insulation</option><option value="roofing">SPF roofing</option><option value="concrete">Concrete lifting</option><option value="polyurea">Polyurea coatings</option><option value="other">Other / combo</option></select></div><div><label>Urgency</label><select id="li-urgency"><option value="flexible">Flexible</option><option value="soon">Within 30 days</option><option value="urgent">ASAP / urgent</option><option value="bid_deadline">Bid deadline</option></select></div></div>
+        <div class="row"><div><label>Est. sq ft</label><input type="number" id="li-sqft" placeholder="0" min="0" step="1"></div><div><label>Budget ($)</label><input type="number" id="li-budget" placeholder="0" min="0" step="100"></div></div>
+        <div class="fld"><label>Project description</label><textarea id="li-desc" rows="2" placeholder="What does the customer need done?"></textarea></div>
+        <div class="fld"><label>Access / site notes</label><textarea id="li-access" rows="2" placeholder="Gate code, dogs, key location, etc."></textarea></div>
+        <div class="btnrow" style="margin-top:10px"><button class="btn btn-p btn-full" onclick="submitLeadIntake()">💾 Save Lead + Create Bid</button></div>
+        <div id="li-status" style="font-size:12px;color:var(--mut);margin-top:4px"></div>
+      </div>
+      <div class="card" id="li-list-card" style="display:none"><div class="ct">Recent Leads</div><div id="li-list"></div></div>
+    </div><!-- /leads -->
+
+    <!-- CREW -->
+    <div id="crew" style="display:none">
+      <div id="crew-list">
+        <div class="card"><div class="ct">🦺 Crew View — Today's Jobs</div><div id="crew-jobs-list"><div class="hint">No jobs scheduled for today.</div></div></div>
+      </div>
+      <div id="crew-detail" style="display:none">
+        <div class="card">
+          <div class="btnrow" style="margin-bottom:6px"><button class="btn btn-s" onclick="crewCloseDetail()">← Back</button><span id="crew-job-title" style="font-weight:700;margin-left:8px"></span></div>
+          <div id="crew-time-display"></div>
+          <div class="btnrow" style="margin-top:6px"><button class="btn btn-g" onclick="clockIn()">⏱ Clock In</button><button class="btn btn-s" onclick="clockOut()">⏹ Clock Out</button></div>
+        </div>
+        <div class="card"><div class="ct">📋 Pre-Job Checklist</div><div id="crew-checklist"></div></div>
+        <div class="card"><div class="ct">📸 Job Photos</div>
+          <div class="btnrow" style="gap:6px">
+            <label class="btn btn-s" style="position:relative;overflow:hidden">📷 Before<input type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="crewPhoto(this,'before')"></label>
+            <label class="btn btn-s" style="position:relative;overflow:hidden">📷 During<input type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="crewPhoto(this,'during')"></label>
+            <label class="btn btn-s" style="position:relative;overflow:hidden">📷 After<input type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="crewPhoto(this,'after')"></label>
+          </div>
+          <div id="crew-photos" style="margin-top:6px"></div>
+        </div>
+        <div class="card"><div class="ct">📝 Crew Notes</div><textarea id="crew-notes-ta" rows="3" placeholder="Materials used, issues, site conditions…" oninput="crewNotes(this.value)"></textarea></div>
+        <div class="card"><div class="ct">✅ Closeout Checklist</div><div id="crew-closeout"></div></div>
+        <div class="btnrow" style="margin:12px 0"><button class="btn btn-p btn-full" onclick="crewMarkDone()">✅ Mark Job Done</button></div>
+      </div>
+    </div><!-- /crew -->
     <div id="admin" style="display:none">
       <div class="card">
         <div class="ct">Rates &amp; Margins (Workbook V2)</div>
@@ -795,8 +843,8 @@ function pk(k){const er=$('perr');er.textContent='';
  else{if(pin.length<4)pin+=k;if(pin.length===4)setTimeout(()=>pk('enter'),180);}
  drawPin();}
 function applyRole(){const canConsole=['owner','office','estimator'].includes(role),canAdmin=role==='owner';
- $('m-console').style.display=canConsole?'':'none';$('m-stock').style.display=canConsole?'':'none';$('m-clients').style.display=canConsole?'':'none';$('m-admin').style.display='';var mp=$('m-profit');if(mp)mp.style.display=canAdmin?'':'none';
- if(!canConsole&&mode!=='field'&&mode!=='jobs')setMode('field');}
+ $('m-console').style.display=canConsole?'':'none';$('m-stock').style.display=canConsole?'':'none';$('m-clients').style.display=canConsole?'':'none';$('m-admin').style.display='';var mp=$('m-profit');if(mp)mp.style.display=canAdmin?'':'none';var ml=$('m-leads');if(ml)ml.style.display=canConsole?'':'none';var mc=$('m-crew');if(mc)mc.style.display='';
+ if(!canConsole&&mode!=='field'&&mode!=='jobs'&&mode!=='crew')setMode('field');}
 function drawPin(){$('pind').textContent=pin.replace(/./g,'●').padEnd(4,'—').split('').join(' ');}
 function logout(){window.__adminUnlocked=false;role='estimator';try{applyRole();}catch(e){}try{setMode('field');}catch(e){}try{toast('Admin locked');}catch(e){}}
 function openProfile(){const u=curUser();if(!u)return;$('prof-name').value=u.name||'';$('prof-pin1').value='';$('prof-pin2').value='';$('prof-err').textContent='';const m=$('profile-modal');m.style.display='flex';}
@@ -808,8 +856,8 @@ function adCancel(){var o=document.getElementById('adlock');if(o)o.style.display
 function adUnlock(){var pw=(document.getElementById('adlock-pw')||{}).value||'';if(pw!=='Clifton'){var er=document.getElementById('adlock-err');if(er)er.textContent='Wrong password';return;}window.__adminUnlocked=true;role='owner';try{applyRole();}catch(e){}var o=document.getElementById('adlock');if(o)o.style.display='none';setMode('admin');}
 
 /* ============ NAV ============ */
-function setMode(m){if(m==='profit'&&role!=='owner')return;if(m==='console'&&!['owner','office','estimator'].includes(role))return;if(m==='stock'&&!['owner','office','estimator'].includes(role))return;if(m==='clients'&&!['owner','office','estimator'].includes(role))return;if(m==='admin'){if(!window.__adminUnlocked){showAdlock();return;}}mode=m;['field','qbid','jobs','stock','clients','console','profit','mroi','admin'].forEach(x=>{$(x).style.display=x===m?'':'none';const mb=$('m-'+x);if(mb)mb.classList.toggle('active',x===m);});
- if(m==='jobs'){renderJobs();} if(m==='stock'){renderStock();} if(m==='clients'){renderClients();} if(m==='console'){renderKpis();renderBidList();showList();renderGov();backupReminder();renderInsights();renderAR();renderRec();} if(m==='profit'){renderProfit();} if(m==='mroi'){renderMroi();} if(m==='admin'){fillAdmin();}}
+function setMode(m){if(m==='profit'&&role!=='owner')return;if(m==='console'&&!['owner','office','estimator'].includes(role))return;if(m==='stock'&&!['owner','office','estimator'].includes(role))return;if(m==='clients'&&!['owner','office','estimator'].includes(role))return;if(m==='leads'&&!['owner','office','estimator'].includes(role))return;if(m==='admin'){if(!window.__adminUnlocked){showAdlock();return;}}mode=m;['field','qbid','jobs','stock','clients','console','profit','mroi','admin','leads','crew'].forEach(x=>{$(x)&&($(x).style.display=x===m?'':'none');const mb=$('m-'+x);if(mb)mb.classList.toggle('active',x===m);});
+ if(m==='jobs'){renderJobs();} if(m==='stock'){renderStock();} if(m==='clients'){renderClients();} if(m==='console'){renderKpis();renderBidList();showList();renderGov();backupReminder();renderInsights();renderAR();renderRec();loadSbCounts();} if(m==='profit'){renderProfit();} if(m==='mroi'){renderMroi();} if(m==='admin'){fillAdmin();} if(m==='leads'){renderLeadsList();} if(m==='crew'){renderCrewView();}}
 function bidAgeDays(b){const t=b.statusAt||b.approvedAt||b.createdAt;return t?(Date.now()-new Date(t).getTime())/86400000:0;}
 function isFollowup(b){return b.status==='sent'&&bidAgeDays(b)>=FOLLOW_DAYS;}
 function renderAR(){const el=$('ar-list');if(!el)return;const now=Date.now();const open=[];jobs.forEach(j=>{const py=j.payment||{};if(py.balancePaid)return;const dep=Math.round((j.sell||0)*(py.depositPct||50)/100);const owed=(j.sell||0)-(py.depositPaid?dep:0);if(owed<=0)return;const ref=new Date(j.date||j.createdAt).getTime()||now;open.push({name:j.customer.name||'Job',owed:owed,days:Math.floor((now-ref)/86400000),phone:(j.customer.phone||'').replace(/[^0-9+]/g,'')});});
@@ -2446,6 +2494,299 @@ function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.u
 fillProducts();qbFill();fillCons();renderUsers();renderZone();renderRoof();renderPen();drawPin();fillTpl();renderSug();renderBidPhotos();renderFuelLog();renderGov();renderRec();
 role='estimator';try{document.getElementById('pin').style.display='none';}catch(e){}try{var _a=document.getElementById('app');if(_a)_a.style.display='flex';}catch(e){}try{var _ul=document.getElementById('ulabel');if(_ul)_ul.textContent='MGSF';var _rc=document.getElementById('rolechip');if(_rc){_rc.textContent='crew';_rc.className='chip';}}catch(e){}window.__adminUnlocked=false;try{applyRole();}catch(e){}try{setMode('field');}catch(e){}try{var _jd=document.getElementById('job-date');if(_jd&&!_jd.value)_jd.value=new Date().toISOString().split('T')[0];}catch(e){}try{restoreDraft();}catch(e){}
 if('serviceWorker' in navigator && location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(function(){});}
+
+// ── LEADS ──────────────────────────────────────────────────────────────────
+function str2(id){const el=document.getElementById(id);if(!el)return'';return(el.value||'').trim();}
+
+async function submitLeadIntake(){
+  const st=$('li-status');
+  const first=str2('li-first'),last=str2('li-last');
+  if(!first&&!last){st.textContent='⚠ Enter at least first or last name.';return;}
+  st.textContent='Saving…';
+  const payload={
+    mode:'save',
+    firstName:first, lastName:last,
+    phone:str2('li-phone'), email:str2('li-email'),
+    customerType:str2('li-ctype'), leadSource:str2('li-source'),
+    street:str2('li-street'), city:str2('li-city'), state:str2('li-state'),
+    serviceType:str2('li-svc'), urgency:str2('li-urgency'),
+    squareFeet:parseFloat(str2('li-sqft'))||0,
+    budget:parseFloat(str2('li-budget'))||0,
+    description:str2('li-desc'), accessNotes:str2('li-access'),
+  };
+  // Always create a local bid immediately so the estimator can work offline.
+  const localBid=leadIntakeToBidFromData(payload);
+  let sbNote='';
+  try{
+    const r=await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.ok&&d.estimateId){localBid.sbEstimateId=d.estimateId;lsSet(KB,JSON.stringify(bids));sbNote=' | Saved to Supabase ✓';}
+    else if(d.error==='SUPABASE_NOT_CONFIGURED'){sbNote=' | (cloud not configured)';}
+    else{sbNote=' | Cloud save: '+(d.error||'failed');}
+  }catch(e){sbNote=' | Cloud unavailable';}
+  st.textContent='✓ Lead saved as bid #'+localBid.id.slice(-6).toUpperCase()+sbNote;
+  // Clear form
+  ['li-first','li-last','li-phone','li-email','li-street','li-city','li-desc','li-access','li-sqft','li-budget'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  loadLeadsRemote();
+}
+
+function leadIntakeToBidFromData(d){
+  const id='L'+Date.now().toString(36).toUpperCase();
+  const svcMap={spray_foam:'Spray Foam Insulation',roofing:'SPF Roofing',concrete:'Concrete Lifting',polyurea:'Polyurea Coatings',other:'Other'};
+  const svcLabel=svcMap[d.serviceType]||d.serviceType||'Service';
+  const addr=[d.street,d.city,d.state].filter(Boolean).join(', ');
+  const bid={
+    id, status:'draft', created:Date.now(),
+    customer:{name:(d.firstName+' '+d.lastName).trim(), phone:d.phone||'', email:d.email||'', company:''},
+    address:addr, city:d.city||'', state:d.state||'MT',
+    scopes:[{svc:svcLabel,qty:d.squareFeet||0,unit:'sqft',price:d.budget||0,desc:d.description||'',notes:d.accessNotes||''}],
+    total:d.budget||0, margin:0, cost:0,
+    notes:'Lead source: '+(d.leadSource||'—')+' | Urgency: '+(d.urgency||'—')+(d.accessNotes?'\nAccess: '+d.accessNotes:''),
+    leadSource:d.leadSource||'', urgency:d.urgency||'', customerType:d.customerType||'residential',
+  };
+  bids.unshift(bid);
+  lsSet(KB,JSON.stringify(bids));
+  return bid;
+}
+
+async function loadLeadsRemote(){
+  const card=$('li-list-card'), list=$('li-list');
+  if(!card||!list)return;
+  try{
+    const r=await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'list',limit:20})});
+    const d=await r.json();
+    if(!d.ok||!d.leads||!d.leads.length){card.style.display='none';return;}
+    card.style.display='';
+    list.innerHTML=d.leads.map(l=>{
+      const name=[(l.customers||{}).first_name,(l.customers||{}).last_name].filter(Boolean).join(' ')||'—';
+      const date=l.created_at?new Date(l.created_at).toLocaleDateString():'';
+      return `<div class="statrow" style="cursor:pointer" onclick="clientOpenBid('${l.id||''}')"><span>${name} — ${l.service_type||'—'}</span><span class="v" style="font-size:11px">${l.status||''} ${date}</span></div>`;
+    }).join('');
+  }catch(e){card.style.display='none';}
+}
+
+function renderLeadsList(){loadLeadsRemote();}
+
+// ── DRIVE ──────────────────────────────────────────────────────────────────
+async function createDriveFolder(){
+  const b=bids.find(x=>x.id===selId);
+  if(!b){toast('Open a bid first',true);return;}
+  const ds=$('drive-status');
+  if(b.driveFolderId){
+    ds.textContent='📁 Folder exists → '+b.driveFolderUrl;
+    ds.innerHTML='📁 <a href="'+b.driveFolderUrl+'" target="_blank" style="color:var(--scarlet)">Open Drive Folder</a>';
+    return;
+  }
+  const btn=$('drive-btn');if(btn)btn.disabled=true;
+  if(ds)ds.textContent='Creating Drive folder…';
+  const jobName=[b.customer&&b.customer.name?b.customer.name:'',b.address||b.city||'',new Date().getFullYear()].filter(Boolean).join(' — ');
+  try{
+    const r=await fetch('/api/drive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'create_folder',jobName})});
+    const d=await r.json();
+    if(d.ok){
+      b.driveFolderId=d.folderId;b.driveFolderUrl=d.folderUrl;
+      lsSet(KB,JSON.stringify(bids));
+      if(ds)ds.innerHTML='📁 <a href="'+d.folderUrl+'" target="_blank" style="color:var(--scarlet)">Open Drive Folder ↗</a>';
+      toast('Drive folder created ✓');
+    }else if(d.error==='DRIVE_NOT_CONFIGURED'){
+      if(ds)ds.textContent='Drive not configured (add env vars)';
+    }else{
+      if(ds)ds.textContent='Drive error: '+(d.detail||d.error||'unknown');
+    }
+  }catch(e){if(ds)ds.textContent='Drive unavailable';}
+  finally{if(btn)btn.disabled=false;}
+}
+
+// ── FOLLOW-UP EMAIL ─────────────────────────────────────────────────────────
+async function sendFollowupEmail(type){
+  const b=bids.find(x=>x.id===selId);
+  if(!b){toast('Open a bid first',true);return;}
+  const email=(b.customer&&b.customer.email)||'';
+  const es=$('email-status');
+  if(!email){
+    // Fallback to local mailto
+    emailCustomer();
+    if(es)es.textContent='No email on file — opened local mail client';
+    return;
+  }
+  if(es)es.textContent='Sending…';
+  const payload={
+    type, to:email,
+    customerName:(b.customer&&b.customer.name)||'Customer',
+    jobAddress:b.address||b.city||'',
+    totalFormatted:b.total?'$'+Number(b.total).toLocaleString():'',
+    proposalId:b.id?b.id.slice(-6).toUpperCase():'',
+  };
+  try{
+    const r=await fetch('/api/followup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.ok){if(es)es.textContent='✓ Email sent to '+email;toast('Email sent ✓');}
+    else if(d.error==='EMAIL_NOT_CONFIGURED'){
+      emailCustomer();
+      if(es)es.textContent='Email not configured — opened local mail client';
+    }else{
+      if(es)es.textContent='Email error: '+(d.detail||d.error||'failed');
+    }
+  }catch(e){
+    emailCustomer();
+    if(es)es.textContent='Email unavailable — opened local mail client';
+  }
+}
+
+// ── SUPABASE COUNTS ─────────────────────────────────────────────────────────
+async function loadSbCounts(){
+  const card=$('sb-counts-card'),kpis=$('sb-kpis'),hint=$('sb-counts-hint');
+  if(!card||!kpis)return;
+  try{
+    const r=await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'counts'})});
+    const d=await r.json();
+    if(!d.ok){
+      if(d.error==='SUPABASE_NOT_CONFIGURED'){card.style.display='none';}
+      return;
+    }
+    card.style.display='';
+    const c=d.counts||{};
+    kpis.innerHTML=[
+      {label:'Total Leads',value:c.total_leads||0},
+      {label:'Approved',value:c.approved||0},
+      {label:'Won',value:c.won||0},
+      {label:'Customers',value:c.customers||0},
+    ].map(x=>`<div class="kpi"><div class="kv">${x.value}</div><div class="kl">${x.label}</div></div>`).join('');
+    if(hint)hint.textContent='From Supabase — updated now';
+  }catch(e){if(card)card.style.display='none';}
+}
+
+// ── CREW VIEW ───────────────────────────────────────────────────────────────
+var crewJobId=null;
+
+function renderCrewView(){
+  const today=new Date().toISOString().split('T')[0];
+  const cu=curUser&&curUser();
+  const myJobs=(jobs||[]).filter(j=>{
+    if(j.status==='done')return false;
+    if(j.date===today)return true;
+    if(cu&&j.crew&&j.crew.includes(cu.name))return true;
+    return false;
+  });
+  const el=$('crew-jobs-list');
+  if(!el)return;
+  $('crew-list').style.display='';$('crew-detail').style.display='none';crewJobId=null;
+  if(!myJobs.length){el.innerHTML='<div class="hint">No jobs scheduled for today.</div>';return;}
+  el.innerHTML=myJobs.map(j=>{
+    const cust=(j.customer&&j.customer.name)||'Job';
+    const addr=j.address||j.city||'';
+    const badge=j.status==='active'?'🟢':j.status==='done'?'✅':'⬜';
+    return `<div class="statrow" style="cursor:pointer;padding:10px 4px" onclick="crewOpenJob('${j.id}')"><span>${badge} <strong>${cust}</strong>${addr?' — '+addr:''}</span><span class="v" style="font-size:11px">${j.svc||''}</span></div>`;
+  }).join('');
+}
+
+function crewOpenJob(id){
+  crewJobId=id;
+  const j=crewJ();if(!j)return;
+  $('crew-list').style.display='none';$('crew-detail').style.display='';
+  const title=$('crew-job-title');
+  if(title)title.textContent=(j.customer&&j.customer.name)||'Job';
+  renderCrewTimeDisplay(j);
+  renderCrewChecklist(j);
+  renderCrewPhotos(j);
+  renderCrewCloseout(j);
+  const ta=$('crew-notes-ta');if(ta)ta.value=j.crewNotes||'';
+}
+
+function crewCloseDetail(){$('crew-list').style.display='';$('crew-detail').style.display='none';crewJobId=null;}
+function crewJ(){return (jobs||[]).find(x=>x.id===crewJobId)||null;}
+
+function renderCrewChecklist(j){
+  const el=$('crew-checklist');if(!el)return;
+  const chk=j.crewChecklist||{};
+  const items=[
+    {k:'safety',label:'Safety briefing done'},
+    {k:'equipment',label:'Equipment loaded & checked'},
+    {k:'materials',label:'Materials on site'},
+    {k:'ppe',label:'PPE worn by all crew'},
+    {k:'customer_notified',label:'Customer notified of start'},
+  ];
+  el.innerHTML=items.map(i=>{
+    const checked=chk[i.k]?'checked':'';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer"><input type="checkbox" ${checked} onchange="crewChk('${i.k}',this.checked,this)"> ${i.label}</label>`;
+  }).join('');
+}
+
+function renderCrewCloseout(j){
+  const el=$('crew-closeout');if(!el)return;
+  const chk=j.crewCloseout||{};
+  const items=[
+    {k:'before_photos',label:'Before photos taken'},
+    {k:'during_photos',label:'During photos taken'},
+    {k:'after_photos',label:'After photos taken'},
+    {k:'materials_noted',label:'Materials used noted'},
+    {k:'site_clean',label:'Site cleaned up'},
+    {k:'customer_walkthrough',label:'Customer walkthrough done'},
+    {k:'invoice_ready',label:'Invoice ready to send'},
+  ];
+  el.innerHTML=items.map(i=>{
+    const checked=chk[i.k]?'checked':'';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer"><input type="checkbox" ${checked} onchange="crewCloseoutChk('${i.k}',this.checked,this)"> ${i.label}</label>`;
+  }).join('');
+}
+
+function crewChk(k,v){
+  const j=crewJ();if(!j)return;
+  j.crewChecklist=j.crewChecklist||{};j.crewChecklist[k]=v;syncJobs();
+}
+
+function crewCloseoutChk(k,v){
+  const j=crewJ();if(!j)return;
+  j.crewCloseout=j.crewCloseout||{};j.crewCloseout[k]=v;syncJobs();
+}
+
+function crewNotes(v){const j=crewJ();if(!j)return;j.crewNotes=v;syncJobs();}
+
+function renderCrewPhotos(j){
+  const el=$('crew-photos');if(!el)return;
+  const photos=j.crewPhotos||[];
+  if(!photos.length){el.innerHTML='<div class="hint">No photos yet. Use the buttons above to capture.</div>';return;}
+  el.innerHTML=photos.map((p,i)=>{
+    const stageLabel={before:'Before',during:'During',after:'After'}[p.stage]||p.stage||'';
+    return `<div style="display:inline-block;margin:4px;vertical-align:top;text-align:center"><img src="${p.data}" style="width:88px;height:66px;object-fit:cover;border-radius:6px;border:2px solid var(--border)"><div style="font-size:10px;color:var(--mut)">${stageLabel}</div></div>`;
+  }).join('');
+}
+
+function crewPhoto(input,stage){
+  const j=crewJ();if(!j||!input.files||!input.files[0])return;
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    j.crewPhotos=j.crewPhotos||[];
+    j.crewPhotos.push({stage,data:e.target.result,ts:Date.now()});
+    syncJobs();
+    renderCrewPhotos(j);
+    // Auto-tick the matching closeout checkbox
+    if(stage==='before'){crewCloseoutChk('before_photos',true);if($('crew-closeout'))renderCrewCloseout(j);}
+    if(stage==='during'){crewCloseoutChk('during_photos',true);if($('crew-closeout'))renderCrewCloseout(j);}
+    if(stage==='after'){crewCloseoutChk('after_photos',true);if($('crew-closeout'))renderCrewCloseout(j);}
+    toast(stage.charAt(0).toUpperCase()+stage.slice(1)+' photo saved ✓');
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderCrewTimeDisplay(j){
+  const el=$('crew-time-display');if(!el)return;
+  const ci=j.clockIn?new Date(j.clockIn).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—';
+  const co=j.clockOut?new Date(j.clockOut).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—';
+  el.innerHTML=`<div class="statrow"><span>⏱ Clocked in</span><span class="v">${ci}</span></div><div class="statrow"><span>⏹ Clocked out</span><span class="v">${co}</span></div>`;
+}
+
+function crewMarkDone(){
+  const j=crewJ();if(!j)return;
+  const co=j.crewCloseout||{};
+  const done=Object.values(co).filter(Boolean).length;
+  const total=7;
+  if(done<total&&!confirm(`Only ${done}/${total} closeout items checked. Mark job done anyway?`))return;
+  jobStatus('done');
+  crewCloseDetail();
+  renderCrewView();
+}
 </script>
 </body>
 </html>
