@@ -136,6 +136,19 @@ textarea{resize:vertical;min-height:54px}
   </div>
 </div>
 
+<!-- PROFILE MODAL -->
+<div id="profile-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.86);align-items:center;justify-content:center">
+  <div class="card" style="max-width:340px;width:90%;margin:0">
+    <div class="ct">👤 My Profile</div>
+    <div class="fld"><label>Display name</label><input type="text" id="prof-name" autocomplete="off" maxlength="32"></div>
+    <div class="fld"><label>New PIN <span style="color:var(--mut);font-size:.74rem">(leave blank to keep current)</span></label><input type="password" id="prof-pin1" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="• • • •"></div>
+    <div class="fld"><label>Confirm PIN</label><input type="password" id="prof-pin2" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="• • • •"></div>
+    <div id="prof-err" style="color:var(--red);font-size:.8rem;min-height:1em"></div>
+    <div class="btnrow" style="margin-top:6px"><button class="btn btn-g" onclick="saveProfile()">Save</button><button class="btn btn-s" onclick="closeProfile()">Cancel</button></div>
+    <button class="btn btn-s btn-full" style="margin-top:8px" onclick="profileLock()">🔒 Lock / Switch User</button>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app">
   <div class="top">
@@ -151,7 +164,7 @@ textarea{resize:vertical;min-height:54px}
       <button class="mbtn" id="m-mroi" onclick="setMode('mroi')">📈 Marketing ROI</button>
       <button class="mbtn" id="m-admin" onclick="setMode('admin')">Admin</button>
     </div>
-    <div class="tuser" onclick="logout()"><span class="chip" id="rolechip">—</span> <b id="ulabel">—</b> · Lock</div>
+    <div class="tuser" onclick="openProfile()"><span class="chip" id="rolechip">—</span> <b id="ulabel">—</b> · Profile</div>
   </div>
   <div class="main">
 
@@ -786,6 +799,10 @@ function applyRole(){const canConsole=['owner','office','estimator'].includes(ro
  if(!canConsole&&mode!=='field'&&mode!=='jobs')setMode('field');}
 function drawPin(){$('pind').textContent=pin.replace(/./g,'●').padEnd(4,'—').split('').join(' ');}
 function logout(){window.__adminUnlocked=false;role='estimator';try{applyRole();}catch(e){}try{setMode('field');}catch(e){}try{toast('Admin locked');}catch(e){}}
+function openProfile(){const u=curUser();if(!u)return;$('prof-name').value=u.name||'';$('prof-pin1').value='';$('prof-pin2').value='';$('prof-err').textContent='';const m=$('profile-modal');m.style.display='flex';}
+function closeProfile(){$('profile-modal').style.display='none';}
+function profileLock(){closeProfile();logout();$('pin').style.display='flex';$('app').style.display='none';pin='';renderUsers();drawPin();}
+function saveProfile(){const nm=($('prof-name').value||'').trim();const p1=$('prof-pin1').value;const p2=$('prof-pin2').value;const err=$('prof-err');if(!nm){err.textContent='Name is required';return;}if(p1||p2){if(!/^\d{4}$/.test(p1)){err.textContent='PIN must be exactly 4 digits';return;}if(p1!==p2){err.textContent='PINs do not match';return;}}const idx=TEAM.findIndex(u=>u.id===user);if(idx<0){err.textContent='User not found';return;}TEAM[idx].name=nm;if(p1)TEAM[idx].pin=p1;lsSet(KT,JSON.stringify(TEAM));$('ulabel').textContent=nm.split(' ')[0].toUpperCase();closeProfile();renderUsers();toast('Profile saved ✓');}
 function showAdlock(){var o=document.getElementById('adlock');if(!o)return;var pw=document.getElementById('adlock-pw');if(pw)pw.value='';var er=document.getElementById('adlock-err');if(er)er.textContent='';o.style.display='flex';setTimeout(function(){try{pw&&pw.focus();}catch(e){}},60);}
 function adCancel(){var o=document.getElementById('adlock');if(o)o.style.display='none';}
 function adUnlock(){var pw=(document.getElementById('adlock-pw')||{}).value||'';if(pw!=='Clifton'){var er=document.getElementById('adlock-err');if(er)er.textContent='Wrong password';return;}window.__adminUnlocked=true;role='owner';try{applyRole();}catch(e){}var o=document.getElementById('adlock');if(o)o.style.display='none';setMode('admin');}
