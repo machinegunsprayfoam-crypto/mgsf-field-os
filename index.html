@@ -741,7 +741,7 @@ const GUARD_ROOF={ug5700:[3.00,5.50],ug5500:[3.00,5.50],si92:[3.00,5.50],armor10
 
 /* ============ STATE / STORE ============ */
 const KB='mg-fieldos-v1-bids', KS='mg-fieldos-v1-set', KF='mg-fieldos-v1-foam', KC='mg-fieldos-v1-cons', KT='mg-fieldos-v1-team', KJ='mg-fieldos-v1-jobs', KI='mg-fieldos-v1-inv', KTPL='mg-fieldos-v1-tpl', KSUG='mg-fieldos-v1-sug', KFUEL='mg-fieldos-v1-fuel', KCRM='mg-fieldos-v1-crm', KGOV='mg-fieldos-v1-gov', KCOAT='mg-fieldos-v1-coat', KCOMPLY='mg-fieldos-v1-comply', KREC='mg-fieldos-v1-rec', INTEROP='mgsf_interop_v1';
-const TEAM_SEED=[{id:'clifton',name:'Clifton Behner',pin:'0331',role:'owner'},{id:'talia',name:'Talia',pin:'1978',role:'owner'},{id:'daniel',name:'Daniel',pin:'1001',role:'estimator'},{id:'gino',name:'Gino',pin:'1002',role:'estimator'},{id:'eli',name:'Eli',pin:'1003',role:'estimator'},{id:'draven',name:'Draven',pin:'1004',role:'estimator'},{id:'liam',name:'Liam',pin:'1005',role:'estimator'}];
+const TEAM_SEED=[{id:'clifton',name:'Clifton Behner',pin:'0331',role:'owner'},{id:'talia',name:'Talia',pin:'1978',role:'office'},{id:'daniel',name:'Daniel',pin:'1001',role:'estimator'},{id:'gino',name:'Gino',pin:'1002',role:'estimator'},{id:'eli',name:'Eli',pin:'1003',role:'estimator'},{id:'draven',name:'Draven',pin:'1004',role:'estimator'},{id:'liam',name:'Liam',pin:'1005',role:'estimator'}];
 let TEAM=JSON.parse(localStorage.getItem(KT)||'null')||TEAM_SEED.slice();
 let user='clifton',role='owner',pin='',svc='foam',zone='walls',roofShape='flat',mode='field',selId=null;
 let bids=JSON.parse(localStorage.getItem(KB)||'[]');
