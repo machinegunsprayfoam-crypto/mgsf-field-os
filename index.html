@@ -518,6 +518,8 @@ textarea{resize:vertical;min-height:54px}
           <div class="ct">Proposal</div>
           <div id="prop-prev" style="background:#fff;color:#111;border-radius:8px;padding:16px;font-size:.8rem;line-height:1.6"></div>
           <div class="btnrow" style="margin-top:10px"><button class="btn btn-p btn-full" onclick="printProposal()">🖨️ Print / Save PDF</button><button class="btn btn-s" onclick="emailCustomer()">✉️ Email</button><button class="btn btn-s" onclick="location.href='https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply'">💳 Financing</button><button class="btn btn-s" onclick="window.open('https://app.gethearth.com/requests/a49d1406-80c4-491a-923e-c7729748699a','_blank')" title="Your incoming Hearth financing requests">📥 Hearth Requests</button></div>
+          <div class="btnrow" style="margin-top:6px"><button class="btn btn-g" id="cloud-save-btn" onclick="cloudSaveProposal()">☁ Save to Cloud</button><button class="btn btn-s" id="gdoc-btn" onclick="createGoogleDoc()">📄 Google Doc</button><button class="btn btn-s" id="email-proposal-btn" onclick="emailProposal()">✉️ Email Proposal</button><button class="btn btn-s" id="review-request-btn" onclick="emailReviewRequest()">⭐ Request Review</button></div>
+          <div id="cloud-action-out" style="margin-top:6px;font-size:.78rem"></div>
         </div>
         <div class="card" id="sign-sec">
           <div class="ct">✍️ Customer Acceptance</div>
@@ -2426,6 +2428,66 @@ function renderSug(){const l=$('sug-list');if(!l)return;const arr=[...SUG].sort(
 let deferredPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;const b=$('install-btn');if(b)b.style.display='';});
 function shareReview(){var u='https://www.google.com/search?q=Machine+Gun+Spray+Foam+%26+Concrete+Lifting+Glendive+MT';var msg='Thanks for choosing Machine Gun Spray Foam & Concrete Lifting! If you were happy with the work, a quick Google review really helps our veteran-owned crew: '+u;try{if(navigator.share){navigator.share({title:'Leave us a review',text:msg});return;}}catch(e){}try{var sms='sms:?&body='+encodeURIComponent(msg);window.location.href=sms;return;}catch(e){}try{navigator.clipboard.writeText(msg);toast('Review message copied');}catch(e){toast('Review link: '+u);}}
 function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;const b=$('install-btn');if(b)b.style.display='none';});}else{toast('Use your browser menu → Add to Home Screen');}}
+
+/* ============ CLOUD / DRIVE / EMAIL ACTIONS ============ */
+function cloudActionOut(msg,isErr){const el=$('cloud-action-out');if(el)el.innerHTML='<span style="color:'+(isErr?'#C8102E':'#0a7d33')+'">'+msg+'</span>';}
+function cloudPost(url,payload,btn,label){
+  if(btn){btn.disabled=true;btn.textContent='⏳ …';}
+  return fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json()).finally(()=>{if(btn){btn.disabled=false;btn.textContent=label;}});}
+
+function cloudSaveProposal(){
+  const b=bids.find(x=>x.id===selId);if(!b){toast('No bid selected',true);return;}
+  const btn=$('cloud-save-btn');
+  cloudPost('/api/lead',{bid:b},btn,'☁ Save to Cloud')
+    .then(j=>{
+      if(j&&j.ok){cloudActionOut('✓ Saved to cloud (customer #'+j.customerId.slice(0,8)+'…)');}
+      else if(j&&j.error==='SUPABASE_NOT_CONFIGURED'){cloudActionOut('Add SUPABASE_URL + SUPABASE_SERVICE_KEY in Vercel to enable cloud saving.',true);}
+      else{cloudActionOut('Cloud save failed — try again.',true);}
+    }).catch(()=>cloudActionOut('Cloud save failed — check your connection.',true));}
+
+function createGoogleDoc(){
+  const b=bids.find(x=>x.id===selId);if(!b){toast('No bid selected',true);return;}
+  const btn=$('gdoc-btn');
+  cloudPost('/api/drive',{mode:'doc',bid:b},btn,'📄 Google Doc')
+    .then(j=>{
+      if(j&&j.ok&&j.docUrl){
+        try{window.open(j.docUrl,'_blank');}catch(_){}
+        const safe=j.docUrl.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        cloudActionOut('✓ Google Doc created: <a href="'+safe+'" target="_blank" rel="noopener" style="color:#1d4ed8">Open Doc</a>');
+        if(b){b.driveDocUrl=j.docUrl;lsSet(KB,JSON.stringify(bids));try{upsertEstimate(b);}catch(_){}}
+      } else if(j&&j.error==='DRIVE_NOT_CONFIGURED'){cloudActionOut('Add GOOGLE_SERVICE_ACCOUNT_JSON + GOOGLE_DRIVE_ROOT_FOLDER_ID in Vercel.',true);}
+      else{cloudActionOut('Google Doc creation failed — check Drive settings.',true);}
+    }).catch(()=>cloudActionOut('Google Doc failed — check your connection.',true));}
+
+function emailProposal(){
+  const b=bids.find(x=>x.id===selId);if(!b){toast('No bid selected',true);return;}
+  const em=(b.customer&&b.customer.email)||'';
+  if(!em||!em.includes('@')){toast('No email on this bid — add customer email first',true);return;}
+  const btn=$('email-proposal-btn');
+  const payload={to:em,customerName:(b.customer&&b.customer.name)||'',proposalId:b.proposalId||b.id||'',
+    total:b.sellPrice||0,driveDocUrl:b.driveDocUrl||''};
+  cloudPost('/api/followup',payload,btn,'✉️ Email Proposal')
+    .then(j=>{
+      if(j&&j.ok){cloudActionOut('✓ Proposal emailed to '+em);}
+      else if(j&&j.error==='RESEND_NOT_CONFIGURED'){cloudActionOut('Add RESEND_API_KEY in Vercel to enable email.',true);}
+      else{cloudActionOut('Email failed — check Resend settings.',true);}
+    }).catch(()=>cloudActionOut('Email failed — check your connection.',true));}
+
+function emailReviewRequest(){
+  const b=bids.find(x=>x.id===selId);if(!b){toast('No bid selected',true);return;}
+  const em=(b.customer&&b.customer.email)||'';
+  if(!em||!em.includes('@')){toast('No email on this bid — add customer email first',true);return;}
+  if(!confirm('Send Google review request to '+em+'?'))return;
+  const btn=$('review-request-btn');
+  const payload={mode:'review',to:em,customerName:(b.customer&&b.customer.name)||'Valued Customer'};
+  cloudPost('/api/followup',payload,btn,'⭐ Request Review')
+    .then(j=>{
+      if(j&&j.ok){cloudActionOut('✓ Review request sent to '+em);}
+      else if(j&&j.error==='RESEND_NOT_CONFIGURED'){cloudActionOut('Add RESEND_API_KEY in Vercel to enable email.',true);}
+      else{cloudActionOut('Email failed — check Resend settings.',true);}
+    }).catch(()=>cloudActionOut('Email failed — check your connection.',true));}
+
 fillProducts();qbFill();fillCons();renderUsers();renderZone();renderRoof();renderPen();drawPin();fillTpl();renderSug();renderBidPhotos();renderFuelLog();renderGov();renderRec();
 role='estimator';try{document.getElementById('pin').style.display='none';}catch(e){}try{var _a=document.getElementById('app');if(_a)_a.style.display='flex';}catch(e){}try{var _ul=document.getElementById('ulabel');if(_ul)_ul.textContent='MGSF';var _rc=document.getElementById('rolechip');if(_rc){_rc.textContent='crew';_rc.className='chip';}}catch(e){}window.__adminUnlocked=false;try{applyRole();}catch(e){}try{setMode('field');}catch(e){}try{var _jd=document.getElementById('job-date');if(_jd&&!_jd.value)_jd.value=new Date().toISOString().split('T')[0];}catch(e){}try{restoreDraft();}catch(e){}
 if('serviceWorker' in navigator && location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(function(){});}
