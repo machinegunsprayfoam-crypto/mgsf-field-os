@@ -180,8 +180,8 @@ module.exports = async (req, res) => {
   const total = Number((body && body.total) || 0);
   const deposit = Math.round(total * 0.5 * 100) / 100;
 
-  const totalFormatted = total > 0 ? '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '';
-  const depositFormatted = deposit > 0 ? '$' + deposit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '';
+  const totalFormatted = total > 0 ? '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+  const depositFormatted = deposit > 0 ? '$' + deposit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
 
   let subject, html, from;
 

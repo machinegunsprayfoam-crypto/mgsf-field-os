@@ -116,7 +116,6 @@ module.exports = async (req, res) => {
       const filters = [];
       if (phone) filters.push('phone=eq.' + encodeURIComponent(phone));
       if (email) filters.push('email=eq.' + encodeURIComponent(email));
-      const qs = filters.map(f => f).join('&');
       const existing = await supabaseRequest(sbUrl, sbKey, 'GET',
         '/customers?or=(' + filters.join(',') + ')&limit=1', null);
       if (Array.isArray(existing) && existing.length) {
@@ -176,7 +175,7 @@ module.exports = async (req, res) => {
       project_name: clean(cust.name, 200) || null,
       scope_summary: scopeSummary(bid),
       square_feet: sf || null,
-      board_feet: null, // computed column in DB
+      // board_feet is a generated always column in the DB schema (square_feet * thickness_inches) — do not set it directly
       unit_price: sf > 0 ? Math.round((sellPrice / sf) * 100) / 100 : null,
       material_cost: totalCost || null,
       total: sellPrice || null,

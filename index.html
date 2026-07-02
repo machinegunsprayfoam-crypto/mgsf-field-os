@@ -2455,7 +2455,7 @@ function createGoogleDoc(){
         try{window.open(j.docUrl,'_blank');}catch(_){}
         const safe=j.docUrl.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
         cloudActionOut('✓ Google Doc created: <a href="'+safe+'" target="_blank" rel="noopener" style="color:#1d4ed8">Open Doc</a>');
-        if(b){b.driveDocUrl=j.docUrl;lsSet(KB,JSON.stringify(bids));try{upsertEstimate(b);}catch(_){}}
+        if(b){b.driveDocUrl=j.docUrl;lsSet(KB,JSON.stringify(bids));try{upsertEstimate(b);}catch(err){console.warn('upsertEstimate after gdoc:',err);}}
       } else if(j&&j.error==='DRIVE_NOT_CONFIGURED'){cloudActionOut('Add GOOGLE_SERVICE_ACCOUNT_JSON + GOOGLE_DRIVE_ROOT_FOLDER_ID in Vercel.',true);}
       else{cloudActionOut('Google Doc creation failed — check Drive settings.',true);}
     }).catch(()=>cloudActionOut('Google Doc failed — check your connection.',true));}

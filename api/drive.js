@@ -121,8 +121,9 @@ async function driveRequest(token, method, path, queryParams, body, contentType)
 
 // Create (or find) a named subfolder inside parentId
 async function ensureFolder(token, parentId, name) {
-  // Search for existing folder with this name and parent
-  const q = `name='${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  // Sanitize for the Drive query: escape backslashes then single quotes
+  const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const q = `name='${safeName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
   const existing = await driveRequest(token, 'GET', '/files', {
     q, fields: 'files(id,name)', pageSize: '1', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'
   });
@@ -301,8 +302,9 @@ module.exports = async (req, res) => {
 
     if (mode === 'folder') {
       const customerName = String((body && body.customerName) || 'Unknown').trim().slice(0, 120);
+      const cleanCustomerName = customerName.replace(/[/\\:*?"<>|]/g, '-');
       const estNum = String((body && body.estimateNumber) || '').trim().slice(0, 40);
-      const folderName = customerName + (estNum ? ' — ' + estNum : '') + ' — ' + new Date().toISOString().slice(0, 10);
+      const folderName = cleanCustomerName + (estNum ? ' — ' + estNum : '') + ' — ' + new Date().toISOString().slice(0, 10);
 
       const folderId = await ensureFolder(token, rootFolderId, folderName);
       const folderUrl = 'https://drive.google.com/drive/folders/' + folderId;
