@@ -23,6 +23,8 @@ type EstimateWithCustomer = Estimate & {
 export default function EstimatesPage() {
   const [estimates, setEstimates] = useState<EstimateWithCustomer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [portalLinks, setPortalLinks] = useState<Record<string, string>>({});
+  const [generating, setGenerating] = useState<string | null>(null);
 
   async function fetchEstimates() {
     setLoading(true);
@@ -50,6 +52,35 @@ export default function EstimatesPage() {
 
   function serviceLabel(s: string) {
     return serviceLabels[s as ServiceType] ?? s;
+  }
+
+  async function generatePortalLink(estimateId: string) {
+    setGenerating(estimateId);
+    // Create or retrieve portal token
+    const { data: existing } = await supabase
+      .from("portal_tokens")
+      .select("token")
+      .eq("estimate_id", estimateId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    let token = existing?.token;
+    if (!token) {
+      const { data: created } = await supabase
+        .from("portal_tokens")
+        .insert({ estimate_id: estimateId })
+        .select("token")
+        .single();
+      token = created?.token;
+    }
+
+    if (token) {
+      const link = `${window.location.origin}/portal/${token}`;
+      setPortalLinks((p) => ({ ...p, [estimateId]: link }));
+      await navigator.clipboard.writeText(link).catch(() => {});
+    }
+    setGenerating(null);
   }
 
   return (
@@ -107,9 +138,25 @@ export default function EstimatesPage() {
                       {new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                     <td>
-                      <a href={`/estimates/${e.id}`} className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }}>
-                        View →
-                      </a>
+                      <div className="flex gap-3">
+                        <a href={`/estimates/${e.id}`} className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }}>
+                          View →
+                        </a>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: "4px 10px", fontSize: 12 }}
+                          onClick={() => generatePortalLink(e.id)}
+                          disabled={generating === e.id}
+                          title="Generate customer portal link"
+                        >
+                          {generating === e.id ? "…" : portalLinks[e.id] ? "📋 Copied!" : "🔗 Share"}
+                        </button>
+                      </div>
+                      {portalLinks[e.id] && (
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {portalLinks[e.id]}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -121,3 +168,4 @@ export default function EstimatesPage() {
     </>
   );
 }
+

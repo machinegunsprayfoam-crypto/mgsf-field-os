@@ -106,6 +106,122 @@ export type FieldPhoto = {
   caption: string | null;
 };
 
+export type InventoryItem = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  category: string;
+  unit: string;
+  quantity_on_hand: number;
+  reorder_point: number;
+  unit_cost: number;
+  supplier: string | null;
+  part_number: string | null;
+  location: string | null;
+  notes: string | null;
+};
+
+export type Equipment = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  equipment_type: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  serial_number: string | null;
+  vin: string | null;
+  license_plate: string | null;
+  status: string;
+  location: string | null;
+  purchase_date: string | null;
+  purchase_price: number | null;
+  next_service_date: string | null;
+  notes: string | null;
+};
+
+export type GovconDoc = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  doc_type: string;
+  title: string;
+  content: string | null;
+  status: string;
+  expiration_date: string | null;
+  file_url: string | null;
+  notes: string | null;
+};
+
+export type GovconOpportunity = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  title: string;
+  solicitation_number: string | null;
+  agency: string | null;
+  naics_code: string | null;
+  psc_code: string | null;
+  posted_date: string | null;
+  due_date: string | null;
+  estimated_value: number | null;
+  status: string;
+  source_url: string | null;
+  notes: string | null;
+};
+
+export type SafetyChecklist = {
+  id: string;
+  created_at: string;
+  project_id: string | null;
+  checklist_type: string;
+  completed_by: string | null;
+  completed_at: string | null;
+  status: string;
+  notes: string | null;
+  items: { label: string; checked: boolean }[];
+};
+
+export type SafetyIncident = {
+  id: string;
+  created_at: string;
+  project_id: string | null;
+  incident_date: string;
+  incident_type: string;
+  severity: string;
+  involved_person: string | null;
+  description: string;
+  corrective_action: string | null;
+  reported_by: string | null;
+  osha_recordable: boolean;
+};
+
+export type MarketingPost = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  title: string;
+  content: string | null;
+  platform: string;
+  status: string;
+  scheduled_date: string | null;
+  published_at: string | null;
+  image_url: string | null;
+  tags: string | null;
+  notes: string | null;
+};
+
+export type PortalToken = {
+  id: string;
+  created_at: string;
+  token: string;
+  estimate_id: string;
+  expires_at: string | null;
+  viewed_at: string | null;
+};
+
 export type Estimate = {
   id: string;
   customer_id: string;

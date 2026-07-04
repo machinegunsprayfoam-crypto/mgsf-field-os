@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "MGSF Field OS",
@@ -10,24 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <div className="layout">
-          <nav className="sidebar">
-            <div className="sidebar-logo">
-              <span className="logo-icon">⚡</span>
-              <span className="logo-text">MGSF OS</span>
-            </div>
-            <ul className="nav-links">
-              <li><a href="/">Dashboard</a></li>
-              <li><a href="/leads">Leads</a></li>
-              <li><a href="/customers">Customers</a></li>
-              <li><a href="/estimate">+ New estimate</a></li>
-              <li><a href="/estimates">Estimates</a></li>
-              <li><a href="/projects">Projects</a></li>
-              <li><a href="/photos">Photo log</a></li>
-            </ul>
-          </nav>
-          <main className="main-content">{children}</main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
