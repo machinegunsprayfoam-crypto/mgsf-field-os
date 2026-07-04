@@ -18,8 +18,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <ul className="nav-links">
               <li><a href="/">Dashboard</a></li>
+              <li><a href="/leads">Leads</a></li>
               <li><a href="/customers">Customers</a></li>
-              <li><a href="/estimate">Estimating</a></li>
+              <li><a href="/estimate">+ New estimate</a></li>
+              <li><a href="/estimates">Estimates</a></li>
+              <li><a href="/projects">Projects</a></li>
+              <li><a href="/photos">Photo log</a></li>
             </ul>
           </nav>
           <main className="main-content">{children}</main>

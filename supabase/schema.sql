@@ -106,9 +106,49 @@ create table if not exists public.sync_events (
   external_id text
 );
 
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid references public.estimates(id) on delete set null,
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  property_id uuid references public.properties(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  project_name text not null,
+  status text not null default 'scheduled',
+  scheduled_date date,
+  completion_date date,
+  crew_lead text,
+  crew_notes text,
+  internal_notes text,
+  google_drive_folder_id text
+);
+
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  first_name text,
+  last_name text,
+  company_name text,
+  phone text,
+  email text,
+  lead_source text,
+  service_interest text,
+  property_address text,
+  city text,
+  state text,
+  square_feet numeric,
+  notes text,
+  status text not null default 'new',
+  converted_customer_id uuid references public.customers(id) on delete set null
+);
+
 create index if not exists idx_properties_customer_id on public.properties(customer_id);
 create index if not exists idx_estimates_customer_id on public.estimates(customer_id);
 create index if not exists idx_estimates_property_id on public.estimates(property_id);
 create index if not exists idx_estimates_status on public.estimates(status);
 create index if not exists idx_field_photos_estimate_id on public.field_photos(estimate_id);
 create index if not exists idx_sync_events_entity on public.sync_events(entity_type, entity_id);
+create index if not exists idx_projects_customer_id on public.projects(customer_id);
+create index if not exists idx_projects_status on public.projects(status);
+create index if not exists idx_leads_status on public.leads(status);

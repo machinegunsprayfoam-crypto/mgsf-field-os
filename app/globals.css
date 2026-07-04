@@ -353,3 +353,16 @@ tr:hover td {
 .justify-between { justify-content: space-between; }
 .text-muted { color: var(--text-muted); font-size: 13px; }
 .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+
+/* Print styles (proposal) */
+@media print {
+  .sidebar, .no-print { display: none !important; }
+  .main-content { margin-left: 0 !important; padding: 0 !important; }
+  body { background: #fff !important; color: #000 !important; font-size: 13pt; }
+  .card { border: none !important; background: #fff !important; padding: 0 !important; }
+  .proposal-header { border-bottom: 2px solid #000; padding-bottom: 16px; margin-bottom: 24px; }
+  .result-box { border: 1px solid #ccc !important; }
+  .result-row { border-color: #ccc !important; }
+  .btn { display: none !important; }
+  a { color: inherit; text-decoration: none; }
+}

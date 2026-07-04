@@ -57,6 +57,55 @@ export type Property = {
   access_notes: string | null;
 };
 
+export type Lead = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  phone: string | null;
+  email: string | null;
+  lead_source: string | null;
+  service_interest: string | null;
+  property_address: string | null;
+  city: string | null;
+  state: string | null;
+  square_feet: number | null;
+  notes: string | null;
+  status: string;
+  converted_customer_id: string | null;
+};
+
+export type Project = {
+  id: string;
+  estimate_id: string | null;
+  customer_id: string;
+  property_id: string | null;
+  created_at: string;
+  updated_at: string;
+  project_name: string;
+  status: string;
+  scheduled_date: string | null;
+  completion_date: string | null;
+  crew_lead: string | null;
+  crew_notes: string | null;
+  internal_notes: string | null;
+  google_drive_folder_id: string | null;
+};
+
+export type FieldPhoto = {
+  id: string;
+  customer_id: string | null;
+  property_id: string | null;
+  estimate_id: string | null;
+  created_at: string;
+  photo_stage: string;
+  file_name: string;
+  file_url: string | null;
+  caption: string | null;
+};
+
 export type Estimate = {
   id: string;
   customer_id: string;
