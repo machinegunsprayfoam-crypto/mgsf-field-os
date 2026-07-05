@@ -1,6 +1,7 @@
 "use client";
 
-import { type ReactNode, usePathname } from "next/navigation";
+import { type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "@/lib/auth/context";
 import { AuthGuard } from "@/lib/auth/guard";
 
