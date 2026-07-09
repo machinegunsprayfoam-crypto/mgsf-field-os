@@ -7,47 +7,10 @@ import { AuthGuard } from "@/lib/auth/guard";
 
 const NAV_SECTIONS = [
   {
-    label: "CRM",
-    links: [
-      { href: "/", label: "Dashboard" },
-      { href: "/leads", label: "Leads" },
-      { href: "/customers", label: "Customers" },
-    ],
-  },
-  {
-    label: "Estimating",
+    label: "Klyfton AI Estimator",
     links: [
       { href: "/estimate", label: "+ New estimate" },
-      { href: "/estimates", label: "All estimates" },
-    ],
-  },
-  {
-    label: "Operations",
-    links: [
-      { href: "/projects", label: "Projects" },
-      { href: "/schedule", label: "Schedule" },
-      { href: "/photos", label: "Photo log" },
-    ],
-  },
-  {
-    label: "Assets",
-    links: [
-      { href: "/inventory", label: "Inventory" },
-      { href: "/equipment", label: "Equipment & Fleet" },
-    ],
-  },
-  {
-    label: "Intelligence",
-    links: [
-      { href: "/reports", label: "Reports & KPIs" },
-      { href: "/marketing", label: "Marketing hub" },
-      { href: "/govcon", label: "Gov contracting" },
-    ],
-  },
-  {
-    label: "Compliance",
-    links: [
-      { href: "/safety", label: "Safety & OSHA" },
+      { href: "/estimates", label: "Estimate history" },
     ],
   },
 ];
@@ -60,7 +23,10 @@ function Sidebar() {
     <nav className="sidebar">
       <div className="sidebar-logo">
         <span className="logo-icon">⚡</span>
-        <span className="logo-text">MGSF OS</span>
+        <span className="logo-text">Klyfton</span>
+      </div>
+      <div style={{ padding: "0 12px 12px", color: "var(--text-muted)", fontSize: 12, lineHeight: 1.4 }}>
+        Estimator-only app for Machine Gun Spray Foam &amp; Concrete Lifting.
       </div>
       <ul className="nav-links" style={{ flex: 1, overflowY: "auto" }}>
         {NAV_SECTIONS.map((section) => (
