@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase, type Estimate, type Customer } from "@/lib/supabase";
 import { serviceLabels, type ServiceType } from "@/lib/estimating";
@@ -167,7 +168,7 @@ export default function EstimateDetailPage() {
   if (notFound || !estimate) return (
     <div style={{ padding: 32 }}>
       <p className="text-muted">Estimate not found.</p>
-      <a href="/estimates" className="btn btn-ghost mt-4">← Back to estimates</a>
+      <Link href="/estimates" className="btn btn-ghost mt-4">← Back to estimates</Link>
     </div>
   );
 
@@ -176,13 +177,13 @@ export default function EstimateDetailPage() {
       <div className="page-header no-print">
         <div className="flex items-center justify-between">
           <div>
-            <a href="/estimates" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>← Estimates</a>
+            <Link href="/estimates" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>← Estimates</Link>
             <h1 style={{ marginTop: 4 }}>{estimate.project_name ?? "Estimate"}</h1>
             <p>Proposal preview — printable</p>
           </div>
           <div className="flex gap-3">
             <button className="btn btn-ghost" onClick={() => window.print()}>🖨 Print / PDF</button>
-            <a href="/estimates" className="btn btn-ghost">← Back</a>
+            <Link href="/estimates" className="btn btn-ghost">← Back</Link>
           </div>
         </div>
       </div>

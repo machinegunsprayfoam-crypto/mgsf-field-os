@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   calculateEstimate,
@@ -97,6 +98,7 @@ export default function EstimatePage() {
       scope_summary: notes.trim() || null,
       square_feet: input.squareFeet,
       thickness_inches: input.thicknessInches ?? 0,
+      board_feet: result.boardFeet,
       unit_price: input.unitPrice,
       material_cost: input.materialCost ?? 0,
       labor_cost: input.laborCost ?? 0,
@@ -123,7 +125,7 @@ export default function EstimatePage() {
             <h1>New Estimate</h1>
             <p>Calculate job costs and save to the database</p>
           </div>
-          <a href="/customers" className="btn btn-ghost">View all estimates</a>
+          <Link href="/estimates" className="btn btn-ghost">View all estimates</Link>
         </div>
       </div>
 

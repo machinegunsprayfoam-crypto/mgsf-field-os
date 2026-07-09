@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
-type Params = { token: string };
+type Params = Promise<{ token: string }>;
 
 async function getPortalData(token: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,7 +31,8 @@ async function getPortalData(token: string) {
 }
 
 export default async function PortalPage({ params }: { params: Params }) {
-  const data = await getPortalData(params.token);
+  const { token } = await params;
+  const data = await getPortalData(token);
 
   if (!data) return notFound();
 
@@ -119,7 +120,7 @@ export default async function PortalPage({ params }: { params: Params }) {
               )}
               {estimate.thickness_inches > 0 && (
                 <div style={{ background: "#f9fafb", borderRadius: 8, padding: 16, textAlign: "center" }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "#111" }}>{estimate.thickness_inches}"</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: "#111" }}>{estimate.thickness_inches}&Prime;</div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>Thickness</div>
                 </div>
               )}
