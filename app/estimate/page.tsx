@@ -33,6 +33,15 @@ function fmtNum(n: number, dec = 0) {
   return n.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
+function splitCustomerName(customerName: string) {
+  const clean = customerName.trim().replace(/\s+/g, " ");
+  const nameParts = clean.split(" ");
+  return {
+    first_name: nameParts[0] ?? "",
+    last_name: nameParts.slice(1).join(" ") || null,
+  };
+}
+
 export default function EstimatePage() {
   const [input, setInput] = useState<EstimateInput>(defaultInput);
   const [result, setResult] = useState<EstimateResult | null>(null);
@@ -43,6 +52,7 @@ export default function EstimatePage() {
   const [notes, setNotes] = useState("");
 
   const isFoam = FOAM_SERVICES.includes(input.serviceType);
+  const canCalculate = input.squareFeet > 0 && input.unitPrice > 0 && (!isFoam || Number(input.thicknessInches ?? 0) > 0);
 
   function setField<K extends keyof EstimateInput>(key: K, value: EstimateInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -51,46 +61,39 @@ export default function EstimatePage() {
   }
 
   function handleCalculate() {
+    if (!canCalculate) {
+      setSaveMsg("⚠ Enter square feet, unit price, and foam thickness before calculating.");
+      return;
+    }
     setResult(calculateEstimate(input));
+    setSaveMsg("");
   }
 
   async function handleSave() {
     if (!result) return;
+    if (!customerName.trim()) {
+      setSaveMsg("⚠ Customer name is required before saving a draft estimate.");
+      return;
+    }
+
     setSaving(true);
     setSaveMsg("");
 
-    // Upsert customer by name if provided
-    let customerId: string | null = null;
-    if (customerName.trim()) {
-      const nameParts = customerName.trim().split(" ");
-      const firstName = nameParts[0] ?? "";
-      const lastName = nameParts.slice(1).join(" ") || null;
-      const { data: custData, error: custErr } = await supabase
-        .from("customers")
-        .insert({ first_name: firstName, last_name: lastName })
-        .select("id")
-        .single();
-      if (!custErr && custData) customerId = custData.id;
-    }
+    const name = splitCustomerName(customerName);
+    const { data: custData, error: custErr } = await supabase
+      .from("customers")
+      .insert(name)
+      .select("id")
+      .single();
 
-    if (!customerId) {
-      // Fetch or create a placeholder customer
-      const { data: custData } = await supabase
-        .from("customers")
-        .select("id")
-        .limit(1)
-        .single();
-      customerId = custData?.id ?? null;
-    }
-
-    if (!customerId) {
-      setSaveMsg("⚠ No customer found — add a customer first.");
+    if (custErr || !custData?.id) {
       setSaving(false);
+      setSaveMsg("⚠ Customer save failed: " + (custErr?.message || "No customer ID returned."));
       return;
     }
 
     const { error } = await supabase.from("estimates").insert({
-      customer_id: customerId,
+      customer_id: custData.id,
       status: "draft",
       service_type: input.serviceType,
       project_name: projectName.trim() || null,
@@ -109,10 +112,19 @@ export default function EstimatePage() {
 
     setSaving(false);
     if (error) {
-      setSaveMsg("⚠ Save failed: " + error.message);
+      setSaveMsg("⚠ Estimate save failed: " + error.message);
     } else {
-      setSaveMsg("✓ Estimate saved as draft.");
+      setSaveMsg("✓ Klyfton saved this estimate as a draft. Owner review required before sending.");
     }
+  }
+
+  function handleReset() {
+    setResult(null);
+    setInput(defaultInput);
+    setCustomerName("");
+    setProjectName("");
+    setNotes("");
+    setSaveMsg("");
   }
 
   return (
@@ -120,14 +132,20 @@ export default function EstimatePage() {
       <div className="page-header">
         <div className="flex items-center justify-between">
           <div>
-            <h1>New Estimate</h1>
-            <p>Calculate job costs and save to the database</p>
+            <h1>Klyfton AI Estimator</h1>
+            <p>Estimator-only pricing tool for Machine Gun Spray Foam &amp; Concrete Lifting.</p>
           </div>
-          <a href="/customers" className="btn btn-ghost">View all estimates</a>
+          <a href="/estimates" className="btn btn-ghost">Estimate history</a>
         </div>
       </div>
 
-      {/* Job Info */}
+      <div className="card" style={{ borderColor: "rgba(249,115,22,.35)", marginBottom: 18 }}>
+        <h2>Draft-only guardrail</h2>
+        <p className="text-muted">
+          Klyfton can calculate and save draft estimates. Final customer pricing still requires owner approval before it becomes a quote or proposal.
+        </p>
+      </div>
+
       <div className="card">
         <h2>Job info</h2>
         <div className="form-grid">
@@ -152,7 +170,7 @@ export default function EstimatePage() {
           <div className="field cols-1">
             <label>Scope / notes</label>
             <textarea
-              placeholder="Describe the work, access conditions, special requirements..."
+              placeholder="Describe the work, access conditions, substrate, special requirements, photos needed, and assumptions."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -160,7 +178,6 @@ export default function EstimatePage() {
         </div>
       </div>
 
-      {/* Service + Measurements */}
       <div className="card">
         <h2>Service &amp; measurements</h2>
         <div className="form-grid cols-3">
@@ -207,7 +224,7 @@ export default function EstimatePage() {
             />
           </div>
           <div className="field">
-            <label>Waste % (overage)</label>
+            <label>Waste % / overage</label>
             <input
               type="number"
               min={0}
@@ -229,7 +246,6 @@ export default function EstimatePage() {
         </div>
       </div>
 
-      {/* Direct Costs */}
       <div className="card">
         <h2>Direct costs</h2>
         <div className="form-grid cols-3">
@@ -253,26 +269,28 @@ export default function EstimatePage() {
         </div>
       </div>
 
-      {/* Calculate button */}
       <div className="flex gap-3 mt-4">
-        <button className="btn btn-primary" onClick={handleCalculate}>
+        <button className="btn btn-primary" onClick={handleCalculate} disabled={!canCalculate}>
           Calculate estimate
         </button>
+        <button className="btn btn-ghost" onClick={handleReset}>
+          Reset
+        </button>
       </div>
+      {saveMsg && <p className="text-muted mt-4">{saveMsg}</p>}
 
-      {/* Results */}
       {result && (
         <div className="card mt-6">
           <h2>Estimate results</h2>
           <div className="result-box">
             {isFoam && (
               <div className="result-row">
-                <span className="rlabel">Board feet (gross)</span>
+                <span className="rlabel">Board feet before waste</span>
                 <span className="rvalue">{fmtNum(result.boardFeet)} BF</span>
               </div>
             )}
             <div className="result-row">
-              <span className="rlabel">Adjusted quantity (w/ waste)</span>
+              <span className="rlabel">Adjusted quantity with waste</span>
               <span className="rvalue">
                 {fmtNum(result.adjustedQuantity)} {isFoam ? "BF" : "SF"}
               </span>
@@ -290,7 +308,7 @@ export default function EstimatePage() {
               <span className="rvalue">{fmt(result.markup)}</span>
             </div>
             <div className="result-row highlight">
-              <span className="rlabel">Total price</span>
+              <span className="rlabel">Draft total price</span>
               <span className="rvalue">{fmt(result.total)}</span>
             </div>
             <div className="result-row profit">
@@ -305,16 +323,12 @@ export default function EstimatePage() {
               onClick={handleSave}
               disabled={saving}
             >
-              {saving ? "Saving..." : "Save estimate"}
+              {saving ? "Saving..." : "Save draft estimate"}
             </button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => { setResult(null); setInput(defaultInput); setCustomerName(""); setProjectName(""); setNotes(""); setSaveMsg(""); }}
-            >
+            <button className="btn btn-ghost" onClick={handleReset}>
               Reset
             </button>
           </div>
-          {saveMsg && <p className="text-muted mt-4">{saveMsg}</p>}
         </div>
       )}
     </>
