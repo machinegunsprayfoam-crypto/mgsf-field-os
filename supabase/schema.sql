@@ -106,41 +106,52 @@ create table if not exists public.sync_events (
   external_id text
 );
 
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid references public.estimates(id) on delete set null,
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  property_id uuid references public.properties(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  project_name text not null,
+  status text not null default 'scheduled',
+  scheduled_date date,
+  completion_date date,
+  crew_lead text,
+  crew_notes text,
+  internal_notes text,
+  google_drive_folder_id text
+);
+
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  first_name text,
+  last_name text,
+  company_name text,
+  phone text,
+  email text,
+  lead_source text,
+  service_interest text,
+  property_address text,
+  city text,
+  state text,
+  square_feet numeric,
+  notes text,
+  status text not null default 'new',
+  converted_customer_id uuid references public.customers(id) on delete set null
+);
+
 create index if not exists idx_properties_customer_id on public.properties(customer_id);
 create index if not exists idx_estimates_customer_id on public.estimates(customer_id);
 create index if not exists idx_estimates_property_id on public.estimates(property_id);
 create index if not exists idx_estimates_status on public.estimates(status);
 create index if not exists idx_field_photos_estimate_id on public.field_photos(estimate_id);
 create index if not exists idx_sync_events_entity on public.sync_events(entity_type, entity_id);
-
--- Active job execution tracker (linked to an approved/won estimate)
-create table if not exists public.projects (
-  id uuid primary key default gen_random_uuid(),
-  estimate_id uuid not null references public.estimates(id) on delete cascade,
-  customer_id uuid not null references public.customers(id) on delete cascade,
-  property_id uuid references public.properties(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  status text not null default 'scheduled',
-  scheduled_date date,
-  completed_date date,
-  crew_lead text,
-  crew_members text[],
-  google_drive_folder_id text,
-  drive_before_folder_id text,
-  drive_during_folder_id text,
-  drive_after_folder_id text,
-  drive_docs_folder_id text,
-  notes text,
-  invoice_number text,
-  invoice_total numeric,
-  invoice_paid boolean not null default false,
-  invoice_paid_at timestamptz
-);
-
-create index if not exists idx_projects_estimate_id on public.projects(estimate_id);
 create index if not exists idx_projects_customer_id on public.projects(customer_id);
 create index if not exists idx_projects_status on public.projects(status);
+create index if not exists idx_leads_status on public.leads(status);
 
 -- Per-project closeout checklist
 create table if not exists public.closeout_checklist (
@@ -161,3 +172,158 @@ create table if not exists public.closeout_checklist (
 );
 
 create index if not exists idx_closeout_project_id on public.closeout_checklist(project_id);
+
+-- ── Inventory & consumables ───────────────────────────────────────────────────
+create table if not exists public.inventory_items (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  name text not null,
+  category text not null default 'consumable',
+  unit text not null default 'each',
+  quantity_on_hand numeric not null default 0,
+  reorder_point numeric not null default 0,
+  unit_cost numeric not null default 0,
+  supplier text,
+  part_number text,
+  location text,
+  notes text
+);
+
+create table if not exists public.inventory_usage (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  item_id uuid not null references public.inventory_items(id) on delete cascade,
+  project_id uuid references public.projects(id) on delete set null,
+  quantity_used numeric not null,
+  used_by text,
+  notes text
+);
+
+-- ── Equipment & fleet ─────────────────────────────────────────────────────────
+create table if not exists public.equipment (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  name text not null,
+  equipment_type text not null default 'tool',
+  make text,
+  model text,
+  year integer,
+  serial_number text,
+  vin text,
+  license_plate text,
+  status text not null default 'operational',
+  location text,
+  purchase_date date,
+  purchase_price numeric,
+  next_service_date date,
+  notes text
+);
+
+create table if not exists public.equipment_service_log (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  equipment_id uuid not null references public.equipment(id) on delete cascade,
+  service_type text not null,
+  service_date date not null,
+  performed_by text,
+  cost numeric,
+  mileage_hours numeric,
+  notes text
+);
+
+-- ── Government contracting ────────────────────────────────────────────────────
+create table if not exists public.govcon_docs (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  doc_type text not null,
+  title text not null,
+  content text,
+  status text not null default 'draft',
+  expiration_date date,
+  file_url text,
+  notes text
+);
+
+create table if not exists public.govcon_opportunities (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  title text not null,
+  solicitation_number text,
+  agency text,
+  naics_code text,
+  psc_code text,
+  posted_date date,
+  due_date date,
+  estimated_value numeric,
+  status text not null default 'watching',
+  source_url text,
+  notes text
+);
+
+-- ── Safety & OSHA ─────────────────────────────────────────────────────────────
+create table if not exists public.safety_checklists (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  project_id uuid references public.projects(id) on delete set null,
+  checklist_type text not null default 'job_start',
+  completed_by text,
+  completed_at timestamptz,
+  status text not null default 'pending',
+  notes text,
+  items jsonb not null default '[]'
+);
+
+create table if not exists public.safety_incidents (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  project_id uuid references public.projects(id) on delete set null,
+  incident_date date not null,
+  incident_type text not null,
+  severity text not null default 'near_miss',
+  involved_person text,
+  description text not null,
+  corrective_action text,
+  reported_by text,
+  osha_recordable boolean not null default false
+);
+
+-- ── Marketing hub ─────────────────────────────────────────────────────────────
+create table if not exists public.marketing_posts (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  title text not null,
+  content text,
+  platform text not null default 'facebook',
+  status text not null default 'idea',
+  scheduled_date date,
+  published_at timestamptz,
+  image_url text,
+  tags text,
+  notes text
+);
+
+-- ── Customer portal tokens ────────────────────────────────────────────────────
+create table if not exists public.portal_tokens (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  token text unique not null default encode(gen_random_bytes(24), 'hex'),
+  estimate_id uuid not null references public.estimates(id) on delete cascade,
+  expires_at timestamptz,
+  viewed_at timestamptz
+);
+
+-- ── Indexes ───────────────────────────────────────────────────────────────────
+create index if not exists idx_inventory_items_category on public.inventory_items(category);
+create index if not exists idx_inventory_usage_item_id on public.inventory_usage(item_id);
+create index if not exists idx_equipment_status on public.equipment(status);
+create index if not exists idx_govcon_opps_status on public.govcon_opportunities(status);
+create index if not exists idx_safety_incidents_date on public.safety_incidents(incident_date);
+create index if not exists idx_marketing_posts_status on public.marketing_posts(status);
+create index if not exists idx_portal_tokens_token on public.portal_tokens(token);
