@@ -8,8 +8,10 @@
 // To switch on: Vercel → mgsf-fieldos → Storage → add KV (Upstash) → connect to project.
 // Vercel injects KV_REST_API_URL + KV_REST_API_TOKEN automatically. Then redeploy.
 
-const KV_URL = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+// Accept whichever names Vercel injects — classic Vercel KV or the Upstash marketplace
+// integration — so the owner just clicks "connect" and it works, no key juggling.
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
 
 // Collections we sync. Photos are intentionally excluded (base64 images are too heavy for
 // this store — they stay on-device until we add blob storage).
