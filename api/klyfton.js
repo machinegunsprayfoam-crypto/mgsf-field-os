@@ -1,24 +1,70 @@
-// Ask Klyfton AI — Claude-backed field assistant for Machine Gun Spray Foam.
+// Ask Klyfton AI — the Klyfton "Hive" field assistant for Machine Gun Spray Foam.
+// Not one generalist model: a Queen router recruits specialist minds in proportion
+// to the job (like ant/bee recruitment), they work in parallel, then a synthesizer +
+// critic merges and fact-checks the answer before it reaches the crew.
+//
 // Runs as a Vercel serverless function. No npm deps (uses global fetch).
-// Requires env var ANTHROPIC_API_KEY (set in Vercel → Settings → Environment Variables).
+// Requires env var ANTHROPIC_API_KEY (Vercel → Settings → Environment Variables).
 // Optional env var CREW_CODE: if set, the client must send a matching { code }.
 
-const MODEL = "claude-opus-4-8"; // swap to "claude-sonnet-5" or "claude-haiku-4-5" to cut cost
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
-const SYSTEM = `You are Klyfton, the AI assistant inside the Klyfton AI field app for
-Machine Gun Spray Foam & Concrete Lifting, LLC (owner: Clifton Behner, a USMC combat veteran).
-You help the crew and owner in the field: spray foam (open/closed cell), SPF roofing, coatings,
-concrete lifting/leveling, void fill, estimating, materials, spray conditions, and job questions.
+// Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
+// Swap WORKER/CRITIC to "claude-sonnet-5" or "claude-haiku-4-5" to cut cost.
+const ROUTER_MODEL = "claude-haiku-4-5";
+const WORKER_MODEL = "claude-opus-4-8";
+const CRITIC_MODEL = "claude-opus-4-8";
 
-How to answer (match the owner's style):
-- Blunt, numbers-first, decision-ready. Lead with a TL;DR or the number that matters.
-- Give 2-3 options with cost/time/risk when relevant, then name the pick and why.
-- Keep it to one screen when possible. Use checklists and clear steps.
-- Never fabricate prices, specs, addresses, or figures. If you don't know, say so or look it up.
-- When a question depends on current info (product specs, prices, weather, code) use web search.
-- Professional, veteran-owned, direct, confident, practical, blue-collar voice.
-- Never schedule work or reminders on Sundays.`;
+// Shared voice — every mind answers the way the owner wants (MOGS owner profile).
+const BASE_VOICE = `You serve Machine Gun Spray Foam & Concrete Lifting, LLC (owner: Clifton Behner,
+a USMC combat veteran). Answer his way:
+- Blunt, numbers-first, decision-ready. Lead with the number or the call that matters.
+- Give 2-3 options with cost/time/risk when it's a decision, then name the pick and why.
+- Keep it to one screen. Use short checklists and clear steps.
+- NEVER fabricate prices, specs, addresses, or figures. If you don't know, say so or look it up
+  with web search. Label anything you estimate as ESTIMATED.
+- Professional, veteran-owned, direct, confident, blue-collar. Never schedule work on Sundays.`;
+
+// The specialist castes of the hive. Each is the smart model with a focused charter.
+const SPECIALISTS = {
+  estimator: {
+    name: "Estimator",
+    focus: `You are the ESTIMATING mind. Board-feet, yield, coverage, set thickness, waste factor,
+labor, markup, and quoting spray foam / coatings / concrete lifting. Show the math. Use the crew's
+own product prices from the provided business context before any outside number.`,
+  },
+  conditions: {
+    name: "Spray-Conditions",
+    focus: `You are the SPRAY-CONDITIONS mind. Substrate + ambient temp, dew point, humidity, wind,
+open vs closed cell window, cure, re-coat times, and GO/NO-GO calls. When it depends on today's
+weather at a location, use web search to pull current conditions.`,
+  },
+  materials: {
+    name: "Materials",
+    focus: `You are the MATERIALS/SUPPLIER mind. Foam sets, coatings, primers, PPE, gun/consumable
+specs, data sheets, substitutions, and where to source. Use web search for current product specs
+and availability. Never invent a price — say "owner to confirm" if unknown.`,
+  },
+  safety: {
+    name: "Safety/JSA",
+    focus: `You are the SAFETY/JSA mind. Hazards, PPE, ventilation, re-occupancy, respirators,
+confined space, fall protection, SDS, and OSHA-aligned steps for SPF and concrete lifting. Be
+specific and practical for a field crew.`,
+  },
+  ops: {
+    name: "Ops",
+    focus: `You are the OPS/SCHEDULING mind. Job sequencing, crew/time, timelines, customer comms,
+and go/no-go on the day. Give a checklist and a timeline. Never schedule anything on a Sunday.`,
+  },
+  general: {
+    name: "Klyfton",
+    focus: `You are the general field mind — spray foam, coatings, concrete lifting, estimating,
+the business, and anything the crew or owner asks. Look things up when the answer depends on
+current info.`,
+  },
+};
+
+const WEB_TOOL = { type: "web_search_20260209", name: "web_search", max_uses: 4 };
 
 function textFrom(content) {
   return (content || [])
@@ -26,6 +72,121 @@ function textFrom(content) {
     .map((b) => b.text)
     .join("\n")
     .trim();
+}
+
+// Pull an optional [[MEMORY]] a ;; b [[/MEMORY]] block out of an answer so the client can
+// store durable colony facts. Returns { text (clean), remember: [] }.
+function splitMemory(raw) {
+  const m = raw.match(/\[\[MEMORY\]\]([\s\S]*?)\[\[\/MEMORY\]\]/i);
+  if (!m) return { text: raw.trim(), remember: [] };
+  const remember = m[1]
+    .split(";;")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const text = raw.replace(m[0], "").trim();
+  return { text, remember };
+}
+
+// One Anthropic call, resuming through pause_turn so server-side web search can finish.
+async function callClaude(key, payload) {
+  let data;
+  for (let i = 0; i < 4; i++) {
+    const r = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      const e = new Error("anthropic_" + r.status);
+      e.detail = errText.slice(0, 300);
+      throw e;
+    }
+    data = await r.json();
+    if (data.stop_reason === "pause_turn") {
+      payload = { ...payload, messages: payload.messages.concat([{ role: "assistant", content: data.content }]) };
+      continue;
+    }
+    break;
+  }
+  return data;
+}
+
+// Compact the app's real state + remembered facts into a system-prompt block, so the
+// minds are grounded in THIS business, not a generic one.
+function contextBlock(context, memory) {
+  const parts = [];
+  if (context && typeof context === "object") {
+    const c = [];
+    if (context.company) c.push("Company: " + context.company);
+    if (context.activeJobs != null) c.push("Active jobs: " + context.activeJobs);
+    if (context.openLeads != null) c.push("Open leads: " + context.openLeads);
+    if (context.lastEstimate) c.push("Most recent estimate: " + context.lastEstimate);
+    if (Array.isArray(context.products) && context.products.length)
+      c.push("Priced products (name=cost): " + context.products.slice(0, 40).join(", "));
+    if (c.length) parts.push("BUSINESS CONTEXT (use these real numbers first):\n" + c.join("\n"));
+  }
+  if (Array.isArray(memory) && memory.length) {
+    parts.push("COLONY MEMORY (things you've been told to remember):\n- " + memory.slice(-20).join("\n- "));
+  }
+  return parts.length ? "\n\n" + parts.join("\n\n") : "";
+}
+
+// The Queen: cheap classifier that decides which minds to recruit and how big the job is.
+async function route(key, userText, history) {
+  const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
+answer, and whether the job is simple (one mind) or complex (several).
+Mind keys: estimator, conditions, materials, safety, ops, general.
+Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
+Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
+AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
+If unsure, {"minds":["general"],"complexity":"simple"}.`;
+  const recent = (history || [])
+    .slice(-4)
+    .map((m) => (m.role === "user" ? "U: " : "A: ") + String(m.content).slice(0, 200))
+    .join("\n");
+  try {
+    const data = await callClaude(key, {
+      model: ROUTER_MODEL,
+      max_tokens: 300,
+      system: sys,
+      messages: [{ role: "user", content: (recent ? recent + "\n\n" : "") + "U: " + userText }],
+    });
+    const j = textFrom(data.content).match(/\{[\s\S]*\}/);
+    const parsed = j ? JSON.parse(j[0]) : null;
+    let minds = (parsed && Array.isArray(parsed.minds) ? parsed.minds : [])
+      .filter((k) => SPECIALISTS[k])
+      .slice(0, 4);
+    if (!minds.length) minds = ["general"];
+    const complexity = parsed && parsed.complexity === "complex" ? "complex" : "simple";
+    return { minds: complexity === "simple" ? [minds[0]] : minds, complexity };
+  } catch {
+    return { minds: ["general"], complexity: "simple" };
+  }
+}
+
+// Run one specialist mind on the question.
+async function runMind(key, mindKey, userText, history, ctx) {
+  const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
+  const system = `${BASE_VOICE}\n\n${spec.focus}${ctx}`;
+  const messages = (history || [])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
+    .map((m) => ({ role: m.role, content: String(m.content) }));
+  messages.push({ role: "user", content: userText });
+  const data = await callClaude(key, {
+    model: WORKER_MODEL,
+    max_tokens: 1600,
+    system,
+    thinking: { type: "adaptive" },
+    tools: [WEB_TOOL],
+    messages,
+  });
+  return { mind: spec.name, text: textFrom(data.content), model: data.model || WORKER_MODEL };
 }
 
 module.exports = async (req, res) => {
@@ -36,12 +197,11 @@ module.exports = async (req, res) => {
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
-    // Gated: not configured yet. Never fabricate — tell the user how to turn it on.
     res.status(200).json({
       text:
         "⚙️ Ask Klyfton AI isn't switched on yet. Owner: in Vercel → the mgsf-fieldos " +
         "project → Settings → Environment Variables, add ANTHROPIC_API_KEY, then Redeploy. " +
-        "Until then I can't think or look things up — the estimator, JSA, and time clock still work.",
+        "Until then the hive can't think — but the estimator, JSA, and time clock still work.",
       configured: false,
     });
     return;
@@ -64,63 +224,77 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Build messages: prior history (text-only) + this turn.
-  const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
-  let messages = history
-    .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
-    .map((m) => ({ role: m.role, content: String(m.content) }));
-  messages.push({ role: "user", content: userText });
-
-  const payload = {
-    model: MODEL,
-    max_tokens: 2048,
-    system: SYSTEM,
-    thinking: { type: "adaptive" },
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 4 }],
-    messages,
-  };
+  const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
+  const ctx = contextBlock(body.context, body.memory);
 
   try {
-    // Server tools can pause_turn; resume a few times so search can finish.
-    let data;
-    for (let i = 0; i < 4; i++) {
-      const r = await fetch(ANTHROPIC_URL, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": key,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify(payload),
+    // 1) Queen recruits the minds.
+    const plan = await route(key, userText, history);
+
+    // 2) Simple job → one mind answers directly (fast + cheap).
+    if (plan.complexity === "simple" || plan.minds.length <= 1) {
+      const only = await runMind(key, plan.minds[0], userText, history, ctx);
+      const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
+      res.status(200).json({
+        text,
+        remember,
+        configured: true,
+        mode: "single",
+        minds: [only.mind],
+        model: only.model,
       });
-      if (!r.ok) {
-        const errText = await r.text();
-        res.status(200).json({
-          text: "⚠️ Klyfton hit an API error (" + r.status + "). Owner: check the ANTHROPIC_API_KEY.",
-          error: errText.slice(0, 400),
-          configured: true,
-        });
-        return;
-      }
-      data = await r.json();
-      if (data.stop_reason === "pause_turn") {
-        payload.messages = payload.messages.concat([{ role: "assistant", content: data.content }]);
-        continue;
-      }
-      break;
+      return;
     }
 
-    let text = textFrom(data.content);
-    if (data.stop_reason === "refusal") {
-      text = "I can't help with that one. Ask me something on spray foam, coatings, concrete lifting, estimating, or the job.";
+    // 3) Complex job → recruit the swarm in parallel.
+    const workers = await Promise.all(
+      plan.minds.map((m) => runMind(key, m, userText, history, ctx).catch(() => null))
+    );
+    const answers = workers.filter((w) => w && w.text);
+    if (!answers.length) {
+      res.status(200).json({ text: "The hive came back empty — try rephrasing.", configured: true });
+      return;
     }
-    if (!text) text = "I didn't get a usable answer back — try rephrasing.";
+    if (answers.length === 1) {
+      const { text, remember } = splitMemory(answers[0].text);
+      res.status(200).json({ text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
+      return;
+    }
 
-    res.status(200).json({ text, configured: true, model: data.model || MODEL });
+    // 4) Synthesizer + critic: merge the minds, kill contradictions/fabrication, one answer out.
+    const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
+    const synthSys = `${BASE_VOICE}${ctx}
+
+You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
+same question. Merge them into ONE answer in the owner's voice. Your job as critic:
+- Cut contradictions; if minds disagree on a number, flag it and say what to verify.
+- Remove anything that looks fabricated or unsupported. Keep real, sourced, or clearly-ESTIMATED facts.
+- Lead with the TL;DR/number, then options+pick if it's a decision, then a tight checklist.
+- One screen. Do not mention "minds", "agents", or this process — just answer the owner.
+If there are durable facts worth remembering across sessions (a customer preference, a confirmed
+price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
+    const synth = await callClaude(key, {
+      model: CRITIC_MODEL,
+      max_tokens: 2000,
+      system: synthSys,
+      thinking: { type: "adaptive" },
+      messages: [
+        { role: "user", content: `Question:\n${userText}\n\nSpecialist answers:\n\n${panel}` },
+      ],
+    });
+    const { text, remember } = splitMemory(textFrom(synth.content) || answers[0].text);
+    res.status(200).json({
+      text,
+      remember,
+      configured: true,
+      mode: "hive",
+      minds: answers.map((a) => a.mind),
+      model: synth.model || CRITIC_MODEL,
+    });
   } catch (e) {
     res.status(200).json({
-      text: "⚠️ Klyfton couldn't reach the network. Try again in a moment.",
-      error: String(e).slice(0, 300),
+      text: "⚠️ Klyfton hit a snag reaching the hive (" + String(e.message || e).slice(0, 60) + "). Owner: check the ANTHROPIC_API_KEY. Try again in a moment.",
+      error: String(e.detail || e).slice(0, 300),
       configured: true,
     });
   }

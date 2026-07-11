@@ -1149,6 +1149,7 @@ let appState = {
   leads: JSON.parse(localStorage.getItem('klyfton_leads')||'[]'),
   jobs: JSON.parse(localStorage.getItem('klyfton_jobs')||'[]'),
   estimates: JSON.parse(localStorage.getItem('klyfton_estimates')||'[]'),
+  memory: JSON.parse(localStorage.getItem('klyfton_memory')||'[]'),
   scopeItems: [],
   soundOn: true,
   voiceOn: false,
@@ -4969,21 +4970,40 @@ function sendChat(){
   // Set typing indicator
   document.getElementById('chatStatus').textContent='● THINKING...';
 
-  // Ask the real Klyfton AI backend (Claude); fall back to the offline responder.
+  // Ask the Klyfton Hive (router → specialist minds → synthesizer/critic); fall back offline.
   if(!appState.chatHistory) appState.chatHistory = [];
+  if(!appState.memory) appState.memory = [];
   const hist = appState.chatHistory.slice(-10);
   appState.chatHistory.push({role:'user', content:text});
   fetch('/api/klyfton', {
     method:'POST',
     headers:{'content-type':'application/json'},
-    body: JSON.stringify({ message:text, history:hist })
+    body: JSON.stringify({
+      message:text,
+      history:hist,
+      memory: appState.memory.slice(-20),
+      context: gatherBizContext()
+    })
   })
   .then(r=>r.json())
   .then(d=>{
     const resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
     appState.chatHistory.push({role:'assistant', content:resp});
+    // Store durable "colony memory" facts the hive chose to keep.
+    if(d && Array.isArray(d.remember) && d.remember.length){
+      d.remember.forEach(f=>{ if(f && !appState.memory.includes(f)) appState.memory.push(f); });
+      appState.memory = appState.memory.slice(-50);
+      save('memory');
+    }
     addMessage(resp,'ai',resp);
-    document.getElementById('chatStatus').textContent='● READY';
+    // Show the hive at work: which minds answered.
+    let status='● READY';
+    if(d && d.minds && d.minds.length){
+      status = d.mode==='hive'
+        ? '🐝 '+d.minds.length+' minds: '+d.minds.join(', ')
+        : '● '+d.minds[0];
+    }
+    document.getElementById('chatStatus').textContent=status;
     playSound('nav');
   })
   .catch(()=>{
@@ -4993,6 +5013,30 @@ function sendChat(){
     document.getElementById('chatStatus').textContent='● OFFLINE';
     playSound('nav');
   });
+}
+
+// Compact snapshot of the real business state, so the hive answers with YOUR numbers.
+function gatherBizContext(){
+  try{
+    const jobs=appState.jobs||[], leads=appState.leads||[], ests=appState.estimates||[];
+    const ctx={
+      company:'Machine Gun Spray Foam & Concrete Lifting, LLC',
+      activeJobs: jobs.filter(j=>j.status!=='Completed'&&j.status!=='Cancelled').length,
+      openLeads: leads.filter(l=>!['Won','Lost'].includes(l.status)).length
+    };
+    const last=ests[ests.length-1];
+    if(last){
+      const tot=last.total||last.grandTotal||last.amount;
+      ctx.lastEstimate=(last.customer||last.name||'job')+(tot?(' — $'+tot):'');
+    }
+    // Owner-priced products the estimator knows, so the minds never invent a price.
+    const prods=[];
+    try{ (EST_FOAM||[]).forEach(p=>{ if(p&&p.n&&p.setCost) prods.push(p.n+'=$'+p.setCost+'/set'); }); }catch(e){}
+    try{ (EST_COAT||[]).forEach(p=>{ if(p&&p.n&&p.costGal) prods.push(p.n+'=$'+p.costGal+'/gal'); }); }catch(e){}
+    try{ (EST_GEO ||[]).forEach(p=>{ if(p&&p.n&&p.priceLb) prods.push(p.n+'=$'+p.priceLb+'/lb'); }); }catch(e){}
+    if(prods.length) ctx.products=prods;
+    return ctx;
+  }catch(e){ return {company:'Machine Gun Spray Foam & Concrete Lifting, LLC'}; }
 }
 
 function chatKeydown(e){
