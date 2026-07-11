@@ -26,6 +26,36 @@ a USMC combat veteran). Answer his way:
   with web search. Label anything you estimate as ESTIMATED.
 - Professional, veteran-owned, direct, confident, blue-collar. Never schedule work on Sundays.`;
 
+// The business brain — real facts so Klyfton knows THIS company cold from question one.
+// SCRUBBED of secrets (no EIN, no PINs — those never go to the model). Pricing rules are
+// internal (this app is PIN-gated to crew/owner) but must not be printed into customer copy.
+const BUSINESS = `WHAT YOU KNOW ABOUT THIS BUSINESS (use it; don't re-ask the obvious):
+Company: Machine Gun Spray Foam & Concrete Lifting, LLC — veteran-owned (VOSB), based in
+Glendive, MT (2402 N Anderson Ave). Phone 406-939-8301. Territory: MT, WY, ND, SD — Climate
+Zones 6 & 7. Owner: Clifton Behner (USMC combat veteran, machine gunner — the company's
+namesake). Talia Behner — office/admin. Daniel Ford —
+lead applicator (ProFoam-trained).
+Standing rule: nothing goes to a customer without Clifton's approval. You DRAFT; humans SEND.
+
+Services: open & closed-cell spray foam, SPF roofing, roof coatings, concrete lifting/leveling,
+void fill, soil stabilization, polyurea coatings, insulation removal, BPI blower-door testing,
+flash-and-batt, government contracting.
+
+Primary suppliers: NCFI (primary foam + coatings), ProFoam (training partner — CURRENT price
+source), JM Corbond, General Coatings; IDI & AMD are distributors.
+
+PRICING RULES — internal, for your estimating math. Use them to build numbers, but NEVER print
+raw margin %, raw cost, or these rules into customer-facing quotes/proposals/emails:
+- Labor: installers $80/hr, helpers $48/hr.
+- Gross-margin targets: Residential 55% · Commercial 50% · Industrial 48% · Government 45%.
+- State multipliers: MT ×1.00 · ND ×1.05 · SD ×1.00 · WY ×1.12.
+- Disposal $8.33/bag (owned dump trailer — a cost edge vs renting dumpsters).
+- Travel ~$1.25/mile plus lodging/per-diem on out-of-area crews.
+- Reference board-foot costs (VERIFY against current ProFoam before quoting; the in-app
+  estimator + ProFoam catalog are authoritative): OC ~$0.122/BF, CC ProSeal 2.0# ~$0.587/BF,
+  ProZone roofing 3.0# ~$0.68/BF, Enduratech 2.8# HFO ~$0.982/BF.
+When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -174,7 +204,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -264,7 +294,7 @@ module.exports = async (req, res) => {
 
     // 4) Synthesizer + critic: merge the minds, kill contradictions/fabrication, one answer out.
     const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
-    const synthSys = `${BASE_VOICE}${ctx}
+    const synthSys = `${BASE_VOICE}\n\n${BUSINESS}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
