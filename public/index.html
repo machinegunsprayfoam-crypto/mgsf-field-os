@@ -1015,6 +1015,14 @@ canvas.chart{width:100%;height:100%}
           <div id="adm-cons-rows"></div>
         </div>
 
+        <!-- DATA MANAGER (KLYFTON_WAVE6) -->
+        <div class="admin-section">
+          <div class="admin-section-title">🗂️ DATA MANAGER — EDIT / DELETE ANY RECORD</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Fix or remove anything — leads, jobs, estimates, forms, proposals, change orders, punches, and more. Changes save and sync immediately.</div>
+          <div id="dm_tabs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
+          <div id="dm_body"></div>
+        </div>
+
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-orange" id="admSaveBtn" onclick="adminSave()">💾 SAVE ALL SETTINGS</button>
           <button class="btn btn-ghost" onclick="adminReset()">↩ RESET TO DEFAULTS</button>
@@ -1706,6 +1714,7 @@ function switchModule(id){
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
+    if(window.renderDataManager) renderDataManager();
   }
 }
 
@@ -6272,6 +6281,117 @@ document.addEventListener('click',()=>{
 </script>
 
 <script>
+/* ===================== KLYFTON_WAVE6 — Admin Data Manager (edit/delete anything) ===================== */
+(function(){
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const load = k=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return Array.isArray(v)?v:[];}catch(e){return [];} };
+  const store = (k,arr)=>{ appState[k]=arr; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(arr)); }catch(e){ notify('Storage full','alert'); } };
+  const money = n=> '$'+(Number(n)||0).toLocaleString();
+
+  const DM = [
+    {k:'leads',        label:'Leads',         sum:r=>`${r.name||'—'} · ${r.status||''} · ${money(r.value)}`},
+    {k:'jobs',         label:'Jobs',          sum:r=>`${r.customer||r.name||'—'} · ${r.status||''}`},
+    {k:'estimates',    label:'Estimates',     sum:r=>`${r.customer||'—'} · ${money(r.value)}`},
+    {k:'proposals',    label:'Proposals',     sum:r=>`${r.cust||'—'} · ${money(r.price)}`},
+    {k:'changeorders', label:'Change Orders', sum:r=>`${r.num||'—'} · ${r.job||''}`},
+    {k:'forms',        label:'Forms',         sum:r=>`${r.name||'—'} · ${r.job||''}`},
+    {k:'jsas',         label:'JSAs',          sum:r=>`${r.job||'—'} · ${r.foreman||''}`},
+    {k:'signoffs',     label:'Sign-offs',     sum:r=>`${r.cust||'—'} · ${r.job||''}`},
+    {k:'matlogs',      label:'Material',      sum:r=>`${r.prod||'—'} · ${r.job||''}`},
+    {k:'tc_punches',   label:'Punches',       sum:r=>`${r.name||'—'} · ${r.job||''}`},
+  ];
+  let cur = 'leads';
+  const def = k => DM.find(d=>d.k===k);
+  const SKIP = new Set(['id','sig','data','checks','items']); // don't show signatures/blobs/arrays as editable fields
+
+  window.renderDataManager = function(){
+    const tabs=$('dm_tabs'); if(!tabs) return;
+    tabs.innerHTML = DM.map(d=>{ const n=load(d.k).length;
+      return `<button class="btn ${cur===d.k?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 9px" onclick="dmSelect('${d.k}')">${d.label} (${n})</button>`;
+    }).join('') + `<button class="btn ${cur==='_mem'?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 9px" onclick="dmSelect('_mem')">Klyfton Memory (${(appState.memory||[]).length})</button>`;
+    if(cur==='_mem') dmMemory(); else dmList();
+  };
+  window.dmSelect = function(k){ cur=k; renderDataManager(); };
+
+  window.dmList = function(){
+    const d=def(cur), box=$('dm_body'); if(!box) return; if(!d){ box.innerHTML=''; return; }
+    const arr=load(cur);
+    let html=`<div style="display:flex;gap:6px;margin-bottom:8px">
+      <button class="csv-btn" onclick="dmExport('${cur}')">↓ Export CSV</button>
+      <button class="csv-btn" style="border-color:var(--red);color:var(--red)" onclick="dmWipe('${cur}')">🗑 Wipe all ${d.label}</button></div>`;
+    if(!arr.length){ box.innerHTML=html+'<p style="color:var(--t2);font-size:13px">No records.</p>'; return; }
+    html+=arr.map(r=>`<div class="log-row"><span style="font-size:12px">${esc(d.sum(r))}</span>
+      <span><button class="btn btn-ghost" style="font-size:11px" onclick="dmEdit('${cur}','${esc(String(r.id))}')">Edit</button>
+      <button class="btn btn-ghost" style="font-size:11px;color:var(--red)" onclick="dmDelete('${cur}','${esc(String(r.id))}')">Delete</button></span></div>`).join('');
+    box.innerHTML=html;
+  };
+  window.dmEdit = function(k,id){
+    const box=$('dm_body'); const rec=load(k).find(r=>String(r.id)===String(id)); if(!rec||!box) return;
+    const rows=Object.keys(rec).filter(key=>!SKIP.has(key)).map(key=>{
+      const v=rec[key];
+      if(typeof v==='boolean') return `<label class="chk"><input type="checkbox" id="dm_f_${esc(key)}" ${v?'checked':''}><span>${esc(key)}</span></label>`;
+      if(v!==null && typeof v==='object') return ''; // nested — leave as-is
+      if(typeof v==='string' && v.length>300) return '';
+      const t = typeof v==='number'?'number':'text';
+      return `<label class="fl">${esc(key)}</label><input id="dm_f_${esc(key)}" class="admin-inp" type="${t}" value="${esc(v)}">`;
+    }).join('');
+    box.innerHTML=`<div class="jsa-card"><h4>Edit record</h4>${rows}
+      <div class="jsa-actions" style="margin-top:10px">
+        <button class="btn btn-ghost" onclick="dmList()">← Cancel</button>
+        <button class="btn btn-primary" onclick="dmSaveEdit('${k}','${esc(String(id))}')">💾 Save changes</button>
+      </div></div>`;
+  };
+  window.dmSaveEdit = function(k,id){
+    const arr=load(k); const i=arr.findIndex(r=>String(r.id)===String(id)); if(i<0) return;
+    const rec={...arr[i]};
+    Object.keys(rec).forEach(key=>{
+      if(SKIP.has(key)) return;
+      const el=$('dm_f_'+key); if(!el) return;
+      if(typeof rec[key]==='boolean'){ rec[key]=el.checked; }
+      else if(typeof rec[key]==='number'){ const n=parseFloat(el.value); rec[key]=isNaN(n)?rec[key]:n; }
+      else if(rec[key]===null || typeof rec[key]!=='object'){ rec[key]=el.value; }
+    });
+    arr[i]=rec; store(k,arr);
+    notify('Record updated ✓','success'); dmRefresh(k); dmList();
+  };
+  window.dmDelete = function(k,id){
+    if(!confirm('Delete this record? This also removes it from other phones.')) return;
+    store(k, load(k).filter(r=>String(r.id)!==String(id)));
+    notify('Deleted','info'); dmRefresh(k); renderDataManager();
+  };
+  window.dmWipe = function(k){
+    const d=def(k); if(!confirm('Wipe ALL '+d.label+'? This cannot be undone.')) return;
+    store(k, []); notify(d.label+' cleared','info'); dmRefresh(k); renderDataManager();
+  };
+  window.dmExport = function(k){
+    const arr=load(k); if(!arr.length){ notify('Nothing to export','alert'); return; }
+    const cols=[...new Set(arr.flatMap(r=>Object.keys(r)))].filter(c=>!['sig','data'].includes(c));
+    const rows=[cols].concat(arr.map(r=>cols.map(c=>{ const v=r[c]; return (v!==null&&typeof v==='object')?JSON.stringify(v):(v==null?'':v); })));
+    const csv=rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='MGSF_'+k+'.csv'; a.click(); URL.revokeObjectURL(a.href); notify('CSV downloaded','success');
+  };
+  // Refresh whichever module list is affected so the change shows everywhere.
+  function dmRefresh(k){
+    const map={leads:'renderPipeline',jobs:'renderJobs',jsas:'renderJSAList',signoffs:'renderSignoffList',
+      matlogs:'renderMatList',proposals:'renderProposalList',forms:'renderFormsList',changeorders:'renderCOList',tc_punches:'renderClock'};
+    const fn=map[k]; try{ if(fn && typeof window[fn]==='function') window[fn](); }catch(e){}
+  }
+
+  // Klyfton memory (durable facts) — plain strings.
+  window.dmMemory = function(){
+    const box=$('dm_body'); if(!box) return; const mem=appState.memory||[];
+    box.innerHTML=`<div class="jsa-card"><h4>Things Klyfton remembers</h4>
+      <div style="display:flex;gap:6px;margin-bottom:8px"><input id="dm_mem_new" class="admin-inp" placeholder="Add a fact for Klyfton to remember"><button class="btn btn-primary" onclick="dmMemAdd()">＋ Add</button></div>
+      ${mem.length? mem.map((m,i)=>`<div class="log-row"><span style="font-size:12px">${esc(m)}</span><button class="btn btn-ghost" style="font-size:11px;color:var(--red)" onclick="dmMemDel(${i})">Delete</button></div>`).join('') : '<p style="color:var(--t2);font-size:13px">Nothing remembered yet.</p>'}</div>`;
+  };
+  window.dmMemAdd = function(){ const v=($('dm_mem_new')||{}).value||''; if(!v.trim()) return; if(!appState.memory) appState.memory=[]; appState.memory.push(v.trim()); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
+  window.dmMemDel = function(i){ if(!appState.memory) return; appState.memory.splice(i,1); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
+})();
+</script>
+
+<script>
 /* ===== KLYFTON_CLOUD — optional multi-device sync (DORMANT until Vercel KV is attached) =====
    With no storage, /api/sync returns {configured:false} and this does nothing — the app runs
    exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
@@ -6280,7 +6400,13 @@ document.addEventListener('click',()=>{
   const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms','changeorders'];
   const last = {};
   let on = false;
-  const arr = k => Array.isArray(appState[k]) ? appState[k] : [];
+  // Prefer live state; fall back to localStorage so every collection syncs even if a module
+  // hasn't loaded it into appState yet.
+  const arr = k => {
+    if(Array.isArray(appState[k])) return appState[k];
+    try{ const v=JSON.parse(localStorage.getItem('klyfton_'+k)); if(Array.isArray(v)){ appState[k]=v; return v; } }catch(e){}
+    return [];
+  };
 
   // Bring cloud records this device is missing into local state (union by id; local wins on conflict).
   function mergeIn(k, cloud){
