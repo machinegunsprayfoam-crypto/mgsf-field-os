@@ -443,6 +443,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('changeorder');renderCO()" id="nav-changeorder">
         <div class="nav-icon">🔧</div><div class="nav-label">CHG ORDER</div>
       </div>
+      <div class="nav-item" onclick="switchModule('compliance');renderCompliance()" id="nav-compliance">
+        <div class="nav-icon">🛡️</div><div class="nav-label">COMPLY</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1198,6 +1201,14 @@ canvas.chart{width:100%;height:100%}
         </div>
         <h3 style="margin-top:22px">Change orders on file</h3>
         <div id="co_list"></div>
+      </div>
+
+      <!-- COMPLIANCE MODULE (KLYFTON_WAVE7) -->
+      <div id="mod-compliance" class="module">
+        <div class="mod-head"><h2>🛡️ Compliance</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div style="font-size:11px;color:var(--yw);margin-bottom:12px">⚠ Drafts &amp; checklists to organize your paperwork — <b>not legal advice</b>. Have your safety consultant / state OSHA review before you rely on any of it. Free help: OSHA On-Site Consultation (no fines, separate from enforcement).</div>
+        <div id="cmp_body"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -6109,6 +6120,18 @@ document.addEventListener('click',()=>{
     { key:'jobsite', name:'Daily Jobsite Checklist', icon:'✅',
       fields:[{id:'foreman',label:'Foreman'}],
       items:['JSA reviewed with crew','PPE on & verified','Spray weather = GO','Materials staged','Containment set','Cleanup plan set','Before photos taken'] },
+    { key:'spf_daily', name:'SPF Daily Production Log', icon:'🧴',
+      fields:[{id:'product',label:'Product / system'},{id:'lot',label:'Lot / batch #s'},{id:'ambient',label:'Ambient °F'},{id:'substrate',label:'Substrate °F'},{id:'dew',label:'Dew point °F'},{id:'lift',label:'Lift thickness (in)'},{id:'cool',label:'Cool time between passes (min)'}],
+      items:['Substrate at least 5°F above dew point','Temps within product TDS range','Pressures & A:B ratio checked','Lift thickness within TDS limit','Cool time between passes honored','Lot / batch numbers recorded','Re-occupancy time given to customer'] },
+    { key:'incident', name:'OSHA Incident Report', icon:'🚑',
+      fields:[{id:'person',label:'Injured person'},{id:'when',label:'Date & time'},{id:'where',label:'Location'},{id:'part',label:'Body part / injury'},{id:'treat',label:'Treatment given'}],
+      items:['First aid given on site','Sent for medical care','SEVERE — report to OSHA (fatality ≤8hr; hospitalization/amputation/eye loss ≤24hr — 1-800-321-6742)','Witnesses recorded in notes','Root cause & fix noted'] },
+    { key:'respirator', name:'Respirator Medical & Fit-Test Log', icon:'😷',
+      fields:[{id:'emp',label:'Employee'},{id:'resp',label:'Respirator make / model / size'},{id:'med',label:'Medical eval date'},{id:'fit',label:'Fit-test date'},{id:'due',label:'Next fit-test due'}],
+      items:['Medical evaluation on file (before fit-test)','Fit test passed','Trained on use, care & limits'] },
+    { key:'training', name:'Employee Training Record', icon:'🎓',
+      fields:[{id:'emp',label:'Employee'},{id:'trainer',label:'Trainer'},{id:'date',label:'Date'}],
+      items:['Hazard Communication (SDS/labels)','Respiratory protection','Isocyanate awareness','Silica awareness','Fall protection','PPE use'] },
   ];
   const tpl = k => TEMPLATES.find(t=>t.key===k);
 
@@ -6388,6 +6411,190 @@ document.addEventListener('click',()=>{
   };
   window.dmMemAdd = function(){ const v=($('dm_mem_new')||{}).value||''; if(!v.trim()) return; if(!appState.memory) appState.memory=[]; appState.memory.push(v.trim()); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
   window.dmMemDel = function(i){ if(!appState.memory) return; appState.memory.splice(i,1); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
+})();
+</script>
+
+<script>
+/* ===================== KLYFTON_WAVE7 — Compliance (OSHA + DOT + written programs) ===================== */
+(function(){
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const LS = (k,d)=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return v==null?d:v}catch(e){return d} };
+  const SS = (k,v)=>{ appState[k]=v; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(v)); }catch(e){} };
+
+  const OSHA = [
+    'Written Hazard Communication Program + SDS library on site',
+    'Written Respiratory Protection Program (job-site specific)',
+    'Written Silica Exposure Control Plan (concrete drilling)',
+    'PPE Hazard Assessment — written certification',
+    'Isocyanate + HazCom training records on file',
+    'Fall-protection training (roofing / heights)',
+    'Severe-injury reporting procedure posted (8hr / 24hr)',
+    'OSHA "It\'s the Law" poster displayed',
+  ];
+  const DOT = [
+    'USDOT number (any truck or truck+trailer ≥10,001 lb GVWR/GCWR crossing state lines)',
+    'USDOT # marked on both sides of the power unit',
+    'Driver Qualification file per driver (license, MVR, application)',
+    'Current DOT medical card for each driver',
+    'Hours-of-Service records OR short-haul exemption documented',
+    'Vehicle maintenance file + annual (periodic) inspection',
+    'Driver Vehicle Inspection Reports (DVIR) kept',
+    'Accident register maintained',
+    'MCS-150 updated within the last 24 months',
+    'Drug & Alcohol testing program (ONLY if CDL / ≥26,001 lb or hazmat)',
+  ];
+
+  const DEFAULT_DOCS = {
+    hazcom: `HAZARD COMMUNICATION PROGRAM — DRAFT (review with safety consultant)
+Machine Gun Spray Foam & Concrete Lifting, LLC
+
+1. Purpose: Comply with 29 CFR 1910.1200 — inform employees of chemical hazards.
+2. Program administrator: [OWNER INPUT REQUIRED — name/title].
+3. Chemical inventory: Maintain a current list of every hazardous product used
+   (foam A-side/isocyanate, B-side/resin, primers, coatings, solvents, cleaners).
+4. Safety Data Sheets (SDS): An SDS for every product is kept [OWNER INPUT: location —
+   truck binder + app]. Accessible to all employees on every shift.
+5. Labels: All containers labeled with product identity + hazard warning. Never remove labels.
+6. Training: Before first use and when a new hazard is introduced — hazards, SDS use,
+   protective measures, and this program's location. Document each session.
+7. Non-routine tasks & multi-employer sites: Communicate hazards to other trades on site.`,
+    respirator: `RESPIRATORY PROTECTION PROGRAM — DRAFT (review with safety consultant)
+Machine Gun Spray Foam & Concrete Lifting, LLC
+
+1. Purpose: Comply with 29 CFR 1910.134 — protect against isocyanate & silica exposure.
+2. Program administrator: [OWNER INPUT REQUIRED — qualified person].
+3. Hazard & respirator selection: Interior SPF requires supplied-air (SAR) or, where
+   permitted by exposure assessment, an appropriate air-purifying respirator with organic-
+   vapor + particulate protection. Concrete drilling: respirator per Silica Table 1.
+4. Medical evaluation: Each user is medically cleared by a PLHCP BEFORE fit-testing or use.
+5. Fit testing: Annual, same make/model/size as worn. Records kept until next test.
+6. Use, cleaning, storage, cartridge/filter change schedule: [OWNER INPUT — per manufacturer].
+7. Training: Before use and annually — purpose, limits, donning/doffing, seal check.
+8. Recordkeeping: Medical evaluations (per 1910.1020) and fit-tests retained.`,
+    silica: `SILICA WRITTEN EXPOSURE CONTROL PLAN — DRAFT (review with safety consultant)
+Machine Gun Spray Foam & Concrete Lifting, LLC
+
+1. Purpose: Comply with 29 CFR 1926.1153 — respirable crystalline silica in construction.
+2. Competent person: [OWNER INPUT REQUIRED — name].
+3. Tasks that create silica dust: Drilling injection holes in concrete for lifting/leveling;
+   any cutting/grinding of concrete or masonry.
+4. Engineering controls (Table 1): Handheld drills — use dust collection (shroud + HEPA
+   vacuum) OR wet methods; provide respiratory protection as Table 1 specifies for the task.
+5. Housekeeping: No dry sweeping/compressed air where it exposes workers; use HEPA vac/wet.
+6. Medical surveillance: Offered to employees required to wear a respirator ≥30 days/year.
+7. Training: Silica hazards, controls, and this plan. Document.
+8. Records: Keep this plan on site and review at least annually.`,
+  };
+
+  window.renderCompliance = function(){
+    const box=$('cmp_body'); if(!box) return;
+    const osha=LS('compliance_osha', OSHA.map(()=>false));
+    const dot =LS('compliance_dot',  DOT.map(()=>false));
+    const oshaDone=osha.filter(Boolean).length, dotDone=dot.filter(Boolean).length;
+    box.innerHTML=`
+      <div class="jsa-card"><h4>🚑 Severe-injury reporting — post this</h4>
+        <div style="font-size:13px;line-height:1.6">Call OSHA <b>1-800-321-6742</b>:<br>
+        • <b>Fatality</b> → within <b>8 hours</b><br>• <b>Hospitalization, amputation, or loss of an eye</b> → within <b>24 hours</b><br>
+        <span style="color:var(--t2);font-size:11px">Applies to every employer regardless of size. (You're likely exempt from routine OSHA 300 logs at ≤10 employees — this severe-event reporting is NOT exempt.)</span></div></div>
+
+      <div class="jsa-card"><h4>OSHA paperwork — required <span style="color:var(--t2);font-weight:400;font-size:12px">(${oshaDone}/${OSHA.length})</span></h4>
+        ${OSHA.map((it,i)=>`<label class="chk"><input type="checkbox" ${osha[i]?'checked':''} onchange="cmpToggle('osha',${i})"><span>${esc(it)}</span></label>`).join('')}</div>
+
+      <div class="jsa-card"><h4>DOT / FMCSA — interstate (MT·WY·ND·SD) <span style="color:var(--t2);font-weight:400;font-size:12px">(${dotDone}/${DOT.length})</span></h4>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:6px">Applies if a truck — or truck + trailer combined — is rated ≥10,001 lb and crosses state lines. Verify your rig's GVWR/GCWR.</div>
+        ${DOT.map((it,i)=>`<label class="chk"><input type="checkbox" ${dot[i]?'checked':''} onchange="cmpToggle('dot',${i})"><span>${esc(it)}</span></label>`).join('')}</div>
+
+      <div class="jsa-card"><h4>Written programs (drafts — edit & print)</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+          <button class="btn btn-ghost" onclick="cmpView('hazcom')">📄 Hazard Communication</button>
+          <button class="btn btn-ghost" onclick="cmpView('respirator')">📄 Respiratory Protection</button>
+          <button class="btn btn-ghost" onclick="cmpView('silica')">📄 Silica Exposure Plan</button>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-top:8px">The SPF Daily Log, PPE Check, Incident Report, Respirator & Training logs live under 📝 Forms.</div>
+      </div>`;
+  };
+  window.cmpToggle = function(group,i){
+    const key='compliance_'+group; const base=(group==='osha'?OSHA:DOT).map(()=>false);
+    const arr=LS(key, base); arr[i]=!arr[i]; SS(key,arr); renderCompliance();
+  };
+  window.cmpView = function(key){
+    const box=$('cmp_body'); if(!box) return;
+    const docs=LS('compliance_docs', {}); const text=docs[key]!=null?docs[key]:DEFAULT_DOCS[key];
+    box.innerHTML=`<div class="jsa-card"><h4>Edit program</h4>
+      <textarea id="cmp_doc" class="admin-inp" style="height:340px;font-family:monospace;font-size:11px">${esc(text)}</textarea>
+      <div class="jsa-actions" style="margin-top:10px">
+        <button class="btn btn-ghost" onclick="renderCompliance()">← Back</button>
+        <button class="btn btn-ghost" onclick="cmpSave('${key}')">💾 Save</button>
+        <button class="btn btn-primary" onclick="cmpPrint()">🖨️ Print / PDF</button>
+      </div></div>`;
+  };
+  window.cmpSave = function(key){
+    const docs=LS('compliance_docs', {}); docs[key]=($('cmp_doc')||{}).value||''; SS('compliance_docs',docs);
+    notify('Program saved','success');
+  };
+  window.cmpPrint = function(){
+    const text=($('cmp_doc')||{}).value||'';
+    if(!$('cmpPrintStyle')){ const st=document.createElement('style'); st.id='cmpPrintStyle';
+      st.textContent='@media print{ body>*{display:none!important} #cmpPrintArea{display:block!important;position:absolute;left:0;top:0;width:100%;background:#fff;color:#000} }';
+      document.head.appendChild(st); }
+    let area=$('cmpPrintArea'); if(!area){ area=document.createElement('div'); area.id='cmpPrintArea'; area.style.display='none'; document.body.appendChild(area); }
+    area.innerHTML='<pre style="font-family:Arial,Helvetica,sans-serif;white-space:pre-wrap;font-size:12px;color:#000;padding:24px">'+esc(text)+'</pre>';
+    notify('Opening print — choose "Save as PDF"','info');
+    setTimeout(()=>window.print(), 250);
+  };
+})();
+</script>
+
+<script>
+/* ===================== KLYFTON_WAVE8 — Photo sync (DORMANT until Vercel KV attached) ===================== */
+(function(){
+  const load = ()=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_photos')); return Array.isArray(v)?v:[];}catch(e){return [];} };
+  const store = arr=>{ appState.photos=arr; try{ localStorage.setItem('klyfton_photos', JSON.stringify(arr)); }catch(e){} };
+  const syncedKey='photos_synced';
+  const doneSet = ()=>{ try{return new Set(JSON.parse(localStorage.getItem('klyfton_'+syncedKey)||'[]').map(String));}catch(e){return new Set();} };
+  const markDone = set=>{ try{ localStorage.setItem('klyfton_'+syncedKey, JSON.stringify([...set])); }catch(e){} };
+  let on=false;
+
+  async function pull(){
+    const r=await fetch('/api/photo'); const d=await r.json();
+    if(!d || !d.configured) return false;
+    const local=load(); const have=new Set(local.map(p=>String(p.id)));
+    let added=false;
+    for(const m of (d.index||[])){
+      if(have.has(String(m.id))) continue;
+      try{ const ir=await fetch('/api/photo?id='+encodeURIComponent(m.id)); const ij=await ir.json();
+        if(ij && ij.data){ local.unshift({id:m.id, job:m.job, phase:m.phase, ts:m.ts, data:ij.data}); added=true; } }catch(e){}
+    }
+    if(added){ store(local); if(window.renderPhotoGrid) renderPhotoGrid(); }
+    return true;
+  }
+  async function pushNew(){
+    if(!on) return; const done=doneSet(); let changed=false;
+    for(const p of load()){
+      if(!p || !p.data || done.has(String(p.id))) continue;
+      try{ await fetch('/api/photo',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({id:p.id, data:p.data, meta:{job:p.job,phase:p.phase,ts:p.ts}})});
+        done.add(String(p.id)); changed=true; }catch(e){}
+    }
+    if(changed) markDone(done);
+  }
+  async function init(){
+    try{ on = await pull(); }catch(e){ on=false; }
+    if(!on) return;
+    await pushNew();
+    setInterval(pushNew, 20000);
+    document.addEventListener('visibilitychange', ()=>{ if(document.hidden) pushNew(); });
+  }
+  // Propagate photo deletes to the other phones.
+  const _del = window.delPhoto;
+  window.delPhoto = function(id){
+    if(typeof _del==='function') _del(id);
+    if(on){ try{ fetch('/api/photo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({remove:[id]})}); }catch(e){}
+      const s=doneSet(); s.delete(String(id)); markDone(s); }
+  };
+  if(document.readyState==='complete') setTimeout(init, 2000);
+  else window.addEventListener('load', ()=> setTimeout(init, 2000));
 })();
 </script>
 
