@@ -446,6 +446,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('compliance');renderCompliance()" id="nav-compliance">
         <div class="nav-icon">🛡️</div><div class="nav-label">COMPLY</div>
       </div>
+      <div class="nav-item" onclick="switchModule('invoice');renderInvoice()" id="nav-invoice">
+        <div class="nav-icon">🧾</div><div class="nav-label">INVOICE</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1018,6 +1021,17 @@ canvas.chart{width:100%;height:100%}
           <div id="adm-cons-rows"></div>
         </div>
 
+        <!-- BACKUP & RESTORE (KLYFTON_WAVE9) -->
+        <div class="admin-section">
+          <div class="admin-section-title">💾 BACKUP &amp; RESTORE</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Download a full backup of everything on this device — jobs, leads, estimates, forms, proposals, change orders, photos, settings. Keep the file somewhere safe (email it to yourself). Restore puts it all back.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-orange" onclick="klyftonBackup()">⬇ Download full backup</button>
+            <label class="btn btn-ghost" style="cursor:pointer">⬆ Restore from backup<input type="file" accept=".json,.JSON" style="display:none" onchange="klyftonRestore(event)"></label>
+            <span id="bk_status" style="font-size:11px;color:var(--gr)"></span>
+          </div>
+        </div>
+
         <!-- DATA MANAGER (KLYFTON_WAVE6) -->
         <div class="admin-section">
           <div class="admin-section-title">🗂️ DATA MANAGER — EDIT / DELETE ANY RECORD</div>
@@ -1209,6 +1223,35 @@ canvas.chart{width:100%;height:100%}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div style="font-size:11px;color:var(--yw);margin-bottom:12px">⚠ Drafts &amp; checklists to organize your paperwork — <b>not legal advice</b>. Have your safety consultant / state OSHA review before you rely on any of it. Free help: OSHA On-Site Consultation (no fines, separate from enforcement).</div>
         <div id="cmp_body"></div>
+      </div>
+
+      <!-- INVOICE MODULE (KLYFTON_WAVE10) -->
+      <div id="mod-invoice" class="module">
+        <div class="mod-head"><h2>🧾 Invoice</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div class="jsa-card"><h4>Start from an estimate (optional)</h4>
+          <select id="in_est" class="admin-inp" onchange="invoiceFromEstimate()"><option value="">— pick a saved estimate —</option></select>
+        </div>
+        <div class="jsa-card"><h4>Bill to</h4>
+          <label class="fl">Customer / company *</label><input id="in_cust" class="admin-inp" placeholder="Who's being billed">
+          <label class="fl">Project address</label><input id="in_addr" class="admin-inp" placeholder="Job site">
+        </div>
+        <div class="jsa-card"><h4>Work &amp; amount</h4>
+          <label class="fl">Description of work</label><textarea id="in_desc" class="admin-inp" style="height:70px" placeholder="What was done"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="fl">Amount $ *</label><input type="number" id="in_amt" class="admin-inp" placeholder="0"></div>
+            <div><label class="fl">Deposit paid $</label><input type="number" id="in_dep" class="admin-inp" placeholder="0"></div>
+          </div>
+          <label class="fl">Due</label><input id="in_due" class="admin-inp" placeholder="e.g. Net 15 / Due on receipt">
+          <label class="chk" style="margin-top:8px"><input type="checkbox" id="in_hearth" checked><span>Show Hearth financing option</span></label>
+        </div>
+        <div class="jsa-actions">
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+          <button class="btn btn-ghost" onclick="saveInvoice()">💾 Save</button>
+          <button class="btn btn-primary" onclick="printInvoice()">🖨️ Print / Save PDF</button>
+        </div>
+        <h3 style="margin-top:22px">Invoices</h3>
+        <div id="in_list"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -6317,6 +6360,7 @@ document.addEventListener('click',()=>{
     {k:'jobs',         label:'Jobs',          sum:r=>`${r.customer||r.name||'—'} · ${r.status||''}`},
     {k:'estimates',    label:'Estimates',     sum:r=>`${r.customer||'—'} · ${money(r.value)}`},
     {k:'proposals',    label:'Proposals',     sum:r=>`${r.cust||'—'} · ${money(r.price)}`},
+    {k:'invoices',     label:'Invoices',      sum:r=>`${r.num||'—'} · ${r.cust||''} · ${r.paid?'PAID':'unpaid'}`},
     {k:'changeorders', label:'Change Orders', sum:r=>`${r.num||'—'} · ${r.job||''}`},
     {k:'forms',        label:'Forms',         sum:r=>`${r.name||'—'} · ${r.job||''}`},
     {k:'jsas',         label:'JSAs',          sum:r=>`${r.job||'—'} · ${r.foreman||''}`},
@@ -6398,7 +6442,8 @@ document.addEventListener('click',()=>{
   // Refresh whichever module list is affected so the change shows everywhere.
   function dmRefresh(k){
     const map={leads:'renderPipeline',jobs:'renderJobs',jsas:'renderJSAList',signoffs:'renderSignoffList',
-      matlogs:'renderMatList',proposals:'renderProposalList',forms:'renderFormsList',changeorders:'renderCOList',tc_punches:'renderClock'};
+      matlogs:'renderMatList',proposals:'renderProposalList',forms:'renderFormsList',changeorders:'renderCOList',
+      tc_punches:'renderClock',invoices:'renderInvoiceList'};
     const fn=map[k]; try{ if(fn && typeof window[fn]==='function') window[fn](); }catch(e){}
   }
 
@@ -6599,12 +6644,121 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
 </script>
 
 <script>
+/* ===================== KLYFTON_WAVE9 — Backup & Restore ===================== */
+(function(){
+  const $=id=>document.getElementById(id);
+  const pad=n=>(n<10?'0':'')+n;
+  function stamp(){ const d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate()); }
+  window.klyftonBackup = function(){
+    const data={};
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && (k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1')) data[k]=localStorage.getItem(k); } }catch(e){}
+    const blob=new Blob([JSON.stringify({app:'Klyfton', backupVersion:1, date:new Date().toISOString(), data},null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='MGSF_Klyfton_backup_'+stamp()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+    if($('bk_status')) $('bk_status').textContent='Backup downloaded ✓';
+    notify('Full backup downloaded','success');
+  };
+  window.klyftonRestore = function(ev){
+    const file=ev&&ev.target&&ev.target.files&&ev.target.files[0]; if(!file) return;
+    const rd=new FileReader();
+    rd.onload=e=>{
+      let obj; try{ obj=JSON.parse(e.target.result); }catch(err){ notify('That is not a valid backup file','alert'); return; }
+      const data=obj&&obj.data; if(!data||typeof data!=='object'){ notify('Backup file has no data','alert'); return; }
+      if(!confirm('Restore this backup? It replaces the data on THIS device with the backup.')) return;
+      try{ Object.keys(data).forEach(k=>{ if(k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1') localStorage.setItem(k, data[k]); }); }catch(err){ notify('Restore failed (storage full?)','alert'); return; }
+      notify('Restored ✓ reloading…','success');
+      setTimeout(()=>location.reload(), 800);
+    };
+    rd.readAsText(file); ev.target.value='';
+  };
+})();
+</script>
+
+<script>
+/* ===================== KLYFTON_WAVE10 — Invoices ===================== */
+(function(){
+  const LS=(k,d)=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return v==null?d:v}catch(e){return d} };
+  const SS=(k,v)=>{ appState[k]=v; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(v)); return true;}catch(e){ notify('Storage full','alert'); return false; } };
+  const $=id=>document.getElementById(id);
+  const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money=n=>'$'+(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const CO={ name:'Machine Gun Spray Foam & Concrete Lifting, LLC', addr:'2402 N Anderson Ave, Glendive, MT 59330',
+    phone:'406-939-8301', web:'machinegunsprayfoam.info',
+    hearth:'https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton' };
+  const inNum=()=>'INV-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+((LS('invoices',[]).length+1));
+
+  window.renderInvoice=function(){
+    const sel=$('in_est');
+    if(sel){ const e=appState.estimates||[]; sel.innerHTML='<option value="">— pick a saved estimate —</option>'+
+      e.slice().reverse().map(x=>`<option value="${x.id}">${esc(x.customer||'job')} · $${(+x.value||0).toLocaleString()}</option>`).join(''); }
+    renderInvoiceList();
+  };
+  window.invoiceFromEstimate=function(){
+    const id=($('in_est')||{}).value; if(!id) return;
+    const e=(appState.estimates||[]).find(x=>String(x.id)===String(id)); if(!e) return;
+    if($('in_cust')&&!$('in_cust').value) $('in_cust').value=e.customer||'';
+    if($('in_amt')&&!$('in_amt').value) $('in_amt').value=e.value||'';
+  };
+  function gather(){ const g=id=>($(id)||{}).value||'';
+    return { id:'INV'+Date.now(), num:$('in_num')?$('in_num').value:inNum(), date:new Date().toISOString().split('T')[0],
+      cust:g('in_cust'), addr:g('in_addr'), desc:g('in_desc'), amt:g('in_amt'), dep:g('in_dep'),
+      due:g('in_due'), hearth:($('in_hearth')||{}).checked, paid:false }; }
+  function doc(v){
+    const bal=(Number(v.amt)||0)-(Number(v.dep)||0);
+    const hearth=v.hearth?`<div style="margin:12px 0;padding:10px;border:1px solid #f97316;border-radius:6px;font-size:12px"><b>Need to finance?</b> Pay over time through Hearth — ${esc(CO.hearth)}</div>`:'';
+    return `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:24px">
+      <div style="display:flex;justify-content:space-between;border-bottom:3px solid #f97316;padding-bottom:10px;margin-bottom:14px">
+        <div><div style="font-size:19px;font-weight:800">${esc(CO.name)}</div>
+          <div style="font-size:11px;color:#444">🇺🇸 Veteran-Owned · ${esc(CO.addr)} · ${esc(CO.phone)} · ${esc(CO.web)}</div></div>
+        <div style="text-align:right"><div style="font-size:20px;font-weight:800">INVOICE</div><div style="font-size:12px">${esc(v.num)}</div><div style="font-size:12px">${esc(v.date)}</div></div>
+      </div>
+      <div style="font-size:13px;margin-bottom:12px"><b>Bill to:</b> ${esc(v.cust)}${v.addr?(' — '+esc(v.addr)):''}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr style="background:#f2f2f2"><td style="padding:8px;border:1px solid #ddd">Description</td><td style="padding:8px;border:1px solid #ddd;text-align:right;width:120px">Amount</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${esc(v.desc||'Spray foam / coating / concrete lifting services')}</td><td style="padding:8px;border:1px solid #ddd;text-align:right">${money(v.amt)}</td></tr>
+      </table>
+      <div style="margin-top:10px;font-size:14px;text-align:right">
+        ${Number(v.dep)?`<div>Deposit paid: -${money(v.dep)}</div>`:''}
+        <div style="font-size:18px;font-weight:800;margin-top:4px">Balance due: ${money(bal)}</div>
+        ${v.due?`<div style="font-size:12px;color:#444">Terms: ${esc(v.due)}</div>`:''}
+      </div>
+      ${hearth}
+      <div style="margin-top:14px;font-size:12px;color:#444">Make checks payable to ${esc(CO.name)}. Thank you for your business. — Clifton Behner</div>
+    </div>`;
+  }
+  window.printInvoice=function(){
+    const v=gather(); if(!v.cust){ notify('Customer required','alert'); return; } if(!v.amt){ notify('Amount required','alert'); return; }
+    if(!$('invPrintStyle')){ const st=document.createElement('style'); st.id='invPrintStyle';
+      st.textContent='@media print{ body>*{display:none!important} #invPrintArea{display:block!important;position:absolute;left:0;top:0;width:100%;background:#fff} }'; document.head.appendChild(st); }
+    let area=$('invPrintArea'); if(!area){ area=document.createElement('div'); area.id='invPrintArea'; area.style.display='none'; document.body.appendChild(area); }
+    area.innerHTML=doc(v); notify('Opening print — choose "Save as PDF"','info'); setTimeout(()=>window.print(),250);
+  };
+  window.saveInvoice=function(){
+    const v=gather(); if(!v.cust){ notify('Customer required','alert'); return; }
+    const arr=LS('invoices',[]); arr.unshift(v);
+    if(SS('invoices',arr)){ notify('Invoice saved','success'); renderInvoiceList(); }
+  };
+  window.renderInvoiceList=function(){
+    const box=$('in_list'); if(!box) return; const arr=LS('invoices',[]);
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No invoices yet.</p>'; return; }
+    box.innerHTML=arr.map(v=>{ const bal=(Number(v.amt)||0)-(Number(v.dep)||0);
+      return `<div class="log-row"><span><b>${esc(v.num||'INV')}</b> · ${esc(v.cust)}<br>
+        <span style="color:var(--t2)">${money(v.amt)} · bal ${money(bal)} · ${esc(v.date)} · <b style="color:${v.paid?'var(--gr)':'var(--yw)'}">${v.paid?'PAID':'UNPAID'}</b></span></span>
+        <span><button class="btn btn-ghost" style="font-size:11px" onclick="invTogglePaid('${v.id}')">${v.paid?'Mark unpaid':'Mark paid'}</button>
+        <button class="btn btn-ghost" style="font-size:11px;color:var(--red)" onclick="delInvoice('${v.id}')">✕</button></span></div>`;
+    }).join('');
+  };
+  window.invTogglePaid=function(id){ const arr=LS('invoices',[]); const v=arr.find(x=>x.id===id); if(v){ v.paid=!v.paid; SS('invoices',arr); renderInvoiceList(); } };
+  window.delInvoice=function(id){ SS('invoices', LS('invoices',[]).filter(v=>v.id!==id)); renderInvoiceList(); };
+})();
+</script>
+
+<script>
 /* ===== KLYFTON_CLOUD — optional multi-device sync (DORMANT until Vercel KV is attached) =====
    With no storage, /api/sync returns {configured:false} and this does nothing — the app runs
    exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
    leads, estimates, JSAs, punches, material logs, and sign-offs. Photos stay on-device for now. */
 (function(){
-  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms','changeorders'];
+  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms','changeorders','invoices'];
   const last = {};
   let on = false;
   // Prefer live state; fall back to localStorage so every collection syncs even if a module
