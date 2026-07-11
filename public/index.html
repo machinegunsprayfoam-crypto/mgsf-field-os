@@ -422,6 +422,18 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('clock');renderClock()" id="nav-clock">
         <div class="nav-icon">⏱️</div><div class="nav-label">CLOCK</div>
       </div>
+      <div class="nav-item" onclick="switchModule('weather');renderWeather()" id="nav-weather">
+        <div class="nav-icon">🌦️</div><div class="nav-label">WEATHER</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('photos');renderPhotos()" id="nav-photos">
+        <div class="nav-icon">📸</div><div class="nav-label">PHOTOS</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('materials');renderMaterials()" id="nav-materials">
+        <div class="nav-icon">🛢️</div><div class="nav-label">MATERIAL</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('signoff');renderSignoff()" id="nav-signoff">
+        <div class="nav-icon">✍️</div><div class="nav-label">SIGN-OFF</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1045,6 +1057,67 @@ canvas.chart{width:100%;height:100%}
         </div>
         <h3 style="margin-top:18px">Punch log</h3>
         <div id="tc_log"></div>
+      </div>
+
+      <!-- WEATHER MODULE (KLYFTON_WAVE2) -->
+      <div id="mod-weather" class="module">
+        <div class="mod-head"><h2>🌦️ Spray Weather</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div class="jsa-actions" style="margin-bottom:12px">
+          <input id="wx_city" class="admin-inp" style="max-width:280px" placeholder="City, ST (e.g. Billings, MT)">
+          <button class="btn btn-primary" onclick="weatherLookup()">Check</button>
+          <button class="btn btn-ghost" onclick="weatherHere()">📍 Use my location</button>
+        </div>
+        <div id="wx_out"></div>
+      </div>
+
+      <!-- PHOTOS MODULE (KLYFTON_WAVE2) -->
+      <div id="mod-photos" class="module">
+        <div class="mod-head"><h2>📸 Job Photos</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div class="jsa-card">
+          <label class="fl">Job</label>
+          <input id="ph_job" class="admin-inp" style="width:100%;max-width:340px" placeholder="Job name / address" oninput="renderPhotoGrid()">
+          <div class="jsa-actions" style="margin-top:10px">
+            <label class="btn btn-ghost">📷 Before<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhoto(this,'Before')"></label>
+            <label class="btn btn-ghost">📷 During<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhoto(this,'During')"></label>
+            <label class="btn btn-ghost">📷 After<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhoto(this,'After')"></label>
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-top:6px">Photos are stored on this device (compressed). Save the important ones off-device too.</div>
+        </div>
+        <div id="ph_grid"></div>
+      </div>
+
+      <!-- MATERIAL USED vs ESTIMATED MODULE (KLYFTON_WAVE2) -->
+      <div id="mod-materials" class="module">
+        <div class="mod-head"><h2>🛢️ Material: Used vs Estimated</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div class="jsa-card"><h4>Log a material</h4>
+          <label class="fl">Job</label><input id="mt_job" class="admin-inp" placeholder="Job name / address">
+          <label class="fl">Product</label><select id="mt_prod" class="admin-inp"></select>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="fl">Estimated</label><input type="number" step="any" id="mt_est" class="admin-inp" placeholder="sets / gal / lb"></div>
+            <div><label class="fl">Actually used</label><input type="number" step="any" id="mt_act" class="admin-inp" placeholder="sets / gal / lb"></div>
+          </div>
+          <div class="jsa-actions" style="margin-top:10px">
+            <button class="btn btn-primary" onclick="addMaterialLog()">＋ Log it</button>
+            <button class="btn btn-ghost" onclick="exportMaterials()">⬇ CSV</button>
+          </div>
+        </div>
+        <div id="mt_list"></div>
+      </div>
+
+      <!-- CUSTOMER SIGN-OFF MODULE (KLYFTON_WAVE2) -->
+      <div id="mod-signoff" class="module">
+        <div class="mod-head"><h2>✍️ Customer Sign-Off</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="so_form"></div>
+        <div class="jsa-actions">
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+          <button class="btn btn-primary" onclick="submitSignoff()">✅ Save Sign-Off</button>
+        </div>
+        <h3 style="margin-top:22px">Completed sign-offs</h3>
+        <div id="so_list"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -5527,6 +5600,219 @@ document.addEventListener('click',()=>{
 
   /* ---------- PWA service worker ---------- */
   if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+})();
+</script>
+
+<script>
+/* ===================== KLYFTON_WAVE2 — Weather · Photos · Material · Sign-Off ===================== */
+(function(){
+  const LS = (k,d)=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return v==null?d:v}catch(e){return d} };
+  const SS = (k,v)=>{ appState[k]=v; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(v)); return true; }catch(e){ notify('Storage full — delete some items','alert'); return false; } };
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const nowISO = ()=> new Date().toISOString();
+  const fmt = iso => { try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return iso||''} };
+
+  // Shared spray GO/NO-GO from temp + dew point spread (matches JSA logic).
+  function sprayFlag(t, df){
+    const spread=t-df;
+    if(spread<5) return {cls:'var(--red)', msg:'⛔ NO-GO — surface within 5°F of dew point (condensation risk)'};
+    if(t<50||t>110) return {cls:'var(--yw)', msg:'⚠️ CAUTION — temp outside typical SPF spec (check product TDS)'};
+    return {cls:'var(--gr)', msg:'✅ GO — dew-point spread '+spread.toFixed(0)+'°F'};
+  }
+
+  /* ---------- WEATHER (live, Open-Meteo, no key) ---------- */
+  window.renderWeather = function(){ const o=$('wx_out'); if(o && !o.innerHTML) o.innerHTML='<p style="color:var(--t2);font-size:13px">Enter a city or use your location to pull live spray conditions.</p>'; };
+  function wxRender(place, c){
+    const t=c.temperature_2m, h=c.relative_humidity_2m, df=c.dew_point_2m, w=c.wind_speed_10m, p=c.precipitation;
+    const f=sprayFlag(t, df);
+    $('wx_out').innerHTML = `
+      <div class="jsa-card" style="border-color:${f.cls}">
+        <h4>${esc(place)}</h4>
+        <div style="font-size:15px;font-weight:700;color:${f.cls};margin:4px 0 10px">${f.msg}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+          <div>🌡️ Temp: <b>${t?.toFixed?.(0)}°F</b></div>
+          <div>💧 Humidity: <b>${h?.toFixed?.(0)}%</b></div>
+          <div>🫧 Dew point: <b>${df?.toFixed?.(0)}°F</b> (spread ${(t-df).toFixed(0)}°F)</div>
+          <div>💨 Wind: <b>${w?.toFixed?.(0)} mph</b></div>
+          <div>🌧️ Precip: <b>${p ?? 0} in</b></div>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-top:8px">Substrate temp can differ from air — verify with an IR gun before you pull the trigger.</div>
+      </div>`;
+  }
+  async function wxFetch(lat, lon, place){
+    $('wx_out').innerHTML='<p style="color:var(--t2);font-size:13px">Pulling conditions…</p>';
+    try{
+      const u='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch';
+      const r=await fetch(u); const d=await r.json();
+      if(!d.current) throw new Error('no data');
+      wxRender(place, d.current);
+    }catch(e){
+      $('wx_out').innerHTML='<div class="jsa-card" style="border-color:var(--yw)"><h4>No signal for live weather</h4><p style="font-size:13px;color:var(--t2)">Couldn\'t reach the weather service. Use the JSA form to enter temp + humidity by hand — it runs the same dew-point GO/NO-GO offline.</p></div>';
+    }
+  }
+  window.weatherLookup = async function(){
+    const city=(($('wx_city')||{}).value||'').trim(); if(!city){ notify('Type a city','alert'); return; }
+    $('wx_out').innerHTML='<p style="color:var(--t2);font-size:13px">Finding '+esc(city)+'…</p>';
+    try{
+      const g=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(city.split(',')[0]));
+      const gj=await g.json(); const hit=(gj.results||[])[0];
+      if(!hit) throw new Error('not found');
+      const place=hit.name+(hit.admin1?(', '+hit.admin1):'');
+      wxFetch(hit.latitude, hit.longitude, place);
+    }catch(e){ $('wx_out').innerHTML='<p style="color:var(--yw);font-size:13px">Couldn\'t find that city (or no signal). Try "City, ST" or use your location.</p>'; }
+  };
+  window.weatherHere = function(){
+    if(!navigator.geolocation){ notify('No geolocation on this device','alert'); return; }
+    $('wx_out').innerHTML='<p style="color:var(--t2);font-size:13px">Getting your location…</p>';
+    navigator.geolocation.getCurrentPosition(
+      p=>wxFetch(p.coords.latitude.toFixed(3), p.coords.longitude.toFixed(3), 'Current location'),
+      ()=>{ $('wx_out').innerHTML='<p style="color:var(--yw);font-size:13px">Location blocked — type a city instead.</p>'; }
+    );
+  };
+
+  /* ---------- JOB PHOTOS (before / during / after) ---------- */
+  window.renderPhotos = function(){ renderPhotoGrid(); };
+  window.addPhoto = function(input, phase){
+    const file=input.files&&input.files[0]; if(!file){ return; }
+    const job=(($('ph_job')||{}).value||'').trim(); if(!job){ notify('Enter a job first','alert'); input.value=''; return; }
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=1000, scale=Math.min(1, max/Math.max(img.width,img.height));
+        const cv=document.createElement('canvas'); cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        let data; try{ data=cv.toDataURL('image/jpeg',0.55); }catch(err){ notify('Could not process photo','alert'); return; }
+        const arr=LS('photos',[]);
+        arr.unshift({id:'PH'+Date.now(), job, phase, data, ts:nowISO()});
+        if(SS('photos',arr)){ notify(phase+' photo saved','success'); renderPhotoGrid(); }
+      };
+      img.onerror=()=>notify('Not a readable image','alert');
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file); input.value='';
+  };
+  window.renderPhotoGrid = function(){
+    const box=$('ph_grid'); if(!box) return;
+    const job=(($('ph_job')||{}).value||'').trim().toLowerCase();
+    const arr=LS('photos',[]).filter(p=>!job || (p.job||'').toLowerCase().includes(job));
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No photos yet'+(job?' for this job':'')+'. Snap Before / During / After above.</p>'; return; }
+    const tag={Before:'var(--cy)',During:'var(--or)',After:'var(--gr)'};
+    box.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px">'+
+      arr.map(p=>`<div class="jsa-card" style="padding:8px">
+        <div style="font-size:11px;font-weight:700;color:${tag[p.phase]||'var(--tx)'}">${esc(p.phase)} · <span style="color:var(--t2);font-weight:400">${esc(p.job)}</span></div>
+        <img src="${p.data}" style="width:100%;border-radius:6px;margin:6px 0;display:block" onclick="window.open('').document.write('<img src=\\'${p.data}\\' style=width:100%>')">
+        <div style="font-size:10px;color:var(--t2)">${fmt(p.ts)}</div>
+        <button class="btn btn-ghost" style="margin-top:4px;font-size:11px" onclick="delPhoto('${p.id}')">Delete</button>
+      </div>`).join('')+'</div>';
+  };
+  window.delPhoto = function(id){ SS('photos', LS('photos',[]).filter(p=>p.id!==id)); renderPhotoGrid(); };
+
+  /* ---------- MATERIAL USED vs ESTIMATED ---------- */
+  function matProducts(){
+    const out=[];
+    try{ (EST_FOAM||[]).forEach(p=>out.push({k:p.k,n:p.n,unit:'set',cost:p.setCost||0})); }catch(e){}
+    try{ (EST_COAT||[]).forEach(p=>out.push({k:p.k,n:p.n,unit:'gal',cost:p.costGal||0})); }catch(e){}
+    try{ (EST_GEO ||[]).forEach(p=>out.push({k:p.k,n:p.n,unit:'lb',cost:p.priceLb||0})); }catch(e){}
+    return out;
+  }
+  window.renderMaterials = function(){
+    const sel=$('mt_prod'); if(sel) sel.innerHTML=matProducts().map(p=>`<option value="${p.k}">${esc(p.n)} ($${p.cost}/${p.unit})</option>`).join('');
+    renderMatList();
+  };
+  window.addMaterialLog = function(){
+    const job=(($('mt_job')||{}).value||'').trim();
+    const k=($('mt_prod')||{}).value;
+    const est=parseFloat(($('mt_est')||{}).value), act=parseFloat(($('mt_act')||{}).value);
+    if(!job){ notify('Job required','alert'); return; }
+    if(isNaN(est)||isNaN(act)){ notify('Enter estimated + actual','alert'); return; }
+    const prod=matProducts().find(p=>p.k===k)||{n:k,unit:'unit',cost:0};
+    const rec={id:'MT'+Date.now(), job, prod:prod.n, unit:prod.unit, cost:prod.cost, est, act, ts:nowISO()};
+    const arr=LS('matlogs',[]); arr.unshift(rec);
+    if(SS('matlogs',arr)){ notify('Material logged','success'); ['mt_est','mt_act'].forEach(i=>{if($(i))$(i).value='';}); renderMatList(); }
+  };
+  window.renderMatList = function(){
+    const box=$('mt_list'); if(!box) return; const arr=LS('matlogs',[]);
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No material logged yet.</p>'; return; }
+    box.innerHTML=arr.map(m=>{
+      const d=m.act-m.est, pct=m.est?((d/m.est)*100):0, dollars=d*(m.cost||0);
+      const col=d>0?'var(--red)':(d<0?'var(--gr)':'var(--t2)');
+      const sign=d>0?'+':'';
+      return `<div class="log-row"><span><b>${esc(m.prod)}</b> · ${esc(m.job)}<br>
+        <span style="color:var(--t2)">est ${m.est} / used ${m.act} ${esc(m.unit)} · ${fmt(m.ts)}</span></span>
+        <span style="text-align:right;color:${col}"><b>${sign}${d.toFixed(2)} ${esc(m.unit)}</b><br>
+        <span style="font-size:11px">${sign}${pct.toFixed(0)}% · ${sign}$${Math.abs(dollars).toFixed(0)}</span>
+        <button class="btn btn-ghost" style="margin-left:6px;font-size:11px" onclick="delMat('${m.id}')">✕</button></span></div>`;
+    }).join('');
+  };
+  window.delMat = function(id){ SS('matlogs', LS('matlogs',[]).filter(m=>m.id!==id)); renderMatList(); };
+  window.exportMaterials = function(){
+    const arr=LS('matlogs',[]); if(!arr.length){ notify('Nothing to export','alert'); return; }
+    const rows=[['Job','Product','Unit','Estimated','Used','Variance','Variance$','When']].concat(
+      arr.map(m=>{const d=m.act-m.est; return [m.job,m.prod,m.unit,m.est,m.act,d.toFixed(2),(d*(m.cost||0)).toFixed(2),m.ts];}));
+    const csv=rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='MGSF_material_usage.csv'; a.click(); URL.revokeObjectURL(a.href); notify('Material CSV downloaded','success');
+  };
+
+  /* ---------- CUSTOMER SIGN-OFF ---------- */
+  const SO_CHECK=['Work complete per scope','Site cleaned & debris removed','Walkthrough done with customer','All change orders signed','Customer satisfied with work'];
+  let soCtx, soDraw=false;
+  window.renderSignoff = function(){
+    const box=$('so_form'); if(!box) return;
+    box.innerHTML=`
+      <div class="jsa-card"><h4>Job</h4>
+        <label class="fl">Job name / address *</label><input id="so_job" class="admin-inp" placeholder="e.g. Smith barn CC">
+        <label class="fl">Customer name *</label><input id="so_cust" class="admin-inp" placeholder="Who's signing">
+      </div>
+      <div class="jsa-card"><h4>Completion checklist</h4>
+        ${SO_CHECK.map((c,i)=>`<label class="chk"><input type="checkbox" id="so_c_${i}"><span>${esc(c)}</span></label>`).join('')}
+      </div>
+      <div class="jsa-card"><h4>Notes</h4>
+        <input id="so_notes" class="admin-inp" placeholder="Anything the customer should know (cure time, re-occupancy, warranty)">
+      </div>
+      <div class="jsa-card"><h4>Customer signature *</h4>
+        <canvas id="so_sig" class="sigpad"></canvas>
+        <div><button class="btn btn-ghost" style="margin-top:6px" onclick="soClear()">Clear signature</button></div>
+      </div>`;
+    soInit(); renderSignoffList();
+  };
+  function soInit(){
+    const c=$('so_sig'); if(!c) return; c.width=c.offsetWidth||320; c.height=120; soCtx=c.getContext('2d');
+    soCtx.strokeStyle='#f97316'; soCtx.lineWidth=2; soCtx.lineCap='round';
+    const pos=e=>{const r=c.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return[p.clientX-r.left,p.clientY-r.top]};
+    const down=e=>{soDraw=true;soCtx.beginPath();soCtx.moveTo(...pos(e));e.preventDefault()};
+    const move=e=>{if(!soDraw)return;soCtx.lineTo(...pos(e));soCtx.stroke();e.preventDefault()};
+    const up=()=>{soDraw=false};
+    c.onmousedown=down;c.onmousemove=move;c.onmouseup=up;c.onmouseleave=up;
+    c.ontouchstart=down;c.ontouchmove=move;c.ontouchend=up;
+  }
+  window.soClear = function(){ const c=$('so_sig'); if(c&&soCtx) soCtx.clearRect(0,0,c.width,c.height); };
+  function soSigData(){ const c=$('so_sig'); try{return c?c.toDataURL('image/png'):'';}catch(e){return '';} }
+  function soSigned(){ const c=$('so_sig'); if(!c||!soCtx) return false; const d=soCtx.getImageData(0,0,c.width,c.height).data; for(let i=3;i<d.length;i+=4){ if(d[i]!==0) return true; } return false; }
+  window.submitSignoff = function(){
+    const g=id=>($(id)||{}).value||'';
+    if(!g('so_job')){ notify('Job required','alert'); return; }
+    if(!g('so_cust')){ notify('Customer name required','alert'); return; }
+    if(!soSigned()){ notify('Customer signature required','alert'); return; }
+    const checks=SO_CHECK.map((_,i)=>!!($('so_c_'+i)||{}).checked);
+    const rec={id:'SO'+Date.now(), job:g('so_job'), cust:g('so_cust'), notes:g('so_notes'),
+      checks, sig:soSigData(), ts:nowISO()};
+    const arr=LS('signoffs',[]); arr.unshift(rec);
+    if(SS('signoffs',arr)){ notify('Sign-off saved ✓','success'); renderSignoff(); switchModule('dashboard'); }
+  };
+  window.renderSignoffList = function(){
+    const box=$('so_list'); if(!box) return; const arr=LS('signoffs',[]);
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No sign-offs yet.</p>'; return; }
+    box.innerHTML=arr.map(s=>{ const done=(s.checks||[]).filter(Boolean).length;
+      return `<div class="log-row"><span><b>${esc(s.job)}</b> · ${esc(s.cust)}<br>
+        <span style="color:var(--t2)">${done}/${SO_CHECK.length} checks · ${fmt(s.ts)}</span></span>
+        <span>${s.sig?`<img src="${s.sig}" style="height:34px;background:#fff;border-radius:4px;vertical-align:middle">`:''}
+        <button class="btn btn-ghost" style="margin-left:6px;font-size:11px" onclick="delSignoff('${s.id}')">Delete</button></span></div>`;
+    }).join('');
+  };
+  window.delSignoff = function(id){ SS('signoffs', LS('signoffs',[]).filter(s=>s.id!==id)); renderSignoffList(); };
 })();
 </script>
 

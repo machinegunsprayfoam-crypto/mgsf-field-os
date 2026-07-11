@@ -10,10 +10,11 @@
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
-// Swap WORKER/CRITIC to "claude-sonnet-5" or "claude-haiku-4-5" to cut cost.
+// Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
+// Bump WORKER/CRITIC to "claude-opus-4-8" for max smarts, or drop to "claude-haiku-4-5" for cheapest.
 const ROUTER_MODEL = "claude-haiku-4-5";
-const WORKER_MODEL = "claude-opus-4-8";
-const CRITIC_MODEL = "claude-opus-4-8";
+const WORKER_MODEL = "claude-sonnet-5";
+const CRITIC_MODEL = "claude-sonnet-5";
 
 // Shared voice — every mind answers the way the owner wants (MOGS owner profile).
 const BASE_VOICE = `You serve Machine Gun Spray Foam & Concrete Lifting, LLC (owner: Clifton Behner,
