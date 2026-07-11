@@ -1,0 +1,89 @@
+// Klyfton multi-device sync — the shared backbone so every crew phone sees the same
+// jobs, leads, estimates, JSAs, punches, material logs, and sign-offs.
+//
+// Runs as a Vercel serverless function. No npm deps (uses global fetch + the Vercel KV
+// REST API). DORMANT until KV storage is attached: with no KV_REST_API_URL it returns
+// { configured:false } and the app silently stays on-device — zero behavior change.
+//
+// To switch on: Vercel → mgsf-fieldos → Storage → add KV (Upstash) → connect to project.
+// Vercel injects KV_REST_API_URL + KV_REST_API_TOKEN automatically. Then redeploy.
+
+const KV_URL = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+
+// Collections we sync. Photos are intentionally excluded (base64 images are too heavy for
+// this store — they stay on-device until we add blob storage).
+const COLLECTIONS = ["jobs", "leads", "estimates", "jsas", "tc_punches", "matlogs", "signoffs"];
+const PREFIX = "mgsf:";
+
+function authHeaders() {
+  return { Authorization: "Bearer " + KV_TOKEN };
+}
+
+async function kvGet(col) {
+  try {
+    const r = await fetch(KV_URL + "/get/" + encodeURIComponent(PREFIX + col), { headers: authHeaders() });
+    if (!r.ok) return [];
+    const j = await r.json();
+    if (!j || j.result == null) return [];
+    const parsed = JSON.parse(j.result);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function kvSet(col, arr) {
+  await fetch(KV_URL + "/set/" + encodeURIComponent(PREFIX + col), {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(arr),
+  });
+}
+
+// Union by id. Incoming (the saving device's copy) wins on a shared id, so edits propagate.
+// Note: deletes are NOT propagated in v1 (a union keeps every id ever seen).
+function mergeById(existing, incoming) {
+  const map = new Map();
+  (existing || []).forEach((r) => { if (r && r.id != null) map.set(String(r.id), r); });
+  (incoming || []).forEach((r) => { if (r && r.id != null) map.set(String(r.id), r); });
+  return Array.from(map.values());
+}
+
+module.exports = async (req, res) => {
+  // Dormant when no storage attached — the app keeps working on-device.
+  if (!KV_URL || !KV_TOKEN) {
+    res.status(200).json({ configured: false });
+    return;
+  }
+
+  try {
+    if (req.method === "GET") {
+      const data = {};
+      await Promise.all(COLLECTIONS.map(async (c) => { data[c] = await kvGet(c); }));
+      res.status(200).json({ configured: true, data });
+      return;
+    }
+
+    if (req.method === "POST") {
+      let body = req.body;
+      if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+      body = body || {};
+      const col = body.collection;
+      if (!COLLECTIONS.includes(col)) {
+        res.status(400).json({ error: "unknown collection" });
+        return;
+      }
+      const incoming = Array.isArray(body.records) ? body.records : [];
+      const merged = mergeById(await kvGet(col), incoming);
+      await kvSet(col, merged);
+      res.status(200).json({ configured: true, collection: col, count: merged.length });
+      return;
+    }
+
+    res.status(405).json({ error: "Method not allowed" });
+  } catch (e) {
+    // Never hard-fail the client — it just keeps its local copy.
+    res.status(200).json({ configured: true, error: String(e).slice(0, 200) });
+  }
+};

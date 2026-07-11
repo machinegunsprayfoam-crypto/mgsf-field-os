@@ -5816,5 +5816,59 @@ document.addEventListener('click',()=>{
 })();
 </script>
 
+<script>
+/* ===== KLYFTON_CLOUD — optional multi-device sync (DORMANT until Vercel KV is attached) =====
+   With no storage, /api/sync returns {configured:false} and this does nothing — the app runs
+   exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
+   leads, estimates, JSAs, punches, material logs, and sign-offs. Photos stay on-device for now. */
+(function(){
+  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs'];
+  const last = {};
+  let on = false;
+  const arr = k => Array.isArray(appState[k]) ? appState[k] : [];
+
+  // Bring cloud records this device is missing into local state (union by id; local wins on conflict).
+  function mergeIn(k, cloud){
+    if(!Array.isArray(cloud) || !cloud.length) return false;
+    const map = new Map();
+    arr(k).forEach(r=>{ if(r && r.id!=null) map.set(String(r.id), r); });
+    let added=false;
+    cloud.forEach(r=>{ if(r && r.id!=null && !map.has(String(r.id))){ map.set(String(r.id), r); added=true; } });
+    if(added){ appState[k]=Array.from(map.values()); try{ localStorage.setItem('klyfton_'+k, JSON.stringify(appState[k])); }catch(e){} }
+    return added;
+  }
+  function refresh(){
+    ['renderJobs','renderPipeline','renderJSAList','renderMatList','renderSignoffList','renderClock','renderDash']
+      .forEach(fn=>{ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){} });
+  }
+  async function pull(){
+    const r = await fetch('/api/sync'); const d = await r.json();
+    if(!d || !d.configured) return false;
+    let changed=false;
+    COLS.forEach(k=>{ if(d.data && mergeIn(k, d.data[k])) changed=true; });
+    if(changed) refresh();
+    COLS.forEach(k=>{ last[k]=JSON.stringify(arr(k)); });
+    return true;
+  }
+  async function push(k){
+    try{
+      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({collection:k, records:arr(k)})});
+      last[k]=JSON.stringify(arr(k));
+    }catch(e){}
+  }
+  function tick(){ if(!on) return; COLS.forEach(k=>{ const cur=JSON.stringify(arr(k)); if(cur!==last[k]) push(k); }); }
+  async function init(){
+    try{ on = await pull(); }catch(e){ on=false; }
+    if(!on) return;                       // dormant — no storage attached
+    try{ await Promise.all(COLS.map(push)); }catch(e){}   // send up this device's local-only records
+    setInterval(tick, 15000);             // quiet background sync
+    document.addEventListener('visibilitychange', ()=>{ if(document.hidden) tick(); });
+  }
+  if(document.readyState==='complete') setTimeout(init, 1500);
+  else window.addEventListener('load', ()=> setTimeout(init, 1500));
+})();
+</script>
+
 </body>
 </html>
