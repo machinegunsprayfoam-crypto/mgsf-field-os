@@ -434,6 +434,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('signoff');renderSignoff()" id="nav-signoff">
         <div class="nav-icon">✍️</div><div class="nav-label">SIGN-OFF</div>
       </div>
+      <div class="nav-item" onclick="switchModule('proposal');renderProposal()" id="nav-proposal">
+        <div class="nav-icon">📄</div><div class="nav-label">PROPOSAL</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -444,6 +447,11 @@ canvas.chart{width:100%;height:100%}
 
       <!-- DASHBOARD MODULE -->
       <div id="mod-dashboard" class="module active">
+        <!-- TODAY'S BRIEF (KLYFTON_WAVE3) -->
+        <div class="card" id="opsBriefCard" style="border-left:3px solid var(--or)">
+          <div class="card-title">☀️ Today's Brief <button class="btn btn-ghost" style="float:right;font-size:11px;padding:3px 8px" onclick="renderOpsBrief()">↻ Refresh</button></div>
+          <div id="opsBrief" style="font-size:13px;line-height:1.7">Loading today's brief…</div>
+        </div>
         <div class="metrics-row">
           <div class="metric-card" onclick="switchModule('intel')">
             <div class="metric-val" id="mtcRevenue">$124.8K</div>
@@ -1119,6 +1127,39 @@ canvas.chart{width:100%;height:100%}
         <h3 style="margin-top:22px">Completed sign-offs</h3>
         <div id="so_list"></div>
       </div>
+
+      <!-- PROPOSAL MODULE (KLYFTON_WAVE3) -->
+      <div id="mod-proposal" class="module">
+        <div class="mod-head"><h2>📄 Proposal Builder</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div class="jsa-card"><h4>Start from an estimate (optional)</h4>
+          <select id="pr_est" class="admin-inp" onchange="proposalFromEstimate()"><option value="">— pick a saved estimate —</option></select>
+        </div>
+        <div class="jsa-card"><h4>Customer</h4>
+          <label class="fl">Customer / company *</label><input id="pr_cust" class="admin-inp" placeholder="Who it's for">
+          <label class="fl">Project address</label><input id="pr_addr" class="admin-inp" placeholder="Job site">
+        </div>
+        <div class="jsa-card"><h4>Scope of work</h4>
+          <textarea id="pr_scope" class="admin-inp" style="height:90px" placeholder="What we'll do — e.g. 3in closed-cell to underside of metal roof deck, 6,000 sq ft…"></textarea>
+        </div>
+        <div class="jsa-card"><h4>Price</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="fl">Total price $ *</label><input type="number" id="pr_price" class="admin-inp" placeholder="0"></div>
+            <div><label class="fl">Deposit / notes</label><input id="pr_terms" class="admin-inp" placeholder="e.g. 50% deposit to schedule"></div>
+          </div>
+          <label class="chk" style="margin-top:8px"><input type="checkbox" id="pr_hearth" checked><span>Include Hearth financing option</span></label>
+        </div>
+        <div class="jsa-card"><h4>Exclusions</h4>
+          <textarea id="pr_excl" class="admin-inp" style="height:70px">Permits, engineering, electrical/plumbing relocation, and drywall/finish work unless listed above. Price valid 30 days.</textarea>
+        </div>
+        <div class="jsa-actions">
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+          <button class="btn btn-ghost" onclick="saveProposal()">💾 Save</button>
+          <button class="btn btn-primary" onclick="printProposal()">🖨️ Preview / Save PDF</button>
+        </div>
+        <h3 style="margin-top:22px">Saved proposals</h3>
+        <div id="pr_list"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -1630,6 +1671,7 @@ function switchModule(id){
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
   if(id==='docs') renderDocLib();
+  if(id==='dashboard' && window.renderOpsBrief) renderOpsBrief();
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
@@ -5060,7 +5102,9 @@ function sendChat(){
   })
   .then(r=>r.json())
   .then(d=>{
-    const resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
+    let resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
+    // Klyfton may propose an action — pull it out of the text; the user confirms before it runs.
+    const parsed = parseKlyftonAction(resp); resp = parsed.clean;
     appState.chatHistory.push({role:'assistant', content:resp});
     // Store durable "colony memory" facts the hive chose to keep.
     if(d && Array.isArray(d.remember) && d.remember.length){
@@ -5069,6 +5113,7 @@ function sendChat(){
       save('memory');
     }
     addMessage(resp,'ai',resp);
+    if(parsed.action) promptKlyftonAction(parsed.action);
     // Show the hive at work: which minds answered.
     let status='● READY';
     if(d && d.minds && d.minds.length){
@@ -5086,6 +5131,61 @@ function sendChat(){
     document.getElementById('chatStatus').textContent='● OFFLINE';
     playSound('nav');
   });
+}
+
+// ---- Klyfton actions: parse → confirm → execute (never auto-write) ----
+function parseKlyftonAction(text){
+  const m = text.match(/\[\[ACTION\]\]([\s\S]*?)\[\[\/ACTION\]\]/i);
+  if(!m) return {clean:text, action:null};
+  let action=null; try{ action=JSON.parse(m[1].trim()); }catch(e){ action=null; }
+  return {clean:text.replace(m[0],'').trim(), action};
+}
+function klyftonActionDesc(a){
+  if(!a || !a.type) return '';
+  switch(a.type){
+    case 'add_lead': return `Add a lead: <b>${a.name||'?'}</b>${a.value?(' · $'+Number(a.value).toLocaleString()):''}${a.service?(' · '+a.service):''}`;
+    case 'add_job': return `Add a job: <b>${a.customer||'?'}</b>${a.service?(' · '+a.service):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
+    case 'add_punch': return `Punch <b>${a.name||'?'}</b> in/out on the time clock`;
+    case 'remember': return `Remember: <b>${a.fact||'?'}</b>`;
+    default: return '';
+  }
+}
+function promptKlyftonAction(a){
+  const desc = klyftonActionDesc(a); if(!desc) return;
+  window.__pendingAction = a;
+  const c=document.getElementById('chatMessages'); if(!c) return;
+  const div=document.createElement('div'); div.className='msg ai'; div.id='klyftonActionPrompt';
+  div.innerHTML=`<div class="msg-name" style="color:var(--cy)">KLYFTON WANTS TO ACT</div>${desc}
+    <div style="margin-top:8px">
+      <button class="btn btn-primary" style="font-size:12px" onclick="doPendingKlyftonAction()">✅ Do it</button>
+      <button class="btn btn-ghost" style="font-size:12px;margin-left:6px" onclick="cancelPendingKlyftonAction()">Cancel</button>
+    </div>`;
+  c.appendChild(div); c.scrollTop=c.scrollHeight;
+}
+function cancelPendingKlyftonAction(){ window.__pendingAction=null; const p=document.getElementById('klyftonActionPrompt'); if(p) p.remove(); }
+function doPendingKlyftonAction(){
+  const a=window.__pendingAction; const p=document.getElementById('klyftonActionPrompt'); if(p) p.remove();
+  window.__pendingAction=null; if(!a) return;
+  const today=new Date().toISOString().split('T')[0];
+  try{
+    if(a.type==='add_lead'){
+      if(!appState.leads) appState.leads=[];
+      appState.leads.push({id:Date.now(), name:a.name||'New lead', value:Number(a.value)||0,
+        service:a.service||'', state:a.state||'MT', status:'New', date:today, notes:a.notes||'', source:'Klyfton AI'});
+      save('leads'); if(window.renderPipeline) renderPipeline(); notify('Lead added ✓','success');
+    } else if(a.type==='add_job'){
+      if(!appState.jobs) appState.jobs=[];
+      appState.jobs.push({id:Date.now(), customer:a.customer||'New job', service:a.service||'', value:Number(a.value)||0, status:'Scheduled', date:today});
+      save('jobs'); if(window.renderJobs) renderJobs(); notify('Job added ✓','success');
+    } else if(a.type==='add_punch'){
+      if(window.punch && a.name) punch(a.name); else notify('Open Time Clock to punch','info');
+    } else if(a.type==='remember'){
+      if(!appState.memory) appState.memory=[];
+      if(a.fact && !appState.memory.includes(a.fact)){ appState.memory.push(a.fact); save('memory'); }
+      notify('Got it — remembered','success');
+    }
+    addMessage('Done ✓','ai','');
+  }catch(e){ notify('Could not complete that action','alert'); }
 }
 
 // Compact snapshot of the real business state, so the hive answers with YOUR numbers.
@@ -5817,12 +5917,138 @@ document.addEventListener('click',()=>{
 </script>
 
 <script>
+/* ===================== KLYFTON_WAVE3 — Proposals + Today's Brief ===================== */
+(function(){
+  const LS = (k,d)=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return v==null?d:v}catch(e){return d} };
+  const SS = (k,v)=>{ appState[k]=v; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(v)); return true;}catch(e){ notify('Storage full','alert'); return false; } };
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money = n=> '$'+(Number(n)||0).toLocaleString();
+  const CO = { name:'Machine Gun Spray Foam & Concrete Lifting, LLC', addr:'2402 N Anderson Ave, Glendive, MT 59330',
+    phone:'406-939-8301', web:'machinegunsprayfoam.info',
+    hearth:'https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton' };
+
+  /* ---------- PROPOSAL BUILDER ---------- */
+  window.renderProposal = function(){
+    const sel=$('pr_est');
+    if(sel){ const ests=appState.estimates||[];
+      sel.innerHTML='<option value="">— pick a saved estimate —</option>'+
+        ests.slice().reverse().map(e=>`<option value="${e.id}">${esc(e.customer||'job')} · ${money(e.value)} · ${esc(e.date||'')}</option>`).join(''); }
+    renderProposalList();
+  };
+  window.proposalFromEstimate = function(){
+    const id=($('pr_est')||{}).value; if(!id) return;
+    const e=(appState.estimates||[]).find(x=>String(x.id)===String(id)); if(!e) return;
+    if($('pr_cust') && !$('pr_cust').value) $('pr_cust').value=e.customer||'';
+    if($('pr_price') && !$('pr_price').value) $('pr_price').value=e.value||'';
+  };
+  function proposalDoc(p){
+    const hearth = p.hearth ? `<div style="margin:14px 0;padding:12px;border:1px solid #f97316;border-radius:6px">
+      <b>Financing available</b> — pay over time through Hearth. Apply in minutes: <br>${esc(CO.hearth)}</div>` : '';
+    return `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:24px">
+      <div style="border-bottom:3px solid #f97316;padding-bottom:12px;margin-bottom:16px">
+        <div style="font-size:22px;font-weight:800;letter-spacing:.5px">${esc(CO.name)}</div>
+        <div style="font-size:12px;color:#444">🇺🇸 Veteran-Owned (VOSB) · ${esc(CO.addr)} · ${esc(CO.phone)} · ${esc(CO.web)}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:14px">
+        <div><b>PROPOSAL FOR</b><br>${esc(p.cust)}<br>${esc(p.addr||'')}</div>
+        <div style="text-align:right"><b>Date</b><br>${esc(p.date)}<br><b>Valid</b> 30 days</div>
+      </div>
+      <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px">Scope of Work</h3>
+      <div style="font-size:13px;white-space:pre-wrap">${esc(p.scope||'')}</div>
+      <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:16px">Investment</h3>
+      <div style="font-size:26px;font-weight:800;color:#111">${money(p.price)}</div>
+      ${p.terms?`<div style="font-size:12px;color:#444">${esc(p.terms)}</div>`:''}
+      ${hearth}
+      <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:14px">Exclusions</h3>
+      <div style="font-size:12px;color:#444;white-space:pre-wrap">${esc(p.excl||'')}</div>
+      <div style="margin-top:34px;display:flex;justify-content:space-between;font-size:12px">
+        <div style="width:46%"><div style="border-top:1px solid #111;padding-top:4px">Customer signature / date</div></div>
+        <div style="width:46%"><div style="border-top:1px solid #111;padding-top:4px">Machine Gun Spray Foam / date</div></div>
+      </div>
+      <div style="margin-top:20px;font-size:10px;color:#888;text-align:center">Thank you for the opportunity. — Clifton Behner, Owner</div>
+    </div>`;
+  }
+  function gatherProposal(){
+    const g=id=>($(id)||{}).value||'';
+    return { id:'PROP'+Date.now(), date:new Date().toISOString().split('T')[0],
+      cust:g('pr_cust'), addr:g('pr_addr'), scope:g('pr_scope'), price:g('pr_price'),
+      terms:g('pr_terms'), excl:g('pr_excl'), hearth:($('pr_hearth')||{}).checked };
+  }
+  window.printProposal = function(){
+    const p=gatherProposal();
+    if(!p.cust){ notify('Customer name required','alert'); return; }
+    if(!p.price){ notify('Price required','alert'); return; }
+    if(!$('prPrintStyle')){ const st=document.createElement('style'); st.id='prPrintStyle';
+      st.textContent='@media print{ body>*{display:none!important} #prPrintArea{display:block!important;position:absolute;left:0;top:0;width:100%;background:#fff} }';
+      document.head.appendChild(st); }
+    let area=$('prPrintArea'); if(!area){ area=document.createElement('div'); area.id='prPrintArea'; area.style.display='none'; document.body.appendChild(area); }
+    area.innerHTML=proposalDoc(p);
+    notify('Opening print — choose "Save as PDF"','info');
+    setTimeout(()=>{ window.print(); }, 250);
+  };
+  window.saveProposal = function(){
+    const p=gatherProposal();
+    if(!p.cust){ notify('Customer name required','alert'); return; }
+    const arr=LS('proposals',[]); arr.unshift(p);
+    if(SS('proposals',arr)){ notify('Proposal saved','success'); renderProposalList(); }
+  };
+  window.renderProposalList = function(){
+    const box=$('pr_list'); if(!box) return; const arr=LS('proposals',[]);
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No saved proposals yet.</p>'; return; }
+    box.innerHTML=arr.map(p=>`<div class="log-row"><span><b>${esc(p.cust)}</b> · ${money(p.price)}<br>
+      <span style="color:var(--t2)">${esc(p.date)}</span></span>
+      <span><button class="btn btn-ghost" style="font-size:11px" onclick="loadProposal('${p.id}')">Open</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="delProposal('${p.id}')">✕</button></span></div>`).join('');
+  };
+  window.loadProposal = function(id){
+    const p=(LS('proposals',[])).find(x=>x.id===id); if(!p) return;
+    const set=(i,v)=>{ if($(i)) $(i).value=v||''; };
+    set('pr_cust',p.cust); set('pr_addr',p.addr); set('pr_scope',p.scope); set('pr_price',p.price); set('pr_terms',p.terms); set('pr_excl',p.excl);
+    if($('pr_hearth')) $('pr_hearth').checked=!!p.hearth;
+    notify('Loaded — edit or print','info');
+  };
+  window.delProposal = function(id){ SS('proposals', LS('proposals',[]).filter(p=>p.id!==id)); renderProposalList(); };
+
+  /* ---------- TODAY'S BRIEF ---------- */
+  const daysSince = d => { try{ return Math.floor((Date.now()-new Date(d).getTime())/86400000); }catch(e){ return 0; } };
+  window.renderOpsBrief = function(){
+    const box=$('opsBrief'); if(!box) return;
+    const now=new Date(), sunday=now.getDay()===0;
+    const jobs=(appState.jobs||[]).filter(j=>j&&j.status!=='Completed'&&j.status!=='Cancelled');
+    const leads=(appState.leads||[]).filter(l=>l&&!['Won','Lost'].includes(l.status));
+    const stale=leads.filter(l=>l.date && daysSince(l.date)>=7).sort((a,b)=>daysSince(b.date)-daysSince(a.date));
+    const pipe=leads.reduce((s,l)=>s+(Number(l.value)||0),0);
+    const dstr=now.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+    let html=`<div style="color:var(--or);font-weight:700;margin-bottom:6px">${dstr}${sunday?' — Sunday. Family day, no work scheduled. 🇺🇸':''}</div>`;
+    html+=`<div id="opsWx" style="margin:4px 0">🌦️ Pulling spray weather…</div>`;
+    html+=`<div>🔨 <b>${jobs.length}</b> active job${jobs.length===1?'':'s'}${jobs.length?': '+jobs.slice(0,4).map(j=>esc(j.customer||j.name||j.jobNum||'job')).join(', ')+(jobs.length>4?'…':''):''}</div>`;
+    html+=`<div>💰 Pipeline: <b>${money(pipe)}</b> across ${leads.length} open lead${leads.length===1?'':'s'}</div>`;
+    if(stale.length){ html+=`<div style="color:var(--yw)">📞 Chase today (quiet 7+ days): ${stale.slice(0,5).map(l=>esc(l.name)+' ('+daysSince(l.date)+'d)').join(', ')}</div>`; }
+    else { html+=`<div style="color:var(--gr)">📞 No stale leads — pipeline's warm.</div>`; }
+    box.innerHTML=html;
+    // Live spray weather for the Glendive base — GO/NO-GO on dew point.
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=47.105&longitude=-104.712&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph')
+      .then(r=>r.json()).then(d=>{ const c=d.current; if(!c) throw 0;
+        const t=c.temperature_2m, df=c.dew_point_2m, w=c.wind_speed_10m, spread=t-df;
+        const flag = spread<5?'⛔ NO-GO (dew point)':(t<50||t>110)?'⚠️ CAUTION (temp)':'✅ GO';
+        const col = spread<5?'var(--red)':(t<50||t>110)?'var(--yw)':'var(--gr)';
+        const el=$('opsWx'); if(el) el.innerHTML=`🌦️ Glendive: <b>${Math.round(t)}°F</b>, dew ${Math.round(df)}°F, wind ${Math.round(w)} mph — <b style="color:${col}">${flag}</b>`;
+      }).catch(()=>{ const el=$('opsWx'); if(el) el.innerHTML='🌦️ Spray weather: no signal — check the Weather tab on site.'; });
+  };
+  // First paint after boot.
+  if(document.readyState==='complete') setTimeout(()=>window.renderOpsBrief&&renderOpsBrief(), 900);
+  else window.addEventListener('load', ()=> setTimeout(()=>window.renderOpsBrief&&renderOpsBrief(), 900));
+})();
+</script>
+
+<script>
 /* ===== KLYFTON_CLOUD — optional multi-device sync (DORMANT until Vercel KV is attached) =====
    With no storage, /api/sync returns {configured:false} and this does nothing — the app runs
    exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
    leads, estimates, JSAs, punches, material logs, and sign-offs. Photos stay on-device for now. */
 (function(){
-  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs'];
+  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals'];
   const last = {};
   let on = false;
   const arr = k => Array.isArray(appState[k]) ? appState[k] : [];
@@ -5846,6 +6072,14 @@ document.addEventListener('click',()=>{
     if(!d || !d.configured) return false;
     let changed=false;
     COLS.forEach(k=>{ if(d.data && mergeIn(k, d.data[k])) changed=true; });
+    // Apply tombstones — records deleted on another device get removed here too.
+    if(Array.isArray(d.tomb)){
+      d.tomb.forEach(t=>{ if(!t || !COLS.includes(t.c)) return;
+        const before=arr(t.c).length;
+        appState[t.c]=arr(t.c).filter(r=>String(r.id)!==String(t.id));
+        if(arr(t.c).length!==before){ try{localStorage.setItem('klyfton_'+t.c, JSON.stringify(appState[t.c]));}catch(e){} changed=true; }
+      });
+    }
     if(changed) refresh();
     COLS.forEach(k=>{ last[k]=JSON.stringify(arr(k)); });
     return true;
@@ -5857,7 +6091,23 @@ document.addEventListener('click',()=>{
       last[k]=JSON.stringify(arr(k));
     }catch(e){}
   }
-  function tick(){ if(!on) return; COLS.forEach(k=>{ const cur=JSON.stringify(arr(k)); if(cur!==last[k]) push(k); }); }
+  async function del(k, ids){
+    try{ await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({collection:k, remove:ids})}); }catch(e){}
+  }
+  function tick(){
+    if(!on) return;
+    COLS.forEach(k=>{
+      const cur=arr(k), curStr=JSON.stringify(cur);
+      if(curStr===last[k]) return;
+      // Detect records this device removed since last sync → propagate the delete.
+      let prev=[]; try{ prev=JSON.parse(last[k]||'[]'); }catch(e){}
+      const curIds=new Set(cur.map(r=>r&&r.id!=null?String(r.id):'').filter(Boolean));
+      const removed=prev.map(r=>r&&r.id!=null?String(r.id):'').filter(id=>id&&!curIds.has(id));
+      if(removed.length) del(k, removed);
+      push(k);
+    });
+  }
   async function init(){
     try{ on = await pull(); }catch(e){ on=false; }
     if(!on) return;                       // dormant — no storage attached

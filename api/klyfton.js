@@ -56,6 +56,21 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
   ProZone roofing 3.0# ~$0.68/BF, Enduratech 2.8# HFO ~$0.982/BF.
 When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.`;
 
+// Klyfton can propose an action in the app. The crew member always confirms with a button —
+// nothing is written silently (matches the "you draft, humans commit" rule).
+const ACTIONS = `TAKING ACTION IN THE APP:
+If the user clearly wants you to DO something in the app (add/log/create/remember), add ONE
+action block as the VERY LAST line, after your normal short reply. The user gets a confirm
+button — you never write data silently. Format (raw JSON, no code fences):
+[[ACTION]]{"type":"...", ...}[[/ACTION]]
+Supported types:
+- add_lead: {"type":"add_lead","name":"","value":0,"service":"","state":"MT","notes":""}
+- add_job: {"type":"add_job","customer":"","service":"","value":0}
+- add_punch: {"type":"add_punch","name":""}
+- remember: {"type":"remember","fact":""}
+Rules: ONE block max; ONLY when the user asked to add/log/create/remember something; OMIT it
+entirely for normal questions. Always give your short normal reply above the block.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -204,7 +219,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -294,7 +309,7 @@ module.exports = async (req, res) => {
 
     // 4) Synthesizer + critic: merge the minds, kill contradictions/fabrication, one answer out.
     const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
-    const synthSys = `${BASE_VOICE}\n\n${BUSINESS}${ctx}
+    const synthSys = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:

@@ -15,7 +15,8 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 
 // Collections we sync. Photos are intentionally excluded (base64 images are too heavy for
 // this store — they stay on-device until we add blob storage).
-const COLLECTIONS = ["jobs", "leads", "estimates", "jsas", "tc_punches", "matlogs", "signoffs"];
+const COLLECTIONS = ["jobs", "leads", "estimates", "jsas", "tc_punches", "matlogs", "signoffs", "proposals"];
+const TOMB = "_tomb"; // tombstones: [{c, id}] — so deletes propagate across devices
 const PREFIX = "mgsf:";
 
 function authHeaders() {
@@ -61,9 +62,14 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === "GET") {
+      const tomb = await kvGet(TOMB);
+      const tset = new Set((tomb || []).map((t) => t.c + "|" + String(t.id)));
       const data = {};
-      await Promise.all(COLLECTIONS.map(async (c) => { data[c] = await kvGet(c); }));
-      res.status(200).json({ configured: true, data });
+      await Promise.all(COLLECTIONS.map(async (c) => {
+        const rows = await kvGet(c);
+        data[c] = rows.filter((r) => r && r.id != null && !tset.has(c + "|" + String(r.id)));
+      }));
+      res.status(200).json({ configured: true, data, tomb });
       return;
     }
 
@@ -76,8 +82,25 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: "unknown collection" });
         return;
       }
+
+      // Delete: drop the ids and tombstone them so other devices remove them too.
+      if (Array.isArray(body.remove) && body.remove.length) {
+        const ids = body.remove.map(String);
+        const kept = (await kvGet(col)).filter((r) => r && !ids.includes(String(r.id)));
+        await kvSet(col, kept);
+        const tomb = await kvGet(TOMB);
+        const have = new Set(tomb.map((t) => t.c + "|" + String(t.id)));
+        ids.forEach((id) => { if (!have.has(col + "|" + id)) tomb.push({ c: col, id }); });
+        await kvSet(TOMB, tomb.slice(-3000));
+        res.status(200).json({ configured: true, collection: col, removed: ids.length });
+        return;
+      }
+
+      // Add / update: union by id, but never resurrect a tombstoned record.
       const incoming = Array.isArray(body.records) ? body.records : [];
-      const merged = mergeById(await kvGet(col), incoming);
+      const tomb = await kvGet(TOMB);
+      const tset = new Set(tomb.map((t) => t.c + "|" + String(t.id)));
+      const merged = mergeById(await kvGet(col), incoming).filter((r) => !tset.has(col + "|" + String(r.id)));
       await kvSet(col, merged);
       res.status(200).json({ configured: true, collection: col, count: merged.length });
       return;
