@@ -437,6 +437,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('proposal');renderProposal()" id="nav-proposal">
         <div class="nav-icon">📄</div><div class="nav-label">PROPOSAL</div>
       </div>
+      <div class="nav-item" onclick="switchModule('forms');renderForms()" id="nav-forms">
+        <div class="nav-icon">📝</div><div class="nav-label">FORMS</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1159,6 +1162,16 @@ canvas.chart{width:100%;height:100%}
         </div>
         <h3 style="margin-top:22px">Saved proposals</h3>
         <div id="pr_list"></div>
+      </div>
+
+      <!-- FORMS MODULE (KLYFTON_WAVE4) -->
+      <div id="mod-forms" class="module">
+        <div class="mod-head"><h2>📝 Field Forms</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="fm_pick"></div>
+        <div id="fm_form"></div>
+        <h3 style="margin-top:22px">Completed forms</h3>
+        <div id="fm_list"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -6043,12 +6056,107 @@ document.addEventListener('click',()=>{
 </script>
 
 <script>
+/* ===================== KLYFTON_WAVE4 — Field Forms ===================== */
+(function(){
+  const LS = (k,d)=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return v==null?d:v}catch(e){return d} };
+  const SS = (k,v)=>{ appState[k]=v; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(v)); return true;}catch(e){ notify('Storage full','alert'); return false; } };
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmt = iso => { try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return iso||''} };
+  const nowISO = ()=> new Date().toISOString();
+
+  // Built-in templates — mirror the checklists/SOPs already in the MGSF Drive.
+  const TEMPLATES = [
+    { key:'rig', name:'Rig / Equipment Maintenance', icon:'🛠️',
+      fields:[{id:'unit',label:'Rig / unit'},{id:'hours',label:'Reactor hours'}],
+      items:['A & B drum levels OK','Transfer pump pressure OK','Hose temp at set point','Primary heater working','Gun cleaned & greased','Filters checked / cleaned','Proportioner pressures balanced','ISO / lubricant level OK','Generator fuel & oil OK'] },
+    { key:'vehicle', name:'Daily Vehicle Inspection (DOT)', icon:'🚚',
+      fields:[{id:'unit',label:'Vehicle / unit'},{id:'miles',label:'Odometer'}],
+      items:['Tires & pressure','Lights & signals','Brakes','Fluid levels','Horn','Wipers & washer','Mirrors','Load secured','Registration & insurance in cab','No visible leaks'] },
+    { key:'ppe', name:'Jobsite PPE Check', icon:'🦺',
+      fields:[{id:'crew',label:'Crew on site'}],
+      items:['Supplied-air / full-face respirator','Fresh filters / cartridges','Chemical-resistant suit','Nitrile gloves','Eye protection','Hearing protection','Hard hat & boots','Fall protection (if heights)','Fire extinguisher staged'] },
+    { key:'siteprep', name:'Customer Pre-Spray Site Prep', icon:'🏗️',
+      fields:[{id:'customer',label:'Customer'}],
+      items:['Area cleared & accessible','Surfaces dry & clean','Overspray masking done','Ventilation plan set','Re-occupancy time told to customer','Pets / people out of spray zone','Power available on site'] },
+    { key:'jobsite', name:'Daily Jobsite Checklist', icon:'✅',
+      fields:[{id:'foreman',label:'Foreman'}],
+      items:['JSA reviewed with crew','PPE on & verified','Spray weather = GO','Materials staged','Containment set','Cleanup plan set','Before photos taken'] },
+  ];
+  const tpl = k => TEMPLATES.find(t=>t.key===k);
+
+  window.renderForms = function(){
+    const pick=$('fm_pick');
+    if(pick) pick.innerHTML = '<div class="jsa-card"><h4>Start a form</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">'+
+      TEMPLATES.map(t=>`<button class="btn btn-ghost" style="text-align:left" onclick="openForm('${t.key}')">${t.icon} ${esc(t.name)}</button>`).join('')+'</div></div>';
+    if($('fm_form')) $('fm_form').innerHTML='';
+    renderFormsList();
+  };
+  window.openForm = function(key){
+    const t=tpl(key); const box=$('fm_form'); if(!t||!box) return;
+    box.innerHTML=`
+      <div class="jsa-card"><h4>${t.icon} ${esc(t.name)}</h4>
+        <label class="fl">Job / location</label><input id="fm_job" class="admin-inp" placeholder="Job name / address">
+        ${t.fields.map(f=>`<label class="fl">${esc(f.label)}</label><input id="fm_f_${f.id}" class="admin-inp" placeholder="${esc(f.label)}">`).join('')}
+      </div>
+      <div class="jsa-card"><h4>Checklist</h4>
+        ${t.items.map((it,i)=>`<label class="chk"><input type="checkbox" id="fm_i_${i}"><span>${esc(it)}</span></label>`).join('')}
+      </div>
+      <div class="jsa-card"><h4>Notes</h4>
+        <textarea id="fm_notes" class="admin-inp" style="height:70px" placeholder="Anything worth recording — defects, follow-ups"></textarea>
+      </div>
+      <div class="jsa-card"><h4>Sign-off</h4>
+        <canvas id="fm_sig" class="sigpad"></canvas>
+        <div><button class="btn btn-ghost" style="margin-top:6px" onclick="fmClearSig()">Clear</button></div>
+      </div>
+      <div class="jsa-actions">
+        <button class="btn btn-ghost" onclick="renderForms()">← Cancel</button>
+        <button class="btn btn-primary" onclick="submitForm('${t.key}')">✅ Submit form</button>
+      </div>`;
+    fmInitSig();
+  };
+  let fmCtx, fmDraw=false;
+  function fmInitSig(){ const c=$('fm_sig'); if(!c) return; c.width=c.offsetWidth||320; c.height=110; fmCtx=c.getContext('2d');
+    fmCtx.strokeStyle='#f97316'; fmCtx.lineWidth=2; fmCtx.lineCap='round';
+    const pos=e=>{const r=c.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return[p.clientX-r.left,p.clientY-r.top]};
+    const down=e=>{fmDraw=true;fmCtx.beginPath();fmCtx.moveTo(...pos(e));e.preventDefault()};
+    const move=e=>{if(!fmDraw)return;fmCtx.lineTo(...pos(e));fmCtx.stroke();e.preventDefault()};
+    const up=()=>{fmDraw=false};
+    c.onmousedown=down;c.onmousemove=move;c.onmouseup=up;c.onmouseleave=up;c.ontouchstart=down;c.ontouchmove=move;c.ontouchend=up;
+  }
+  window.fmClearSig=function(){ const c=$('fm_sig'); if(c&&fmCtx) fmCtx.clearRect(0,0,c.width,c.height); };
+  function fmSig(){ const c=$('fm_sig'); try{return c?c.toDataURL('image/png'):'';}catch(e){return '';} }
+  window.submitForm = function(key){
+    const t=tpl(key); if(!t) return; const g=id=>($(id)||{}).value||'';
+    if(!g('fm_job')){ notify('Job / location required','alert'); return; }
+    const fields={}; t.fields.forEach(f=>fields[f.id]=g('fm_f_'+f.id));
+    const checks=t.items.map((_,i)=>!!($('fm_i_'+i)||{}).checked);
+    const rec={ id:'FM'+Date.now(), type:t.key, name:t.name, job:g('fm_job'), fields,
+      items:t.items, checks, notes:g('fm_notes'), sig:fmSig(), ts:nowISO() };
+    const arr=LS('forms',[]); arr.unshift(rec);
+    if(SS('forms',arr)){ notify(t.name+' saved ✓','success'); renderForms(); switchModule('forms'); }
+  };
+  window.renderFormsList = function(){
+    const box=$('fm_list'); if(!box) return; const arr=LS('forms',[]);
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No forms completed yet.</p>'; return; }
+    box.innerHTML=arr.map(f=>{ const done=(f.checks||[]).filter(Boolean).length, tot=(f.items||[]).length;
+      return `<div class="log-row"><span><b>${esc(f.name)}</b> · ${esc(f.job)}<br>
+        <span style="color:var(--t2)">${done}/${tot} checked · ${fmt(f.ts)}</span></span>
+        <span>${f.sig?`<img src="${f.sig}" style="height:30px;background:#fff;border-radius:4px;vertical-align:middle">`:''}
+        <button class="btn btn-ghost" style="margin-left:6px;font-size:11px" onclick="delForm('${f.id}')">Delete</button></span></div>`;
+    }).join('');
+  };
+  window.delForm = function(id){ SS('forms', LS('forms',[]).filter(f=>f.id!==id)); renderFormsList(); };
+})();
+</script>
+
+<script>
 /* ===== KLYFTON_CLOUD — optional multi-device sync (DORMANT until Vercel KV is attached) =====
    With no storage, /api/sync returns {configured:false} and this does nothing — the app runs
    exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
    leads, estimates, JSAs, punches, material logs, and sign-offs. Photos stay on-device for now. */
 (function(){
-  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals'];
+  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms'];
   const last = {};
   let on = false;
   const arr = k => Array.isArray(appState[k]) ? appState[k] : [];
