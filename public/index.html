@@ -6,8 +6,31 @@
 <meta name="theme-color" content="#f97316">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Klyfton AI">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23080810%22/%3E%3Ctext x=%2250%22 y=%2266%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23f97316%22%3EK%3C/text%3E%3C/svg%3E">
 <title>KLYFTON AI — Machine Gun Spray Foam</title>
 <style>
+
+/* KLYFTON_WAVE1 */
+.mod-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.btn{border:none;border-radius:7px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--or);color:#111}.btn-primary:hover{box-shadow:0 0 14px var(--glow)}
+.btn-ghost{background:var(--s3);color:var(--tx);border:1px solid var(--bd)}.btn-ghost:hover{border-color:var(--or)}
+.jsa-card{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px}
+.jsa-card h4{color:var(--or);font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.jsa-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.chk{display:flex;align-items:flex-start;gap:8px;margin:6px 0;font-size:13px;color:var(--tx)}
+.chk input{margin-top:3px;flex-shrink:0}
+.fl{display:block;font-size:11px;color:var(--t2);margin:8px 0 3px}
+.jsa-wrap .admin-inp{width:100%;max-width:100%}
+.tc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tc-card{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center}
+.tc-card.on{border-color:var(--gr);box-shadow:0 0 10px rgba(34,197,94,.25)}
+.tc-name{font-weight:700;font-size:14px;margin-bottom:8px}
+.tc-status{font-size:11px;color:var(--t2);margin-bottom:8px}
+.sigpad{border:1px dashed var(--t3);border-radius:8px;background:#0b0b14;touch-action:none;width:100%;max-width:360px;height:120px}
+.log-row{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;margin-bottom:6px;font-size:12px;background:var(--s2)}
+
 :root{
   --bg:#080810;--s1:#0d0d18;--s2:#12121f;--s3:#1a1a2e;
   --or:#f97316;--red:#C8102E;--cy:#00d4ff;--gr:#22c55e;
@@ -393,6 +416,12 @@ canvas.chart{width:100%;height:100%}
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
       </div>
       <div class="nav-divider"></div>
+      <div class="nav-item" onclick="switchModule('jsa');renderJSA()" id="nav-jsa">
+        <div class="nav-icon">🦺</div><div class="nav-label">JSA</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('clock');renderClock()" id="nav-clock">
+        <div class="nav-icon">⏱️</div><div class="nav-label">CLOCK</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -989,6 +1018,34 @@ canvas.chart{width:100%;height:100%}
         </div>
       </div>
     </div>
+
+      <!-- JSA MODULE (KLYFTON_WAVE1) -->
+      <div id="mod-jsa" class="module">
+        <div class="mod-head"><h2>🦺 Job Safety Analysis</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="jsaForm" class="jsa-wrap"></div>
+        <div class="jsa-actions">
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+          <button class="btn btn-primary" onclick="submitJSA()">✅ Submit JSA</button>
+        </div>
+        <h3 style="margin-top:22px">Saved JSAs</h3>
+        <div id="jsaList"></div>
+      </div>
+
+      <!-- TIME CLOCK MODULE (KLYFTON_WAVE1) -->
+      <div id="mod-clock" class="module">
+        <div class="mod-head"><h2>⏱️ Time Clock</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <label class="fl">Job for this shift</label>
+        <input id="tc_job" class="admin-inp" style="width:100%;max-width:340px" placeholder="Job name / address">
+        <div id="tc_crew" class="tc-grid" style="margin:12px 0"></div>
+        <div class="jsa-actions">
+          <button class="btn btn-ghost" onclick="addCrew()">+ Add crew member</button>
+          <button class="btn btn-primary" onclick="exportTimesheet()">⬇ Timesheet CSV</button>
+        </div>
+        <h3 style="margin-top:18px">Punch log</h3>
+        <div id="tc_log"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -1567,19 +1624,19 @@ function getTimeOfDay(){
 // ── Product Catalogs ─────────────────────────────────────────
 const EST_FOAM = [
   // CC 2.0# — General insulation
-  {k:'ncfi_agrithane',   n:'NCFI AgriThane 2.0# CC',              cat:'CC',   setCost:2842, yieldBF:4100},
-  {k:'ncfi_insulbloc',   n:'NCFI InsulBloc 2.0# CC',              cat:'CC',   setCost:2842, yieldBF:4100},
-  {k:'ncfi_insulstar17', n:'NCFI InsulStar 1.7# CC',              cat:'CC',   setCost:2930, yieldBF:4100},
-  {k:'accufoam_cc20',    n:'Accufoam CC 2.0#',                    cat:'CC',   setCost:2882, yieldBF:4100},
-  {k:'jm_corbond4',      n:'JM Corbond IV 2.0# CC',               cat:'CC',   setCost:2907, yieldBF:4100},
-  {k:'profoam_proseal',  n:'ProFoam ProSeal 2.0# CC',             cat:'CC',   setCost:2860, yieldBF:4100},
+  {k:'ncfi_agrithane',   n:'NCFI AgriThane 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4100},
+  {k:'ncfi_insulbloc',   n:'NCFI InsulBloc 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4100},
+  {k:'ncfi_insulstar17', n:'NCFI InsulStar 1.7# CC',              cat:'CC',   setCost:2822.4, yieldBF:4100},
+  {k:'accufoam_cc20',    n:'Accufoam CC 2.0#',                    cat:'CC',   setCost:2881.2, yieldBF:4100},
+  {k:'jm_corbond4',      n:'JM Corbond IV 2.0# CC',               cat:'CC',   setCost:2905.5, yieldBF:4100},
+  {k:'profoam_proseal',  n:'ProFoam ProSeal 2.0# CC',             cat:'CC',   setCost:2856.75, yieldBF:4100},
   // CC 2.8# Roofing
-  {k:'ncfi_enduratech',  n:'NCFI Enduratech HFO 2.8# (Roofing)',  cat:'Roof', setCost:2750, yieldBF:3500},
+  {k:'ncfi_enduratech',  n:'NCFI Enduratech HFO 2.8# (Roofing)',  cat:'Roof', setCost:2500, yieldBF:3500},
   // OC 0.5#
-  {k:'ncfi_oc',          n:'NCFI OC 0.5#',                        cat:'OC',   setCost:2059, yieldBF:14500},
-  {k:'accufoam_af1',     n:'Accufoam AF1 0.5#',                   cat:'OC',   setCost:2146, yieldBF:14500},
-  {k:'jm_corbond05',     n:'JM Corbond 0.5#',                     cat:'OC',   setCost:2103, yieldBF:14500},
-  {k:'profoam_profill',  n:'ProFoam ProFill 0.5#',                cat:'OC',   setCost:2076, yieldBF:14500},
+  {k:'ncfi_oc',          n:'NCFI OC 0.5#',                        cat:'OC',   setCost:1880, yieldBF:14500},
+  {k:'accufoam_af1',     n:'Accufoam AF1 0.5#',                   cat:'OC',   setCost:2140.8, yieldBF:14500},
+  {k:'jm_corbond05',     n:'JM Corbond 0.5#',                     cat:'OC',   setCost:2103.75, yieldBF:14500},
+  {k:'profoam_profill',  n:'ProFoam ProFill 0.5#',                cat:'OC',   setCost:2075.7, yieldBF:14500},
   {k:'profoam_hybridpro',n:'ProFoam HybridPro 1.0# ⚠️ Low Yield',cat:'OC',   setCost:1955, yieldBF:5000},
 ];
 
@@ -1595,8 +1652,8 @@ const EST_COAT = [
   {k:'gacoflex_s2100', n:'GacoFlex S2100 Elastomeric',         costGal:0, galPer100:1.0, coatsDefault:2},
   {k:'gacopro_si',     n:'GacoPro Silicone',                   costGal:0, galPer100:1.5, coatsDefault:1},
   {k:'enduratech_si',  n:'EnduraTech Silicone 70-025',         costGal:0, galPer100:1.5, coatsDefault:1},
-  {k:'ug_5700hs',      n:'Ultra-Guard 5700 HS',                costGal:0, galPer100:0.8, coatsDefault:2},
-  {k:'ug_5500ls',      n:'Ultra-Guard 5500 LS',                costGal:0, galPer100:1.2, coatsDefault:2},
+  {k:'ug_5700hs',      n:'Ultra-Guard 5700 HS',                costGal:33.75, galPer100:0.8, coatsDefault:2},
+  {k:'ug_5500ls',      n:'Ultra-Guard 5500 LS',                costGal:31.25, galPer100:1.2, coatsDefault:2},
 ];
 
 // Substrate-specific waste factors
@@ -5270,5 +5327,146 @@ document.addEventListener('click',()=>{
   if(!appState.audioCtx) initAudio();
 },{once:true});
 </script>
+
+<script>
+/* ===================== KLYFTON_WAVE1 — Field Ops ===================== */
+(function(){
+  const LS = (k,d)=>{ try{return JSON.parse(localStorage.getItem('klyfton_'+k))??d}catch(e){return d} };
+  const SS = (k,v)=>{ appState[k]=v; try{localStorage.setItem('klyfton_'+k, JSON.stringify(v))}catch(e){} };
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const nowISO = ()=> new Date().toISOString();
+  const fmt = iso => { try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return iso||''} };
+  window.KW1 = {LS,SS,$,esc};
+
+  /* ---------- JSA ---------- */
+  const HAZARDS = [
+    {id:'chem', n:'Chemical — Isocyanate (A) & Resin (B)', c:['SDS on site & reviewed','Respiratory protection per plan','Chemical suit, nitrile gloves, eye pro','No eat/drink/smoke in spray zone']},
+    {id:'vent', n:'Ventilation & Containment', c:['Spray zone isolated / signage posted','Mechanical ventilation during + after','Re-occupancy time told to customer']},
+    {id:'fire', n:'Fire / Ignition', c:['No hot work / open flame near foam','Extinguisher staged at work area','Heat sources (cans, flues) protected','Thermal/ignition barrier plan confirmed']},
+    {id:'space',n:'Attic / Crawl / Confined', c:['Entry & exit path clear; comms plan','Lighting adequate; walk boards','Heat stress: hydration + work/rest']},
+    {id:'elev', n:'Heights / Ladders / Roof', c:['Fall protection where required','Ladders secured & rated','Roof edge / skylight awareness']},
+    {id:'elec', n:'Electrical', c:['Circuits de-energized where needed','GFCI on all cords','Wet-area equipment guarded']}
+  ];
+  const PPE = ['Supplied-air / full-face respirator','Chemical-resistant suit','Nitrile gloves','Eye protection','Hearing protection','Hard hat / boots'];
+
+  window.renderJSA = function(){
+    const box=$('jsaForm'); if(!box) return;
+    box.innerHTML = `
+      <div class="jsa-card"><h4>Job</h4>
+        <label class="fl">Job name / customer *</label><input id="j_job" class="admin-inp" placeholder="e.g. Smith barn CC">
+        <label class="fl">Address</label><input id="j_addr" class="admin-inp" placeholder="Site address">
+        <label class="fl">Foreman *</label><input id="j_foreman" class="admin-inp" placeholder="Lead on site">
+        <label class="fl">Crew</label><input id="j_crew" class="admin-inp" placeholder="Names on crew">
+        <label class="fl">Scope / notes</label><input id="j_scope" class="admin-inp" placeholder="What we're doing">
+      </div>
+      <div class="jsa-card"><h4>Conditions</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div><label class="fl">Temp °F</label><input type="number" id="j_temp" class="admin-inp" oninput="jsaDew()" placeholder="68"></div>
+          <div><label class="fl">Humidity %</label><input type="number" id="j_hum" class="admin-inp" oninput="jsaDew()" placeholder="45"></div>
+          <div><label class="fl">Wind mph</label><input type="number" id="j_wind" class="admin-inp" placeholder="8"></div>
+        </div>
+        <div id="j_dew" style="margin-top:8px;font-size:12px;color:var(--t2)"></div>
+      </div>
+      <div class="jsa-card"><h4>Hazards &amp; Controls</h4>
+        ${HAZARDS.map(h=>`<div style="margin-bottom:8px"><b style="font-size:12px;color:var(--tx)">${esc(h.n)}</b>
+          ${h.c.map((c,i)=>`<label class="chk"><input type="checkbox" id="hz_${h.id}_${i}"><span>${esc(c)}</span></label>`).join('')}</div>`).join('')}
+      </div>
+      <div class="jsa-card"><h4>PPE Verified</h4>
+        ${PPE.map((p,i)=>`<label class="chk"><input type="checkbox" id="ppe_${i}"><span>${esc(p)}</span></label>`).join('')}
+      </div>
+      <div class="jsa-card"><h4>Emergency Plan</h4>
+        <label class="fl">Nearest hospital / urgent care</label><input id="j_hosp" class="admin-inp" placeholder="Name & address">
+        <label class="fl">First-aid kit location</label><input id="j_aid" class="admin-inp" placeholder="Rig / truck">
+      </div>
+      <div class="jsa-card"><h4>Crew Sign-off</h4>
+        <label class="chk"><input type="checkbox" id="j_ack"><span>Crew reviewed this JSA and understands the hazards & controls. *</span></label>
+        <label class="fl">Signature</label>
+        <canvas id="j_sig" class="sigpad"></canvas>
+        <div><button class="btn btn-ghost" style="margin-top:6px" onclick="clearSig()">Clear signature</button></div>
+      </div>`;
+    initSig(); jsaDew(); renderJSAList();
+  };
+  window.jsaDew = function(){
+    const t=parseFloat(($('j_temp')||{}).value), h=parseFloat(($('j_hum')||{}).value), el=$('j_dew'); if(!el) return;
+    if(isNaN(t)||isNaN(h)){ el.textContent=''; return; }
+    const tc=(t-32)*5/9, a=17.27, b=237.7, g=(a*tc)/(b+tc)+Math.log(Math.max(h,1)/100), dc=(b*g)/(a-g), df=dc*9/5+32;
+    const spread=t-df;
+    let flag = spread<5 ? '⛔ NO-GO — surface within 5°F of dew point (condensation risk)' :
+               (t<50||t>110) ? '⚠️ Caution — temp outside typical SPF spec (check TDS)' :
+               '✅ GO — dew point '+df.toFixed(0)+'°F, spread '+spread.toFixed(0)+'°F';
+    el.innerHTML = 'Dew point <b>'+df.toFixed(0)+'°F</b> — '+flag;
+    el.style.color = spread<5?'var(--red)':(t<50||t>110)?'var(--yw)':'var(--gr)';
+  };
+  // signature pad
+  let sctx,drawing=false;
+  window.initSig=function(){ const c=$('j_sig'); if(!c) return; c.width=c.offsetWidth; c.height=120; sctx=c.getContext('2d'); sctx.strokeStyle='#f97316'; sctx.lineWidth=2; sctx.lineCap='round';
+    const pos=e=>{const r=c.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return[p.clientX-r.left,p.clientY-r.top]};
+    const down=e=>{drawing=true;sctx.beginPath();sctx.moveTo(...pos(e));e.preventDefault()};
+    const move=e=>{if(!drawing)return;sctx.lineTo(...pos(e));sctx.stroke();e.preventDefault()};
+    const up=()=>{drawing=false};
+    c.onmousedown=down;c.onmousemove=move;c.onmouseup=up;c.onmouseleave=up;
+    c.ontouchstart=down;c.ontouchmove=move;c.ontouchend=up; };
+  window.clearSig=function(){ const c=$('j_sig'); if(c&&sctx) sctx.clearRect(0,0,c.width,c.height); };
+  const sigData=()=>{ const c=$('j_sig'); try{ return c? c.toDataURL('image/png'):''; }catch(e){return ''} };
+
+  window.submitJSA = function(){
+    const g=id=>($(id)||{}).value||'';
+    if(!g('j_job')){ notify('Job name required','alert'); return; }
+    if(!g('j_foreman')){ notify('Foreman required','alert'); return; }
+    if(!($('j_ack')||{}).checked){ notify('Crew sign-off box required','alert'); return; }
+    const haz={}; HAZARDS.forEach(h=>haz[h.id]=h.c.map((_,i)=>!!($('hz_'+h.id+'_'+i)||{}).checked));
+    const ppe=PPE.map((_,i)=>!!($('ppe_'+i)||{}).checked);
+    const rec={ id:'JSA-'+Date.now(), created:nowISO(),
+      job:g('j_job'),addr:g('j_addr'),foreman:g('j_foreman'),crew:g('j_crew'),scope:g('j_scope'),
+      temp:g('j_temp'),hum:g('j_hum'),wind:g('j_wind'),hosp:g('j_hosp'),aid:g('j_aid'),
+      haz,ppe,sig:sigData() };
+    const arr=LS('jsas',[]); arr.unshift(rec); SS('jsas',arr);
+    notify('JSA submitted ✓ saved','success');
+    renderJSA();
+    switchModule('dashboard');
+  };
+  window.renderJSAList = function(){
+    const box=$('jsaList'); if(!box) return; const arr=LS('jsas',[]);
+    box.innerHTML = arr.length ? arr.map(j=>`<div class="log-row"><span><b>${esc(j.job)}</b> · ${esc(j.foreman)}<br><span style="color:var(--t2)">${fmt(j.created)}</span></span>
+        <span><button class="btn btn-ghost" onclick="delJSA('${j.id}')">Delete</button></span></div>`).join('')
+      : '<p style="color:var(--t2);font-size:13px">No JSAs yet. Fill the form above and hit Submit.</p>';
+  };
+  window.delJSA=function(id){ SS('jsas', LS('jsas',[]).filter(j=>j.id!==id)); renderJSAList(); };
+
+  /* ---------- TIME CLOCK ---------- */
+  const defCrew=['Clifton','Daniel','Talia'];
+  window.renderClock=function(){
+    const crew=LS('tc_crew', defCrew.slice()); const punches=LS('tc_punches',[]);
+    const active=n=>punches.find(p=>p.name===n && !p.out);
+    const grid=$('tc_crew'); if(grid) grid.innerHTML = crew.map(n=>{ const a=active(n);
+      return `<div class="tc-card ${a?'on':''}"><div class="tc-name">${esc(n)}</div>
+        <div class="tc-status">${a?('IN since '+fmt(a.in)):'Out'}</div>
+        <button class="btn ${a?'btn-ghost':'btn-primary'}" onclick="punch('${esc(n)}')">${a?'Punch OUT':'Punch IN'}</button></div>`;}).join('');
+    const log=$('tc_log'); if(log){ const rows=punches.slice(0,40).map(p=>{ const hrs=p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'—';
+      return `<div class="log-row"><span><b>${esc(p.name)}</b> · ${esc(p.job||'')}<br><span style="color:var(--t2)">${fmt(p.in)} → ${p.out?fmt(p.out):'(in)'}</span></span><span>${hrs} h</span></div>`;}).join('');
+      log.innerHTML = rows || '<p style="color:var(--t2);font-size:13px">No punches yet.</p>'; }
+  };
+  window.punch=function(name){
+    const job=(($('tc_job')||{}).value||'').trim(); const punches=LS('tc_punches',[]);
+    const a=punches.find(p=>p.name===name && !p.out);
+    if(a){ a.out=nowISO(); notify(name+' punched OUT','info'); }
+    else { punches.unshift({id:'P'+Date.now(),name,job,in:nowISO(),out:null}); notify(name+' punched IN','success'); }
+    SS('tc_punches',punches); renderClock();
+  };
+  window.addCrew=function(){ const n=prompt('Crew member name:'); if(!n) return; const c=LS('tc_crew',defCrew.slice()); c.push(n.trim()); SS('tc_crew',c); renderClock(); };
+  window.exportTimesheet=function(){
+    const punches=LS('tc_punches',[]); if(!punches.length){ notify('No punches to export','alert'); return; }
+    const rows=[['Name','Job','In','Out','Hours']].concat(punches.map(p=>[p.name,p.job||'',p.in,p.out||'',p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'']));
+    const csv=rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='MGSF_timesheet.csv'; a.click(); URL.revokeObjectURL(a.href); notify('Timesheet CSV downloaded','success');
+  };
+
+  /* ---------- PWA service worker ---------- */
+  if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+})();
+</script>
+
 </body>
 </html>
