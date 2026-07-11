@@ -4968,13 +4968,31 @@ function sendChat(){
   
   // Set typing indicator
   document.getElementById('chatStatus').textContent='● THINKING...';
-  
-  setTimeout(()=>{
-    const {text:resp, voice} = processChat(text);
-    addMessage(resp,'ai',voice);
+
+  // Ask the real Klyfton AI backend (Claude); fall back to the offline responder.
+  if(!appState.chatHistory) appState.chatHistory = [];
+  const hist = appState.chatHistory.slice(-10);
+  appState.chatHistory.push({role:'user', content:text});
+  fetch('/api/klyfton', {
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body: JSON.stringify({ message:text, history:hist })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    const resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
+    appState.chatHistory.push({role:'assistant', content:resp});
+    addMessage(resp,'ai',resp);
     document.getElementById('chatStatus').textContent='● READY';
     playSound('nav');
-  }, 400+Math.random()*600);
+  })
+  .catch(()=>{
+    // Offline / no backend — use the local canned responder so the app still replies.
+    const {text:resp, voice} = processChat(text);
+    addMessage(resp,'ai',voice);
+    document.getElementById('chatStatus').textContent='● OFFLINE';
+    playSound('nav');
+  });
 }
 
 function chatKeydown(e){
