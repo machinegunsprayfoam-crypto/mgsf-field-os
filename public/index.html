@@ -440,6 +440,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('forms');renderForms()" id="nav-forms">
         <div class="nav-icon">📝</div><div class="nav-label">FORMS</div>
       </div>
+      <div class="nav-item" onclick="switchModule('changeorder');renderCO()" id="nav-changeorder">
+        <div class="nav-icon">🔧</div><div class="nav-label">CHG ORDER</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1172,6 +1175,21 @@ canvas.chart{width:100%;height:100%}
         <div id="fm_form"></div>
         <h3 style="margin-top:22px">Completed forms</h3>
         <div id="fm_list"></div>
+      </div>
+
+      <!-- CHANGE ORDER MODULE (KLYFTON_WAVE5) -->
+      <div id="mod-changeorder" class="module">
+        <div class="mod-head"><h2>🔧 Change Order</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div style="font-size:11px;color:var(--yw);margin-bottom:10px">⚠ Unsigned change orders are a hard closeout block. Draft it, get the owner's signature, then proceed.</div>
+        <div id="co_form"></div>
+        <div class="jsa-actions">
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+          <button class="btn btn-ghost" onclick="saveCO()">💾 Save</button>
+          <button class="btn btn-primary" onclick="printCO()">🖨️ Print / Save PDF</button>
+        </div>
+        <h3 style="margin-top:22px">Change orders on file</h3>
+        <div id="co_list"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -6151,12 +6169,115 @@ document.addEventListener('click',()=>{
 </script>
 
 <script>
+/* ===================== KLYFTON_WAVE5 — Change Orders ===================== */
+(function(){
+  const LS = (k,d)=>{ try{const v=JSON.parse(localStorage.getItem('klyfton_'+k)); return v==null?d:v}catch(e){return d} };
+  const SS = (k,v)=>{ appState[k]=v; try{ localStorage.setItem('klyfton_'+k, JSON.stringify(v)); return true;}catch(e){ notify('Storage full','alert'); return false; } };
+  const $  = id=>document.getElementById(id);
+  const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money = n=> '$'+(Number(n)||0).toLocaleString();
+  const nowISO = ()=> new Date().toISOString();
+  const fmt = iso => { try{return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return iso||''} };
+  const CO = { name:'Machine Gun Spray Foam & Concrete Lifting, LLC', phone:'406-939-8301' };
+
+  function coNum(){ return 'CO-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+((LS('changeorders',[]).length+1)); }
+  window.renderCO = function(){
+    const box=$('co_form');
+    if(box){ box.innerHTML=`
+      <div class="jsa-card"><h4>Job</h4>
+        <label class="fl">Job / customer *</label><input id="co_job" class="admin-inp" placeholder="Which job">
+        <label class="fl">Change order #</label><input id="co_num" class="admin-inp" value="${coNum()}">
+      </div>
+      <div class="jsa-card"><h4>The change</h4>
+        <label class="fl">Describe the change *</label><textarea id="co_desc" class="admin-inp" style="height:80px" placeholder="What's changing from the original scope"></textarea>
+        <label class="fl">Reason</label><input id="co_reason" class="admin-inp" placeholder="Why — field condition, customer request, etc.">
+      </div>
+      <div class="jsa-card"><h4>Impact</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label class="fl">Cost change $ (+/-) *</label><input type="number" id="co_cost" class="admin-inp" placeholder="e.g. 1800 or -400"></div>
+          <div><label class="fl">Schedule change (days)</label><input type="number" id="co_days" class="admin-inp" placeholder="e.g. 1"></div>
+        </div>
+      </div>
+      <div class="jsa-card"><h4>Owner approval</h4>
+        <label class="fl">Owner / customer name *</label><input id="co_owner" class="admin-inp" placeholder="Who's authorizing">
+        <label class="fl">Owner signature *</label>
+        <canvas id="co_sig" class="sigpad"></canvas>
+        <div><button class="btn btn-ghost" style="margin-top:6px" onclick="coClearSig()">Clear signature</button></div>
+      </div>`;
+      coInitSig();
+    }
+    renderCOList();
+  };
+  let coCtx, coDraw=false;
+  function coInitSig(){ const c=$('co_sig'); if(!c) return; c.width=c.offsetWidth||320; c.height=110; coCtx=c.getContext('2d');
+    coCtx.strokeStyle='#f97316'; coCtx.lineWidth=2; coCtx.lineCap='round';
+    const pos=e=>{const r=c.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return[p.clientX-r.left,p.clientY-r.top]};
+    const down=e=>{coDraw=true;coCtx.beginPath();coCtx.moveTo(...pos(e));e.preventDefault()};
+    const move=e=>{if(!coDraw)return;coCtx.lineTo(...pos(e));coCtx.stroke();e.preventDefault()};
+    const up=()=>{coDraw=false};
+    c.onmousedown=down;c.onmousemove=move;c.onmouseup=up;c.onmouseleave=up;c.ontouchstart=down;c.ontouchmove=move;c.ontouchend=up;
+  }
+  window.coClearSig=function(){ const c=$('co_sig'); if(c&&coCtx) coCtx.clearRect(0,0,c.width,c.height); };
+  function coSig(){ const c=$('co_sig'); try{return c?c.toDataURL('image/png'):'';}catch(e){return '';} }
+  function coSigned(){ const c=$('co_sig'); if(!c||!coCtx) return false; const d=coCtx.getImageData(0,0,c.width,c.height).data; for(let i=3;i<d.length;i+=4){ if(d[i]!==0) return true; } return false; }
+  function gatherCO(){ const g=id=>($(id)||{}).value||'';
+    return { id:'CHG'+Date.now(), num:g('co_num'), job:g('co_job'), desc:g('co_desc'), reason:g('co_reason'),
+      cost:g('co_cost'), days:g('co_days'), owner:g('co_owner'), sig:coSig(), signed:coSigned(), ts:nowISO() }; }
+  window.saveCO = function(){
+    const c=gatherCO();
+    if(!c.job){ notify('Job required','alert'); return; }
+    if(!c.desc){ notify('Describe the change','alert'); return; }
+    if(!c.signed){ notify('Owner signature required to save a change order','alert'); return; }
+    const arr=LS('changeorders',[]); arr.unshift(c);
+    if(SS('changeorders',arr)){ notify('Change order saved ✓ (signed)','success'); renderCO(); switchModule('changeorder'); }
+  };
+  window.printCO = function(){
+    const c=gatherCO();
+    if(!c.job || !c.desc){ notify('Fill job + change first','alert'); return; }
+    if(!$('coPrintStyle')){ const st=document.createElement('style'); st.id='coPrintStyle';
+      st.textContent='@media print{ body>*{display:none!important} #coPrintArea{display:block!important;position:absolute;left:0;top:0;width:100%;background:#fff} }';
+      document.head.appendChild(st); }
+    let area=$('coPrintArea'); if(!area){ area=document.createElement('div'); area.id='coPrintArea'; area.style.display='none'; document.body.appendChild(area); }
+    const costNum=Number(c.cost)||0;
+    area.innerHTML=`<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:24px">
+      <div style="border-bottom:3px solid #f97316;padding-bottom:10px;margin-bottom:14px">
+        <div style="font-size:20px;font-weight:800">CHANGE ORDER</div>
+        <div style="font-size:12px;color:#444">${esc(CO.name)} · ${esc(CO.phone)}</div>
+      </div>
+      <div style="font-size:13px;display:flex;justify-content:space-between"><div><b>Job:</b> ${esc(c.job)}</div><div><b>${esc(c.num)}</b> · ${esc(c.ts.slice(0,10))}</div></div>
+      <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:14px">Change</h3>
+      <div style="font-size:13px;white-space:pre-wrap">${esc(c.desc)}</div>
+      ${c.reason?`<div style="font-size:12px;color:#444;margin-top:6px"><b>Reason:</b> ${esc(c.reason)}</div>`:''}
+      <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:14px">Impact</h3>
+      <div style="font-size:14px"><b>Cost change:</b> ${costNum<0?'-':'+'}${money(Math.abs(costNum))}${c.days?` · <b>Schedule:</b> ${esc(c.days)} day(s)`:''}</div>
+      <div style="margin-top:30px;display:flex;justify-content:space-between;font-size:12px;align-items:flex-end">
+        <div style="width:48%">${c.sig?`<img src="${c.sig}" style="height:44px">`:''}<div style="border-top:1px solid #111;padding-top:4px">${esc(c.owner||'Owner')} — owner signature / date</div></div>
+        <div style="width:48%"><div style="border-top:1px solid #111;padding-top:4px;margin-top:44px">Machine Gun Spray Foam / date</div></div>
+      </div></div>`;
+    notify('Opening print — choose "Save as PDF"','info');
+    setTimeout(()=>window.print(), 250);
+  };
+  window.renderCOList = function(){
+    const box=$('co_list'); if(!box) return; const arr=LS('changeorders',[]);
+    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No change orders yet.</p>'; return; }
+    box.innerHTML=arr.map(c=>{ const n=Number(c.cost)||0;
+      return `<div class="log-row"><span><b>${esc(c.num||'CO')}</b> · ${esc(c.job)}<br>
+        <span style="color:var(--t2)">${(n<0?'-':'+')+money(Math.abs(n))} · ${fmt(c.ts)}${c.signed?' · ✅ signed':' · ⚠ unsigned'}</span></span>
+        <span>${c.sig?`<img src="${c.sig}" style="height:30px;background:#fff;border-radius:4px;vertical-align:middle">`:''}
+        <button class="btn btn-ghost" style="margin-left:6px;font-size:11px" onclick="delCO('${c.id}')">Delete</button></span></div>`;
+    }).join('');
+  };
+  window.delCO = function(id){ SS('changeorders', LS('changeorders',[]).filter(c=>c.id!==id)); renderCOList(); };
+})();
+</script>
+
+<script>
 /* ===== KLYFTON_CLOUD — optional multi-device sync (DORMANT until Vercel KV is attached) =====
    With no storage, /api/sync returns {configured:false} and this does nothing — the app runs
    exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
    leads, estimates, JSAs, punches, material logs, and sign-offs. Photos stay on-device for now. */
 (function(){
-  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms'];
+  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms','changeorders'];
   const last = {};
   let on = false;
   const arr = k => Array.isArray(appState[k]) ? appState[k] : [];
