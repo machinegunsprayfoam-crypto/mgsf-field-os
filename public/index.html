@@ -6487,7 +6487,8 @@ document.addEventListener('click',()=>{
     'Driver Vehicle Inspection Reports (DVIR) kept',
     'Accident register maintained',
     'MCS-150 updated within the last 24 months',
-    'Drug & Alcohol testing program (ONLY if CDL / ≥26,001 lb or hazmat)',
+    'Class A CDL for each driver who tows the rig (combo ≥26,001 lb + trailer >10,000 lb)',
+    'DOT drug & alcohol testing program enrolled (Part 382 — required with CDL drivers)',
   ];
 
   const DEFAULT_DOCS = {
@@ -6538,6 +6539,11 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     const dot =LS('compliance_dot',  DOT.map(()=>false));
     const oshaDone=osha.filter(Boolean).length, dotDone=dot.filter(Boolean).length;
     box.innerHTML=`
+      <div class="jsa-card" style="border-left:3px solid var(--or)"><h4>🚛 Your DOT profile</h4>
+        <div style="font-size:13px;line-height:1.6">Truck: <b>2025 GMC Sierra 3500HD Denali Ultimate</b> · Rig: <b>12,000-lb trailer</b> (towed).<br>
+        Combination GCWR ≥26,001 lb + trailer over 10,000 lb → <b style="color:var(--yw)">Class A CDL required</b> to tow the rig across state lines, plus a DOT drug-&-alcohol testing program (Part 382).<br>
+        <span style="color:var(--t2);font-size:11px">Truck driven solo (under 26,001) doesn't need a CDL — but still needs a DOT medical card, USDOT #, and the safety paperwork. Verify all of this with Montana MVD / FMCSA.</span></div></div>
+
       <div class="jsa-card"><h4>🚑 Severe-injury reporting — post this</h4>
         <div style="font-size:13px;line-height:1.6">Call OSHA <b>1-800-321-6742</b>:<br>
         • <b>Fatality</b> → within <b>8 hours</b><br>• <b>Hospitalization, amputation, or loss of an eye</b> → within <b>24 hours</b><br>
