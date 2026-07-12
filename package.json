@@ -1,26 +1,10 @@
 {
-  "name": "mgsf-field-os",
-  "version": "0.1.0",
+  "name": "mgsf-field-os-static",
   "private": true,
+  "version": "1.0.0",
+  "description": "Static single-file PWA deployed from public/ with Vercel serverless APIs in /api.",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build --webpack",
-    "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "latest",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "zod": "latest"
-  },
-  "devDependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "eslint": "latest",
-    "eslint-config-next": "latest",
-    "typescript": "latest"
+    "build": "mkdir -p public",
+    "lint": "echo 'No npm lint step for the deployed static PWA'"
   }
 }

@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
 
   try {
     const baseParams = {
-      select: 'id,first_name,last_name,company_name,status,next_follow_up_at,service_interest,city,state',
+      select: 'id,first_name,last_name,company_name,status,next_follow_up_at,service_interest,city,state,phone,updated_at,created_at',
       status: 'not.in.' + INACTIVE_STATUSES,
       next_follow_up_at: 'not.is.null',
       order: 'next_follow_up_at.asc',
@@ -76,30 +76,40 @@ module.exports = async (req, res) => {
       next_follow_up_at: 'lt.' + new Date().toISOString(),
     });
 
+    const staleLeads = Array.isArray(stale) ? stale : [];
+    const followUpSuggestions = staleLeads.map(l => ({
+      name: leadName(l) || 'Lead',
+      phone: l.phone || '',
+      daysQuiet: Math.floor((Date.now() - new Date(l.updated_at || l.created_at || l.next_follow_up_at || Date.now())) / 86400000),
+      suggestedText: `Hi ${(leadName(l)||'').split(' ')[0]}, just checking in — I sent an estimate ${Math.floor((Date.now() - new Date(l.updated_at||l.created_at||l.next_follow_up_at||Date.now()))/86400000)} days ago. Any questions, or has your timeline shifted? — Clifton, Machine Gun Spray Foam, 406-939-8301`
+    }));
+    const summaryLines = staleLeads.map((lead) => {
+      const daysQuiet = Math.floor((Date.now() - new Date(lead.updated_at || lead.created_at || lead.next_follow_up_at || Date.now())) / 86400000);
+      return `${leadName(lead)} — ${daysQuiet} day${daysQuiet === 1 ? '' : 's'} since contact`;
+    });
+
     let alertsSent = 0;
-    if (WEBHOOK) {
-      for (const lead of stale) {
-        const location = [lead.city, lead.state].filter(Boolean).join(', ');
-        const payload = {
-          event: 'funnel_follow_up_overdue',
-          message: 'Lead follow-up overdue: ' + leadName(lead) + ' · ' + lead.status + ' · ' + (lead.service_interest || 'Service TBD') + (location ? ' · ' + location : ''),
-          lead: {
-            name: leadName(lead),
-            service: lead.service_interest || '',
-            address: location,
-            source: 'funnel_remind',
-            value: lead.status,
-          },
+    if (WEBHOOK && staleLeads.length) {
+      const payload = {
+        event: 'funnel_follow_up_overdue',
+        message: 'Lead follow-up overdue\n' + summaryLines.join('\n'),
+        staleLeads: staleLeads.map((lead) => ({
+          name: leadName(lead),
+          phone: lead.phone || '',
+          status: lead.status || '',
+          service: lead.service_interest || '',
+          address: [lead.city, lead.state].filter(Boolean).join(', '),
           next_follow_up_at: lead.next_follow_up_at,
-          at: new Date().toISOString(),
-        };
-        const webhookResponse = await fetch(WEBHOOK, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (webhookResponse.ok) alertsSent += 1;
-      }
+        })),
+        followUpSuggestions,
+        at: new Date().toISOString(),
+      };
+      const webhookResponse = await fetch(WEBHOOK, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (webhookResponse.ok) alertsSent += 1;
     }
 
     sendJson(res, 200, {

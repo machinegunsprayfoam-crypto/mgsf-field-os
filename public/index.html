@@ -5725,6 +5725,9 @@ function klyftonActionDesc(a){
     case 'delete_lead': return `Delete lead <b>${a.name||'?'}</b>`;
     case 'update_job': return `Update job <b>${a.customer||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
     case 'delete_job': return `Delete job <b>${a.customer||'?'}</b>`;
+    case 'schedule_job': return `Schedule job for <b>${a.customer||'?'}</b> on <b>${a.date||'?'}</b>${a.crew?' (crew: '+a.crew+')':''}`;
+    case 'mark_invoice_paid': return `Mark invoice <b>${a.invoiceNum||'?'}</b> (${a.customer||'?'}) as PAID`;
+    case 'create_review_request': return `Draft review request for <b>${a.customer||'?'}</b>${a.phone?' — '+a.phone:''}`;
     default: return (window.opsActionDesc?window.opsActionDesc(a):'')||'';
   }
 }
@@ -5889,6 +5892,31 @@ function doPendingKlyftonAction(){
         save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
         notify('Deleted job '+job.customer,'success');
       } else { notify('No matching job to delete','info'); }
+    } else if (a.type === 'schedule_job') {
+      const cn = (a.customer||'').toLowerCase();
+      const job = (appState.jobs||[]).find(j=>(j.customer||j.name||'').toLowerCase().includes(cn));
+      if (job && a.date) {
+        const d = new Date(a.date+'T12:00:00');
+        if (d.getDay() === 0) { notify('Klyfton blocked Sunday scheduling — pick another day', 'alert'); return; }
+        job.date = a.date;
+        if (a.crew) job.crew = a.crew;
+        save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderCalendar) renderCalendar();
+        notify('Scheduled '+job.customer+' for '+a.date, 'success');
+        addMessage('Done ✓', 'ai', '');
+      } else { notify('Job not found — add it first', 'info'); }
+      return;
+    } else if (a.type === 'mark_invoice_paid') {
+      if (window.invTogglePaid) {
+        const invArr = JSON.parse(localStorage.getItem('klyfton_invoices')||'[]');
+        const inv = invArr.find(v => !v.paid && ((a.invoiceNum && (v.num||'').toLowerCase().includes((a.invoiceNum||'').toLowerCase())) || ((v.cust||'').toLowerCase().includes((a.customer||'').toLowerCase()))));
+        if (inv) { invTogglePaid(inv.id); addMessage('Done ✓', 'ai', ''); }
+        else { notify('Invoice not found', 'info'); }
+      }
+      return;
+    } else if (a.type === 'create_review_request') {
+      const txt = 'Hi ' + (a.customer||'').split(' ')[0] + ', thanks for choosing Machine Gun Spray Foam! If you\'re happy with the work, 60 seconds here makes a real difference for a veteran-owned small business: https://g.page/r/Camo7qu2xWrVEAE/review — Clifton, 406-939-8301';
+      showKlyftonDraft('REVIEW REQUEST — ' + (a.customer||''), txt, a.phone ? 'sms:'+a.phone+'?body='+encodeURIComponent(txt) : '');
+      return;
     } else if(window.opsHandleAction && window.opsHandleAction(a)){
       /* handled by Ops Center (log_cost / log_contact / log_review / set_inventory / draft_sms …) */
     }
@@ -6400,9 +6428,26 @@ document.addEventListener('click',()=>{
     {id:'elec', n:'Electrical', c:['Circuits de-energized where needed','GFCI on all cords','Wet-area equipment guarded']}
   ];
   const PPE = ['Supplied-air / full-face respirator','Chemical-resistant suit','Nitrile gloves','Eye protection','Hearing protection','Hard hat / boots'];
+  const EQUIP_CHECKS = [
+    'Proportioner temps verified (A side 120-150°F, B side 100-130°F)',
+    'Hose temps checked — no cold spots along the line',
+    'Gun lubed and test-fired — spray pattern clean',
+    'Generator fueled and running — no voltage drops',
+    'Drum pressures set per product TDS',
+    'Transfer pump and recirculation lines — no leaks',
+    'Fire extinguisher staged at work area',
+    'First-aid kit present and stocked',
+    'PPE staged for all crew (suits, respirators, gloves)',
+    'Containment/masking materials in place'
+  ];
 
   window.renderJSA = function(){
     const box=$('jsaForm'); if(!box) return;
+    const equipSection = `
+      <div class="jsa-card"><h4>⚙️ Pre-Job Equipment Check</h4>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">5-minute rig check before every job. A proportioner failure mid-spray costs a day.</div>
+        ${EQUIP_CHECKS.map((c,i) => `<label class="chk"><input type="checkbox" id="eq_${i}"><span>${c}</span></label>`).join('')}
+      </div>`;
     box.innerHTML = `
       <div class="jsa-card"><h4>Job</h4>
         <label class="fl">Job name / customer *</label><input id="j_job" class="admin-inp" placeholder="e.g. Smith barn CC">
@@ -6430,6 +6475,7 @@ document.addEventListener('click',()=>{
         <label class="fl">Nearest hospital / urgent care</label><input id="j_hosp" class="admin-inp" placeholder="Name & address">
         <label class="fl">First-aid kit location</label><input id="j_aid" class="admin-inp" placeholder="Rig / truck">
       </div>
+      ${equipSection}
       <div class="jsa-card"><h4>Crew Sign-off</h4>
         <label class="chk"><input type="checkbox" id="j_ack"><span>Crew reviewed this JSA and understands the hazards & controls. *</span></label>
         <label class="fl">Signature</label>
@@ -6468,10 +6514,11 @@ document.addEventListener('click',()=>{
     if(!($('j_ack')||{}).checked){ notify('Crew sign-off box required','alert'); return; }
     const haz={}; HAZARDS.forEach(h=>haz[h.id]=h.c.map((_,i)=>!!($('hz_'+h.id+'_'+i)||{}).checked));
     const ppe=PPE.map((_,i)=>!!($('ppe_'+i)||{}).checked);
+    const equip = EQUIP_CHECKS.map((_,i) => !!(document.getElementById('eq_'+i)||{}).checked);
     const rec={ id:'JSA-'+Date.now(), created:nowISO(),
       job:g('j_job'),addr:g('j_addr'),foreman:g('j_foreman'),crew:g('j_crew'),scope:g('j_scope'),
       temp:g('j_temp'),hum:g('j_hum'),wind:g('j_wind'),hosp:g('j_hosp'),aid:g('j_aid'),
-      haz,ppe,sig:sigData() };
+      haz,ppe,equip,sig:sigData() };
     const arr=LS('jsas',[]); arr.unshift(rec); SS('jsas',arr);
     notify('JSA submitted ✓ saved','success');
     renderJSA();
@@ -7741,6 +7788,7 @@ function renderPriceBook(){
 /* ===== KLYFTON GROW — Content Studio + Lead Hunter (calls the hive) ===== */
 let growTab='content';
 function growSelect(t){ growTab=t; renderGrow(); }
+function govconToggle(el, task){ /* tasks auto-save via checkbox state — no persistence needed for now */ }
 function growCopy(id){ if(typeof klyftonCopyDraft==='function') klyftonCopyDraft(id); }
 function growSaveWebhook(){ const el=document.getElementById('grow_hook'); if(!el) return; try{localStorage.setItem('klyfton_social_webhook',(el.value||'').trim());}catch(e){} notify('Auto-post webhook saved','success'); }
 function growSchedule(id){ const el=document.getElementById(id); const hook=(localStorage.getItem('klyfton_social_webhook')||'').trim(); if(!el||!hook) return;
@@ -7776,7 +7824,7 @@ function growHunt(target){
   growGenerate(prompt);
 }
 function renderGrow(){
-  const tabs=[['content','📝 Content Studio'],['hunter','🎯 Lead Hunter']];
+  const tabs=[['content','📝 Content Studio'],['hunter','🎯 Lead Hunter'],['govcon','🏛️ GovCon']];
   const tb=document.getElementById('grow_tabs'); if(tb) tb.innerHTML=tabs.map(function(t){return `<button class="btn ${growTab===t[0]?'btn-primary':'btn-ghost'}" style="font-size:12px" onclick="growSelect('${t[0]}')">${t[1]}</button>`;}).join('');
   const body=document.getElementById('grow_body'); if(!body) return;
   const hook=(localStorage.getItem('klyfton_social_webhook')||'').trim();
@@ -7793,6 +7841,58 @@ function renderGrow(){
       <div style="font-size:12px;color:var(--t2);margin-bottom:6px">Paste a Zapier/Make "catch webhook" to push posts to your scheduler → Facebook / Instagram / LinkedIn. Free option: copy the post into <b>Meta Business Suite</b> and schedule it there.</div>
       <div style="display:flex;gap:6px"><input id="grow_hook" class="admin-inp" style="flex:1" placeholder="https://hooks.zapier.com/..." value="${esc(hook)}"><button class="btn btn-primary" onclick="growSaveWebhook()">Save</button></div>
     </div>`;
+  } else if (growTab === 'govcon') {
+    body.innerHTML = `
+      <div class="jsa-card">
+        <h4 style="margin:0 0 8px">🏛️ SDVOSB Certification — Status Tracker</h4>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:12px">Track SDVOSB/VOSB certification tasks and federal contracting opportunities. SDVOSB set-asides can represent 3-5% of federal contract value at premium rates.</div>
+        
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--or);letter-spacing:1px;margin-bottom:8px">CERTIFICATION CHECKLIST</div>
+          ${[
+            ['DD-214 (proof of service + discharge)', true],
+            ['SAM.gov registration active (UEI: H63EELL3K7Z4)', true],
+            ['VOSB self-certification at SBA VetCert portal', false],
+            ['SDVOSB SBA certification application submitted', false],
+            ['Certificate of good standing (MT Secretary of State)', false],
+            ['Proof of ownership/control (majority ownership docs)', false],
+          ].map(([task, done]) => `
+            <label class="chk" style="margin:6px 0">
+              <input type="checkbox" ${done?'checked':''} onchange="govconToggle(this,${JSON.stringify(task)})">
+              <span style="${done?'color:var(--gr)':'color:var(--tx)'}">${task}</span>
+            </label>`).join('')}
+          <div style="font-size:11px;color:var(--yw);margin-top:8px">⚠ SBA VetCert is the authoritative portal (veterans.certify.sba.gov). CVE database migrated to SBA in 2023.</div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--cy);letter-spacing:1px;margin-bottom:8px">NAICS CODES TO MONITOR FOR SET-ASIDES</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+            <div style="background:var(--s2);padding:8px;border-radius:6px;border:1px solid var(--bd)"><b>238310</b> — Drywall &amp; Insulation<br><span style="font-size:10px;color:var(--t2)">Primary — spray foam insulation work</span></div>
+            <div style="background:var(--s2);padding:8px;border-radius:6px;border:1px solid var(--bd)"><b>238160</b> — Roofing Contractors<br><span style="font-size:10px;color:var(--t2)">SPF roofing systems on federal buildings</span></div>
+            <div style="background:var(--s2);padding:8px;border-radius:6px;border:1px solid var(--bd)"><b>238190</b> — Other Foundation Work<br><span style="font-size:10px;color:var(--t2)">Concrete lifting &amp; void fill</span></div>
+            <div style="background:var(--s2);padding:8px;border-radius:6px;border:1px solid var(--bd)"><b>236220</b> — Commercial Construction<br><span style="font-size:10px;color:var(--t2)">For larger building envelope projects</span></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--gr);letter-spacing:1px;margin-bottom:8px">QUICK LINKS</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+            <a href="https://sam.gov/search/?index=opp&sort=modifiedDate%2Cdesc&sfm%5Bstatus%5D%5B0%5D=Active&sfm%5BsimpleSearch%5D%5BkeywordRadio%5D=ALL&sfm%5BsimpleSearch%5D%5BkeywordTitleDesc%5D=spray+foam&sfm%5BnaicsCode%5D%5B0%5D=238310" target="_blank" class="btn btn-ghost" style="text-decoration:none;text-align:left;font-size:11px">🔍 SAM.gov — spray foam + 238310 opportunities →</a>
+            <a href="https://veterans.certify.sba.gov/" target="_blank" class="btn btn-ghost" style="text-decoration:none;text-align:left;font-size:11px">🏛️ SBA VetCert portal (SDVOSB application) →</a>
+            <a href="https://govtribe.com/" target="_blank" class="btn btn-ghost" style="text-decoration:none;text-align:left;font-size:11px">📊 GovTribe — bid tracking + set-aside alerts →</a>
+            <a href="https://usaspending.gov/" target="_blank" class="btn btn-ghost" style="text-decoration:none;text-align:left;font-size:11px">💰 USASpending — see what agencies paid for these services →</a>
+          </div>
+        </div>
+
+        <div class="jsa-card" style="background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)">
+          <div style="font-size:11px;font-weight:700;color:var(--gr);margin-bottom:6px">ASK KLYFTON</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="btn btn-ghost" style="font-size:11px" onclick="insertPrompt('Find active SAM.gov solicitations for spray foam insulation or SPF roofing in Montana, Wyoming, North Dakota, or South Dakota. NAICS 238310 or 238160. Summarize the top opportunities.')">🔍 Find active bids</button>
+            <button class="btn btn-ghost" style="font-size:11px" onclick="insertPrompt('Help me understand the SDVOSB certification requirements and what Machine Gun Spray Foam still needs to complete the SBA VetCert application.')">📋 SDVOSB checklist</button>
+            <button class="btn btn-ghost" style="font-size:11px" onclick="insertPrompt('What is a typical price per square foot for spray foam insulation on federal government buildings? How does that compare to our commercial pricing?')">💰 Gov pricing intel</button>
+          </div>
+        </div>
+      </div>`;
   } else {
     const targets=[['Commercial','commercial buildings and warehouses'],['Ag / Farm','agricultural and farm buildings'],['Metal buildings','metal buildings and pole barns'],['Government','government and SAM.gov solicitations'],['New construction','new construction projects']];
     body.innerHTML=`<div class="jsa-card">
