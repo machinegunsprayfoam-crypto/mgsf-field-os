@@ -81,6 +81,11 @@ Supported types:
 - log_contact:    {"type":"log_contact","name":"","ctype":"call|text|email|visit|note","note":"","when":""}  (add to a customer's contact history)
 - log_review:     {"type":"log_review","customer":"","stars":0,"platform":"Google","note":""}  (track a review or request; stars 0 = review requested)
 - set_inventory:  {"type":"set_inventory","item":"","qty":0,"unit":"","reorderAt":0,"supplier":""}  (set stock on hand + reorder trigger)
+- log_warranty:   {"type":"log_warranty","customer":"","job":"","wtype":"","termYears":5,"start":"YYYY-MM-DD","notes":""}  (register a job warranty)
+- log_training:   {"type":"log_training","name":"","topic":"","date":"YYYY-MM-DD","expires":"YYYY-MM-DD"}  (OSHA/safety training record; expires optional)
+- log_maintenance:{"type":"log_maintenance","equipment":"","service":"","date":"YYYY-MM-DD","meter":"","nextDue":"YYYY-MM-DD"}  (equipment service log)
+- draft_sms:      {"type":"draft_sms","to":"","body":""}  (a customer text — SMS is short & friendly, NEVER auto-sent)
+- share_financing:{"type":"share_financing","to":""}  (draft a text with the Hearth financing apply link for a customer)
 Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/remove something; OMIT
 it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
 the crew's real numbers/prices from context — never invent a price. For emails and proposals, write
