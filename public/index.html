@@ -1481,11 +1481,24 @@ const MGSF = {
 // ============================================================
 // APP STATE
 // ============================================================
+const KLYFTON_MEMORY_MAX = 500;
+function normalizeKlyftonMemory(memory){
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(memory) ? memory : []).forEach((entry)=>{
+    const fact = String(entry == null ? '' : entry).trim();
+    if(!fact || seen.has(fact)) return;
+    seen.add(fact);
+    out.push(fact);
+  });
+  return out.slice(-KLYFTON_MEMORY_MAX);
+}
+
 let appState = {
   leads: JSON.parse(localStorage.getItem('klyfton_leads')||'[]'),
   jobs: JSON.parse(localStorage.getItem('klyfton_jobs')||'[]'),
   estimates: JSON.parse(localStorage.getItem('klyfton_estimates')||'[]'),
-  memory: JSON.parse(localStorage.getItem('klyfton_memory')||'[]'),
+  memory: normalizeKlyftonMemory(JSON.parse(localStorage.getItem('klyfton_memory')||'[]')),
   crew: JSON.parse(localStorage.getItem('klyfton_crew')||'[]'),
   scopeItems: [],
   soundOn: true,
@@ -5524,8 +5537,7 @@ function sendChat(){
     appState.chatHistory.push({role:'assistant', content:resp});
     // Store durable "colony memory" facts the hive chose to keep.
     if(d && Array.isArray(d.remember) && d.remember.length){
-      d.remember.forEach(f=>{ if(f && !appState.memory.includes(f)) appState.memory.push(f); });
-      appState.memory = appState.memory.slice(-50);
+      appState.memory = normalizeKlyftonMemory((appState.memory||[]).concat(d.remember));
       save('memory');
     }
     addMessage(resp,'ai',resp);
@@ -7036,8 +7048,8 @@ document.addEventListener('click',()=>{
       <div style="display:flex;gap:6px;margin-bottom:8px"><input id="dm_mem_new" class="admin-inp" placeholder="Add a fact for Klyfton to remember"><button class="btn btn-primary" onclick="dmMemAdd()">＋ Add</button></div>
       ${mem.length? mem.map((m,i)=>`<div class="log-row"><span style="font-size:12px">${esc(m)}</span><button class="btn btn-ghost" style="font-size:11px;color:var(--red)" onclick="dmMemDel(${i})">Delete</button></div>`).join('') : '<p style="color:var(--t2);font-size:13px">Nothing remembered yet.</p>'}</div>`;
   };
-  window.dmMemAdd = function(){ const v=($('dm_mem_new')||{}).value||''; if(!v.trim()) return; if(!appState.memory) appState.memory=[]; appState.memory.push(v.trim()); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
-  window.dmMemDel = function(i){ if(!appState.memory) return; appState.memory.splice(i,1); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
+  window.dmMemAdd = function(){ const v=($('dm_mem_new')||{}).value||''; if(!v.trim()) return; appState.memory = normalizeKlyftonMemory((appState.memory||[]).concat([v])); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
+  window.dmMemDel = function(i){ if(!Array.isArray(appState.memory)) return; appState.memory.splice(i,1); appState.memory = normalizeKlyftonMemory(appState.memory); try{localStorage.setItem('klyfton_memory',JSON.stringify(appState.memory));}catch(e){} renderDataManager(); };
 })();
 </script>
 
@@ -7386,11 +7398,8 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     }
     // Klyfton's memory (durable facts) syncs as a set-union of unique strings across devices.
     if(Array.isArray(d.memory)){
-      if(!Array.isArray(appState.memory)) appState.memory=[];
-      const seen=new Set(appState.memory.map(s=>String(s).trim()));
-      let memAdded=false;
-      d.memory.forEach(s=>{ const t=String(s).trim(); if(t && !seen.has(t)){ seen.add(t); appState.memory.push(t); memAdded=true; } });
-      if(memAdded){ try{localStorage.setItem('klyfton_memory', JSON.stringify(appState.memory));}catch(e){} changed=true; }
+      const nextMemory = normalizeKlyftonMemory((appState.memory||[]).concat(d.memory));
+      if(JSON.stringify(nextMemory)!==JSON.stringify(appState.memory||[])){ appState.memory = nextMemory; try{localStorage.setItem('klyfton_memory', JSON.stringify(appState.memory));}catch(e){} changed=true; }
     }
     if(changed) refresh();
     COLS.forEach(k=>{ last[k]=JSON.stringify(arr(k)); });
