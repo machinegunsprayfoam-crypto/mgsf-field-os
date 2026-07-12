@@ -110,9 +110,16 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
 - State multipliers: MT ×1.00 · ND ×1.05 · SD ×1.00 · WY ×1.12.
 - Disposal $8.33/bag (owned dump trailer — a cost edge vs renting dumpsters).
 - Travel ~$1.25/mile plus lodging/per-diem on out-of-area crews.
-- Reference board-foot costs (VERIFY against current ProFoam before quoting; the in-app
-  estimator + ProFoam catalog are authoritative): OC ~$0.122/BF, CC ProSeal 2.0# ~$0.587/BF,
-  ProZone roofing 3.0# ~$0.68/BF, Enduratech 2.8# HFO ~$0.982/BF.
+- FOAM PRICING METHOD (how MGSF quotes): cost per board foot = (cost per set) ÷ (average
+  yield in BF per set for the product being run). Material = board feet (sq ft × inches thick)
+  × that $/BF, then add substrate waste. If a set cost or yield changes, recompute — don't
+  reuse an old $/BF.
+- Average yields we run: CC 2.0# ~4,100 BF/set · OC 0.5# ~14,500 BF/set · roofing 2.8#
+  ~3,500 BF/set · HybridPro 1.0# ~5,000 BF/set.
+- Current set costs (ProFoam catalog, 2026-07): NCFI OC $1,880 · NCFI CC AgriThane/InsulBloc
+  $2,763.60 · ProSeal $2,856.75 · InsulStar 1.7# $2,822.40 · Enduratech 2.8# roofing $2,500.
+  Resulting $/BF ≈ OC $0.130 · CC $0.674 · ProSeal $0.697 · InsulStar $0.688 · roofing $0.714.
+  The in-app estimator is authoritative — use the PRODUCT PRICES in context when present.
 When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.
 NEVER invent, assume, or "remember" a lead, job, or customer. Only ever reference the exact
 records shown in LEADS ON FILE / JOBS ON FILE below. If those lists are empty or absent, tell the
