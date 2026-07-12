@@ -462,6 +462,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('pricebook');renderPriceBook()" id="nav-pricebook">
         <div class="nav-icon">📕</div><div class="nav-label">PRICE BOOK</div>
       </div>
+      <div class="nav-item" onclick="switchModule('grow');renderGrow()" id="nav-grow">
+        <div class="nav-icon">📣</div><div class="nav-label">GROW</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1278,6 +1281,12 @@ canvas.chart{width:100%;height:100%}
           <div style="font-size:11px;color:var(--t2);margin-top:6px">Supplier reference prices (ProFoam / IDI / AMD). Blanks = call for price — add when you get it. Foam &amp; coating <b>bids</b> still run through the Estimator.</div>
         </div>
         <div id="pb_body"></div>
+      </div>
+      <div id="mod-grow" class="module">
+        <div class="mod-head"><h2>📣 Grow — Content &amp; Leads</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div style="display:flex;gap:6px;margin-bottom:12px" id="grow_tabs"></div>
+        <div id="grow_body"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -7086,6 +7095,76 @@ function renderPriceBook(){
     html = pbTable(['Coating (pail / drum)','Price'], rows.map(r=>[esc(r.n),pbMoney(r.price)]), rows.length);
   }
   body.innerHTML=html;
+}
+</script>
+
+<script>
+/* ===== KLYFTON GROW — Content Studio + Lead Hunter (calls the hive) ===== */
+let growTab='content';
+function growSelect(t){ growTab=t; renderGrow(); }
+function growCopy(id){ if(typeof klyftonCopyDraft==='function') klyftonCopyDraft(id); }
+function growSaveWebhook(){ const el=document.getElementById('grow_hook'); if(!el) return; try{localStorage.setItem('klyfton_social_webhook',(el.value||'').trim());}catch(e){} notify('Auto-post webhook saved','success'); }
+function growSchedule(id){ const el=document.getElementById(id); const hook=(localStorage.getItem('klyfton_social_webhook')||'').trim(); if(!el||!hook) return;
+  fetch(hook,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:el.value,source:'Klyfton',ts:new Date().toISOString()})})
+    .then(function(){ notify('Sent to your scheduler ✓','success'); }).catch(function(){ notify('Could not reach the scheduler webhook','alert'); }); }
+function growResultBox(text){
+  const id='grow_res_'+Date.now();
+  const hook=(localStorage.getItem('klyfton_social_webhook')||'').trim();
+  return `<textarea id="${id}" class="admin-inp" style="width:100%;height:230px;font-size:13px;resize:vertical">${esc(text)}</textarea>
+    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="font-size:12px" onclick="growCopy('${id}')">📋 Copy</button>
+      ${hook?`<button class="btn btn-ghost" style="font-size:12px" onclick="growSchedule('${id}')">🚀 Send to scheduler</button>`:''}
+    </div>`;
+}
+function growGenerate(prompt){
+  const out=document.getElementById('grow_out'), st=document.getElementById('grow_status');
+  if(st) st.textContent='Klyfton is working…';
+  if(out) out.innerHTML='';
+  fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20)})})
+  .then(function(r){return r.json();})
+  .then(function(d){ const text=(d&&d.text)||"Klyfton didn't return anything — try again."; if(out) out.innerHTML=growResultBox(text); if(st) st.textContent=(d&&d.configured===false)?'⚙️ Turn on ANTHROPIC_API_KEY in Vercel to use this.':''; })
+  .catch(function(){ if(out) out.innerHTML='<p style="color:var(--red);font-size:13px">Couldn\'t reach Klyfton — needs the API key live in Vercel.</p>'; if(st) st.textContent=''; });
+}
+function growContent(type,label){
+  const topic=((document.getElementById('grow_topic')||{}).value||'').trim();
+  const prompt='Write me a spray foam SOCIAL post — style: '+label+'. '+(topic?('Topic/job: '+topic+'. '):'')+'Give 2 ready-to-post options separated by a line of --- , each ending with 6-10 hashtags. Keep our veteran-owned voice and include the quote link or phone.';
+  growGenerate(prompt);
+}
+function growHunt(target){
+  const area=((document.getElementById('grow_area')||{}).value||'').trim()||'Montana, North Dakota, Wyoming and South Dakota';
+  const prompt='Find current spray foam / insulation / roof coating job opportunities in '+area+' — focus: '+target+'. Use web search. For each opportunity give what it is, where, why it fits us, a source link if you have one, and a ready-to-send outreach opener in Clifton\'s blunt veteran voice. End with your top 2-3 bets. Never invent a company or contract.';
+  growGenerate(prompt);
+}
+function renderGrow(){
+  const tabs=[['content','📝 Content Studio'],['hunter','🎯 Lead Hunter']];
+  const tb=document.getElementById('grow_tabs'); if(tb) tb.innerHTML=tabs.map(function(t){return `<button class="btn ${growTab===t[0]?'btn-primary':'btn-ghost'}" style="font-size:12px" onclick="growSelect('${t[0]}')">${t[1]}</button>`;}).join('');
+  const body=document.getElementById('grow_body'); if(!body) return;
+  const hook=(localStorage.getItem('klyfton_social_webhook')||'').trim();
+  if(growTab==='content'){
+    const types=[['Educational tip','tip'],['Before / After','before-and-after'],['Seasonal hook','cold-climate seasonal'],['Myth-buster','myth-buster'],['Special offer','soft offer'],['Job spotlight','job spotlight']];
+    body.innerHTML=`<div class="jsa-card">
+      <h4 style="margin:0 0 6px">Make a spray foam post</h4>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${types.map(function(t){return `<button class="btn btn-ghost" style="font-size:12px" onclick="growContent('${t[1]}','${t[1]}')">${t[0]}</button>`;}).join('')}</div>
+      <input id="grow_topic" class="admin-inp" placeholder="Optional: topic or job (e.g. metal shop in Glendive)" style="width:100%">
+      <div id="grow_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div>
+      <div id="grow_out" style="margin-top:8px"></div>
+    </div>
+    <div class="jsa-card"><h4 style="margin:0 0 6px">Auto-post setup (optional)</h4>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">Paste a Zapier/Make "catch webhook" to push posts to your scheduler → Facebook / Instagram / LinkedIn. Free option: copy the post into <b>Meta Business Suite</b> and schedule it there.</div>
+      <div style="display:flex;gap:6px"><input id="grow_hook" class="admin-inp" style="flex:1" placeholder="https://hooks.zapier.com/..." value="${esc(hook)}"><button class="btn btn-primary" onclick="growSaveWebhook()">Save</button></div>
+    </div>`;
+  } else {
+    const targets=[['Commercial','commercial buildings and warehouses'],['Ag / Farm','agricultural and farm buildings'],['Metal buildings','metal buildings and pole barns'],['Government','government and SAM.gov solicitations'],['New construction','new construction projects']];
+    body.innerHTML=`<div class="jsa-card">
+      <h4 style="margin:0 0 6px">Hunt for spray foam leads</h4>
+      <input id="grow_area" class="admin-inp" placeholder="Area / town (default: MT, ND, WY, SD)" style="width:100%;margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${targets.map(function(t){return `<button class="btn btn-ghost" style="font-size:12px" onclick="growHunt('${esc(t[1])}')">${t[0]}</button>`;}).join('')}</div>
+      <div style="font-size:11px;color:var(--t2)">Klyfton web-searches for real opportunities and drafts your outreach. Always verify before you rely on it.</div>
+      <div id="grow_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div>
+      <div id="grow_out" style="margin-top:8px"></div>
+    </div>`;
+  }
 }
 </script>
 
