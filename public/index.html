@@ -216,6 +216,16 @@ select.inp option{background:var(--s2)}
 .voice-btn-chat{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;padding:8px 10px;cursor:pointer;font-size:14px;transition:all .2s}
 .voice-btn-chat:hover{border-color:var(--cy);color:var(--cy)}
 .voice-btn-chat.listening{border-color:var(--red);color:var(--red);animation:pulseBorder .5s infinite}
+.chat-attach-btn{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;padding:8px 11px;cursor:pointer;font-size:16px;line-height:1;font-weight:700;transition:all .2s}
+.chat-attach-btn:hover{border-color:var(--or);color:var(--or)}
+.chat-atts{display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chat-att{position:relative;width:52px;height:52px;border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2);display:flex;align-items:center;justify-content:center}
+.chat-att img{width:100%;height:100%;object-fit:cover}
+.chat-att-pdf{font-size:9px;color:var(--t2);padding:4px;text-align:center;line-height:1.2;word-break:break-all}
+.chat-att-x{position:absolute;top:1px;right:1px;width:16px;height:16px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;font-size:9px;line-height:16px;cursor:pointer}
+.chat-att-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chat-att-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--bd)}
+.chat-att-file{font-size:11px;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:4px 8px}
 
 /* ESTIMATE RESULT */
 .est-result{background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.25);border-radius:var(--r);padding:16px;margin-top:12px}
@@ -448,6 +458,9 @@ canvas.chart{width:100%;height:100%}
       </div>
       <div class="nav-item" onclick="switchModule('invoice');renderInvoice()" id="nav-invoice">
         <div class="nav-icon">🧾</div><div class="nav-label">INVOICE</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('pricebook');renderPriceBook()" id="nav-pricebook">
+        <div class="nav-icon">📕</div><div class="nav-label">PRICE BOOK</div>
       </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
@@ -1062,11 +1075,14 @@ canvas.chart{width:100%;height:100%}
       </div>
       <div id="chatMessages"></div>
       <div class="chat-input-area">
-        <textarea id="chatInput" placeholder="Ask Klyfton anything about MGSF, estimates, jobs, leads..." onkeydown="chatKeydown(event)"></textarea>
+        <div id="chatAtts" class="chat-atts"></div>
+        <textarea id="chatInput" placeholder="Ask Klyfton anything, or tap ＋ to send a photo or PDF..." onkeydown="chatKeydown(event)"></textarea>
         <div class="chat-actions">
+          <button class="chat-attach-btn" id="chatAttachBtn" onclick="document.getElementById('chatFile').click()" title="Attach photo or PDF">＋</button>
           <button class="voice-btn-chat" id="chatVoiceBtn" onclick="toggleVoiceInput()" title="Voice input">🎙️</button>
           <button class="chat-send" onclick="sendChat()">SEND ↵</button>
         </div>
+        <input type="file" id="chatFile" accept="image/*,application/pdf" multiple style="display:none" onchange="handleChatFiles(this.files); this.value='';">
       </div>
     </div>
 
@@ -1253,6 +1269,16 @@ canvas.chart{width:100%;height:100%}
         <h3 style="margin-top:22px">Invoices</h3>
         <div id="in_list"></div>
       </div>
+      <div id="mod-pricebook" class="module">
+        <div class="mod-head"><h2>📕 Price Book — Materials &amp; Equipment</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div class="jsa-card" style="padding:10px 12px">
+          <input id="pb_search" class="admin-inp" placeholder="Search foam, coatings, consumables, equipment..." oninput="renderPriceBook()" style="width:100%">
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap" id="pb_tabs"></div>
+          <div style="font-size:11px;color:var(--t2);margin-top:6px">Supplier reference prices (ProFoam / IDI / AMD). Blanks = call for price — add when you get it. Foam &amp; coating <b>bids</b> still run through the Estimator.</div>
+        </div>
+        <div id="pb_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -1366,26 +1392,8 @@ let appState = {
   audioCtx: null,
 };
 
-// Seed demo data if empty
-if(appState.leads.length===0){
-  appState.leads = [
-    {id:1,name:'Dan Whitfield',company:'Whitfield Ag',phone:'406-555-0101',email:'dan@whitfield.ag',service:'Closed Cell',sqft:8400,state:'MT',market:'ind',status:'Estimate Sent',value:38200,date:'2026-07-07',notes:'Metal shop, needs R-25 walls/ceiling. Has Hearth approved.',source:'Website',bant:{budget:'Y',authority:'Y',need:'Y',timeline:'Aug'}},
-    {id:2,name:'City of Williston',company:'City of Williston',phone:'701-555-0200',service:'SPF Roofing',sqft:12000,state:'ND',market:'gov',status:'Qualified',value:71400,date:'2026-07-05',notes:'Flat roof on public works building. SAM.gov opportunity.',source:'GovTribe',bant:{budget:'Y',authority:'Y',need:'Y',timeline:'Sept'}},
-    {id:3,name:'Sarah Perkins',company:'Perkins Ranch',phone:'307-555-0302',service:'Open Cell',sqft:3200,state:'WY',market:'resi',status:'New',value:14800,date:'2026-07-08',notes:'New construction crawlspace + walls.',source:'Referral'},
-    {id:4,name:'Rocky Mtn Logistics',company:'RML',phone:'406-555-0400',service:'Concrete Lifting',sqft:0,state:'MT',market:'comm',status:'Follow-Up',value:9200,date:'2026-07-01',notes:'Loading dock, 3 sunken slabs. Been quiet 7 days.',source:'Cold Call'},
-    {id:5,name:'Bridger Steel',company:'Bridger Steel LLC',phone:'406-555-0501',service:'Closed Cell',sqft:24000,state:'MT',market:'ind',status:'Won',value:112000,date:'2026-06-15',notes:'Large industrial job, complete.',source:'Repeat'},
-    {id:6,name:'Jamie Torkelson',company:'',phone:'701-555-0601',service:'Open Cell',sqft:1800,state:'ND',market:'resi',status:'Lost',value:7200,date:'2026-06-20',notes:'Went with competitor on price.',source:'Website'},
-  ];
-  save('leads');
-}
-if(appState.jobs.length===0){
-  appState.jobs = [
-    {id:1,name:'Whitfield Ag Shop',customer:'Dan Whitfield',service:'Closed Cell 3.5"',sqft:8400,state:'MT',value:38200,status:'Scheduled',date:'2026-07-14',crew:'Clifton + Mike',rig:'Rig 1',notes:'R-25 walls + R-38 ceiling'},
-    {id:2,name:'Williston Public Works',customer:'City of Williston',service:'SPF Roofing',sqft:12000,state:'ND',value:71400,status:'In Progress',date:'2026-07-09',crew:'Clifton + Jake + Luis',rig:'Rig 2',notes:'Day 2 of 3, on schedule'},
-    {id:3,name:'Cedar Creek Ranch',customer:'Travis & Beth Lund',service:'Closed Cell 2"',sqft:4200,state:'WY',value:19600,status:'Completed',date:'2026-07-02',crew:'Clifton + Mike',rig:'Rig 1',notes:'Signed off, review request sent'},
-  ];
-  save('jobs');
-}
+// Real data only — jobs, leads, and estimates start empty and fill from actual use
+// (or sync down from other crew devices once cloud storage is attached). No demo seeds.
 
 function save(key){
   try{localStorage.setItem('klyfton_'+key, JSON.stringify(appState[key]))}catch(e){}
@@ -1848,6 +1856,10 @@ const EST_FOAM = [
   {k:'jm_corbond05',     n:'JM Corbond 0.5#',                     cat:'OC',   setCost:2103.75, yieldBF:14500},
   {k:'profoam_profill',  n:'ProFoam ProFill 0.5#',                cat:'OC',   setCost:2075.7, yieldBF:14500},
   {k:'profoam_hybridpro',n:'ProFoam HybridPro 1.0# ⚠️ Low Yield',cat:'OC',   setCost:1955, yieldBF:5000},
+  // Seasonal blends (ProFoam catalog) — same class yields as their base products
+  {k:'ncfi_insulstar17_fw', n:'NCFI InsulStar 1.7# CC Fast/Winter',   cat:'CC', setCost:2822.4, yieldBF:4100},
+  {k:'ncfi_insulstar17_ss', n:'NCFI InsulStar 1.7# CC Slow/Summer',   cat:'CC', setCost:2822.4, yieldBF:4100},
+  {k:'ncfi_insulbloc_fw',   n:'NCFI InsulBloc 2.0# CC Fast/Winter',   cat:'CC', setCost:2763.6, yieldBF:4100},
 ];
 
 const EST_GEO = [
@@ -2050,17 +2062,25 @@ const CONS_QUICK = {
 };
 
 // ── Dropdown HTML helpers ─────────────────────────────────────
+// Estimator favorites — owner stars the foams/coatings the crew runs most; they
+// jump to the top of the dropdowns. Managed in Price Book → ⭐ My Estimator List.
+function favGet(kind){ try{ const o=JSON.parse(localStorage.getItem('klyfton_fav')||'{}'); return new Set(o[kind]||[]); }catch(e){ return new Set(); } }
+function favToggle(kind,key){ let o={}; try{o=JSON.parse(localStorage.getItem('klyfton_fav')||'{}');}catch(e){} const s=new Set(o[kind]||[]); if(s.has(key)) s.delete(key); else s.add(key); o[kind]=[...s]; try{localStorage.setItem('klyfton_fav',JSON.stringify(o));}catch(e){} }
 function foamOptions(cats){
-  return EST_FOAM.filter(p=>cats.includes(p.cat)).map(p=>{
-    const cpBF = (p.setCost/p.yieldBF).toFixed(3);
-    return `<option value="${p.k}">${p.n} — $${cpBF}/BF</option>`;
-  }).join('');
+  const fav=favGet('foam');
+  const list=EST_FOAM.filter(p=>cats.includes(p.cat));
+  const opt=p=>`<option value="${p.k}">${fav.has(p.k)?'★ ':''}${p.n} — $${(p.setCost/p.yieldBF).toFixed(3)}/BF</option>`;
+  const f=list.filter(p=>fav.has(p.k)), r=list.filter(p=>!fav.has(p.k));
+  return (f.length&&r.length) ? `<optgroup label="★ Most used">${f.map(opt).join('')}</optgroup><optgroup label="All foams">${r.map(opt).join('')}</optgroup>` : list.map(opt).join('');
 }
 function geoOptions(){
   return EST_GEO.map(p=>`<option value="${p.k}">${p.n} — $${p.priceLb}/lb</option>`).join('');
 }
 function coatOptions(){
-  return EST_COAT.map(p=>`<option value="${p.k}">${p.n}${p.costGal===0?' [enter $/gal below]':''}</option>`).join('');
+  const fav=favGet('coat');
+  const opt=p=>`<option value="${p.k}">${fav.has(p.k)?'★ ':''}${p.n}${p.costGal===0?' [enter $/gal below]':''}</option>`;
+  const f=EST_COAT.filter(p=>fav.has(p.k)), r=EST_COAT.filter(p=>!fav.has(p.k));
+  return (f.length&&r.length) ? `<optgroup label="★ Most used">${f.map(opt).join('')}</optgroup><optgroup label="All coatings">${r.map(opt).join('')}</optgroup>` : EST_COAT.map(opt).join('');
 }
 function subOpts(types){
   return types.map(t=>`<option value="${t}">${SUBSTRATE_WASTE[t].label} (+${Math.round(SUBSTRATE_WASTE[t].waste*100)}% waste)</option>`).join('');
@@ -2088,7 +2108,7 @@ function calcBFCost(opts){
   const actualGm = sell>0 ? gp/sell : 0;
   const setsNeeded = Math.ceil(bf / p.yieldBF);
   return {rawMat, waste, cons, totalMat, laborHrs, laborCost, directCost,
-          sell, gp, actualGm, gm, bf, setsNeeded,
+          sell, gp, actualGm, gm, bf, setsNeeded, sqft: opts.sqft,
           productName:p.n, subLabel:sub.label,
           gonogo: actualGm>=gm-0.001 ? 'GO':'REVIEW'};
 }
@@ -3564,6 +3584,14 @@ function calculateBid(){
   const gm         = MGSF.gmTargets[market]||0.50;
   const projectGO  = blendedGM>=gm-0.001;
 
+  // Auto prep & time — crew-hours + days from production rates, foam sets to order,
+  // and a masking estimate (9ft×200ft roll = 1800 sq ft). All labeled as estimates.
+  const crewHrs  = results.reduce((s,r)=>s+(r.laborHrs||0),0);
+  const projDays = crewHrs>0 ? Math.max(1, Math.ceil(crewHrs/(2*8))) : 0;
+  const foamSets = results.reduce((s,r)=>s+(r.setsNeeded||0),0);
+  const prepSqft = results.reduce((s,r)=>s+(r.sqft||0),0);
+  const filmRolls= prepSqft>0 ? Math.ceil(prepSqft/1800) : 0;
+
   const typeLabels = {walls:'Walls (SPF)',gable:'Gable Walls (SPF)',rimjoist:'Rim Joists (SPF)',
     roofing:'SPF Roofing System',coating:'Coating',lifting:'Concrete Lifting (Poly)',
     insul_removal:'Insulation Removal',bpi:'BPI / Energy Audit',
@@ -3609,7 +3637,16 @@ function calculateBid(){
       <span style="font-weight:700;color:var(--or);font-size:17px">$${totalSell.toLocaleString('en',{maximumFractionDigits:0})}</span>
     </div>
   </div></div>
-  <div style="margin-top:10px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
+  <div style="margin-top:10px;padding:8px 10px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);border-radius:6px;font-size:12px">
+    <div style="font-weight:700;color:var(--cy);margin-bottom:5px">🧰 PREP &amp; TIME</div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;color:var(--tx)">
+      ${crewHrs>0?`<span>⏱️ ≈ ${Math.round(crewHrs)} crew-hrs ≈ <b>${projDays} day${projDays!==1?'s':''}</b> <span style="color:var(--t2)">(2-crew @ 8 hr)</span></span>`:''}
+      ${foamSets>0?`<span>🛢️ Order <b>${foamSets}</b> foam set${foamSets!==1?'s':''}</span>`:''}
+      ${filmRolls>0?`<span>🎞️ Masking film ~<b>${filmRolls}</b> roll${filmRolls!==1?'s':''} <span style="color:var(--t2)">(9ft×200ft, est.)</span></span>`:''}
+    </div>
+    <div style="font-size:10px;color:var(--t2);margin-top:5px">Prep is a starting estimate — mask adjacent surfaces, prime substrate, PPE. Set exact consumables in each item's CONSUMABLES panel.</div>
+  </div>
+  <div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
     ⚠️ DRAFT ONLY — Clifton approves all numbers before any bid is sent. Unsigned change orders are a hard closeout block.
   </div>
   <div style="margin-top:8px;display:flex;gap:8px">
@@ -5135,14 +5172,22 @@ function processChat(input){
   return {text: response, voice: voiceText};
 }
 
-function addMessage(text, who, speak_text=''){
+function addMessage(text, who, speak_text='', atts=null){
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className='msg '+(who==='user'?'user':'ai');
-  
+
   if(who==='ai') div.innerHTML=`<div class="msg-name">KLYFTON</div>${markdownLite(text)}`;
-  else div.textContent=text;
-  
+  else {
+    let html = text ? esc(text).replace(/\n/g,'<br>') : '';
+    if(atts && atts.length){
+      html += '<div class="chat-att-row">' + atts.map(a=> a.kind==='image'
+        ? '<img class="chat-att-thumb" src="'+(a.preview || ('data:'+(a.media_type||'image/jpeg')+';base64,'+a.data))+'" alt="">'
+        : '<span class="chat-att-file">📄 '+esc(a.name||'PDF')+'</span>').join('') + '</div>';
+    }
+    div.innerHTML = html;
+  }
+
   const time=document.createElement('div');
   time.className='msg-time';
   time.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -5164,16 +5209,84 @@ function markdownLite(text){
     .replace(/^•\s/gm,'<span style="color:var(--or)">▸</span> ');
 }
 
+// ---- Chat attachments: photos / PDFs the crew uploads for Klyfton to read ----
+// Images are downscaled client-side (keeps the Vercel payload small + token cost sane);
+// on send they go to the hive as Claude vision / document blocks so the minds actually SEE them.
+window.__chatAtts = window.__chatAtts || [];
+const CHAT_ATT_MAX = 6;      // max attachments per message
+const IMG_MAX_EDGE = 1568;   // downscale long edge — plenty for Klyfton's vision
+const PDF_MAX_BYTES = 3 * 1024 * 1024;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function handleChatFiles(files){
+  const list = Array.from(files||[]);
+  if(!list.length) return;
+  if(!appState.chatOpen) toggleChat();
+  list.forEach(f=>{
+    if(window.__chatAtts.length >= CHAT_ATT_MAX){ notify('Max '+CHAT_ATT_MAX+' attachments per message','alert'); return; }
+    if(f.type && f.type.indexOf('image/')===0) addImageAtt(f);
+    else if(f.type==='application/pdf') addPdfAtt(f);
+    else notify('Only photos and PDFs — skipped '+(f.name||'that file'),'info');
+  });
+}
+
+function addImageAtt(file){
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=function(){
+    let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    const scale=Math.min(1, IMG_MAX_EDGE/Math.max(w,h));
+    w=Math.max(1,Math.round(w*scale)); h=Math.max(1,Math.round(h*scale));
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    let dataUrl; try{ dataUrl=cv.toDataURL('image/jpeg',0.82); }catch(e){ notify('Could not process that image','alert'); return; }
+    window.__chatAtts.push({kind:'image', media_type:'image/jpeg', data:dataUrl.split(',')[1], name:file.name||'photo.jpg', preview:dataUrl});
+    renderChatAtts(); playSound('click');
+  };
+  img.onerror=function(){ URL.revokeObjectURL(url); notify('Could not read that image','alert'); };
+  img.src=url;
+}
+
+function addPdfAtt(file){
+  if(file.size > PDF_MAX_BYTES){ notify('PDF too big (max 3MB) — '+(file.name||''),'alert'); return; }
+  const r=new FileReader();
+  r.onload=function(){
+    window.__chatAtts.push({kind:'pdf', media_type:'application/pdf', data:String(r.result).split(',')[1], name:file.name||'document.pdf', preview:null});
+    renderChatAtts(); playSound('click');
+  };
+  r.onerror=function(){ notify('Could not read that PDF','alert'); };
+  r.readAsDataURL(file);
+}
+
+function renderChatAtts(){
+  const box=document.getElementById('chatAtts'); if(!box) return;
+  box.innerHTML='';
+  window.__chatAtts.forEach((a,i)=>{
+    const chip=document.createElement('div'); chip.className='chat-att';
+    chip.innerHTML = a.kind==='image'
+      ? '<img src="'+a.preview+'" alt="">'
+      : '<span class="chat-att-pdf">📄 '+esc((a.name||'PDF').slice(0,20))+'</span>';
+    const x=document.createElement('button'); x.className='chat-att-x'; x.textContent='✕';
+    x.title='Remove'; x.onclick=function(){ removeChatAtt(i); };
+    chip.appendChild(x); box.appendChild(chip);
+  });
+  box.style.display = window.__chatAtts.length ? 'flex' : 'none';
+}
+function removeChatAtt(i){ window.__chatAtts.splice(i,1); renderChatAtts(); }
+
 function sendChat(){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
-  if(!text) return;
-  
+  const atts = (window.__chatAtts||[]).slice();
+  if(!text && !atts.length) return;
+
   // Ensure chat panel is open
   if(!appState.chatOpen){ toggleChat(); }
-  
+
   input.value='';
-  addMessage(text,'user');
+  window.__chatAtts=[]; renderChatAtts();
+  addMessage(text,'user','',atts);
   playSound('click');
   
   // Set typing indicator
@@ -5183,7 +5296,7 @@ function sendChat(){
   if(!appState.chatHistory) appState.chatHistory = [];
   if(!appState.memory) appState.memory = [];
   const hist = appState.chatHistory.slice(-10);
-  appState.chatHistory.push({role:'user', content:text});
+  appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
   fetch('/api/klyfton', {
     method:'POST',
     headers:{'content-type':'application/json'},
@@ -5191,7 +5304,9 @@ function sendChat(){
       message:text,
       history:hist,
       memory: appState.memory.slice(-20),
-      context: gatherBizContext()
+      context: gatherBizContext(),
+      // Photos/PDFs the crew attached — the hive reads these via Claude vision.
+      attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data}))
     })
   })
   .then(r=>r.json())
@@ -5220,8 +5335,12 @@ function sendChat(){
   })
   .catch(()=>{
     // Offline / no backend — use the local canned responder so the app still replies.
-    const {text:resp, voice} = processChat(text);
-    addMessage(resp,'ai',voice);
+    if(atts.length){
+      addMessage("I can't read photos or PDFs while offline — that needs a connection to the hive. Your attachment is still here; try again when you've got signal.",'ai','');
+    } else {
+      const {text:resp, voice} = processChat(text);
+      addMessage(resp,'ai',voice);
+    }
     document.getElementById('chatStatus').textContent='● OFFLINE';
     playSound('nav');
   });
@@ -6802,9 +6921,25 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
         if(arr(t.c).length!==before){ try{localStorage.setItem('klyfton_'+t.c, JSON.stringify(appState[t.c]));}catch(e){} changed=true; }
       });
     }
+    // Klyfton's memory (durable facts) syncs as a set-union of unique strings across devices.
+    if(Array.isArray(d.memory)){
+      if(!Array.isArray(appState.memory)) appState.memory=[];
+      const seen=new Set(appState.memory.map(s=>String(s).trim()));
+      let memAdded=false;
+      d.memory.forEach(s=>{ const t=String(s).trim(); if(t && !seen.has(t)){ seen.add(t); appState.memory.push(t); memAdded=true; } });
+      if(memAdded){ try{localStorage.setItem('klyfton_memory', JSON.stringify(appState.memory));}catch(e){} changed=true; }
+    }
     if(changed) refresh();
     COLS.forEach(k=>{ last[k]=JSON.stringify(arr(k)); });
+    last.memory=JSON.stringify(appState.memory||[]);
     return true;
+  }
+  async function pushMem(){
+    try{
+      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({collection:'memory', records: Array.isArray(appState.memory)?appState.memory:[]})});
+      last.memory=JSON.stringify(appState.memory||[]);
+    }catch(e){}
   }
   async function push(k){
     try{
@@ -6829,17 +6964,73 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
       if(removed.length) del(k, removed);
       push(k);
     });
+    // Sync Klyfton's memory too — propagate deletes, then push the current set.
+    const memStr=JSON.stringify(appState.memory||[]);
+    if(memStr!==last.memory){
+      let prevMem=[]; try{ prevMem=JSON.parse(last.memory||'[]'); }catch(e){}
+      const curSet=new Set((appState.memory||[]).map(s=>String(s).trim()));
+      const removedMem=prevMem.map(s=>String(s).trim()).filter(s=>s && !curSet.has(s));
+      if(removedMem.length){ try{ fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({collection:'memory', remove:removedMem})}); }catch(e){} }
+      pushMem();
+    }
   }
   async function init(){
     try{ on = await pull(); }catch(e){ on=false; }
     if(!on) return;                       // dormant — no storage attached
     try{ await Promise.all(COLS.map(push)); }catch(e){}   // send up this device's local-only records
+    try{ await pushMem(); }catch(e){}     // send up this device's local-only memory facts
     setInterval(tick, 15000);             // quiet background sync
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden) tick(); });
   }
   if(document.readyState==='complete') setTimeout(init, 1500);
   else window.addEventListener('load', ()=> setTimeout(init, 1500));
 })();
+</script>
+
+<script>
+/* ===== KLYFTON PRICE BOOK — supplier reference (ProFoam / IDI / AMD), read-only =====
+   Purchase-side prices for foam sets, coatings, and consumables/equipment. Blanks are
+   "call for price" — fill them when the supplier replies. Bids still run in the Estimator. */
+const PRICEBOOK = {"foam":[{"n":"Accufoam 2.0# HFO Closed Cell Foam","cat":"Closed Cell","price":2881.2},{"n":"Handi-Foam II-600 HFO E84 Spray Foam Kit","cat":"Closed Cell","price":927.64},{"n":"JM Corbond IV 2# HFO Closed Cell Spray Polyurethane Foam","cat":"Closed Cell","price":2905.5},{"n":"Kraken Bond FastCoat Spray Foam Insulation-12 per Case","cat":"Closed Cell","price":240},{"n":"NCFI AgriThane 2.0# HFO Closed Cell Regular Foam","cat":"Closed Cell","price":2763.6},{"n":"NCFI InsulBloc Optimaxx 2.0# HFO Closed Cell Foam","cat":"Closed Cell","price":2763.6},{"n":"NCFI InsulBloc Optimaxx 2.0# HFO Fast/Winter Closed Cell Foam","cat":"Closed Cell","price":2763.6},{"n":"NCFI InsulStar Optimaxx 1.7# HFO Closed Cell Foam","cat":"Closed Cell","price":2822.4},{"n":"NCFI InsulStar Optimaxx 1.7# HFO Fast/ Winter Closed Cell Foam","cat":"Closed Cell","price":2822.4},{"n":"NCFI InsulStar Optimaxx 1.7# HFO Slow/Summer Closed Cell Foam","cat":"Closed Cell","price":2822.4},{"n":"Profoam ProSeal Closed Cell Foam","cat":"Closed Cell","price":2856.75},{"n":"Kraken Bond Foam Cleaner-1 Can","cat":"Foam","price":9.5},{"n":"Kraken Bond Xtreme Pro Window & Door Foam-12 per Case","cat":"Foam","price":102},{"n":"NCFI Geo Terra-lok Fast Catalyst for Single Component, B Side, 1 Gallon Pail","cat":"Foam","price":null},{"n":"NCFI Geo Terra-Lok Regular Catalyst for Single Component, B Side, 5 Gallon Pail","cat":"Foam","price":null},{"n":"NCFI Isocyanate Terra-Lok Soil Stabilizer for Single Component, A Side, 4 Gallon Pail","cat":"Foam","price":null},{"n":"NCFI Isocyanate Terra-Lok Soil Stabilizer for Single Component, A side, 55 Gallon Drum","cat":"Foam","price":null},{"n":"NCFI Terra-Lok Pump Flush, 5 Gallon Pail","cat":"Foam","price":null},{"n":"Sprayman X-Climate Pro Fire Block-12 per Case","cat":"Foam","price":125.04},{"n":"NCFI 21-070 Rigid Pour Foam System","cat":"Geotech / Pour","price":4128.92},{"n":"NCFI Strata-Fill 24-023 Low Exotherm Polyurethane System","cat":"Geotech / Pour","price":3314.5},{"n":"NCFI Strata-Fill 24-028 Low Exotherm Polyurethane System","cat":"Geotech / Pour","price":3500},{"n":"NCFI Strata-Fill 24-039 Low Exotherm Polyurethane System","cat":"Geotech / Pour","price":2876.75},{"n":"NCFI Strata-Fill 24-070 Low Exotherm Polyurethane System","cat":"Geotech / Pour","price":3314.5},{"n":"NCFI Terrathane 24-003 Dual Component Polyurethane","cat":"Geotech / Pour","price":2907.85},{"n":"NCFI Terrathane 24-010 Dual Component Polyurethane","cat":"Geotech / Pour","price":2898.5},{"n":"NCFI Terrathane 24-011 Dual Component Polyurethane","cat":"Geotech / Pour","price":2892.3},{"n":"NCFI Terrathane 24-038 Geotechnical Foam System","cat":"Geotech / Pour","price":3083.48},{"n":"NCFI Terrathane 24-042 Dual Component Polyurethane","cat":"Geotech / Pour","price":2852},{"n":"NCFI Terrathane 24-044 Dual Component Polyurethane","cat":"Geotech / Pour","price":2861.2},{"n":"NCFI Terrathane 24-3F Geotechnical Foam System","cat":"Geotech / Pour","price":2892.3},{"n":"NCFI Terrathane Polyurethane 24-035 Manhole Liner","cat":"Geotech / Pour","price":3663},{"n":"Accufoam AF1 Open Cell Foam","cat":"Open Cell","price":2140.8},{"n":"JM Corbond 0.5# Open Cell Spray Polyurethane Foam","cat":"Open Cell","price":2103.75},{"n":"NCFI Open Cell Foam","cat":"Open Cell","price":1880},{"n":"Profoam Hybrid Pro 1# Open Cell Spray Foam Insulation","cat":"Open Cell","price":null},{"n":"Profoam ProFill Open Cell Foam","cat":"Open Cell","price":2075.7},{"n":"NCFI Enduratech 2.8# HFO Roofing Foam","cat":"Roofing","price":2500}],"coat":[{"n":"Armor Coat 100 Acrylic, 5 Gallon Pail","price":109.6},{"n":"Armor Coat 100 Acrylic, 55 Gallon Drum","price":1113.75},{"n":"Armor Coat 60 Acrylic, 5 Gallon Pail","price":106.85},{"n":"Armor Coat 60 Acrylic, 55 Gallon Drum","price":1051.05},{"n":"Armor Coat Armor Prime Primer, 5 Gallon Pail","price":106.85},{"n":"Armor Coat Armor Prime Primer, 55 Gallon Drum","price":1051.05},{"n":"Armor Coat Armor Putty, 2 Gallon Pail","price":54.67},{"n":"DC-315 Intumescent Coating Thermal Barrier, 5 Gallons, Black","price":366.45},{"n":"DC-315 Intumescent Coating Thermal Barrier, 5 Gallons, Dark Gray","price":339.05},{"n":"DC-315 Intumescent Coating Thermal Barrier, 5 Gallons, Ice Gray","price":339.05},{"n":"DC-315 Intumescent Coating Thermal Barrier, 5 Gallons, White","price":339.05},{"n":"Ever-Thane Roof Flash Mastic, 3.5 gal pail","price":151.8},{"n":"Flame Control 60-60A Intumescent Coating , 5 Gallons, Black","price":366.45},{"n":"Flame Control 60-60A Intumescent Coating , 5 Gallons, White","price":366.45},{"n":"General Coatings Ultra-Bond 10 Primer, 5 Gallon Pail","price":118.75},{"n":"General Coatings Ultra-Bond 10 Primer, 55 Gallon Drum","price":1168.75},{"n":"General Coatings Ultra-Bond 16 Primer, 5 Gallon Pail","price":136.85},{"n":"General Coatings Ultra-Bond 16 Primer, 55 Gallon Drum","price":1367.85},{"n":"General Coatings Ultra-Bond 55 Primer, 5 Gallon Pail","price":333.35},{"n":"General Coatings Ultra-Bond 55 Primer, 55 Gallon Drum","price":3529.35},{"n":"General Coatings Ultra-Bond U Primer, 10 Gallon Kit","price":544.2},{"n":"General Coatings Ultra-Bond U Primer, 2 Gallon Kit","price":124.8},{"n":"General Coatings Ultra-Flex 1000 Acrylic, 5 Gallon Pail","price":95.35},{"n":"General Coatings Ultra-Flex 1000 Acrylic, 55 Gallon Drum","price":911.35},{"n":"General Coatings Ultra-Flex 1000 Butter Grade Putty/Mastic, 4 Gallon Pail","price":86.28},{"n":"General Coatings Ultra-Guard 5500 Low Solids Silicone, 5 Gallon Pail","price":162.5},{"n":"General Coatings Ultra-Guard 5500 Low Solids Silicone, 50 Gallon Drum","price":1562.5},{"n":"General Coatings Ultra-Guard 5700 High Solids Silicone, 5 Gallon Pail","price":175},{"n":"General Coatings Ultra-Guard 5700 High Solids Silicone, 50 Gallon Drum","price":1687.5},{"n":"General Coatings Ultra-Guard 5700 Mastic, 3.5 Gallon Pail","price":142.21},{"n":"NCFI Enduratech Q Acrylic Coating, 55 gal Drum","price":1065.9},{"n":"NCFI Enduratech R Acrylic Coating, 55 gal Drum","price":1065.9},{"n":"No-Burn Plus Intumescent Coating, 5 Gallons, White","price":251.05},{"n":"No-Burn Plus Spray Seal Intumescent Coating, 5 Gallons, Light Gray","price":312.7},{"n":"No-Burn Plus ThB Intumescent Coating , 5 Gallons, Black","price":294.2},{"n":"No-Burn Plus ThB Intumescent Coating , 5 Gallons, Gray","price":294.2},{"n":"No-Burn Plus ThB Intumescent Coating , 5 Gallons, White","price":294.2},{"n":"No-Burn ThB Spray Seal Intumescent Coating, 5 Gallons, Light Gray","price":342.15},{"n":"Rugged Coatings Polyurea 201 Coating","price":4560},{"n":"Rugged Coatings Polyurea 403 Coating, 104 Gallon Drum","price":3752.5},{"n":"Rugged Coatings Si92 Silicone, 5 Gallon Pail","price":262.5},{"n":"Rugged Coatings Si92 Silicone, 55 Gallon Drum","price":2818.75}],"gear":[{"n":"Acrylic Caulk Case (12)","cat":"Consumable","cost":32.57,"m20":39.08,"m30":42.34,"m50":48.86},{"n":"Acrylic Caulk Single","cat":"Consumable","cost":2.72,"m20":3.26,"m30":3.54,"m50":4.08},{"n":"Closed Cell Blade 18in","cat":"Consumable","cost":39,"m20":46.8,"m30":50.7,"m50":58.5},{"n":"Eyewash Additive Bottle","cat":"Consumable","cost":25.83,"m20":31,"m30":33.58,"m50":38.74},{"n":"Graco Grease Tube","cat":"Consumable","cost":15.56,"m20":18.67,"m30":20.23,"m50":23.34},{"n":"Multipurpose Grease Tube","cat":"Consumable","cost":18.75,"m20":22.5,"m30":24.38,"m50":28.12},{"n":"Open Cell Blade 27in","cat":"Consumable","cost":27,"m20":32.4,"m30":35.1,"m50":40.5},{"n":"Shop Towels Kit","cat":"Consumable","cost":24.99,"m20":29.99,"m30":32.49,"m50":37.48},{"n":"Shop Towels Refill","cat":"Consumable","cost":19.99,"m20":23.99,"m30":25.99,"m50":29.98},{"n":"Staples T50 5000ct","cat":"Consumable","cost":18.99,"m20":22.79,"m30":24.69,"m50":28.48},{"n":"Vacuum Removal Bags Case","cat":"Consumable","cost":160,"m20":192,"m30":208,"m50":240},{"n":"Aluminum Walk Ramp","cat":"Equipment","cost":1171.41,"m20":1405.69,"m30":1522.83,"m50":1757.12},{"n":"Custom Hose Hanger Large","cat":"Equipment","cost":1100.95,"m20":1321.14,"m30":1431.24,"m50":1651.43},{"n":"Custom Hose Hanger Small","cat":"Equipment","cost":846.15,"m20":1015.38,"m30":1100,"m50":1269.22},{"n":"Inline Fluid Filter A Side","cat":"Equipment","cost":587.77,"m20":705.32,"m30":764.1,"m50":881.65},{"n":"Poly Air Hose 100ft","cat":"Equipment","cost":45.96,"m20":55.15,"m30":59.75,"m50":68.94},{"n":"Recirculation Funnel","cat":"Equipment","cost":125,"m20":150,"m30":162.5,"m50":187.5},{"n":"Trade Show Display","cat":"Equipment","cost":829.99,"m20":995.99,"m30":1078.99,"m50":1244.99},{"n":"Scuff Guard 2.5in 100ft","cat":"Material","cost":219,"m20":262.8,"m30":284.7,"m50":328.5},{"n":"Scuff Guard 3in 100ft","cat":"Material","cost":360,"m20":432,"m30":468,"m50":540},{"n":"Safety Glasses","cat":"PPE","cost":2.31,"m20":2.77,"m30":3,"m50":3.46},{"n":"TurboCutz V Belt","cat":"Replacement Part","cost":16.31,"m20":19.57,"m30":21.2,"m50":24.46},{"n":"Eyewash Station 9 Gal","cat":"Safety Equipment","cost":311.25,"m20":373.5,"m30":404.62,"m50":466.88},{"n":"Corn Broom","cat":"Shop Supply","cost":25,"m20":30,"m30":32.5,"m50":37.5},{"n":"Wall Mounted Glove Holder","cat":"Shop Supply","cost":21.99,"m20":26.39,"m30":28.59,"m50":32.98},{"n":"5/8 Wrench","cat":"Tool","cost":31.45,"m20":37.74,"m30":40.88,"m50":47.17},{"n":"Check Valve Tool","cat":"Tool","cost":18.7,"m20":22.44,"m30":24.31,"m50":28.05},{"n":"Curry Comb Tool","cat":"Tool","cost":9.99,"m20":11.99,"m30":12.99,"m50":14.98},{"n":"Extension Cord 100ft","cat":"Tool","cost":26.98,"m20":32.38,"m30":35.07,"m50":40.47},{"n":"Foam Hand Saw","cat":"Tool","cost":56.66,"m20":67.99,"m30":73.66,"m50":84.99},{"n":"Grease Gun","cat":"Tool","cost":53.55,"m20":64.26,"m30":69.61,"m50":80.32},{"n":"Hammer Tacker","cat":"Tool","cost":24.99,"m20":29.99,"m30":32.49,"m50":37.48},{"n":"Hand Saw Handle","cat":"Tool","cost":54.29,"m20":65.15,"m30":70.58,"m50":81.44},{"n":"Heavy Duty Extension Cord","cat":"Tool","cost":53.98,"m20":64.78,"m30":70.17,"m50":80.97},{"n":"Infrared Thermometer","cat":"Tool","cost":41,"m20":49.2,"m30":53.3,"m50":61.5},{"n":"Kraken Spray Foam Gun","cat":"Tool","cost":21.69,"m20":26.03,"m30":28.2,"m50":32.54},{"n":"O-Ring Hook Set","cat":"Tool","cost":9.99,"m20":11.99,"m30":12.99,"m50":14.98},{"n":"Open End Wrench","cat":"Tool","cost":25.5,"m20":30.6,"m30":33.15,"m50":38.25},{"n":"Pin Vise Tool","cat":"Tool","cost":13.16,"m20":15.79,"m30":17.11,"m50":19.74},{"n":"Pliers Set","cat":"Tool","cost":26.99,"m20":32.39,"m30":35.09,"m50":40.48},{"n":"Pneumatic Staple Gun","cat":"Tool","cost":67.17,"m20":80.6,"m30":87.32,"m50":100.75},{"n":"Screwdriver Set (12)","cat":"Tool","cost":14.99,"m20":17.99,"m30":19.49,"m50":22.48},{"n":"Spintite Nut Driver","cat":"Tool","cost":17.85,"m20":21.42,"m30":23.21,"m50":26.78},{"n":"Tape Measure","cat":"Tool","cost":9.99,"m20":11.99,"m30":12.99,"m50":14.98},{"n":"Utility Knife","cat":"Tool","cost":6,"m20":7.2,"m30":7.8,"m50":9},{"n":"Wire Cleaning Brushes","cat":"Tool","cost":8.99,"m20":10.79,"m30":11.69,"m50":13.48}]};
+let pbTab = 'gear';
+function pbMoney(v){ return (v==null || isNaN(v)) ? '<span style="color:var(--t2)">— call —</span>' : '$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pbSelect(t){ pbTab=t; renderPriceBook(); }
+function pbTable(cols, rows, n){
+  if(!rows.length) return '<p style="color:var(--t2);padding:14px 4px">No matches.</p>';
+  const rt = c => /price|cost|%/i.test(c);
+  const th = cols.map(c=>`<th style="text-align:${rt(c)?'right':'left'};padding:7px 8px;font-size:11px;color:var(--t2);border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--s2)">${c}</th>`).join('');
+  const tr = rows.map(r=>'<tr>'+r.map((cell,i)=>`<td style="text-align:${rt(cols[i])?'right':'left'};padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05)">${cell}</td>`).join('')+'</tr>').join('');
+  return `<div style="font-size:11px;color:var(--t2);margin:4px 2px 6px">${n} item${n!==1?'s':''}</div><div style="overflow-x:auto;max-height:62vh"><table style="width:100%;border-collapse:collapse">${'<thead><tr>'+th+'</tr></thead>'}<tbody>${tr}</tbody></table></div>`;
+}
+function pbFav(kind,key){ favToggle(kind,key); renderPriceBook(); }
+function renderPriceBook(){
+  const tabs=[['fav','⭐ My Estimator List'],['gear','Consumables & Equipment'],['foam','Foam Systems'],['coat','Coatings']];
+  const tb=document.getElementById('pb_tabs'); if(tb) tb.innerHTML=tabs.map(t=>`<button class="btn ${pbTab===t[0]?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 10px" onclick="pbSelect('${t[0]}')">${t[1]}${PRICEBOOK[t[0]]?` (${PRICEBOOK[t[0]].length})`:''}</button>`).join('');
+  const q=(((document.getElementById('pb_search')||{}).value)||'').trim().toLowerCase();
+  const body=document.getElementById('pb_body'); if(!body) return;
+  let html='';
+  if(pbTab==='fav'){
+    const ff=favGet('foam'), cf=favGet('coat');
+    const row=(kind,p)=>{ const on=(kind==='foam'?ff:cf).has(p.k);
+      return `<div class="log-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12px">${esc(p.n)}</span><button class="btn ${on?'btn-primary':'btn-ghost'}" style="font-size:12px;padding:3px 10px" onclick="pbFav('${kind}','${p.k}')">${on?'★ Starred':'☆ Star'}</button></div>`; };
+    body.innerHTML=`<div style="font-size:11px;color:var(--t2);margin:2px 2px 8px">Star the foams &amp; coatings you run most — they jump to the top of the Estimator dropdowns (everything else stays available below them).</div>
+      <div class="jsa-card"><h4 style="margin:0 0 6px">Foams (${EST_FOAM.length})</h4>${EST_FOAM.map(p=>row('foam',p)).join('')}</div>
+      <div class="jsa-card"><h4 style="margin:0 0 6px">Coatings (${EST_COAT.length})</h4>${EST_COAT.map(p=>row('coat',p)).join('')}</div>`;
+    return;
+  }
+  if(pbTab==='gear'){
+    const rows=PRICEBOOK.gear.filter(r=>!q||r.n.toLowerCase().includes(q)||(r.cat||'').toLowerCase().includes(q));
+    html = pbTable(['Item','Category','Cost','+20%','+30%','+50%'], rows.map(r=>[esc(r.n),esc(r.cat),pbMoney(r.cost),pbMoney(r.m20),pbMoney(r.m30),pbMoney(r.m50)]), rows.length);
+  } else if(pbTab==='foam'){
+    const rows=PRICEBOOK.foam.filter(r=>!q||r.n.toLowerCase().includes(q)||(r.cat||'').toLowerCase().includes(q));
+    html = pbTable(['Product','Class','Set Price'], rows.map(r=>[esc(r.n),esc(r.cat),pbMoney(r.price)]), rows.length);
+  } else {
+    const rows=PRICEBOOK.coat.filter(r=>!q||r.n.toLowerCase().includes(q));
+    html = pbTable(['Coating (pail / drum)','Price'], rows.map(r=>[esc(r.n),pbMoney(r.price)]), rows.length);
+  }
+  body.innerHTML=html;
+}
 </script>
 
 </body>

@@ -17,6 +17,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 // this store — they stay on-device until we add blob storage).
 const COLLECTIONS = ["jobs", "leads", "estimates", "jsas", "tc_punches", "matlogs", "signoffs", "proposals", "forms", "changeorders", "invoices"];
 const TOMB = "_tomb"; // tombstones: [{c, id}] — so deletes propagate across devices
+const MEM = "memory";  // Klyfton's durable facts — plain strings, set-union across devices
 const PREFIX = "mgsf:";
 
 function authHeaders() {
@@ -69,7 +70,8 @@ module.exports = async (req, res) => {
         const rows = await kvGet(c);
         data[c] = rows.filter((r) => r && r.id != null && !tset.has(c + "|" + String(r.id)));
       }));
-      res.status(200).json({ configured: true, data, tomb });
+      const memory = await kvGet(MEM);
+      res.status(200).json({ configured: true, data, tomb, memory });
       return;
     }
 
@@ -78,6 +80,28 @@ module.exports = async (req, res) => {
       if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
       body = body || {};
       const col = body.collection;
+
+      // Memory is a flat set of unique strings — merge/delete without the id-based logic.
+      if (col === "memory") {
+        const existing = await kvGet(MEM);
+        if (Array.isArray(body.remove) && body.remove.length) {
+          const rm = new Set(body.remove.map(String));
+          await kvSet(MEM, existing.filter((s) => !rm.has(String(s))));
+          res.status(200).json({ configured: true, collection: "memory", removed: body.remove.length });
+          return;
+        }
+        const incoming = Array.isArray(body.records) ? body.records : [];
+        const merged = [];
+        const seen = new Set();
+        existing.concat(incoming).forEach((s) => {
+          const t = String(s == null ? "" : s).trim();
+          if (t && !seen.has(t)) { seen.add(t); merged.push(t); }
+        });
+        await kvSet(MEM, merged.slice(-500));
+        res.status(200).json({ configured: true, collection: "memory", count: merged.length });
+        return;
+      }
+
       if (!COLLECTIONS.includes(col)) {
         res.status(400).json({ error: "unknown collection" });
         return;
