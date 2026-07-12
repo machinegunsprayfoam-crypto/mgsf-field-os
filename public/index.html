@@ -6818,6 +6818,7 @@ document.addEventListener('click',()=>{
   const $  = id=>document.getElementById(id);
   const esc= s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const money = n=> '$'+(Number(n)||0).toLocaleString();
+  const CUSTOMER_TYPES = { HOMEOWNER:'homeowner', BUSINESS:'business', GC:'gc' };
   const CO = { name:'Machine Gun Spray Foam & Concrete Lifting, LLC', addr:'2402 N Anderson Ave, Glendive, MT 59330',
     phone:'406-939-8301', web:'machinegunsprayfoam.info',
     hearth:'https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton' };
@@ -6834,7 +6835,7 @@ document.addEventListener('click',()=>{
   window.toggleProposalEnergyFields = function(){
     const card = $('pr_roi_card');
     if(!card) return;
-    card.style.display = (($('pr_custtype')||{}).value || 'homeowner') === 'gc' ? 'none' : 'block';
+    card.style.display = (($('pr_custtype')||{}).value || CUSTOMER_TYPES.HOMEOWNER) === CUSTOMER_TYPES.GC ? 'none' : 'block';
   };
   window.proposalFromEstimate = function(){
     const id=($('pr_est')||{}).value; if(!id) return;
@@ -6845,7 +6846,7 @@ document.addEventListener('click',()=>{
   function proposalDoc(p){
     // ---------- BENEFIT BULLETS ----------
     const sc = (p.scope||'').toLowerCase();
-    const ct = p.custtype || 'homeowner';
+    const ct = p.custtype || CUSTOMER_TYPES.HOMEOWNER;
     const isCC      = /closed.?cell|2[\s.]?[08]#|2[\s.]?lb\b|cc\b/.test(sc);
     const isOC      = /open.?cell|0\.5#|half.?lb|oc\b/.test(sc);
     const isRoof    = /roof/.test(sc);
@@ -6853,7 +6854,7 @@ document.addEventListener('click',()=>{
     const isMetal   = /metal|pole.?barn|shop/.test(sc);
     const isConcrete= /concret|lift|slab|void/.test(sc);
     const bullets = [];
-    if(ct === 'homeowner'){
+    if(ct === CUSTOMER_TYPES.HOMEOWNER){
       if(isCC || (!isOC && !isRoof && !isConcrete)){
         bullets.push('Air-seals the building envelope completely — stops drafts, hot spots, and humidity swings for good');
         if(isCC) bullets.push('R-6.5 per inch — the highest R-value per inch of any insulation available');
@@ -6877,7 +6878,7 @@ document.addEventListener('click',()=>{
       if(isMetal) bullets.push('Stops air infiltration through metal panel seams completely — fiberglass cannot do this');
       bullets.push('One installation lasts the life of the building — no settling, sagging, or replacement');
       bullets.push('Reduces HVAC runtime — your system works less, lasts longer, and costs less to run every month');
-    } else if(ct === 'business'){
+    } else if(ct === CUSTOMER_TYPES.BUSINESS){
       if(!isConcrete){
         bullets.push('Documented 20–40% reduction in heating and cooling energy load — straight to the bottom line');
         bullets.push('Section 179D eligible — federal commercial energy-efficient building deduction (consult your CPA)');
@@ -6907,7 +6908,7 @@ document.addEventListener('click',()=>{
       bullets.push('LEED and ASHRAE 90.1 credit-eligible — strengthens your energy compliance documentation');
       bullets.push('SDS, product data sheets, and DC-315 TER available for your submittal package');
     }
-    const headingLabel = ct==='gc' ? 'WHAT THIS MEANS FOR YOUR JOB' : ct==='business' ? 'YOUR BUSINESS CASE' : 'WHAT THIS DOES FOR YOU';
+    const headingLabel = ct===CUSTOMER_TYPES.GC ? 'WHAT THIS MEANS FOR YOUR JOB' : ct===CUSTOMER_TYPES.BUSINESS ? 'YOUR BUSINESS CASE' : 'WHAT THIS DOES FOR YOU';
     const whyFoam = `<div style="margin:18px 0;padding:14px 16px;background:#fffbf5;border-left:4px solid #f97316;border-radius:0 6px 6px 0">
       <div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#b45309;margin-bottom:10px">WHY SPRAY FOAM — ${headingLabel}</div>
       <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.9;color:#333">${bullets.map(b=>`<li>${b}</li>`).join('')}</ul>
@@ -6918,7 +6919,7 @@ document.addEventListener('click',()=>{
     const bill  = parseFloat(p.energybill)||0;
     const pct   = parseFloat(p.savingspct)||0;
     const price = parseFloat(p.price)||0;
-    if(bill > 0 && pct > 0 && ct !== 'gc'){
+    if(bill > 0 && pct > 0 && ct !== CUSTOMER_TYPES.GC){
       const monthly  = bill * pct / 100;
       const annual   = monthly * 12;
       const paybackMos = price > 0 ? Math.ceil(price / monthly) : 0;
@@ -6996,7 +6997,7 @@ document.addEventListener('click',()=>{
     return { id:'PROP'+Date.now(), date:new Date().toISOString().split('T')[0],
       cust:g('pr_cust'), addr:g('pr_addr'), scope:g('pr_scope'), price:g('pr_price'),
       terms:g('pr_terms'), excl:g('pr_excl'), hearth:($('pr_hearth')||{}).checked,
-      custtype:g('pr_custtype')||'homeowner',
+      custtype:g('pr_custtype')||CUSTOMER_TYPES.HOMEOWNER,
       energybill:g('pr_energybill'), savingspct:g('pr_savingspct') };
   }
   window.printProposal = function(){
