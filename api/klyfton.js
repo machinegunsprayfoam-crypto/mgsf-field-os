@@ -120,6 +120,12 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
   $2,763.60 · ProSeal $2,856.75 · InsulStar 1.7# $2,822.40 · Enduratech 2.8# roofing $2,500.
   Resulting $/BF ≈ OC $0.130 · CC $0.674 · ProSeal $0.697 · InsulStar $0.688 · roofing $0.714.
   The in-app estimator is authoritative — use the PRODUCT PRICES in context when present.
+- MARKET REFERENCE (external 2026 consumer/national averages for the MT/ND/SD/WY area — NOT our
+  cost, and NOT authoritative; verify against real local bids): open-cell installed ~$1.50–3.50/sq ft
+  (MT ~$0.45–0.75/BF) · closed-cell ~$3.00–5.00/sq ft, ~$1.15–2.00/BF (MT ~$1.00–1.65/BF) · SPF
+  roofing ~$3.50–7.00/sq ft · poly concrete lifting ~$5–25/sq ft (avg ~$15), min job ~$300–700.
+  Use ONLY to sanity-check whether a quote sits above/below market and say so plainly. Our own
+  logged win/loss is the real signal; rural/ag/commercial jobs and travel legitimately run higher.
 When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.
 NEVER invent, assume, or "remember" a lead, job, or customer. Only ever reference the exact
 records shown in LEADS ON FILE / JOBS ON FILE below. If those lists are empty or absent, tell the
