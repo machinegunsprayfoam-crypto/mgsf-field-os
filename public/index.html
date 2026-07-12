@@ -514,6 +514,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('grow');renderGrow()" id="nav-grow">
         <div class="nav-icon">📣</div><div class="nav-label">GROW</div>
       </div>
+      <div class="nav-item" onclick="switchModule('ops');renderOps()" id="nav-ops">
+        <div class="nav-icon">🧰</div><div class="nav-label">OPS CENTER</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1336,6 +1339,12 @@ canvas.chart{width:100%;height:100%}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div style="display:flex;gap:6px;margin-bottom:12px" id="grow_tabs"></div>
         <div id="grow_body"></div>
+      </div>
+      <div id="mod-ops" class="module">
+        <div class="mod-head"><h2>🧰 Ops Center</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap" id="ops_tabs"></div>
+        <div id="ops_body"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -5435,7 +5444,7 @@ function klyftonActionDesc(a){
     case 'delete_lead': return `Delete lead <b>${a.name||'?'}</b>`;
     case 'update_job': return `Update job <b>${a.customer||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
     case 'delete_job': return `Delete job <b>${a.customer||'?'}</b>`;
-    default: return '';
+    default: return (window.opsActionDesc?window.opsActionDesc(a):'')||'';
   }
 }
 // Klyfton drafts outbound work into an editable, copy-ready box — never sends anything itself.
@@ -5553,6 +5562,8 @@ function doPendingKlyftonAction(){
         save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
         notify('Deleted job '+job.customer,'success');
       } else { notify('No matching job to delete','info'); }
+    } else if(window.opsHandleAction && window.opsHandleAction(a)){
+      /* handled by Ops Center (log_cost / log_contact / log_review / set_inventory / draft_sms …) */
     }
     addMessage('Done ✓','ai','');
   }catch(e){ notify('Could not complete that action','alert'); }
@@ -5587,6 +5598,8 @@ function gatherBizContext(){
         if(mats.length) ctx.materials=mats.slice(0,140);
       }
     }catch(e){}
+    // Ops Center intel — travel policy, state tax, low stock, reputation, margins.
+    try{ if(window.opsContext) Object.assign(ctx, window.opsContext()); }catch(e){}
     return ctx;
   }catch(e){ return {company:'Machine Gun Spray Foam & Concrete Lifting, LLC'}; }
 }
@@ -7358,6 +7371,418 @@ function mgUpdate(){
 (function(){
   try{ const v=localStorage.getItem('mg_radio_vol'); if(v!=null){ const el=document.getElementById('mgVol'); if(el) el.value=v; } }catch(e){}
   mgRenderStations();
+})();
+</script>
+
+<script>
+// ============================================================
+// KLYFTON — OPS CENTER  (additive module)
+// Job costing · Contact history · Reviews · Inventory/reorder
+// Travel + State tax/permit rules · tighter quotes
+// All data is on-device (localStorage) and syncs via /api/sync
+// once cloud storage is attached. Klyfton drafts; humans commit.
+// ============================================================
+(function(){
+  // ---- hydrate new collections onto appState ----
+  const NEW_COLS = ['jobcosts','contacts','reviews','inventory'];
+  NEW_COLS.forEach(c=>{
+    try{ appState[c] = JSON.parse(localStorage.getItem('klyfton_'+c)||'[]'); }
+    catch(e){ appState[c] = []; }
+  });
+
+  // ---- Travel policy (crew rolls from Glendive, MT) ----
+  MGSF.travel = { base:'Glendive, MT', perMile:0.70, freeRadius:30, driveMph:55 };
+
+  // Crew $/hr for drive-time labor (installer + helper)
+  function crewHourly(){ try{ return (MGSF.labor.installer||80)+(MGSF.labor.helper||48); }catch(e){ return 128; } }
+
+  // PURE: travel cost for a one-way distance (miles) from base.
+  // Inside the free radius = no charge. Otherwise round-trip miles * perMile
+  // plus round-trip drive time at crew rate.
+  window.calcTravel = function(oneWayMiles, opt){
+    opt = opt||{};
+    const miles = Math.max(0, Number(oneWayMiles)||0);
+    const per   = opt.perMile!=null?opt.perMile:MGSF.travel.perMile;
+    const free  = opt.freeRadius!=null?opt.freeRadius:MGSF.travel.freeRadius;
+    const mph   = opt.driveMph!=null?opt.driveMph:MGSF.travel.driveMph;
+    if(miles<=free) return {miles, roundTrip:miles*2, mileageCost:0, driveHours:0, driveLabor:0, total:0, note:'Within '+free+'-mi free radius'};
+    const rt = miles*2;
+    const mileageCost = rt*per;
+    const driveHours  = rt/mph;
+    const driveLabor  = driveHours*crewHourly();
+    return { miles, roundTrip:rt, mileageCost, driveHours, driveLabor, total:mileageCost+driveLabor,
+             note:rt+' mi round trip @ $'+per.toFixed(2)+'/mi + '+driveHours.toFixed(1)+' hr drive' };
+  };
+
+  // ---- State tax + permit rules (MT/ND/SD/WY) ----
+  // NOTE: rates are ESTIMATED base rates for planning — local option taxes vary
+  // and rules change. Verify with the local AHJ and your accountant before quoting.
+  window.STATE_RULES = {
+    MT: { name:'Montana',      materialTax:0.00, taxNote:'No statewide sales tax. (Verified.)' },
+    ND: { name:'North Dakota', materialTax:0.05, taxNote:'~5% state + local; contractor generally pays use tax on materials, not on labor. (Estimated — verify local.)' },
+    SD: { name:'South Dakota', materialTax:0.042,taxNote:'4.2% state + municipal; SD also has a 2% contractor excise tax on gross receipts. (Estimated — verify with accountant.)' },
+    WY: { name:'Wyoming',      materialTax:0.04, taxNote:'4% state + county option; materials taxable to the contractor. (Estimated — verify local.)' }
+  };
+  // Permit guidance by service (general — always confirm with the local building dept).
+  window.PERMIT_RULES = {
+    'spray foam':    'Insulation permit usually rolls into the building permit on new construction / remodels; retrofit often none. Confirm fire-barrier/thermal-barrier (ignition barrier) inspection.',
+    'insulation':    'Same as spray foam — typically part of the building permit; standalone retrofit often exempt.',
+    'roofing':       'SPF roofing commonly needs a roofing/building permit on commercial; re-roof rules vary. Confirm wind-uplift + coating spec.',
+    'coating':       'Roof coating alone is usually maintenance (no permit); confirm on commercial.',
+    'concrete lifting':'Polyjacking/slabjacking is typically NO permit (not structural alteration). Confirm if near utilities/ROW.',
+    'removal':       'Insulation removal itself usually no permit; disposal + containment rules apply.'
+  };
+  function svcKey(s){ s=(s||'').toLowerCase();
+    if(/roof/.test(s)) return 'roofing';
+    if(/coat/.test(s)) return 'coating';
+    if(/lift|level|jack|concrete/.test(s)) return 'concrete lifting';
+    if(/remov|tear|demo/.test(s)) return 'removal';
+    if(/foam|spf|spray/.test(s)) return 'spray foam';
+    if(/insul/.test(s)) return 'insulation';
+    return 'spray foam';
+  }
+  // PURE: state material tax + permit note for a job.
+  window.calcStateExtras = function(state, service, materialCost){
+    const st = STATE_RULES[(state||'MT').toUpperCase()] || STATE_RULES.MT;
+    const mat = Math.max(0, Number(materialCost)||0);
+    const tax = mat*st.materialTax;
+    const permit = PERMIT_RULES[svcKey(service)] || '';
+    return { state:st.name, materialTax:tax, taxRate:st.materialTax, taxNote:st.taxNote, permit };
+  };
+
+  // PURE: round a quote to clean field-friendly numbers.
+  window.roundQuote = function(n){
+    n = Number(n)||0; if(n<=0) return 0;
+    const step = n<2000?25 : n<10000?50 : n<50000?100 : 250;
+    return Math.round(n/step)*step;
+  };
+
+  // ---- helpers ----
+  const $ = id => document.getElementById(id);
+  function today(){ return new Date().toISOString().split('T')[0]; }
+  function money(n){ return '$'+(Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0}); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function saveCol(c){ try{ localStorage.setItem('klyfton_'+c, JSON.stringify(appState[c]||[])); }catch(e){}
+    try{ if(window.syncPush) syncPush(c); }catch(e){} }
+  function toast(m){ try{ notify(m,'success'); }catch(e){} }
+
+  // ============================================================
+  // OPS CENTER UI  (tabs)
+  // ============================================================
+  let opsTab = 'costing';
+  const OPS_TABS = [
+    {k:'costing',  label:'📊 Job Costing'},
+    {k:'contacts', label:'📇 Contact Log'},
+    {k:'reviews',  label:'⭐ Reviews'},
+    {k:'inventory',label:'📦 Inventory'},
+    {k:'rules',    label:'🧾 Travel · Tax · Permits'}
+  ];
+  window.renderOps = function(tab){
+    if(tab) opsTab = tab;
+    const tb = $('ops_tabs'); if(!tb) return;
+    tb.innerHTML = OPS_TABS.map(t=>`<button class="btn ${t.k===opsTab?'btn-primary':'btn-ghost'}" style="font-size:12px;padding:6px 12px" onclick="renderOps('${t.k}')">${t.label}</button>`).join('');
+    const body = $('ops_body'); if(!body) return;
+    if(opsTab==='costing')   body.innerHTML = opsCostingHTML();
+    else if(opsTab==='contacts') body.innerHTML = opsContactsHTML();
+    else if(opsTab==='reviews')  body.innerHTML = opsReviewsHTML();
+    else if(opsTab==='inventory')body.innerHTML = opsInventoryHTML();
+    else if(opsTab==='rules')    body.innerHTML = opsRulesHTML();
+  };
+
+  // ---------- JOB COSTING ----------
+  function costMargin(c){
+    const cost=(Number(c.material)||0)+(Number(c.labor)||0)+(Number(c.equipment)||0)+(Number(c.other)||0);
+    const rev=Number(c.revenue)||0;
+    const profit=rev-cost;
+    const mpct=rev>0?(profit/rev*100):0;
+    return {cost,rev,profit,mpct};
+  }
+  function opsCostingHTML(){
+    const rows=(appState.jobcosts||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    let totRev=0,totProfit=0;
+    rows.forEach(c=>{const m=costMargin(c);totRev+=m.rev;totProfit+=m.profit;});
+    const avg = totRev>0?(totProfit/totRev*100):0;
+    const list = rows.length? rows.map(c=>{
+      const m=costMargin(c);
+      const col = m.mpct>=40?'var(--gr)':m.mpct>=25?'var(--yw,#eab308)':'var(--or)';
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:4px">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <b>${esc(c.jobName||'Job')}</b><span style="color:var(--t2)">${esc(c.date||'')}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--t2)">
+          <span>Rev ${money(m.rev)} · Cost ${money(m.cost)}</span>
+          <span style="color:${col};font-weight:700">${money(m.profit)} · ${m.mpct.toFixed(0)}%</span></div>
+        <div style="font-size:11px;color:var(--t3)">mat ${money(c.material)} · lab ${money(c.labor)} · equip ${money(c.equipment)} · other ${money(c.other)}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelCost(${c.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No job costs logged yet. Log actuals after a job to track real margin vs. your estimate.</div>';
+    const jobOpts=(appState.jobs||[]).map(j=>`<option value="${esc(j.customer||j.name||'')}">${esc(j.customer||j.name||'')}</option>`).join('');
+    return `
+    <div class="metric-row" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--gr)">${money(totProfit)}</div><div class="job-sum-lbl">TOTAL PROFIT</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${avg.toFixed(0)}%</div><div class="job-sum-lbl">AVG MARGIN</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${rows.length}</div><div class="job-sum-lbl">JOBS COSTED</div></div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG JOB COST</div>
+      <div class="form-group"><label class="form-label">Job / customer</label>
+        <input class="inp" id="oc_job" list="oc_jobs" placeholder="Customer or job name"><datalist id="oc_jobs">${jobOpts}</datalist></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Revenue $</label><input class="inp" id="oc_rev" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Material $</label><input class="inp" id="oc_mat" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Labor $</label><input class="inp" id="oc_lab" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Equipment $</label><input class="inp" id="oc_eq" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Other $</label><input class="inp" id="oc_oth" type="number" inputmode="decimal"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddCost()">SAVE COST RECORD</button>
+    </div>
+    <div class="card"><div class="card-title">COSTING HISTORY</div>${list}</div>`;
+  }
+  window.opsAddCost = function(){
+    const name=($('oc_job')||{}).value||''; if(!name.trim()) return toast('Enter a job/customer');
+    const rec={ id:Date.now(), jobName:name.trim(), date:today(),
+      revenue:+($('oc_rev')||{}).value||0, material:+($('oc_mat')||{}).value||0,
+      labor:+($('oc_lab')||{}).value||0, equipment:+($('oc_eq')||{}).value||0, other:+($('oc_oth')||{}).value||0 };
+    appState.jobcosts=appState.jobcosts||[]; appState.jobcosts.push(rec); saveCol('jobcosts');
+    toast('Cost logged'); renderOps('costing');
+  };
+  window.opsDelCost = function(id){ appState.jobcosts=(appState.jobcosts||[]).filter(c=>c.id!==id); saveCol('jobcosts'); renderOps('costing'); };
+
+  // ---------- CONTACT LOG ----------
+  function opsContactsHTML(){
+    const rows=(appState.contacts||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const ICON={call:'📞',text:'💬',email:'📧',visit:'🚚',note:'📝'};
+    const list = rows.length? rows.map(c=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${ICON[c.type]||'📝'} ${esc(c.name||'')}</b><span style="color:var(--t2)">${esc(c.date||'')}</span></div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.note||'')}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelContact(${c.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No contact history yet. Every call, text, and visit logged here builds the customer timeline.</div>';
+    const nameOpts=[...new Set((appState.leads||[]).map(l=>l.name).concat((appState.jobs||[]).map(j=>j.customer)).filter(Boolean))]
+      .map(n=>`<option value="${esc(n)}">`).join('');
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG A TOUCH</div>
+      <div class="form-group"><label class="form-label">Customer / lead</label>
+        <input class="inp" id="ct_name" list="ct_names" placeholder="Name"><datalist id="ct_names">${nameOpts}</datalist></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Type</label>
+          <select class="inp" id="ct_type"><option value="call">📞 Call</option><option value="text">💬 Text</option><option value="email">📧 Email</option><option value="visit">🚚 Site visit</option><option value="note">📝 Note</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">What happened</label><textarea class="inp" id="ct_note" style="height:60px" placeholder="Left VM, quoted $X, wants callback Tue..."></textarea></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddContact()">LOG IT</button>
+    </div>
+    <div class="card"><div class="card-title">CONTACT HISTORY</div>${list}</div>`;
+  }
+  window.opsAddContact = function(){
+    const name=($('ct_name')||{}).value||''; if(!name.trim()) return toast('Enter a name');
+    const rec={ id:Date.now(), name:name.trim(), type:($('ct_type')||{}).value||'note',
+      note:($('ct_note')||{}).value||'', date:today() };
+    appState.contacts=appState.contacts||[]; appState.contacts.push(rec); saveCol('contacts');
+    toast('Contact logged'); renderOps('contacts');
+  };
+  window.opsDelContact = function(id){ appState.contacts=(appState.contacts||[]).filter(c=>c.id!==id); saveCol('contacts'); renderOps('contacts'); };
+  // Public: contact timeline for one customer (used by CRM lead detail)
+  window.opsContactsFor = function(name){
+    const nm=(name||'').toLowerCase();
+    return (appState.contacts||[]).filter(c=>(c.name||'').toLowerCase()===nm).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  };
+
+  // ---------- REVIEWS / REPUTATION ----------
+  function opsReviewsHTML(){
+    const rows=(appState.reviews||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const got=rows.filter(r=>Number(r.stars)>0);
+    const avg=got.length? (got.reduce((s,r)=>s+Number(r.stars),0)/got.length):0;
+    const requested=rows.filter(r=>r.requested&&!(Number(r.stars)>0)).length;
+    const stars=n=>'★★★★★☆☆☆☆☆'.slice(5-Math.round(n),10-Math.round(n));
+    const list = rows.length? rows.map(r=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(r.customer||'')}</b>
+          <span style="color:var(--or)">${Number(r.stars)>0?stars(r.stars):'<span style="color:var(--t2)">requested</span>'}</span></div>
+        <div style="font-size:12px;color:var(--t2)">${esc(r.platform||'Google')}${r.note?' · '+esc(r.note):''} <span style="color:var(--t3)">${esc(r.date||'')}</span>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelReview(${r.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No reviews tracked yet. Log every review request and result to watch your reputation grow.</div>';
+    const link=(typeof MGSF!=='undefined'&&MGSF.reviewLink)||'';
+    return `
+    <div class="metric-row" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--or)">${avg?avg.toFixed(1):'—'}★</div><div class="job-sum-lbl">AVG RATING</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${got.length}</div><div class="job-sum-lbl">REVIEWS</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--cy)">${requested}</div><div class="job-sum-lbl">REQUESTED / OPEN</div></div>
+    </div>
+    ${link?`<div class="card" style="margin-bottom:12px"><div class="card-title">ASK FOR A REVIEW</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Text or email this Google review link right after a happy job:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input class="inp" style="flex:1;min-width:180px" value="${esc(link)}" readonly onclick="this.select()">
+        <button class="btn btn-cyan" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(link)}');notify('Review link copied','success')">COPY</button>
+      </div></div>`:''}
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG REVIEW / REQUEST</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Customer</label><input class="inp" id="rv_cust"></div>
+        <div class="form-group" style="flex:1;min-width:100px"><label class="form-label">Stars (0=requested)</label><input class="inp" id="rv_stars" type="number" min="0" max="5" step="1" value="0"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Platform</label>
+          <select class="inp" id="rv_plat"><option>Google</option><option>Facebook</option><option>Yelp</option><option>BBB</option><option>Word of mouth</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Note</label><input class="inp" id="rv_note" placeholder="Quote from the review, or follow-up plan"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddReview()">SAVE</button>
+    </div>
+    <div class="card"><div class="card-title">REPUTATION LOG</div>${list}</div>`;
+  }
+  window.opsAddReview = function(){
+    const cust=($('rv_cust')||{}).value||''; if(!cust.trim()) return toast('Enter a customer');
+    const stars=+($('rv_stars')||{}).value||0;
+    const rec={ id:Date.now(), customer:cust.trim(), stars, platform:($('rv_plat')||{}).value||'Google',
+      note:($('rv_note')||{}).value||'', requested:stars===0, date:today() };
+    appState.reviews=appState.reviews||[]; appState.reviews.push(rec); saveCol('reviews');
+    toast('Review logged'); renderOps('reviews');
+  };
+  window.opsDelReview = function(id){ appState.reviews=(appState.reviews||[]).filter(r=>r.id!==id); saveCol('reviews'); renderOps('reviews'); };
+
+  // ---------- INVENTORY / REORDER ----------
+  function opsInventoryHTML(){
+    const rows=(appState.inventory||[]).slice().sort((a,b)=>{
+      const la=Number(a.qty)<=Number(a.reorderAt), lb=Number(b.qty)<=Number(b.reorderAt);
+      return (lb-la)||String(a.item||'').localeCompare(String(b.item||''));
+    });
+    const low=rows.filter(i=>Number(i.qty)<=Number(i.reorderAt));
+    const list = rows.length? rows.map(i=>{
+      const isLow=Number(i.qty)<=Number(i.reorderAt);
+      return `<div class="log-row" style="align-items:center;gap:8px;${isLow?'border-color:var(--or)':''}">
+        <div style="flex:1">
+          <b>${esc(i.item||'')}</b> ${isLow?'<span style="color:var(--or);font-size:10px;font-weight:700">⚠ REORDER</span>':''}
+          <div style="font-size:11px;color:var(--t2)">${esc(i.supplier||'')}${i.supplier?' · ':''}reorder at ${i.reorderAt||0} ${esc(i.unit||'')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <button class="btn btn-ghost" style="padding:2px 8px" onclick="opsAdjInv(${i.id},-1)">−</button>
+          <b style="min-width:34px;text-align:center;color:${isLow?'var(--or)':'var(--tx)'}">${i.qty||0}</b>
+          <button class="btn btn-ghost" style="padding:2px 8px" onclick="opsAdjInv(${i.id},1)">+</button>
+          <span style="font-size:11px;color:var(--t2);min-width:34px">${esc(i.unit||'')}</span>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="opsDelInv(${i.id})">🗑</button>
+        </div></div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No inventory tracked yet. Add your sets, coatings, and consumables to get reorder alerts.</div>';
+    return `
+    ${low.length?`<div class="card" style="margin-bottom:12px;border-color:var(--or)"><div class="card-title" style="color:var(--or)">⚠ ${low.length} ITEM${low.length>1?'S':''} AT/BELOW REORDER</div>
+      <div style="font-size:12px;color:var(--tx)">${low.map(i=>esc(i.item)+' ('+i.qty+' '+esc(i.unit||'')+')').join(' · ')}</div>
+      <button class="btn btn-cyan" style="margin-top:8px" onclick="opsDraftReorder()">📋 Draft reorder list</button></div>`:''}
+    <div class="card" style="margin-bottom:12px"><div class="card-title">ADD / STOCK ITEM</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Item</label><input class="inp" id="iv_item" placeholder="ProFoam ProSeal 2.0# CC"></div>
+        <div class="form-group" style="flex:1;min-width:80px"><label class="form-label">Qty</label><input class="inp" id="iv_qty" type="number" value="0"></div>
+        <div class="form-group" style="flex:1;min-width:80px"><label class="form-label">Unit</label><input class="inp" id="iv_unit" placeholder="sets"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Reorder at</label><input class="inp" id="iv_re" type="number" value="1"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Supplier</label><input class="inp" id="iv_sup" placeholder="ProFoam / IDI"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddInv()">ADD ITEM</button>
+    </div>
+    <div class="card"><div class="card-title">STOCK ON HAND</div>${list}</div>`;
+  }
+  window.opsAddInv = function(){
+    const item=($('iv_item')||{}).value||''; if(!item.trim()) return toast('Enter an item');
+    const rec={ id:Date.now(), item:item.trim(), qty:+($('iv_qty')||{}).value||0, unit:($('iv_unit')||{}).value||'',
+      reorderAt:+($('iv_re')||{}).value||0, supplier:($('iv_sup')||{}).value||'' };
+    appState.inventory=appState.inventory||[]; appState.inventory.push(rec); saveCol('inventory');
+    toast('Item added'); renderOps('inventory');
+  };
+  window.opsAdjInv = function(id,d){ const i=(appState.inventory||[]).find(x=>x.id===id); if(!i) return;
+    i.qty=Math.max(0,(Number(i.qty)||0)+d); saveCol('inventory');
+    if(Number(i.qty)<=Number(i.reorderAt)) toast('⚠ '+i.item+' hit reorder point'); renderOps('inventory'); };
+  window.opsDelInv = function(id){ appState.inventory=(appState.inventory||[]).filter(i=>i.id!==id); saveCol('inventory'); renderOps('inventory'); };
+  window.opsDraftReorder = function(){
+    const low=(appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt));
+    if(!low.length) return toast('Nothing to reorder');
+    const bySup={}; low.forEach(i=>{ (bySup[i.supplier||'(supplier?)']=bySup[i.supplier||'(supplier?)']||[]).push(i); });
+    let txt='REORDER LIST — '+today()+'\n\n';
+    Object.keys(bySup).forEach(s=>{ txt+=s+':\n'; bySup[s].forEach(i=>{ txt+='  • '+i.item+' — on hand '+i.qty+' '+(i.unit||'')+' (reorder at '+i.reorderAt+')\n'; }); txt+='\n'; });
+    try{ if(window.showKlyftonDraft) return showKlyftonDraft('REORDER LIST — draft', txt, null); }catch(e){}
+    alert(txt);
+  };
+
+  // ---------- RULES REFERENCE (travel · tax · permits) ----------
+  function opsRulesHTML(){
+    const t=MGSF.travel;
+    const stateRows=Object.keys(STATE_RULES).map(k=>{const s=STATE_RULES[k];
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <b>${esc(s.name)} (${k}) — materials ${(s.materialTax*100).toFixed(1)}%</b>
+        <span style="font-size:11px;color:var(--t2)">${esc(s.taxNote)}</span></div>`;}).join('');
+    const permRows=Object.keys(PERMIT_RULES).map(k=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <b style="text-transform:capitalize">${esc(k)}</b><span style="font-size:11px;color:var(--t2)">${esc(PERMIT_RULES[k])}</span></div>`).join('');
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🚚 TRAVEL CALCULATOR (from ${esc(t.base)})</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">One-way miles</label><input class="inp" id="tv_mi" type="number" inputmode="decimal" oninput="opsCalcTravel()"></div>
+        <div style="flex:2;min-width:160px;font-size:12px;color:var(--t2)" id="tv_out">Enter miles — first ${t.freeRadius} mi are free; beyond that it's round-trip $${t.perMile.toFixed(2)}/mi + crew drive time.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">STATE MATERIAL TAX</div>${stateRows}
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Rates are estimates for planning — local option taxes vary. Verify with your accountant before quoting.</div></div>
+    <div class="card"><div class="card-title">PERMIT GUIDANCE BY JOB TYPE</div>${permRows}
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">General guidance — always confirm with the local building department (AHJ).</div></div>`;
+  }
+  window.opsCalcTravel = function(){
+    const mi=+($('tv_mi')||{}).value||0; const r=calcTravel(mi); const o=$('tv_out'); if(!o) return;
+    if(r.total<=0){ o.innerHTML='<span style="color:var(--gr)">'+r.note+' — no travel charge.</span>'; return; }
+    o.innerHTML=`<b style="color:var(--or)">Add ${money(r.total)}</b> — ${money(r.mileageCost)} mileage + ${money(r.driveLabor)} drive labor (${r.driveHours.toFixed(1)} hr). <span style="color:var(--t3)">${r.note}</span>`;
+  };
+
+  // ============================================================
+  // KLYFTON CONTEXT + ACTIONS wiring
+  // ============================================================
+  // Extra business context so the hive quotes travel/tax/permits and knows stock.
+  window.opsContext = function(){
+    const ctx={};
+    try{
+      ctx.travelPolicy = 'From '+MGSF.travel.base+': first '+MGSF.travel.freeRadius+' mi free, then round-trip $'+MGSF.travel.perMile.toFixed(2)+'/mi + crew drive time at $'+crewHourly()+'/hr.';
+      ctx.stateTax = Object.keys(STATE_RULES).map(k=>k+' '+(STATE_RULES[k].materialTax*100).toFixed(1)+'% materials').join(' · ');
+      const low=(appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt));
+      if(low.length) ctx.lowStock = low.map(i=>i.item+' ('+i.qty+' '+(i.unit||'')+')').join(', ');
+      const rv=(appState.reviews||[]).filter(r=>Number(r.stars)>0);
+      if(rv.length) ctx.reputation = (rv.reduce((s,r)=>s+Number(r.stars),0)/rv.length).toFixed(1)+'★ over '+rv.length+' reviews';
+      if((appState.jobcosts||[]).length){
+        let tr=0,tp=0; appState.jobcosts.forEach(c=>{const m=costMargin(c);tr+=m.rev;tp+=m.profit;});
+        if(tr>0) ctx.avgMargin=(tp/tr*100).toFixed(0)+'% avg job margin ('+appState.jobcosts.length+' costed)';
+      }
+    }catch(e){}
+    return ctx;
+  };
+
+  // Klyfton action descriptions (fallback used by klyftonActionDesc default)
+  window.opsActionDesc = function(a){
+    switch(a.type){
+      case 'log_cost':    return `Log job cost for <b>${esc(a.job||'?')}</b>${a.revenue?(' · rev $'+Number(a.revenue).toLocaleString()):''}`;
+      case 'log_contact': return `Log ${esc(a.ctype||'contact')} with <b>${esc(a.name||'?')}</b>`;
+      case 'log_review':  return `Log review — <b>${esc(a.customer||'?')}</b>${a.stars?(' '+a.stars+'★'):' (requested)'}`;
+      case 'set_inventory':return `Set stock — <b>${esc(a.item||'?')}</b> = ${a.qty!=null?a.qty:'?'}${a.reorderAt!=null?(' (reorder at '+a.reorderAt+')'):''}`;
+      default: return '';
+    }
+  };
+  // Execute an ops action. Returns true if it handled the type.
+  window.opsHandleAction = function(a){
+    if(!a||!a.type) return false;
+    if(a.type==='log_cost'){
+      const rec={ id:Date.now(), jobName:a.job||'Job', date:today(),
+        revenue:+a.revenue||0, material:+a.material||0, labor:+a.labor||0, equipment:+a.equipment||0, other:+a.other||0 };
+      appState.jobcosts=appState.jobcosts||[]; appState.jobcosts.push(rec); saveCol('jobcosts');
+      if(opsTab==='costing'&&document.getElementById('mod-ops').classList.contains('active')) renderOps('costing');
+      toast('Job cost logged'); return true;
+    }
+    if(a.type==='log_contact'){
+      const rec={ id:Date.now(), name:a.name||'', type:(a.ctype||'note'), note:a.note||'', date:a.when||today() };
+      appState.contacts=appState.contacts||[]; appState.contacts.push(rec); saveCol('contacts');
+      toast('Contact logged'); return true;
+    }
+    if(a.type==='log_review'){
+      const stars=+a.stars||0;
+      const rec={ id:Date.now(), customer:a.customer||'', stars, platform:a.platform||'Google', note:a.note||'', requested:stars===0, date:today() };
+      appState.reviews=appState.reviews||[]; appState.reviews.push(rec); saveCol('reviews');
+      toast('Review logged'); return true;
+    }
+    if(a.type==='set_inventory'){
+      appState.inventory=appState.inventory||[];
+      const nm=(a.item||'').toLowerCase();
+      let it=appState.inventory.find(i=>(i.item||'').toLowerCase()===nm);
+      if(!it){ it={ id:Date.now(), item:a.item||'Item', qty:0, unit:a.unit||'', reorderAt:0, supplier:a.supplier||'' }; appState.inventory.push(it); }
+      if(a.qty!=null) it.qty=+a.qty||0;
+      if(a.reorderAt!=null) it.reorderAt=+a.reorderAt||0;
+      if(a.unit) it.unit=a.unit; if(a.supplier) it.supplier=a.supplier;
+      saveCol('inventory'); toast('Inventory set'); return true;
+    }
+    return false;
+  };
+  window.OPS_ACTIONS = ['log_cost','log_contact','log_review','set_inventory'];
 })();
 </script>
 

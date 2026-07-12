@@ -77,6 +77,10 @@ Supported types:
 - delete_lead:    {"type":"delete_lead","name":""}  (remove a lead entirely)
 - update_job:     {"type":"update_job","customer":"","status":"","value":0}  (change a job — status one of Scheduled/In Progress/Completed/Cancelled; "Completed" or "Cancelled" archives it off the active board)
 - delete_job:     {"type":"delete_job","customer":""}  (remove a job entirely)
+- log_cost:       {"type":"log_cost","job":"","revenue":0,"material":0,"labor":0,"equipment":0,"other":0}  (record job-costing actuals so margin history builds)
+- log_contact:    {"type":"log_contact","name":"","ctype":"call|text|email|visit|note","note":"","when":""}  (add to a customer's contact history)
+- log_review:     {"type":"log_review","customer":"","stars":0,"platform":"Google","note":""}  (track a review or request; stars 0 = review requested)
+- set_inventory:  {"type":"set_inventory","item":"","qty":0,"unit":"","reorderAt":0,"supplier":""}  (set stock on hand + reorder trigger)
 Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/remove something; OMIT
 it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
 the crew's real numbers/prices from context — never invent a price. For emails and proposals, write
