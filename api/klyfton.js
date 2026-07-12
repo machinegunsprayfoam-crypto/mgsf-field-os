@@ -139,6 +139,7 @@ Supported types:
 - log_incident:   {"type":"log_incident","employee":"","itype":"Injury|Illness|Isocyanate exposure|Near-miss","jobName":"","outcome":"","description":"","date":"YYYY-MM-DD"}  (OSHA 300 recordable)
 - log_complaint:  {"type":"log_complaint","complainant":"","jobName":"","address":"","description":"","resolution":"","date":"YYYY-MM-DD"}  (neighbor odor/nuisance complaint record)
 - log_setuse:     {"type":"log_setuse","jobNum":"","product":"","sets":0}  (check foam sets out against a job number; decrements inventory)
+- check_weather:  {"type":"check_weather","address":""}  (pull the LIVE NWS spray-condition go/no-go for a job address or place — use whenever the user asks whether/when it's OK to spray, roof, or coat at a specific location or named job. Put the job's real address from JOBS ON FILE, or the place the user named, in "address". This runs a real forecast in the app — you do NOT need to web-search the weather yourself when you emit this.)
 Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/remove something; OMIT
 it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
 the crew's real numbers/prices from context — never invent a price. For emails and proposals, write

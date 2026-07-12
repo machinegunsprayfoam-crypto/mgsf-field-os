@@ -5645,7 +5645,10 @@ function sendChat(){
         save('memory');
       }
       bubble.finalize(resp, resp);
-      if(parsed.action) promptKlyftonAction(parsed.action);
+      if(parsed.action){
+        if(parsed.action.type==='check_weather') runSprayWindow(parsed.action.address||parsed.action.location||'');
+        else promptKlyftonAction(parsed.action);
+      }
       // Show the hive at work: which minds answered.
       let status='● READY';
       if(d && d.minds && d.minds.length){
@@ -5722,6 +5725,41 @@ function showKlyftonDraft(title, textBody, mailto){
 function klyftonCopyDraft(id){ const el=document.getElementById(id); if(!el) return; el.focus(); el.select();
   try{ if(navigator.clipboard) navigator.clipboard.writeText(el.value); else document.execCommand('copy'); }catch(e){}
   notify('Copied ✓','success'); }
+// Spray Window (#4): pull the live NWS go/no-go for an address and render a 7-day strip
+// in chat. Read-only, so it runs immediately (no confirm button). Sundays show NO-GO
+// (company rule). Guidance only — verify vs the product data sheet + substrate temp.
+function runSprayWindow(address){
+  const c=document.getElementById('chatMessages'); if(!c) return;
+  const div=document.createElement('div'); div.className='msg ai';
+  div.innerHTML='<div class="msg-name" style="color:var(--cy)">🌡️ SPRAY WINDOW</div><div style="font-size:12px;color:var(--t2)">Checking '+esc(address||'location')+'…</div>';
+  c.appendChild(div); c.scrollTop=c.scrollHeight;
+  fetch('/api/weather',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({address:address||''})})
+    .then(r=>r.json())
+    .then(d=>{
+      if(!d || !d.ok){
+        div.innerHTML='<div class="msg-name" style="color:var(--cy)">🌡️ SPRAY WINDOW</div><div style="font-size:12px">Couldn\'t read conditions for “'+esc(address||'')+'” ('+esc((d&&d.error)||'no data')+'). Try a fuller street address.</div>';
+        c.scrollTop=c.scrollHeight; return;
+      }
+      const col={GO:'var(--gr)',CAUTION:'var(--yw)',NOGO:'var(--red)'}, ic={GO:'✅',CAUTION:'⚠️',NOGO:'🚫'};
+      const loc=(d.location&&(d.location.matched||(((d.location.city||'')+', '+(d.location.state||'')).replace(/^, |, $/,''))))||address||'';
+      const rows=(d.days||[]).map(day=>{
+        const cl=col[day.level]||'var(--t2)', bits=[];
+        if(day.tempHi!=null) bits.push(day.tempHi+'/'+day.tempLo+'°F');
+        if(day.maxPop!=null) bits.push(day.maxPop+'% rain');
+        if(day.maxWind!=null) bits.push(day.maxWind+' mph');
+        if(day.minDewSpread!=null) bits.push('dew Δ'+day.minDewSpread+'°');
+        const why=(day.reasons&&day.reasons.length)?(' — '+esc(day.reasons.join(', '))):'';
+        return '<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;border-top:1px solid rgba(255,255,255,.06)">'+
+          '<b style="width:34px;color:'+cl+'">'+esc(day.label||'')+'</b>'+
+          '<span style="width:20px">'+(ic[day.level]||'')+'</span>'+
+          '<span style="flex:1;font-size:11px;color:var(--t2)">'+esc(bits.join(' · '))+why+'</span></div>';
+      }).join('');
+      div.innerHTML='<div class="msg-name" style="color:var(--cy)">🌡️ SPRAY WINDOW — '+esc(loc)+'</div>'+rows+
+        '<div style="font-size:10px;color:var(--t2);margin-top:6px">'+esc(d.disclaimer||'')+'</div>';
+      c.scrollTop=c.scrollHeight;
+    })
+    .catch(()=>{ div.innerHTML='<div class="msg-name" style="color:var(--cy)">🌡️ SPRAY WINDOW</div><div style="font-size:12px">Couldn\'t reach the weather service — needs a connection.</div>'; c.scrollTop=c.scrollHeight; });
+}
 function promptKlyftonAction(a){
   const desc = klyftonActionDesc(a); if(!desc) return;
   window.__pendingAction = a;
