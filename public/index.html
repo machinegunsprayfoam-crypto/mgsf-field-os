@@ -1494,6 +1494,8 @@ let appState = {
   estimates: lsArr('estimates'),
   memory: lsArr('memory'),
   crew: lsArr('crew'),
+  chatHistory: lsArr('chatHistory'), // Klyfton's conversation — persisted so it survives reloads/sessions
+
   scopeItems: [],
   soundOn: true,
   voiceOn: false,
@@ -5435,6 +5437,16 @@ function markdownLite(text){
     .replace(/^•\s/gm,'<span style="color:var(--or)">▸</span> ');
 }
 
+// Repaint the saved conversation on load so Klyfton picks up where you left off
+// instead of starting blank every session. (History is persisted in sendChat.)
+function renderChatHistory(){
+  const c=document.getElementById('chatMessages'); if(!c) return;
+  const h=Array.isArray(appState.chatHistory)?appState.chatHistory:[];
+  if(!h.length) return;
+  c.innerHTML='';
+  h.forEach(m=>{ if(m && m.content) addMessage(String(m.content), m.role==='assistant'?'ai':'user', ''); });
+}
+
 // ---- Chat attachments: photos / PDFs the crew uploads for Klyfton to read ----
 // Images are downscaled client-side (keeps the Vercel payload small + token cost sane);
 // on send they go to the hive as Claude vision / document blocks so the minds actually SEE them.
@@ -5588,6 +5600,7 @@ function sendChat(){
   if(!appState.memory) appState.memory = [];
   const hist = appState.chatHistory.slice(-10);
   appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
+  appState.chatHistory = appState.chatHistory.slice(-60); save('chatHistory');
 
   const bubble = addStreamingAiBubble();
 
@@ -5624,6 +5637,7 @@ function sendChat(){
       // Klyfton may propose an action — pull it out of the text; the user confirms before it runs.
       const parsed = parseKlyftonAction(resp); resp = parsed.clean;
       appState.chatHistory.push({role:'assistant', content:resp});
+      appState.chatHistory = appState.chatHistory.slice(-60); save('chatHistory');
       // Store durable "colony memory" facts the hive chose to keep.
       if(d && Array.isArray(d.remember) && d.remember.length){
         d.remember.forEach(f=>{ if(f && !appState.memory.includes(f)) appState.memory.push(f); });
@@ -6251,7 +6265,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   initCanvas();
   renderSkills();
   runBoot();
-  
+  renderChatHistory(); // repaint the saved conversation so Klyfton continues across sessions
   // v4 Estimator: scope items are added via job type buttons — no auto-init needed
 });
 
