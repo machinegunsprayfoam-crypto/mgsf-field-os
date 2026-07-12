@@ -1114,6 +1114,7 @@ canvas.chart{width:100%;height:100%}
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-orange" id="admSaveBtn" onclick="adminSave()">💾 SAVE ALL SETTINGS</button>
           <button class="btn btn-ghost" onclick="adminReset()">↩ RESET TO DEFAULTS</button>
+          <button class="btn btn-ghost" style="color:#ef4444;border-color:rgba(239,68,68,.4)" onclick="clearPipelineData()">🧹 CLEAR OLD SAMPLE LEADS &amp; JOBS</button>
           <span id="admStatus" style="font-size:11px;color:var(--gr);align-self:center"></span>
         </div>
       </div>
@@ -4323,6 +4324,26 @@ function adminSave(){
   if(s){ s.textContent='✔ Saved!'; s.style.color='var(--gr)'; setTimeout(()=>{ s.textContent=''; },3000); }
   notify('Admin settings saved','ok');
 }
+// Wipe old sample/demo leads, jobs & estimates — locally AND in the cloud store
+// (so they don't sync back onto other devices). Real records you've entered go too,
+// so it's confirm-gated with the counts.
+function clearPipelineData(){
+  const nL=(appState.leads||[]).length, nJ=(appState.jobs||[]).length, nE=(appState.estimates||[]).length;
+  if(nL+nJ+nE===0){ notify('Already empty — nothing to clear','info'); return; }
+  if(!confirm('Clear ALL '+nL+' leads, '+nJ+' jobs, and '+nE+' estimates?\n\nThis removes them here AND on every synced device. Use it to wipe the old sample data. This cannot be undone.')) return;
+  const ids=k=>(appState[k]||[]).map(r=>r&&r.id).filter(x=>x!=null).map(String);
+  const leadIds=ids('leads'), jobIds=ids('jobs'), estIds=ids('estimates');
+  appState.leads=[]; appState.jobs=[]; appState.estimates=[];
+  save('leads'); save('jobs'); save('estimates');
+  // Tombstone in the cloud store so they never sync back (no-op if sync is dormant).
+  const rm=(k,arr)=>{ if(arr.length){ try{ fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({collection:k,remove:arr})}); }catch(e){} } };
+  rm('leads',leadIds); rm('jobs',jobIds); rm('estimates',estIds);
+  try{ if(window.renderPipeline) renderPipeline(); }catch(e){}
+  try{ if(window.renderJobs) renderJobs(); }catch(e){}
+  try{ if(window.renderDashMetrics) renderDashMetrics(); }catch(e){}
+  try{ if(window.initDashboard) initDashboard(); }catch(e){}
+  notify('Cleared '+(nL+nJ+nE)+' old records ✓','success');
+}
 function adminReset(){
   if(!confirm('Reset all admin settings to factory defaults? This cannot be undone.')) return;
   localStorage.removeItem('mgsf_admin_v1');
@@ -5902,30 +5923,32 @@ function initDashboard(){
   const leads=appState.leads||[], jobs=appState.jobs||[];
   const daysAgo=d=>{ if(!d) return null; return Math.round((Date.now()-new Date(d+'T00:00:00'))/86400000); };
   const priorities=[];
+  // Each priority carries a `go` = JS that jumps to where the record lives (tap to open).
   // Overdue scheduled jobs
   jobs.filter(j=>j.date && !['Completed','Cancelled','Paid'].includes(j.status) && daysAgo(j.date)>0)
-      .forEach(j=>priorities.push({text:'Overdue job: '+(j.customer||j.name)+' (was '+j.date+')',urgency:'high'}));
+      .forEach(j=>priorities.push({text:'Overdue job: '+(j.customer||j.name)+' (was '+j.date+')',urgency:'high',go:"switchModule('jobs');"+(j.id?('openJobDetail('+j.id+')'):'')}));
   // Follow-ups flagged
   leads.filter(l=>l.status==='Follow-Up')
-      .forEach(l=>priorities.push({text:'Follow up: '+(l.name||'lead')+(l.date&&daysAgo(l.date)>2?(' ('+daysAgo(l.date)+'d quiet)'):''),urgency:'high'}));
+      .forEach(l=>priorities.push({text:'Follow up: '+(l.name||'lead')+(l.date&&daysAgo(l.date)>2?(' ('+daysAgo(l.date)+'d quiet)'):''),urgency:'high',go:"switchModule('crm');"+(l.id?('openLeadDetail('+l.id+')'):'')}));
   // New leads to qualify
   leads.filter(l=>l.status==='New').slice(0,3)
-      .forEach(l=>priorities.push({text:'Qualify new lead: '+(l.name||'')+(l.phone?(' — '+l.phone):''),urgency:'med'}));
+      .forEach(l=>priorities.push({text:'Qualify new lead: '+(l.name||'')+(l.phone?(' — '+l.phone):''),urgency:'med',go:"switchModule('crm');"+(l.id?('openLeadDetail('+l.id+')'):'')}));
   // Jobs in progress
   jobs.filter(j=>j.status==='In Progress')
-      .forEach(j=>priorities.push({text:'In progress: '+(j.customer||j.name)+' — check status',urgency:'high'}));
+      .forEach(j=>priorities.push({text:'In progress: '+(j.customer||j.name)+' — check status',urgency:'high',go:"switchModule('jobs');"+(j.id?('openJobDetail('+j.id+')'):'')}));
   // Reorder alerts
   (appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt))
-      .forEach(i=>priorities.push({text:'Reorder: '+i.item+' ('+i.qty+' '+(i.unit||'')+' left)',urgency:'med'}));
+      .forEach(i=>priorities.push({text:'Reorder: '+i.item+' ('+i.qty+' '+(i.unit||'')+' left)',urgency:'med',go:"switchModule('ops');renderOps('inventory')"}));
   // Expiring certs
   (appState.training||[]).filter(t=>{const du=t.expires?Math.round((new Date(t.expires+'T00:00:00')-Date.now())/86400000):null; return du!=null&&du<=60;})
-      .forEach(t=>priorities.push({text:'Cert due: '+(t.name||'')+' — '+(t.topic||''),urgency:'med'}));
-  if(!priorities.length) priorities.push({text:'No open items. Add a lead or job, or say "get me leads" to Klyfton.',urgency:'low'});
+      .forEach(t=>priorities.push({text:'Cert due: '+(t.name||'')+' — '+(t.topic||''),urgency:'med',go:"switchModule('ops');renderOps('training')"}));
+  if(!priorities.length) priorities.push({text:'No open items. Add a lead or job, or say "get me leads" to Klyfton.',urgency:'low',go:"switchModule('crm')"});
   const pl=document.getElementById('priorityList');
   if(pl) pl.innerHTML=priorities.slice(0,7).map(p=>`
-  <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+  <div onclick="${p.go||''}" style="display:flex;align-items:flex-start;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.04);${p.go?'cursor:pointer':''}" ${p.go?'onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'"':''}>
     <span class="badge ${p.urgency==='high'?'badge-red':p.urgency==='med'?'badge-or':'badge-cy'}" style="white-space:nowrap;flex-shrink:0">${p.urgency.toUpperCase()}</span>
-    <span style="font-size:12px;line-height:1.4">${p.text}</span>
+    <span style="font-size:12px;line-height:1.4;flex:1">${p.text}</span>
+    ${p.go?'<span style="color:var(--t3);font-size:12px">›</span>':''}
   </div>`).join('');
   
   // Recent jobs
