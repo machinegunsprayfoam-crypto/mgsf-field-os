@@ -329,7 +329,10 @@ async function runMind(key, mindKey, userText, history, ctx, attachments) {
   messages.push({ role: "user", content: buildUserContent(userText, attachments) });
   const data = await callClaude(key, {
     model: WORKER_MODEL,
-    max_tokens: 1600,
+    // Headroom so adaptive thinking can't eat the whole budget and truncate the
+    // answer — estimates reason through board-foot math and need room for BOTH
+    // the thinking and the final quote (Sonnet 5 adaptive thinking guidance).
+    max_tokens: 8000,
     system,
     thinking: { type: "adaptive" },
     tools: [WEB_TOOL],
@@ -434,7 +437,7 @@ If there are durable facts worth remembering across sessions (a customer prefere
 price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
     const synth = await callClaude(key, {
       model: CRITIC_MODEL,
-      max_tokens: 2000,
+      max_tokens: 8000,
       system: synthSys,
       thinking: { type: "adaptive" },
       messages: [
