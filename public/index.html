@@ -5360,9 +5360,30 @@ function klyftonActionDesc(a){
     case 'add_job': return `Add a job: <b>${a.customer||'?'}</b>${a.service?(' · '+a.service):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
     case 'add_punch': return `Punch <b>${a.name||'?'}</b> in/out on the time clock`;
     case 'remember': return `Remember: <b>${a.fact||'?'}</b>`;
+    case 'draft_email': return `Draft an email to <b>${a.to||'customer'}</b>${a.subject?(' — "'+String(a.subject).slice(0,44)+'"'):''}`;
+    case 'draft_proposal': return `Draft a proposal for <b>${a.customer||'?'}</b>${a.price?(' · $'+Number(a.price).toLocaleString()):''}`;
+    case 'material_order': return `Draft a material order${a.supplier?(' to <b>'+a.supplier+'</b>'):''}${a.job?(' for '+a.job):''}`;
+    case 'add_followup': return `Flag <b>${a.name||'?'}</b> for follow-up${a.when?(' ('+a.when+')'):''}`;
     default: return '';
   }
 }
+// Klyfton drafts outbound work into an editable, copy-ready box — never sends anything itself.
+function showKlyftonDraft(title, textBody, mailto){
+  const c=document.getElementById('chatMessages'); if(!c) return;
+  const id='kdraft_'+Date.now();
+  const div=document.createElement('div'); div.className='msg ai';
+  div.innerHTML=`<div class="msg-name" style="color:var(--cy)">${esc(title)}</div>
+    <textarea id="${id}" class="admin-inp" style="width:100%;height:150px;font-size:12px;resize:vertical">${esc(textBody||'')}</textarea>
+    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="font-size:12px" onclick="klyftonCopyDraft('${id}')">📋 Copy</button>
+      ${mailto?`<button class="btn btn-ghost" style="font-size:12px" onclick="window.open('${mailto}','_blank')">✉️ Open in email</button>`:''}
+    </div>
+    <div style="font-size:10px;color:var(--t2);margin-top:4px">Draft only — review, then send it yourself.</div>`;
+  c.appendChild(div); c.scrollTop=c.scrollHeight;
+}
+function klyftonCopyDraft(id){ const el=document.getElementById(id); if(!el) return; el.focus(); el.select();
+  try{ if(navigator.clipboard) navigator.clipboard.writeText(el.value); else document.execCommand('copy'); }catch(e){}
+  notify('Copied ✓','success'); }
 function promptKlyftonAction(a){
   const desc = klyftonActionDesc(a); if(!desc) return;
   window.__pendingAction = a;
@@ -5396,6 +5417,32 @@ function doPendingKlyftonAction(){
       if(!appState.memory) appState.memory=[];
       if(a.fact && !appState.memory.includes(a.fact)){ appState.memory.push(a.fact); save('memory'); }
       notify('Got it — remembered','success');
+    } else if(a.type==='draft_email'){
+      const body=(a.body||''), subj=(a.subject||''), to=(a.to||'');
+      const mailto='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+      showKlyftonDraft('EMAIL DRAFT'+(subj?(' — '+subj):''), (to?('To: '+to+'\n'):'')+(subj?('Subject: '+subj+'\n\n'):'')+body, mailto);
+      return; // draft shown; no "Done ✓"
+    } else if(a.type==='draft_proposal'){
+      switchModule('proposal'); if(window.renderProposal) renderProposal();
+      const setv=(id,v)=>{ const el=document.getElementById(id); if(el && v!=null && v!=='') el.value=v; };
+      setv('pr_cust',a.customer); setv('pr_scope',a.scope); setv('pr_price',a.price); setv('pr_terms',a.terms);
+      notify('Proposal drafted — review & save','success'); return;
+    } else if(a.type==='material_order'){
+      const txt=(a.supplier?('Supplier: '+a.supplier+'\n'):'')+(a.job?('Job: '+a.job+'\n'):'')+'\n'+(a.items||'');
+      showKlyftonDraft('MATERIAL ORDER — draft', txt, null); return;
+    } else if(a.type==='add_followup'){
+      if(!appState.leads) appState.leads=[];
+      const nm=(a.name||'').toLowerCase();
+      const lead=appState.leads.find(l=>(l.name||'').toLowerCase()===nm) || appState.leads.find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+      if(lead){
+        lead.status='Follow-Up';
+        const stamp=(a.when?('['+a.when+'] '):'')+(a.note||'follow up');
+        lead.notes=(lead.notes?lead.notes+' · ':'')+stamp;
+        save('leads'); if(window.renderPipeline) renderPipeline();
+        notify('Flagged '+(lead.name)+' for follow-up','success');
+      } else {
+        notify('No matching lead — add them first, then flag follow-up','info');
+      }
     }
     addMessage('Done ✓','ai','');
   }catch(e){ notify('Could not complete that action','alert'); }
