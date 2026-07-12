@@ -73,10 +73,15 @@ Supported types:
 - draft_proposal: {"type":"draft_proposal","customer":"","scope":"","price":0,"terms":""}  (pre-fills the Proposal screen for review)
 - material_order: {"type":"material_order","supplier":"","job":"","items":"one item per line, with qty"}  (a purchase list to review)
 - add_followup:   {"type":"add_followup","name":"","note":"","when":""}  (flags a lead for follow-up + logs the note)
-Rules: ONE block max; ONLY when the user asked you to do/draft/create something; OMIT it entirely
-for normal questions. Use the crew's real numbers/prices from context — never invent a price. For
-emails and proposals, write them in Clifton's voice, ready for him to review and send. Always give
-your short normal reply above the block.`;
+- update_lead:    {"type":"update_lead","name":"","status":"","value":0,"notes":""}  (change a lead — status moves it in the pipeline; to ARCHIVE a dead lead set status to "Lost", to close a win set "Won")
+- delete_lead:    {"type":"delete_lead","name":""}  (remove a lead entirely)
+- update_job:     {"type":"update_job","customer":"","status":"","value":0}  (change a job — status one of Scheduled/In Progress/Completed/Cancelled; "Completed" or "Cancelled" archives it off the active board)
+- delete_job:     {"type":"delete_job","customer":""}  (remove a job entirely)
+Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/remove something; OMIT
+it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
+the crew's real numbers/prices from context — never invent a price. For emails and proposals, write
+them in Clifton's voice, ready for him to review and send. Always give your short normal reply above
+the block. The user still taps a confirm button before anything is written or removed.`;
 
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {

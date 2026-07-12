@@ -5431,6 +5431,10 @@ function klyftonActionDesc(a){
     case 'draft_proposal': return `Draft a proposal for <b>${a.customer||'?'}</b>${a.price?(' · $'+Number(a.price).toLocaleString()):''}`;
     case 'material_order': return `Draft a material order${a.supplier?(' to <b>'+a.supplier+'</b>'):''}${a.job?(' for '+a.job):''}`;
     case 'add_followup': return `Flag <b>${a.name||'?'}</b> for follow-up${a.when?(' ('+a.when+')'):''}`;
+    case 'update_lead': return `Update lead <b>${a.name||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
+    case 'delete_lead': return `Delete lead <b>${a.name||'?'}</b>`;
+    case 'update_job': return `Update job <b>${a.customer||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
+    case 'delete_job': return `Delete job <b>${a.customer||'?'}</b>`;
     default: return '';
   }
 }
@@ -5510,6 +5514,45 @@ function doPendingKlyftonAction(){
       } else {
         notify('No matching lead — add them first, then flag follow-up','info');
       }
+    } else if(a.type==='update_lead'){
+      if(!appState.leads) appState.leads=[];
+      const nm=(a.name||'').toLowerCase();
+      const lead=appState.leads.find(l=>(l.name||'').toLowerCase()===nm) || appState.leads.find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+      if(lead){
+        if(a.status) lead.status=a.status;
+        if(a.value!=null && a.value!=='') lead.value=Number(a.value)||lead.value;
+        if(a.notes) lead.notes=(lead.notes?lead.notes+' · ':'')+a.notes;
+        save('leads'); if(window.renderPipeline) renderPipeline(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Updated '+lead.name+(a.status?(' → '+a.status):''),'success');
+      } else { notify('No matching lead to update','info'); }
+    } else if(a.type==='delete_lead'){
+      if(!appState.leads) appState.leads=[];
+      const nm=(a.name||'').toLowerCase();
+      const lead=appState.leads.find(l=>(l.name||'').toLowerCase()===nm) || appState.leads.find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+      if(lead){
+        appState.leads=appState.leads.filter(l=>l!==lead);
+        save('leads'); if(window.renderPipeline) renderPipeline(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Deleted lead '+lead.name,'success');
+      } else { notify('No matching lead to delete','info'); }
+    } else if(a.type==='update_job'){
+      if(!appState.jobs) appState.jobs=[];
+      const cn=(a.customer||'').toLowerCase();
+      const job=appState.jobs.find(j=>(j.customer||'').toLowerCase()===cn) || appState.jobs.find(j=>cn && (j.customer||'').toLowerCase().includes(cn));
+      if(job){
+        if(a.status) job.status=a.status;
+        if(a.value!=null && a.value!=='') job.value=Number(a.value)||job.value;
+        save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Updated job '+job.customer+(a.status?(' → '+a.status):''),'success');
+      } else { notify('No matching job to update','info'); }
+    } else if(a.type==='delete_job'){
+      if(!appState.jobs) appState.jobs=[];
+      const cn=(a.customer||'').toLowerCase();
+      const job=appState.jobs.find(j=>(j.customer||'').toLowerCase()===cn) || appState.jobs.find(j=>cn && (j.customer||'').toLowerCase().includes(cn));
+      if(job){
+        appState.jobs=appState.jobs.filter(j=>j!==job);
+        save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Deleted job '+job.customer,'success');
+      } else { notify('No matching job to delete','info'); }
     }
     addMessage('Done ✓','ai','');
   }catch(e){ notify('Could not complete that action','alert'); }
