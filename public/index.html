@@ -1379,26 +1379,8 @@ let appState = {
   audioCtx: null,
 };
 
-// Seed demo data if empty
-if(appState.leads.length===0){
-  appState.leads = [
-    {id:1,name:'Dan Whitfield',company:'Whitfield Ag',phone:'406-555-0101',email:'dan@whitfield.ag',service:'Closed Cell',sqft:8400,state:'MT',market:'ind',status:'Estimate Sent',value:38200,date:'2026-07-07',notes:'Metal shop, needs R-25 walls/ceiling. Has Hearth approved.',source:'Website',bant:{budget:'Y',authority:'Y',need:'Y',timeline:'Aug'}},
-    {id:2,name:'City of Williston',company:'City of Williston',phone:'701-555-0200',service:'SPF Roofing',sqft:12000,state:'ND',market:'gov',status:'Qualified',value:71400,date:'2026-07-05',notes:'Flat roof on public works building. SAM.gov opportunity.',source:'GovTribe',bant:{budget:'Y',authority:'Y',need:'Y',timeline:'Sept'}},
-    {id:3,name:'Sarah Perkins',company:'Perkins Ranch',phone:'307-555-0302',service:'Open Cell',sqft:3200,state:'WY',market:'resi',status:'New',value:14800,date:'2026-07-08',notes:'New construction crawlspace + walls.',source:'Referral'},
-    {id:4,name:'Rocky Mtn Logistics',company:'RML',phone:'406-555-0400',service:'Concrete Lifting',sqft:0,state:'MT',market:'comm',status:'Follow-Up',value:9200,date:'2026-07-01',notes:'Loading dock, 3 sunken slabs. Been quiet 7 days.',source:'Cold Call'},
-    {id:5,name:'Bridger Steel',company:'Bridger Steel LLC',phone:'406-555-0501',service:'Closed Cell',sqft:24000,state:'MT',market:'ind',status:'Won',value:112000,date:'2026-06-15',notes:'Large industrial job, complete.',source:'Repeat'},
-    {id:6,name:'Jamie Torkelson',company:'',phone:'701-555-0601',service:'Open Cell',sqft:1800,state:'ND',market:'resi',status:'Lost',value:7200,date:'2026-06-20',notes:'Went with competitor on price.',source:'Website'},
-  ];
-  save('leads');
-}
-if(appState.jobs.length===0){
-  appState.jobs = [
-    {id:1,name:'Whitfield Ag Shop',customer:'Dan Whitfield',service:'Closed Cell 3.5"',sqft:8400,state:'MT',value:38200,status:'Scheduled',date:'2026-07-14',crew:'Clifton + Mike',rig:'Rig 1',notes:'R-25 walls + R-38 ceiling'},
-    {id:2,name:'Williston Public Works',customer:'City of Williston',service:'SPF Roofing',sqft:12000,state:'ND',value:71400,status:'In Progress',date:'2026-07-09',crew:'Clifton + Jake + Luis',rig:'Rig 2',notes:'Day 2 of 3, on schedule'},
-    {id:3,name:'Cedar Creek Ranch',customer:'Travis & Beth Lund',service:'Closed Cell 2"',sqft:4200,state:'WY',value:19600,status:'Completed',date:'2026-07-02',crew:'Clifton + Mike',rig:'Rig 1',notes:'Signed off, review request sent'},
-  ];
-  save('jobs');
-}
+// Real data only — jobs, leads, and estimates start empty and fill from actual use
+// (or sync down from other crew devices once cloud storage is attached). No demo seeds.
 
 function save(key){
   try{localStorage.setItem('klyfton_'+key, JSON.stringify(appState[key]))}catch(e){}
@@ -6897,9 +6879,25 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
         if(arr(t.c).length!==before){ try{localStorage.setItem('klyfton_'+t.c, JSON.stringify(appState[t.c]));}catch(e){} changed=true; }
       });
     }
+    // Klyfton's memory (durable facts) syncs as a set-union of unique strings across devices.
+    if(Array.isArray(d.memory)){
+      if(!Array.isArray(appState.memory)) appState.memory=[];
+      const seen=new Set(appState.memory.map(s=>String(s).trim()));
+      let memAdded=false;
+      d.memory.forEach(s=>{ const t=String(s).trim(); if(t && !seen.has(t)){ seen.add(t); appState.memory.push(t); memAdded=true; } });
+      if(memAdded){ try{localStorage.setItem('klyfton_memory', JSON.stringify(appState.memory));}catch(e){} changed=true; }
+    }
     if(changed) refresh();
     COLS.forEach(k=>{ last[k]=JSON.stringify(arr(k)); });
+    last.memory=JSON.stringify(appState.memory||[]);
     return true;
+  }
+  async function pushMem(){
+    try{
+      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({collection:'memory', records: Array.isArray(appState.memory)?appState.memory:[]})});
+      last.memory=JSON.stringify(appState.memory||[]);
+    }catch(e){}
   }
   async function push(k){
     try{
@@ -6924,11 +6922,22 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
       if(removed.length) del(k, removed);
       push(k);
     });
+    // Sync Klyfton's memory too — propagate deletes, then push the current set.
+    const memStr=JSON.stringify(appState.memory||[]);
+    if(memStr!==last.memory){
+      let prevMem=[]; try{ prevMem=JSON.parse(last.memory||'[]'); }catch(e){}
+      const curSet=new Set((appState.memory||[]).map(s=>String(s).trim()));
+      const removedMem=prevMem.map(s=>String(s).trim()).filter(s=>s && !curSet.has(s));
+      if(removedMem.length){ try{ fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({collection:'memory', remove:removedMem})}); }catch(e){} }
+      pushMem();
+    }
   }
   async function init(){
     try{ on = await pull(); }catch(e){ on=false; }
     if(!on) return;                       // dormant — no storage attached
     try{ await Promise.all(COLS.map(push)); }catch(e){}   // send up this device's local-only records
+    try{ await pushMem(); }catch(e){}     // send up this device's local-only memory facts
     setInterval(tick, 15000);             // quiet background sync
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden) tick(); });
   }
