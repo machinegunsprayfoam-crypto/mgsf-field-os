@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
-type Params = { token: string };
-
 async function getPortalData(token: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -30,8 +28,9 @@ async function getPortalData(token: string) {
   return tokenRow;
 }
 
-export default async function PortalPage({ params }: { params: Params }) {
-  const data = await getPortalData(params.token);
+export default async function PortalPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const data = await getPortalData(token);
 
   if (!data) return notFound();
 
@@ -49,11 +48,11 @@ export default async function PortalPage({ params }: { params: Params }) {
   }
 
   const estimate = data.estimates;
-  const customer = estimate?.customers;
+  const customer = Array.isArray(estimate?.customers) ? estimate.customers[0] ?? null : estimate?.customers ?? null;
 
   function customerName() {
     if (!customer) return "";
-    return customer.company_name ?? [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+    return (customer.company_name ?? [customer.first_name, customer.last_name].filter(Boolean).join(" ")) || "";
   }
 
   function fmt$(n: number) {
