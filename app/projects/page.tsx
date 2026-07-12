@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { supabase, type Project } from "@/lib/supabase";
 
+type CustomerSummary = { first_name: string | null; last_name: string | null; company_name: string | null };
+
 type ProjectWithCustomer = Project & {
-  customers: { first_name: string | null; last_name: string | null; company_name: string | null } | null;
+  customers: CustomerSummary | CustomerSummary[] | null;
 };
 
 type NewProject = {
@@ -31,8 +33,12 @@ const STATUS_COLUMNS = [
   { key: "on_hold", label: "On hold", color: "badge-gray" },
 ];
 
+function customerRecord(project: ProjectWithCustomer) {
+  return Array.isArray(project.customers) ? project.customers[0] ?? null : project.customers;
+}
+
 function customerName(p: ProjectWithCustomer) {
-  const c = p.customers;
+  const c = customerRecord(p);
   if (!c) return "—";
   return (c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")) || "—";
 }
@@ -53,7 +59,7 @@ export default function ProjectsPage() {
       .from("projects")
       .select("*, customers(first_name, last_name, company_name)")
       .order("scheduled_date", { ascending: true, nullsFirst: false });
-    setProjects((data as ProjectWithCustomer[]) ?? []);
+    setProjects(((data ?? []) as unknown as ProjectWithCustomer[]));
     setLoading(false);
   }
 
@@ -203,7 +209,10 @@ export default function ProjectsPage() {
                   </div>
                 ) : byStatus(col.key).map((p) => (
                   <div key={p.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 14 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{p.project_name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{p.project_name}</div>
+                      {p.source_lead_id && <span className="badge badge-gray">📋 From lead</span>}
+                    </div>
                     <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>{customerName(p)}</div>
                     {p.scheduled_date && (
                       <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
@@ -248,7 +257,12 @@ export default function ProjectsPage() {
                 <tbody>
                   {projects.map((p) => (
                     <tr key={p.id}>
-                      <td style={{ fontWeight: 600 }}>{p.project_name}</td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontWeight: 600 }}>
+                          <span>{p.project_name}</span>
+                          {p.source_lead_id && <span className="badge badge-gray">📋 From lead</span>}
+                        </div>
+                      </td>
                       <td>{customerName(p)}</td>
                       <td>
                         <select

@@ -25,6 +25,7 @@ export default function EstimatesPage() {
   const [loading, setLoading] = useState(true);
   const [portalLinks, setPortalLinks] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function fetchEstimates() {
     setLoading(true);
@@ -78,9 +79,21 @@ export default function EstimatesPage() {
     if (token) {
       const link = `${window.location.origin}/portal/${token}`;
       setPortalLinks((p) => ({ ...p, [estimateId]: link }));
-      await navigator.clipboard.writeText(link).catch(() => {});
+      setGenerating(null);
+      return link;
     }
     setGenerating(null);
+    return "";
+  }
+
+  async function copyPortalLink(estimateId: string) {
+    const link = portalLinks[estimateId] || await generatePortalLink(estimateId);
+    if (!link) return;
+    await navigator.clipboard.writeText(link).catch(() => {});
+    setCopiedId(estimateId);
+    window.setTimeout(() => {
+      setCopiedId((current) => current === estimateId ? null : current);
+    }, 2000);
   }
 
   return (
@@ -145,11 +158,19 @@ export default function EstimatesPage() {
                         <button
                           className="btn btn-ghost"
                           style={{ padding: "4px 10px", fontSize: 12 }}
-                          onClick={() => generatePortalLink(e.id)}
+                          onClick={() => void generatePortalLink(e.id)}
                           disabled={generating === e.id}
                           title="Generate customer portal link"
                         >
-                          {generating === e.id ? "…" : portalLinks[e.id] ? "📋 Copied!" : "🔗 Share"}
+                          {generating === e.id ? "…" : "🔗 Share"}
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: "4px 10px", fontSize: 12 }}
+                          onClick={() => void copyPortalLink(e.id)}
+                          title={copiedId === e.id ? "Link copied" : "Copy customer portal link"}
+                        >
+                          {copiedId === e.id ? "✓ Copied!" : "📋 Copy link"}
                         </button>
                       </div>
                       {portalLinks[e.id] && (
@@ -168,4 +189,3 @@ export default function EstimatesPage() {
     </>
   );
 }
-

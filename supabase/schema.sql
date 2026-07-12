@@ -307,3 +307,79 @@ create index if not exists idx_govcon_opps_status on public.govcon_opportunities
 create index if not exists idx_safety_incidents_date on public.safety_incidents(incident_date);
 create index if not exists idx_marketing_posts_status on public.marketing_posts(status);
 create index if not exists idx_portal_tokens_token on public.portal_tokens(token);
+
+
+-- ── Funnel pipeline migration (2026-07) ───────────────────────────────────────
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'leads' and column_name = 'next_follow_up_at'
+  ) then
+    alter table public.leads add column next_follow_up_at timestamptz;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'leads' and column_name = 'last_contacted_at'
+  ) then
+    alter table public.leads add column last_contacted_at timestamptz;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'leads' and column_name = 'converted_project_id'
+  ) then
+    alter table public.leads
+      add column converted_project_id uuid references public.projects(id) on delete set null;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'projects' and column_name = 'source_lead_id'
+  ) then
+    alter table public.projects
+      add column source_lead_id uuid references public.leads(id) on delete set null;
+  end if;
+end $$;
+
+create table if not exists public.lead_activity_log (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  lead_id uuid not null references public.leads(id) on delete cascade,
+  stage_from text,
+  stage_to text,
+  note text,
+  performed_by text
+);
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'leads_status_funnel_stage_check'
+      and conrelid = 'public.leads'::regclass
+  ) then
+    update public.leads
+      set status = 'new'
+      where status is null
+         or status not in ('new', 'contacted', 'qualified', 'estimate_started', 'proposal_sent', 'follow_up', 'won', 'lost', 'scheduled', 'completed');
+    alter table public.leads
+      add constraint leads_status_funnel_stage_check
+      check (status in ('new', 'contacted', 'qualified', 'estimate_started', 'proposal_sent', 'follow_up', 'won', 'lost', 'scheduled', 'completed'));
+  end if;
+end $$;
+
+create index if not exists idx_leads_next_follow_up_at on public.leads(next_follow_up_at);
+create index if not exists idx_leads_last_contacted_at on public.leads(last_contacted_at);
+create index if not exists idx_lead_activity_log_lead_id on public.lead_activity_log(lead_id);

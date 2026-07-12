@@ -354,15 +354,90 @@ tr:hover td {
 .text-muted { color: var(--text-muted); font-size: 13px; }
 .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
 
-/* Print styles (proposal) */
 @media print {
-  .sidebar, .no-print { display: none !important; }
-  .main-content { margin-left: 0 !important; padding: 0 !important; }
-  body { background: #fff !important; color: #000 !important; font-size: 13pt; }
-  .card { border: none !important; background: #fff !important; padding: 0 !important; }
-  .proposal-header { border-bottom: 2px solid #000; padding-bottom: 16px; margin-bottom: 24px; }
-  .result-box { border: 1px solid #ccc !important; }
-  .result-row { border-color: #ccc !important; }
-  .btn { display: none !important; }
-  a { color: inherit; text-decoration: none; }
+  :root {
+    --bg: #fff !important;
+    --surface: #fff !important;
+    --surface2: #fff !important;
+    --border: #000 !important;
+    --accent: #000 !important;
+    --text: #000 !important;
+    --text-muted: #000 !important;
+  }
+
+  .sidebar,
+  .page-header,
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  nav,
+  .nav-links,
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body {
+    font-size: 13pt;
+  }
+
+  .layout,
+  .main-content,
+  .card,
+  .result-box,
+  table,
+  tr,
+  td,
+  th {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .layout,
+  .proposal-header,
+  .proposal-grid,
+  .proposal-signature-grid,
+  .flex {
+    display: block !important;
+  }
+
+  .proposal-grid > *,
+  .proposal-signature-grid > * {
+    width: 100% !important;
+    margin-bottom: 20px !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    background: #fff !important;
+    border: none !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+  }
+
+  .proposal-header {
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 16px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .result-box,
+  .result-row {
+    border-color: #000 !important;
+    color: #000 !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
 }

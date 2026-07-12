@@ -12,6 +12,12 @@ import { supabase } from "@/lib/supabase";
 
 const FOAM_SERVICES: ServiceType[] = ["closed_cell_spray_foam", "open_cell_spray_foam", "spf_roofing"];
 
+type CustomerOption = {
+  id: string;
+  name: string;
+  isCreate?: boolean;
+};
+
 const defaultInput: EstimateInput = {
   serviceType: "closed_cell_spray_foam",
   squareFeet: 0,
@@ -48,6 +54,8 @@ export default function EstimatePage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [customerResults, setCustomerResults] = useState<CustomerOption[]>([]);
   const [projectName, setProjectName] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -69,6 +77,49 @@ export default function EstimatePage() {
     setSaveMsg("");
   }
 
+  async function searchCustomers(q: string) {
+    const trimmed = q.trim();
+    if (!trimmed) {
+      setCustomerResults([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("customers")
+      .select("id, first_name, last_name, company_name")
+      .or(`first_name.ilike.%${trimmed}%,last_name.ilike.%${trimmed}%,company_name.ilike.%${trimmed}%`)
+      .limit(5);
+
+    const matches = (data ?? []).map((customer: { id: string; first_name: string | null; last_name: string | null; company_name: string | null }) => ({
+      id: customer.id,
+      name: (customer.company_name ?? [customer.first_name, customer.last_name].filter(Boolean).join(" ")) || customer.id,
+    }));
+
+    setCustomerResults([
+      ...matches,
+      { id: "__create__", name: `Create new: ${trimmed}`, isCreate: true },
+    ]);
+  }
+
+  function handleCustomerInput(value: string) {
+    setCustomerName(value);
+    setCustomerId("");
+    setSaveMsg("");
+    void searchCustomers(value);
+  }
+
+  function selectCustomer(option: CustomerOption) {
+    if (option.isCreate) {
+      const rawName = option.name.replace(/^Create new:\s*/, "");
+      setCustomerName(rawName);
+      setCustomerId("");
+    } else {
+      setCustomerName(option.name);
+      setCustomerId(option.id);
+    }
+    setCustomerResults([]);
+  }
+
   async function handleSave() {
     if (!result) return;
     if (!customerName.trim()) {
@@ -79,27 +130,35 @@ export default function EstimatePage() {
     setSaving(true);
     setSaveMsg("");
 
-    const name = splitCustomerName(customerName);
-    const { data: custData, error: custErr } = await supabase
-      .from("customers")
-      .insert(name)
-      .select("id")
-      .single();
+    let selectedCustomerId = customerId;
 
-    if (custErr || !custData?.id) {
-      setSaving(false);
-      setSaveMsg("⚠ Customer save failed: " + (custErr?.message || "No customer ID returned."));
-      return;
+    if (!selectedCustomerId) {
+      const name = splitCustomerName(customerName);
+      const { data: custData, error: custErr } = await supabase
+        .from("customers")
+        .insert(name)
+        .select("id")
+        .single();
+
+      if (custErr || !custData?.id) {
+        setSaving(false);
+        setSaveMsg("⚠ Customer save failed: " + (custErr?.message || "No customer ID returned."));
+        return;
+      }
+
+      selectedCustomerId = custData.id;
+      setCustomerId(custData.id);
     }
 
-    const { error } = await supabase.from("estimates").insert({
-      customer_id: custData.id,
+    const { data: estimateData, error } = await supabase.from("estimates").insert({
+      customer_id: selectedCustomerId,
       status: "draft",
       service_type: input.serviceType,
       project_name: projectName.trim() || null,
       scope_summary: notes.trim() || null,
       square_feet: input.squareFeet,
       thickness_inches: input.thicknessInches ?? 0,
+      board_feet: result.boardFeet,
       unit_price: input.unitPrice,
       material_cost: input.materialCost ?? 0,
       labor_cost: input.laborCost ?? 0,
@@ -108,13 +167,31 @@ export default function EstimatePage() {
       markup_percent: input.markupPercent ?? 0,
       subtotal: result.baseRevenue + result.directCost,
       total: result.total,
-    });
+    }).select("id").single();
+
+    if (error) {
+      setSaving(false);
+      setSaveMsg("⚠ Estimate save failed: " + error.message);
+      return;
+    }
+
+    if (!estimateData?.id) {
+      setSaving(false);
+      setSaveMsg("⚠ Estimate saved, but no estimate ID was returned for number generation.");
+      return;
+    }
+
+    const estimateNumber = `EST-${Date.now()}`;
+    const { error: estimateNumberError } = await supabase
+      .from("estimates")
+      .update({ estimate_number: estimateNumber })
+      .eq("id", estimateData.id);
 
     setSaving(false);
-    if (error) {
-      setSaveMsg("⚠ Estimate save failed: " + error.message);
+    if (estimateNumberError) {
+      setSaveMsg("⚠ Estimate saved, but estimate number generation failed: " + estimateNumberError.message);
     } else {
-      setSaveMsg("✓ Klyfton saved this estimate as a draft. Owner review required before sending.");
+      setSaveMsg(`✓ Klyfton saved this estimate as draft ${estimateNumber}. Owner review required before sending.`);
     }
   }
 
@@ -122,6 +199,8 @@ export default function EstimatePage() {
     setResult(null);
     setInput(defaultInput);
     setCustomerName("");
+    setCustomerId("");
+    setCustomerResults([]);
     setProjectName("");
     setNotes("");
     setSaveMsg("");
@@ -149,14 +228,32 @@ export default function EstimatePage() {
       <div className="card">
         <h2>Job info</h2>
         <div className="form-grid">
-          <div className="field">
-            <label>Customer name</label>
+          <div className="field" style={{ position: "relative" }}>
+            <label>Search existing customer</label>
             <input
               type="text"
-              placeholder="John Smith"
+              placeholder="Search by customer or company name"
               value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+              onChange={(e) => handleCustomerInput(e.target.value)}
             />
+            {customerResults.length > 0 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, zIndex: 20, marginTop: 2 }}>
+                {customerResults.map((customer) => (
+                  <div
+                    key={`${customer.id}-${customer.name}`}
+                    onClick={() => selectCustomer(customer)}
+                    style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface2)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                  >
+                    {customer.name}
+                  </div>
+                ))}
+              </div>
+            )}
+            <span className="text-muted">
+              {customerId ? "Using existing customer record." : "No match? Keep typing and save to create a new customer."}
+            </span>
           </div>
           <div className="field">
             <label>Project name</label>

@@ -44,7 +44,7 @@ function ProposalText({ estimate, customer }: { estimate: EstimateDetail; custom
       </div>
 
       {/* Customer + project */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 28 }}>
+      <div className="proposal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 28 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginBottom: 6 }}>Prepared for</div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{customerName}</div>
@@ -124,7 +124,7 @@ function ProposalText({ estimate, customer }: { estimate: EstimateDetail; custom
       </div>
 
       {/* Signature block */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, marginTop: 40 }}>
+      <div className="proposal-signature-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, marginTop: 40 }}>
         <div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 40 }}>Customer signature</div>
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 13, color: "var(--text-muted)" }}>
@@ -148,6 +148,10 @@ export default function EstimateDetailPage() {
   const [estimate, setEstimate] = useState<EstimateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [portalLink, setPortalLink] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -162,6 +166,53 @@ export default function EstimateDetailPage() {
       setLoading(false);
     })();
   }, [id]);
+
+  async function ensurePortalLink() {
+    if (!estimate) return "";
+    if (portalLink) return portalLink;
+
+    setGenerating(true);
+    const { data: existing } = await supabase
+      .from("portal_tokens")
+      .select("token")
+      .eq("estimate_id", estimate.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    let token = existing?.token;
+    if (!token) {
+      const { data: created } = await supabase
+        .from("portal_tokens")
+        .insert({ estimate_id: estimate.id })
+        .select("token")
+        .single();
+      token = created?.token;
+    }
+
+    const link = token ? `${window.location.origin}/portal/${token}` : "";
+    if (link) setPortalLink(link);
+    setGenerating(false);
+    return link;
+  }
+
+  async function handleCopyLink() {
+    const link = await ensurePortalLink();
+    if (!link) return;
+    await navigator.clipboard.writeText(link).catch(() => {});
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function updateStatus(status: string) {
+    if (!estimate) return;
+    setUpdatingStatus(true);
+    const { error } = await supabase.from("estimates").update({ status }).eq("id", estimate.id);
+    setUpdatingStatus(false);
+    if (!error) {
+      setEstimate((prev) => prev ? { ...prev, status } : prev);
+    }
+  }
 
   if (loading) return <p className="text-muted" style={{ padding: 32 }}>Loading...</p>;
   if (notFound || !estimate) return (
@@ -181,10 +232,44 @@ export default function EstimateDetailPage() {
             <p>Proposal preview — printable</p>
           </div>
           <div className="flex gap-3">
-            <button className="btn btn-ghost" onClick={() => window.print()}>🖨 Print / PDF</button>
             <a href="/estimates" className="btn btn-ghost">← Back</a>
           </div>
         </div>
+      </div>
+
+      <div className="card no-print">
+        <div className="flex items-center justify-between" style={{ flexWrap: "wrap", gap: 12 }}>
+          <div className="flex items-center gap-3" style={{ flexWrap: "wrap" }}>
+            <label className="text-muted" htmlFor="estimate-status">Status</label>
+            <select
+              id="estimate-status"
+              value={estimate.status}
+              onChange={(e) => updateStatus(e.target.value)}
+              disabled={updatingStatus}
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, padding: "8px 10px", fontSize: 13 }}
+            >
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="approved">Approved</option>
+              <option value="signed">Signed</option>
+              <option value="declined">Declined</option>
+            </select>
+          </div>
+          <div className="flex gap-3" style={{ flexWrap: "wrap" }}>
+            <button className="btn btn-ghost" onClick={() => void ensurePortalLink()} disabled={generating}>
+              {generating ? "…" : "🔗 Share"}
+            </button>
+            <button className="btn btn-ghost" onClick={() => void handleCopyLink()} title={copied ? "Link copied" : "Copy proposal portal link"}>
+              {copied ? "✓ Copied!" : "📋 Copy link"}
+            </button>
+            <button className="btn btn-ghost" onClick={() => window.print()}>🖨 Print proposal</button>
+          </div>
+        </div>
+        {portalLink && (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {portalLink}
+          </div>
+        )}
       </div>
 
       <div className="card">

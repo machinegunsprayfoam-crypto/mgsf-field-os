@@ -7,10 +7,31 @@ import { AuthGuard } from "@/lib/auth/guard";
 
 const NAV_SECTIONS = [
   {
-    label: "Klyfton AI Estimator",
+    label: "Pipeline",
     links: [
-      { href: "/estimate", label: "+ New estimate" },
-      { href: "/estimates", label: "Estimate history" },
+      { href: "/leads", label: "Leads" },
+      { href: "/customers", label: "Customers" },
+    ],
+  },
+  {
+    label: "Operations",
+    links: [
+      { href: "/projects", label: "Projects" },
+      { href: "/schedule", label: "Schedule" },
+      { href: "/photos", label: "Photos" },
+      { href: "/inventory", label: "Inventory" },
+      { href: "/equipment", label: "Equipment" },
+    ],
+  },
+  {
+    label: "Business",
+    links: [
+      { href: "/estimate", label: "Estimates" },
+      { href: "/estimates", label: "Estimate History" },
+      { href: "/reports", label: "Reports" },
+      { href: "/marketing", label: "Marketing" },
+      { href: "/govcon", label: "Govcon" },
+      { href: "/safety", label: "Safety" },
     ],
   },
 ];

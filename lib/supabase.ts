@@ -75,6 +75,19 @@ export type Lead = {
   notes: string | null;
   status: string;
   converted_customer_id: string | null;
+  next_follow_up_at: string | null;
+  last_contacted_at: string | null;
+  converted_project_id: string | null;
+};
+
+export type LeadActivityEntry = {
+  id: string;
+  created_at: string;
+  lead_id: string;
+  stage_from: string | null;
+  stage_to: string | null;
+  note: string | null;
+  performed_by: string | null;
 };
 
 export type Project = {
@@ -92,6 +105,7 @@ export type Project = {
   crew_notes: string | null;
   internal_notes: string | null;
   google_drive_folder_id: string | null;
+  source_lead_id: string | null;
 };
 
 export type FieldPhoto = {
