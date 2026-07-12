@@ -514,6 +514,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('grow');renderGrow()" id="nav-grow">
         <div class="nav-icon">📣</div><div class="nav-label">GROW</div>
       </div>
+      <div class="nav-item" onclick="switchModule('ops');renderOps()" id="nav-ops">
+        <div class="nav-icon">🧰</div><div class="nav-label">OPS CENTER</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1171,6 +1174,7 @@ canvas.chart{width:100%;height:100%}
         <div class="mod-head"><h2>🌦️ Spray Weather</h2>
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div class="jsa-actions" style="margin-bottom:12px">
+          <select id="wx_job" class="admin-inp" style="max-width:240px" onchange="weatherJobPick()"><option value="">— Pick a job site —</option></select>
           <input id="wx_city" class="admin-inp" style="max-width:280px" placeholder="City, ST (e.g. Billings, MT)">
           <button class="btn btn-primary" onclick="weatherLookup()">Check</button>
           <button class="btn btn-ghost" onclick="weatherHere()">📍 Use my location</button>
@@ -1336,6 +1340,12 @@ canvas.chart{width:100%;height:100%}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div style="display:flex;gap:6px;margin-bottom:12px" id="grow_tabs"></div>
         <div id="grow_body"></div>
+      </div>
+      <div id="mod-ops" class="module">
+        <div class="mod-head"><h2>🧰 Ops Center</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap" id="ops_tabs"></div>
+        <div id="ops_body"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -5431,7 +5441,11 @@ function klyftonActionDesc(a){
     case 'draft_proposal': return `Draft a proposal for <b>${a.customer||'?'}</b>${a.price?(' · $'+Number(a.price).toLocaleString()):''}`;
     case 'material_order': return `Draft a material order${a.supplier?(' to <b>'+a.supplier+'</b>'):''}${a.job?(' for '+a.job):''}`;
     case 'add_followup': return `Flag <b>${a.name||'?'}</b> for follow-up${a.when?(' ('+a.when+')'):''}`;
-    default: return '';
+    case 'update_lead': return `Update lead <b>${a.name||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
+    case 'delete_lead': return `Delete lead <b>${a.name||'?'}</b>`;
+    case 'update_job': return `Update job <b>${a.customer||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
+    case 'delete_job': return `Delete job <b>${a.customer||'?'}</b>`;
+    default: return (window.opsActionDesc?window.opsActionDesc(a):'')||'';
   }
 }
 // Klyfton drafts outbound work into an editable, copy-ready box — never sends anything itself.
@@ -5510,6 +5524,47 @@ function doPendingKlyftonAction(){
       } else {
         notify('No matching lead — add them first, then flag follow-up','info');
       }
+    } else if(a.type==='update_lead'){
+      if(!appState.leads) appState.leads=[];
+      const nm=(a.name||'').toLowerCase();
+      const lead=appState.leads.find(l=>(l.name||'').toLowerCase()===nm) || appState.leads.find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+      if(lead){
+        if(a.status) lead.status=a.status;
+        if(a.value!=null && a.value!=='') lead.value=Number(a.value)||lead.value;
+        if(a.notes) lead.notes=(lead.notes?lead.notes+' · ':'')+a.notes;
+        save('leads'); if(window.renderPipeline) renderPipeline(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Updated '+lead.name+(a.status?(' → '+a.status):''),'success');
+      } else { notify('No matching lead to update','info'); }
+    } else if(a.type==='delete_lead'){
+      if(!appState.leads) appState.leads=[];
+      const nm=(a.name||'').toLowerCase();
+      const lead=appState.leads.find(l=>(l.name||'').toLowerCase()===nm) || appState.leads.find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+      if(lead){
+        appState.leads=appState.leads.filter(l=>l!==lead);
+        save('leads'); if(window.renderPipeline) renderPipeline(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Deleted lead '+lead.name,'success');
+      } else { notify('No matching lead to delete','info'); }
+    } else if(a.type==='update_job'){
+      if(!appState.jobs) appState.jobs=[];
+      const cn=(a.customer||'').toLowerCase();
+      const job=appState.jobs.find(j=>(j.customer||'').toLowerCase()===cn) || appState.jobs.find(j=>cn && (j.customer||'').toLowerCase().includes(cn));
+      if(job){
+        if(a.status) job.status=a.status;
+        if(a.value!=null && a.value!=='') job.value=Number(a.value)||job.value;
+        save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Updated job '+job.customer+(a.status?(' → '+a.status):''),'success');
+      } else { notify('No matching job to update','info'); }
+    } else if(a.type==='delete_job'){
+      if(!appState.jobs) appState.jobs=[];
+      const cn=(a.customer||'').toLowerCase();
+      const job=appState.jobs.find(j=>(j.customer||'').toLowerCase()===cn) || appState.jobs.find(j=>cn && (j.customer||'').toLowerCase().includes(cn));
+      if(job){
+        appState.jobs=appState.jobs.filter(j=>j!==job);
+        save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
+        notify('Deleted job '+job.customer,'success');
+      } else { notify('No matching job to delete','info'); }
+    } else if(window.opsHandleAction && window.opsHandleAction(a)){
+      /* handled by Ops Center (log_cost / log_contact / log_review / set_inventory / draft_sms …) */
     }
     addMessage('Done ✓','ai','');
   }catch(e){ notify('Could not complete that action','alert'); }
@@ -5524,6 +5579,19 @@ function gatherBizContext(){
       activeJobs: jobs.filter(j=>j.status!=='Completed'&&j.status!=='Cancelled').length,
       openLeads: leads.filter(l=>!['Won','Lost'].includes(l.status)).length
     };
+    // Live record read — actual leads/jobs so Klyfton answers "what leads do I have?" with real names,
+    // not just counts. Capped + trimmed to keep the prompt lean; newest first.
+    try{
+      const fmt$=n=>n?(' $'+Number(n).toLocaleString()):'';
+      ctx.leadRecords = leads.slice(-40).reverse().map(l=>({
+        name:l.name||'?', status:l.status||'New', service:l.service||l.building||'', state:l.state||'',
+        value:Number(l.value)||0, source:l.source||'', phone:l.phone||'', town:l.address||l.town||'', notes:(l.notes||'').slice(0,120)
+      }));
+      ctx.jobRecords = jobs.slice(-40).reverse().map(j=>({
+        customer:j.customer||j.name||'?', status:j.status||'Scheduled', service:j.service||'', state:j.state||'',
+        value:Number(j.value)||0, date:j.date||'', address:j.address||'', crew:j.crew||'', next:j.nextAction||''
+      }));
+    }catch(e){}
     const last=ests[ests.length-1];
     if(last){
       const tot=last.total||last.grandTotal||last.amount;
@@ -5544,6 +5612,8 @@ function gatherBizContext(){
         if(mats.length) ctx.materials=mats.slice(0,140);
       }
     }catch(e){}
+    // Ops Center intel — travel policy, state tax, low stock, reputation, margins.
+    try{ if(window.opsContext) Object.assign(ctx, window.opsContext()); }catch(e){}
     return ctx;
   }catch(e){ return {company:'Machine Gun Spray Foam & Concrete Lifting, LLC'}; }
 }
@@ -6077,7 +6147,24 @@ document.addEventListener('click',()=>{
   }
 
   /* ---------- WEATHER (live, Open-Meteo, no key) ---------- */
-  window.renderWeather = function(){ const o=$('wx_out'); if(o && !o.innerHTML) o.innerHTML='<p style="color:var(--t2);font-size:13px">Enter a city or use your location to pull live spray conditions.</p>'; };
+  window.renderWeather = function(){
+    const o=$('wx_out'); if(o && !o.innerHTML) o.innerHTML='<p style="color:var(--t2);font-size:13px">Pick a job site, enter a city, or use your location to pull live spray conditions.</p>';
+    // Populate the job-site picker from jobs/leads that have an address or town.
+    const sel=$('wx_job'); if(sel){
+      const seen=new Set(); let opts='<option value="">— Pick a job site —</option>';
+      (appState.jobs||[]).concat(appState.leads||[]).forEach(r=>{
+        const place=(r.address||r.town||r.city||'').trim(); const who=(r.customer||r.name||'').trim();
+        if(place && !seen.has(place.toLowerCase())){ seen.add(place.toLowerCase());
+          opts+=`<option value="${esc(place)}">${esc(who?who+' — ':'')}${esc(place)}</option>`; }
+      });
+      sel.innerHTML=opts;
+    }
+  };
+  window.weatherJobPick = function(){
+    const place=(($('wx_job')||{}).value||'').trim(); if(!place) return;
+    const ci=$('wx_city'); if(ci){ ci.value=place; }
+    if(window.weatherLookup) weatherLookup();
+  };
   function wxRender(place, c){
     const t=c.temperature_2m, h=c.relative_humidity_2m, df=c.dew_point_2m, w=c.wind_speed_10m, p=c.precipitation;
     const f=sprayFlag(t, df);
@@ -7315,6 +7402,894 @@ function mgUpdate(){
 (function(){
   try{ const v=localStorage.getItem('mg_radio_vol'); if(v!=null){ const el=document.getElementById('mgVol'); if(el) el.value=v; } }catch(e){}
   mgRenderStations();
+})();
+</script>
+
+<script>
+// ============================================================
+// KLYFTON — OPS CENTER  (additive module)
+// Job costing · Contact history · Reviews · Inventory/reorder
+// Travel + State tax/permit rules · tighter quotes
+// All data is on-device (localStorage) and syncs via /api/sync
+// once cloud storage is attached. Klyfton drafts; humans commit.
+// ============================================================
+(function(){
+  // ---- hydrate new collections onto appState ----
+  const NEW_COLS = ['jobcosts','contacts','reviews','inventory','training','warranties','equipment','incidents','complaints','suppliers','subs','setuse'];
+  NEW_COLS.forEach(c=>{
+    try{ appState[c] = JSON.parse(localStorage.getItem('klyfton_'+c)||'[]'); }
+    catch(e){ appState[c] = []; }
+  });
+
+  // ---- Travel policy (crew rolls from Glendive, MT) ----
+  MGSF.travel = { base:'Glendive, MT', perMile:0.70, freeRadius:30, driveMph:55 };
+
+  // Crew $/hr for drive-time labor (installer + helper)
+  function crewHourly(){ try{ return (MGSF.labor.installer||80)+(MGSF.labor.helper||48); }catch(e){ return 128; } }
+
+  // PURE: travel cost for a one-way distance (miles) from base.
+  // Inside the free radius = no charge. Otherwise round-trip miles * perMile
+  // plus round-trip drive time at crew rate.
+  window.calcTravel = function(oneWayMiles, opt){
+    opt = opt||{};
+    const miles = Math.max(0, Number(oneWayMiles)||0);
+    const per   = opt.perMile!=null?opt.perMile:MGSF.travel.perMile;
+    const free  = opt.freeRadius!=null?opt.freeRadius:MGSF.travel.freeRadius;
+    const mph   = opt.driveMph!=null?opt.driveMph:MGSF.travel.driveMph;
+    if(miles<=free) return {miles, roundTrip:miles*2, mileageCost:0, driveHours:0, driveLabor:0, total:0, note:'Within '+free+'-mi free radius'};
+    const rt = miles*2;
+    const mileageCost = rt*per;
+    const driveHours  = rt/mph;
+    const driveLabor  = driveHours*crewHourly();
+    return { miles, roundTrip:rt, mileageCost, driveHours, driveLabor, total:mileageCost+driveLabor,
+             note:rt+' mi round trip @ $'+per.toFixed(2)+'/mi + '+driveHours.toFixed(1)+' hr drive' };
+  };
+
+  // ---- State tax + permit rules (MT/ND/SD/WY) ----
+  // NOTE: rates are ESTIMATED base rates for planning — local option taxes vary
+  // and rules change. Verify with the local AHJ and your accountant before quoting.
+  window.STATE_RULES = {
+    MT: { name:'Montana',      materialTax:0.00, taxNote:'No statewide sales tax. (Verified.)' },
+    ND: { name:'North Dakota', materialTax:0.05, taxNote:'~5% state + local; contractor generally pays use tax on materials, not on labor. (Estimated — verify local.)' },
+    SD: { name:'South Dakota', materialTax:0.042,taxNote:'4.2% state + municipal; SD also has a 2% contractor excise tax on gross receipts. (Estimated — verify with accountant.)' },
+    WY: { name:'Wyoming',      materialTax:0.04, taxNote:'4% state + county option; materials taxable to the contractor. (Estimated — verify local.)' }
+  };
+  // Permit guidance by service (general — always confirm with the local building dept).
+  window.PERMIT_RULES = {
+    'spray foam':    'Insulation permit usually rolls into the building permit on new construction / remodels; retrofit often none. Confirm fire-barrier/thermal-barrier (ignition barrier) inspection.',
+    'insulation':    'Same as spray foam — typically part of the building permit; standalone retrofit often exempt.',
+    'roofing':       'SPF roofing commonly needs a roofing/building permit on commercial; re-roof rules vary. Confirm wind-uplift + coating spec.',
+    'coating':       'Roof coating alone is usually maintenance (no permit); confirm on commercial.',
+    'concrete lifting':'Polyjacking/slabjacking is typically NO permit (not structural alteration). Confirm if near utilities/ROW.',
+    'removal':       'Insulation removal itself usually no permit; disposal + containment rules apply.'
+  };
+  function svcKey(s){ s=(s||'').toLowerCase();
+    if(/roof/.test(s)) return 'roofing';
+    if(/coat/.test(s)) return 'coating';
+    if(/lift|level|jack|concrete/.test(s)) return 'concrete lifting';
+    if(/remov|tear|demo/.test(s)) return 'removal';
+    if(/foam|spf|spray/.test(s)) return 'spray foam';
+    if(/insul/.test(s)) return 'insulation';
+    return 'spray foam';
+  }
+  // PURE: state material tax + permit note for a job.
+  window.calcStateExtras = function(state, service, materialCost){
+    const st = STATE_RULES[(state||'MT').toUpperCase()] || STATE_RULES.MT;
+    const mat = Math.max(0, Number(materialCost)||0);
+    const tax = mat*st.materialTax;
+    const permit = PERMIT_RULES[svcKey(service)] || '';
+    return { state:st.name, materialTax:tax, taxRate:st.materialTax, taxNote:st.taxNote, permit };
+  };
+
+  // PURE: round a quote to clean field-friendly numbers.
+  window.roundQuote = function(n){
+    n = Number(n)||0; if(n<=0) return 0;
+    const step = n<2000?25 : n<10000?50 : n<50000?100 : 250;
+    return Math.round(n/step)*step;
+  };
+
+  // ---- helpers ----
+  const $ = id => document.getElementById(id);
+  function today(){ return new Date().toISOString().split('T')[0]; }
+  function money(n){ return '$'+(Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0}); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function saveCol(c){ try{ localStorage.setItem('klyfton_'+c, JSON.stringify(appState[c]||[])); }catch(e){}
+    try{ if(window.syncPush) syncPush(c); }catch(e){} }
+  function toast(m){ try{ notify(m,'success'); }catch(e){} }
+
+  // ============================================================
+  // OPS CENTER UI  (tabs)
+  // ============================================================
+  let opsTab = 'costing';
+  const OPS_TABS = [
+    {k:'costing',  label:'📊 Job Costing'},
+    {k:'capacity', label:'📈 Capacity'},
+    {k:'contacts', label:'📇 Contact Log'},
+    {k:'reviews',  label:'⭐ Reviews'},
+    {k:'inventory',label:'📦 Inventory'},
+    {k:'warranty', label:'🛡️ Warranty'},
+    {k:'training', label:'🦺 Safety/Training'},
+    {k:'equipment',label:'🔧 Equipment'},
+    {k:'compliance',label:'🛡️ Compliance'},
+    {k:'suppliers',label:'🚚 Suppliers & Subs'},
+    {k:'financing',label:'💳 Financing'},
+    {k:'rules',    label:'🧾 Travel · Tax · Permits'}
+  ];
+  window.renderOps = function(tab){
+    if(tab) opsTab = tab;
+    const tb = $('ops_tabs'); if(!tb) return;
+    tb.innerHTML = OPS_TABS.map(t=>`<button class="btn ${t.k===opsTab?'btn-primary':'btn-ghost'}" style="font-size:12px;padding:6px 12px" onclick="renderOps('${t.k}')">${t.label}</button>`).join('');
+    const body = $('ops_body'); if(!body) return;
+    if(opsTab==='costing')   body.innerHTML = opsCostingHTML();
+    else if(opsTab==='capacity') body.innerHTML = opsCapacityHTML();
+    else if(opsTab==='contacts') body.innerHTML = opsContactsHTML();
+    else if(opsTab==='reviews')  body.innerHTML = opsReviewsHTML();
+    else if(opsTab==='inventory')body.innerHTML = opsInventoryHTML();
+    else if(opsTab==='warranty') body.innerHTML = opsWarrantyHTML();
+    else if(opsTab==='training') body.innerHTML = opsTrainingHTML();
+    else if(opsTab==='equipment')body.innerHTML = opsEquipmentHTML();
+    else if(opsTab==='compliance')body.innerHTML = opsComplianceHTML();
+    else if(opsTab==='suppliers')body.innerHTML = opsSuppliersHTML();
+    else if(opsTab==='financing')body.innerHTML = opsFinancingHTML();
+    else if(opsTab==='rules')    body.innerHTML = opsRulesHTML();
+  };
+
+  // ---------- JOB COSTING ----------
+  function costMargin(c){
+    const cost=(Number(c.material)||0)+(Number(c.labor)||0)+(Number(c.equipment)||0)+(Number(c.other)||0);
+    const rev=Number(c.revenue)||0;
+    const profit=rev-cost;
+    const mpct=rev>0?(profit/rev*100):0;
+    return {cost,rev,profit,mpct};
+  }
+  function opsCostingHTML(){
+    const rows=(appState.jobcosts||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    let totRev=0,totProfit=0;
+    rows.forEach(c=>{const m=costMargin(c);totRev+=m.rev;totProfit+=m.profit;});
+    const avg = totRev>0?(totProfit/totRev*100):0;
+    const list = rows.length? rows.map(c=>{
+      const m=costMargin(c);
+      const col = m.mpct>=40?'var(--gr)':m.mpct>=25?'var(--yw,#eab308)':'var(--or)';
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:4px">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <b>${esc(c.jobName||'Job')}</b><span style="color:var(--t2)">${esc(c.date||'')}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--t2)">
+          <span>Rev ${money(m.rev)} · Cost ${money(m.cost)}</span>
+          <span style="color:${col};font-weight:700">${money(m.profit)} · ${m.mpct.toFixed(0)}%</span></div>
+        <div style="font-size:11px;color:var(--t3)">mat ${money(c.material)} · lab ${money(c.labor)} · equip ${money(c.equipment)} · other ${money(c.other)}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelCost(${c.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No job costs logged yet. Log actuals after a job to track real margin vs. your estimate.</div>';
+    const jobOpts=(appState.jobs||[]).map(j=>`<option value="${esc(j.customer||j.name||'')}">${esc(j.customer||j.name||'')}</option>`).join('');
+    return `
+    <div class="metric-row" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--gr)">${money(totProfit)}</div><div class="job-sum-lbl">TOTAL PROFIT</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${avg.toFixed(0)}%</div><div class="job-sum-lbl">AVG MARGIN</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${rows.length}</div><div class="job-sum-lbl">JOBS COSTED</div></div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG JOB COST</div>
+      <div class="form-group"><label class="form-label">Job / customer</label>
+        <input class="inp" id="oc_job" list="oc_jobs" placeholder="Customer or job name"><datalist id="oc_jobs">${jobOpts}</datalist></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Revenue $</label><input class="inp" id="oc_rev" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Material $</label><input class="inp" id="oc_mat" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Labor $</label><input class="inp" id="oc_lab" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Equipment $</label><input class="inp" id="oc_eq" type="number" inputmode="decimal"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Other $</label><input class="inp" id="oc_oth" type="number" inputmode="decimal"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddCost()">SAVE COST RECORD</button>
+    </div>
+    <div class="card"><div class="card-title">COSTING HISTORY</div>${list}</div>`;
+  }
+  window.opsAddCost = function(){
+    const name=($('oc_job')||{}).value||''; if(!name.trim()) return toast('Enter a job/customer');
+    const rec={ id:Date.now(), jobName:name.trim(), date:today(),
+      revenue:+($('oc_rev')||{}).value||0, material:+($('oc_mat')||{}).value||0,
+      labor:+($('oc_lab')||{}).value||0, equipment:+($('oc_eq')||{}).value||0, other:+($('oc_oth')||{}).value||0 };
+    appState.jobcosts=appState.jobcosts||[]; appState.jobcosts.push(rec); saveCol('jobcosts');
+    toast('Cost logged'); renderOps('costing');
+  };
+  window.opsDelCost = function(id){ appState.jobcosts=(appState.jobcosts||[]).filter(c=>c.id!==id); saveCol('jobcosts'); renderOps('costing'); };
+
+  // ---------- CONTACT LOG ----------
+  function opsContactsHTML(){
+    const rows=(appState.contacts||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const ICON={call:'📞',text:'💬',email:'📧',visit:'🚚',note:'📝'};
+    const list = rows.length? rows.map(c=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${ICON[c.type]||'📝'} ${esc(c.name||'')}</b><span style="color:var(--t2)">${esc(c.date||'')}</span></div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.note||'')}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelContact(${c.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No contact history yet. Every call, text, and visit logged here builds the customer timeline.</div>';
+    const nameOpts=[...new Set((appState.leads||[]).map(l=>l.name).concat((appState.jobs||[]).map(j=>j.customer)).filter(Boolean))]
+      .map(n=>`<option value="${esc(n)}">`).join('');
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG A TOUCH</div>
+      <div class="form-group"><label class="form-label">Customer / lead</label>
+        <input class="inp" id="ct_name" list="ct_names" placeholder="Name"><datalist id="ct_names">${nameOpts}</datalist></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Type</label>
+          <select class="inp" id="ct_type"><option value="call">📞 Call</option><option value="text">💬 Text</option><option value="email">📧 Email</option><option value="visit">🚚 Site visit</option><option value="note">📝 Note</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">What happened</label><textarea class="inp" id="ct_note" style="height:60px" placeholder="Left VM, quoted $X, wants callback Tue..."></textarea></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddContact()">LOG IT</button>
+    </div>
+    <div class="card"><div class="card-title">CONTACT HISTORY</div>${list}</div>`;
+  }
+  window.opsAddContact = function(){
+    const name=($('ct_name')||{}).value||''; if(!name.trim()) return toast('Enter a name');
+    const rec={ id:Date.now(), name:name.trim(), type:($('ct_type')||{}).value||'note',
+      note:($('ct_note')||{}).value||'', date:today() };
+    appState.contacts=appState.contacts||[]; appState.contacts.push(rec); saveCol('contacts');
+    toast('Contact logged'); renderOps('contacts');
+  };
+  window.opsDelContact = function(id){ appState.contacts=(appState.contacts||[]).filter(c=>c.id!==id); saveCol('contacts'); renderOps('contacts'); };
+  // Public: contact timeline for one customer (used by CRM lead detail)
+  window.opsContactsFor = function(name){
+    const nm=(name||'').toLowerCase();
+    return (appState.contacts||[]).filter(c=>(c.name||'').toLowerCase()===nm).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  };
+
+  // ---------- REVIEWS / REPUTATION ----------
+  function opsReviewsHTML(){
+    const rows=(appState.reviews||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const got=rows.filter(r=>Number(r.stars)>0);
+    const avg=got.length? (got.reduce((s,r)=>s+Number(r.stars),0)/got.length):0;
+    const requested=rows.filter(r=>r.requested&&!(Number(r.stars)>0)).length;
+    const stars=n=>'★★★★★☆☆☆☆☆'.slice(5-Math.round(n),10-Math.round(n));
+    const list = rows.length? rows.map(r=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(r.customer||'')}</b>
+          <span style="color:var(--or)">${Number(r.stars)>0?stars(r.stars):'<span style="color:var(--t2)">requested</span>'}</span></div>
+        <div style="font-size:12px;color:var(--t2)">${esc(r.platform||'Google')}${r.note?' · '+esc(r.note):''} <span style="color:var(--t3)">${esc(r.date||'')}</span>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelReview(${r.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No reviews tracked yet. Log every review request and result to watch your reputation grow.</div>';
+    const link=(typeof MGSF!=='undefined'&&MGSF.reviewLink)||'';
+    return `
+    <div class="metric-row" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--or)">${avg?avg.toFixed(1):'—'}★</div><div class="job-sum-lbl">AVG RATING</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${got.length}</div><div class="job-sum-lbl">REVIEWS</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--cy)">${requested}</div><div class="job-sum-lbl">REQUESTED / OPEN</div></div>
+    </div>
+    ${link?`<div class="card" style="margin-bottom:12px"><div class="card-title">ASK FOR A REVIEW</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Text or email this Google review link right after a happy job:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input class="inp" style="flex:1;min-width:180px" value="${esc(link)}" readonly onclick="this.select()">
+        <button class="btn btn-cyan" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(link)}');notify('Review link copied','success')">COPY</button>
+      </div></div>`:''}
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG REVIEW / REQUEST</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Customer</label><input class="inp" id="rv_cust"></div>
+        <div class="form-group" style="flex:1;min-width:100px"><label class="form-label">Stars (0=requested)</label><input class="inp" id="rv_stars" type="number" min="0" max="5" step="1" value="0"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Platform</label>
+          <select class="inp" id="rv_plat"><option>Google</option><option>Facebook</option><option>Yelp</option><option>BBB</option><option>Word of mouth</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Note</label><input class="inp" id="rv_note" placeholder="Quote from the review, or follow-up plan"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddReview()">SAVE</button>
+    </div>
+    <div class="card"><div class="card-title">REPUTATION LOG</div>${list}</div>`;
+  }
+  window.opsAddReview = function(){
+    const cust=($('rv_cust')||{}).value||''; if(!cust.trim()) return toast('Enter a customer');
+    const stars=+($('rv_stars')||{}).value||0;
+    const rec={ id:Date.now(), customer:cust.trim(), stars, platform:($('rv_plat')||{}).value||'Google',
+      note:($('rv_note')||{}).value||'', requested:stars===0, date:today() };
+    appState.reviews=appState.reviews||[]; appState.reviews.push(rec); saveCol('reviews');
+    toast('Review logged'); renderOps('reviews');
+  };
+  window.opsDelReview = function(id){ appState.reviews=(appState.reviews||[]).filter(r=>r.id!==id); saveCol('reviews'); renderOps('reviews'); };
+
+  // ---------- INVENTORY / REORDER ----------
+  function opsInventoryHTML(){
+    const rows=(appState.inventory||[]).slice().sort((a,b)=>{
+      const la=Number(a.qty)<=Number(a.reorderAt), lb=Number(b.qty)<=Number(b.reorderAt);
+      return (lb-la)||String(a.item||'').localeCompare(String(b.item||''));
+    });
+    const low=rows.filter(i=>Number(i.qty)<=Number(i.reorderAt));
+    const list = rows.length? rows.map(i=>{
+      const isLow=Number(i.qty)<=Number(i.reorderAt);
+      return `<div class="log-row" style="align-items:center;gap:8px;${isLow?'border-color:var(--or)':''}">
+        <div style="flex:1">
+          <b>${esc(i.item||'')}</b> ${isLow?'<span style="color:var(--or);font-size:10px;font-weight:700">⚠ REORDER</span>':''}
+          <div style="font-size:11px;color:var(--t2)">${esc(i.supplier||'')}${i.supplier?' · ':''}reorder at ${i.reorderAt||0} ${esc(i.unit||'')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <button class="btn btn-ghost" style="padding:2px 8px" onclick="opsAdjInv(${i.id},-1)">−</button>
+          <b style="min-width:34px;text-align:center;color:${isLow?'var(--or)':'var(--tx)'}">${i.qty||0}</b>
+          <button class="btn btn-ghost" style="padding:2px 8px" onclick="opsAdjInv(${i.id},1)">+</button>
+          <span style="font-size:11px;color:var(--t2);min-width:34px">${esc(i.unit||'')}</span>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="opsDelInv(${i.id})">🗑</button>
+        </div></div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No inventory tracked yet. Add your sets, coatings, and consumables to get reorder alerts.</div>';
+    return `
+    ${low.length?`<div class="card" style="margin-bottom:12px;border-color:var(--or)"><div class="card-title" style="color:var(--or)">⚠ ${low.length} ITEM${low.length>1?'S':''} AT/BELOW REORDER</div>
+      <div style="font-size:12px;color:var(--tx)">${low.map(i=>esc(i.item)+' ('+i.qty+' '+esc(i.unit||'')+')').join(' · ')}</div>
+      <button class="btn btn-cyan" style="margin-top:8px" onclick="opsDraftReorder()">📋 Draft reorder list</button></div>`:''}
+    <div class="card" style="margin-bottom:12px"><div class="card-title">ADD / STOCK ITEM</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Item</label><input class="inp" id="iv_item" placeholder="ProFoam ProSeal 2.0# CC"></div>
+        <div class="form-group" style="flex:1;min-width:80px"><label class="form-label">Qty</label><input class="inp" id="iv_qty" type="number" value="0"></div>
+        <div class="form-group" style="flex:1;min-width:80px"><label class="form-label">Unit</label><input class="inp" id="iv_unit" placeholder="sets"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Reorder at</label><input class="inp" id="iv_re" type="number" value="1"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Supplier</label><input class="inp" id="iv_sup" placeholder="ProFoam / IDI"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddInv()">ADD ITEM</button>
+    </div>
+    <div class="card"><div class="card-title">STOCK ON HAND</div>${list}</div>`;
+  }
+  window.opsAddInv = function(){
+    const item=($('iv_item')||{}).value||''; if(!item.trim()) return toast('Enter an item');
+    const rec={ id:Date.now(), item:item.trim(), qty:+($('iv_qty')||{}).value||0, unit:($('iv_unit')||{}).value||'',
+      reorderAt:+($('iv_re')||{}).value||0, supplier:($('iv_sup')||{}).value||'' };
+    appState.inventory=appState.inventory||[]; appState.inventory.push(rec); saveCol('inventory');
+    toast('Item added'); renderOps('inventory');
+  };
+  window.opsAdjInv = function(id,d){ const i=(appState.inventory||[]).find(x=>x.id===id); if(!i) return;
+    i.qty=Math.max(0,(Number(i.qty)||0)+d); saveCol('inventory');
+    if(Number(i.qty)<=Number(i.reorderAt)) toast('⚠ '+i.item+' hit reorder point'); renderOps('inventory'); };
+  window.opsDelInv = function(id){ appState.inventory=(appState.inventory||[]).filter(i=>i.id!==id); saveCol('inventory'); renderOps('inventory'); };
+  window.opsDraftReorder = function(){
+    const low=(appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt));
+    if(!low.length) return toast('Nothing to reorder');
+    const bySup={}; low.forEach(i=>{ (bySup[i.supplier||'(supplier?)']=bySup[i.supplier||'(supplier?)']||[]).push(i); });
+    let txt='REORDER LIST — '+today()+'\n\n';
+    Object.keys(bySup).forEach(s=>{ txt+=s+':\n'; bySup[s].forEach(i=>{ txt+='  • '+i.item+' — on hand '+i.qty+' '+(i.unit||'')+' (reorder at '+i.reorderAt+')\n'; }); txt+='\n'; });
+    try{ if(window.showKlyftonDraft) return showKlyftonDraft('REORDER LIST — draft', txt, null); }catch(e){}
+    alert(txt);
+  };
+
+  // ---------- RULES REFERENCE (travel · tax · permits) ----------
+  function opsRulesHTML(){
+    const t=MGSF.travel;
+    const stateRows=Object.keys(STATE_RULES).map(k=>{const s=STATE_RULES[k];
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <b>${esc(s.name)} (${k}) — materials ${(s.materialTax*100).toFixed(1)}%</b>
+        <span style="font-size:11px;color:var(--t2)">${esc(s.taxNote)}</span></div>`;}).join('');
+    const permRows=Object.keys(PERMIT_RULES).map(k=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <b style="text-transform:capitalize">${esc(k)}</b><span style="font-size:11px;color:var(--t2)">${esc(PERMIT_RULES[k])}</span></div>`).join('');
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🚚 TRAVEL CALCULATOR (from ${esc(t.base)})</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">One-way miles</label><input class="inp" id="tv_mi" type="number" inputmode="decimal" oninput="opsCalcTravel()"></div>
+        <div style="flex:2;min-width:160px;font-size:12px;color:var(--t2)" id="tv_out">Enter miles — first ${t.freeRadius} mi are free; beyond that it's round-trip $${t.perMile.toFixed(2)}/mi + crew drive time.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">STATE MATERIAL TAX</div>${stateRows}
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Rates are estimates for planning — local option taxes vary. Verify with your accountant before quoting.</div></div>
+    <div class="card"><div class="card-title">PERMIT GUIDANCE BY JOB TYPE</div>${permRows}
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">General guidance — always confirm with the local building department (AHJ).</div></div>`;
+  }
+  window.opsCalcTravel = function(){
+    const mi=+($('tv_mi')||{}).value||0; const r=calcTravel(mi); const o=$('tv_out'); if(!o) return;
+    if(r.total<=0){ o.innerHTML='<span style="color:var(--gr)">'+r.note+' — no travel charge.</span>'; return; }
+    o.innerHTML=`<b style="color:var(--or)">Add ${money(r.total)}</b> — ${money(r.mileageCost)} mileage + ${money(r.driveLabor)} drive labor (${r.driveHours.toFixed(1)} hr). <span style="color:var(--t3)">${r.note}</span>`;
+  };
+
+  // ---- Customer financing (Hearth) — real partner links + banners from Clifton ----
+  MGSF.finance = { provider:'Hearth',
+    link:'https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton/apply',
+    partnerLink:'https://app.gethearth.com/partners/machine-gun-spray-foam-and-concrete-lifting/clifton',
+    bannerWide:'https://hearth.imgix.net/contractor-v2/banners/home_improvement-v2/700x110_blue.png?dpr=2&auto=compress,format',
+    bannerSquare:'https://hearth.imgix.net/contractor-v2/banners/home_improvement-v2/310x310_blue.png?dpr=2&auto=compress,format',
+    blurb:'Get instant, no-obligation financing options — check your rate in seconds with no impact to your credit score.' };
+  window.financeText = function(){
+    const f=MGSF.finance; return f.blurb+'\n\nApply / check your rate: '+f.link;
+  };
+  // Reusable Hearth banner (responsive, opens the apply link in a new tab)
+  window.financeBanner = function(kind){
+    const f=MGSF.finance; const img=kind==='square'?f.bannerSquare:f.bannerWide;
+    return `<a href="${f.link}" target="_blank" rel="noopener" style="display:block;text-align:center">
+      <img src="${img}" alt="Financing available through Hearth — check your rate" style="max-width:100%;height:auto;border-radius:8px"></a>`;
+  };
+  function opsFinancingHTML(){
+    const f=MGSF.finance;
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">💳 CUSTOMER FINANCING — ${esc(f.provider)}</div>
+      ${financeBanner('wide')}
+      <div style="font-size:12px;color:var(--t2);margin:10px 0">${esc(f.blurb)} Offer it on every proposal — financed customers say yes to bigger scopes.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <a class="btn btn-primary" href="${f.link}" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center">Open apply page ↗</a>
+        <button class="btn btn-cyan" style="flex:1;min-width:150px" onclick="navigator.clipboard&&navigator.clipboard.writeText('${f.link}');notify('Financing link copied','success')">Copy link</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <a class="btn btn-ghost" style="flex:1;min-width:150px;text-align:center" href="sms:?&body=${encodeURIComponent(window.financeText())}">Text it to a customer</a>
+        <a class="btn btn-ghost" style="flex:1;min-width:150px;text-align:center" href="mailto:?subject=${encodeURIComponent('Financing for your spray foam project')}&body=${encodeURIComponent(window.financeText())}">Email it</a>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">WHERE IT SHOWS UP</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.6">• This banner is embedded on your public proposals.<br>• Klyfton can text or email the apply link on request ("send the Hearth link to Dave").<br>• Paste the apply link into any quote or invoice.</div>
+    </div>`;
+  }
+
+  // ---- Ops config (capacity planning knobs) ----
+  function opsCfg(){ try{ return Object.assign({crewSize:2,daysPerWeek:5,setsPerDay:2,avgJobSets:3},JSON.parse(localStorage.getItem('klyfton_ops_cfg')||'{}')); }catch(e){ return {crewSize:2,daysPerWeek:5,setsPerDay:2,avgJobSets:3}; } }
+  window.opsSaveCfg = function(){
+    const c={ crewSize:+($('cap_crew')||{}).value||2, daysPerWeek:+($('cap_days')||{}).value||5,
+      setsPerDay:+($('cap_spd')||{}).value||2, avgJobSets:+($('cap_avg')||{}).value||3 };
+    try{ localStorage.setItem('klyfton_ops_cfg', JSON.stringify(c)); }catch(e){}
+    toast('Capacity settings saved'); renderOps('capacity');
+  };
+  function daysUntil(d){ if(!d) return null; const ms=new Date(d+'T00:00:00')-new Date(today()+'T00:00:00'); return Math.round(ms/86400000); }
+
+  // ---------- CAPACITY (crew vs demand) + LEAD SOURCE ----------
+  function opsCapacityHTML(){
+    const c=opsCfg();
+    const weeklySets=c.crewSize/2 * c.setsPerDay * c.daysPerWeek; // 2-person crew baseline
+    const leads=(appState.leads||[]).filter(l=>!['Won','Lost'].includes(l.status));
+    const jobs=(appState.jobs||[]).filter(j=>j.status!=='Paid'&&j.status!=='Cancelled'&&j.status!=='Completed');
+    const demandSets=(leads.length+jobs.length)*c.avgJobSets;
+    const weeksBacklog=weeklySets>0?(demandSets/weeklySets):0;
+    const util=weeklySets>0?Math.min(200,Math.round(demandSets/ (weeklySets*2) *100)):0; // vs ~2 weeks capacity
+    const m=(new Date(today())).getMonth(); // 0=Jan
+    const season=[0.9,0.9,1.0,1.05,1.1,1.05,1.0,1.0,1.1,1.2,1.25,1.1][m]; // foam busier in fall/early winter
+    const seasonLbl=season>=1.15?'PEAK':season>=1.0?'Steady':'Slower';
+    // lead source rollup
+    const src={}; (appState.leads||[]).forEach(l=>{ const s=l.source||'Unknown'; src[s]=(src[s]||0)+1; });
+    const won={}; (appState.leads||[]).forEach(l=>{ if(l.status==='Won'){ const s=l.source||'Unknown'; won[s]=(won[s]||0)+1; } });
+    const srcRows=Object.keys(src).sort((a,b)=>src[b]-src[a]).map(s=>{
+      const rate=src[s]>0?Math.round((won[s]||0)/src[s]*100):0;
+      return `<div class="log-row"><span>${esc(s)}</span><span style="color:var(--t2)">${src[s]} lead${src[s]>1?'s':''} · ${won[s]||0} won (${rate}%)</span></div>`;
+    }).join('')||'<div style="color:var(--t2);font-size:13px;padding:8px">No leads yet — sources will roll up here.</div>';
+    const barCol=util>=100?'var(--or)':util>=70?'var(--yw,#eab308)':'var(--gr)';
+    return `
+    <div class="metric-row" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="job-sum-chip"><div class="job-sum-val">${weeklySets.toFixed(1)}</div><div class="job-sum-lbl">SETS/WK CAPACITY</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:${barCol}">${weeksBacklog.toFixed(1)}</div><div class="job-sum-lbl">WEEKS OF BACKLOG</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--cy)">${leads.length}</div><div class="job-sum-lbl">OPEN LEADS</div></div>
+      <div class="job-sum-chip"><div class="job-sum-val">${seasonLbl}</div><div class="job-sum-lbl">SEASON (${Math.round(season*100)}%)</div></div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">CREW CAPACITY vs LEAD VOLUME</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">Demand: <b style="color:var(--tx)">${demandSets} sets</b> across ${leads.length} leads + ${jobs.length} active jobs · Capacity: <b style="color:var(--tx)">${weeklySets.toFixed(1)} sets/wk</b></div>
+      <div class="progress-bar" style="height:10px"><div style="height:100%;width:${Math.min(100,util)}%;background:${barCol}"></div></div>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px">${util>=100?'⚠ Booked out — prioritize high-margin jobs or add a crew day.':util>=70?'Filling up — keep leads flowing.':'Capacity open — push marketing to fill the board.'}</div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">CAPACITY SETTINGS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Crew size</label><input class="inp" id="cap_crew" type="number" value="${c.crewSize}"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Days/week</label><input class="inp" id="cap_days" type="number" value="${c.daysPerWeek}"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Sets/day (2-man)</label><input class="inp" id="cap_spd" type="number" step="0.5" value="${c.setsPerDay}"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Avg sets/job</label><input class="inp" id="cap_avg" type="number" step="0.5" value="${c.avgJobSets}"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsSaveCfg()">SAVE</button>
+    </div>
+    <div class="card"><div class="card-title">LEAD SOURCE TRACKING (close rate)</div>${srcRows}</div>`;
+  }
+
+  // ---------- WARRANTY ----------
+  function opsWarrantyHTML(){
+    const rows=(appState.warranties||[]).map(w=>{
+      const exp=w.start&&w.termYears? (function(){const d=new Date(w.start+'T00:00:00'); d.setFullYear(d.getFullYear()+Number(w.termYears)); return d.toISOString().split('T')[0];})() : '';
+      return Object.assign({},w,{expires:exp});
+    }).sort((a,b)=>(a.expires||'').localeCompare(b.expires||''));
+    const list = rows.length? rows.map(w=>{
+      const du=daysUntil(w.expires); const active=du==null||du>=0;
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px;${!active?'opacity:.6':''}">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(w.customer||'')}</b>
+          <span style="color:${active?'var(--gr)':'var(--or)'}">${active?'ACTIVE':'EXPIRED'}</span></div>
+        <div style="font-size:12px;color:var(--t2)">${esc(w.wtype||'Workmanship')} · ${w.termYears||'?'} yr · start ${esc(w.start||'?')}${w.expires?' → exp '+w.expires:''}</div>
+        ${w.job||w.notes?`<div style="font-size:11px;color:var(--t3)">${esc(w.job||'')}${w.job&&w.notes?' · ':''}${esc(w.notes||'')}</div>`:''}
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;align-self:flex-end" onclick="opsDelWarr(${w.id})">🗑</button>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No warranties tracked yet. Log every job&#39;s warranty so you and the customer know exactly what&#39;s covered and until when.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG WARRANTY</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Customer</label><input class="inp" id="wr_cust"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Job (optional)</label><input class="inp" id="wr_job"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Type</label>
+          <select class="inp" id="wr_type"><option>Workmanship</option><option>Material (mfr)</option><option>Roof system</option><option>Concrete lifting</option><option>Air-seal performance</option></select></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Term (yrs)</label><input class="inp" id="wr_term" type="number" value="5"></div>
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Start date</label><input class="inp" id="wr_start" type="date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes / coverage</label><input class="inp" id="wr_notes" placeholder="What's covered, exclusions"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddWarr()">SAVE WARRANTY</button>
+    </div>
+    <div class="card"><div class="card-title">WARRANTY REGISTER</div>${list}</div>`;
+  }
+  window.opsAddWarr = function(){
+    const cust=($('wr_cust')||{}).value||''; if(!cust.trim()) return toast('Enter a customer');
+    const rec={ id:Date.now(), customer:cust.trim(), job:($('wr_job')||{}).value||'', wtype:($('wr_type')||{}).value||'Workmanship',
+      termYears:+($('wr_term')||{}).value||5, start:($('wr_start')||{}).value||today(), notes:($('wr_notes')||{}).value||'' };
+    appState.warranties=appState.warranties||[]; appState.warranties.push(rec); saveCol('warranties');
+    toast('Warranty logged'); renderOps('warranty');
+  };
+  window.opsDelWarr = function(id){ appState.warranties=(appState.warranties||[]).filter(w=>w.id!==id); saveCol('warranties'); renderOps('warranty'); };
+
+  // ---------- SAFETY / TRAINING ----------
+  function opsTrainingHTML(){
+    const rows=(appState.training||[]).slice().sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
+    const list = rows.length? rows.map(t=>{
+      const du=daysUntil(t.expires);
+      const stat = t.expires? (du<0?['EXPIRED','var(--or)']:du<=60?['DUE '+du+'d','var(--yw,#eab308)']:['CURRENT','var(--gr)']) : ['LOGGED','var(--t2)'];
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(t.name||'')} — ${esc(t.topic||'')}</b><span style="color:${stat[1]}">${stat[0]}</span></div>
+        <div style="font-size:11px;color:var(--t3)">completed ${esc(t.date||'')}${t.expires?' · expires '+esc(t.expires):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelTrain(${t.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No training logged yet. Track OSHA 10/30, respirator fit, SPF chemical (isocyanate) safety, ladder/fall, first-aid/CPR — with expiry so nothing lapses.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG TRAINING / CERT</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Crew member</label><input class="inp" id="tr_name" placeholder="Daniel Ford"></div>
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Training / cert</label>
+          <input class="inp" id="tr_topic" list="tr_topics" placeholder="Respirator fit test">
+          <datalist id="tr_topics"><option>OSHA 10</option><option>OSHA 30</option><option>Respirator fit test</option><option>SPF chemical / isocyanate safety</option><option>Fall protection</option><option>Ladder safety</option><option>First aid / CPR</option><option>Confined space</option><option>Silica awareness</option></datalist></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Completed</label><input class="inp" id="tr_date" type="date"></div>
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Expires (if any)</label><input class="inp" id="tr_exp" type="date"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddTrain()">LOG TRAINING</button>
+    </div>
+    <div class="card"><div class="card-title">TRAINING RECORDS</div>${list}</div>`;
+  }
+  window.opsAddTrain = function(){
+    const name=($('tr_name')||{}).value||''; const topic=($('tr_topic')||{}).value||'';
+    if(!name.trim()||!topic.trim()) return toast('Enter crew member + training');
+    const rec={ id:Date.now(), name:name.trim(), topic:topic.trim(), date:($('tr_date')||{}).value||today(), expires:($('tr_exp')||{}).value||'' };
+    appState.training=appState.training||[]; appState.training.push(rec); saveCol('training');
+    toast('Training logged'); renderOps('training');
+  };
+  window.opsDelTrain = function(id){ appState.training=(appState.training||[]).filter(t=>t.id!==id); saveCol('training'); renderOps('training'); };
+
+  // ---------- EQUIPMENT MAINTENANCE ----------
+  function opsEquipmentHTML(){
+    const rows=(appState.equipment||[]).slice().sort((a,b)=>(a.nextDue||'9999').localeCompare(b.nextDue||'9999'));
+    const list = rows.length? rows.map(e=>{
+      const du=daysUntil(e.nextDue);
+      const stat = e.nextDue? (du<0?['OVERDUE','var(--or)']:du<=14?['DUE '+du+'d','var(--yw,#eab308)']:['OK','var(--gr)']) : ['—','var(--t2)'];
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(e.name||'')}</b><span style="color:${stat[1]}">${stat[0]}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(e.service||'')} · ${esc(e.date||'')}${e.meter?' · '+esc(e.meter):''}${e.nextDue?' · next '+esc(e.nextDue):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelEquip(${e.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No equipment logged yet. Track proportioner, compressor, generator, rig, transfer pumps — service dates + next-due so a breakdown never kills a job.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">LOG MAINTENANCE</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Equipment</label>
+          <input class="inp" id="eq_name" list="eq_names" placeholder="Graco Reactor"><datalist id="eq_names"><option>Graco Reactor proportioner</option><option>Air compressor</option><option>Generator</option><option>Box truck / rig</option><option>Transfer pump</option><option>Spray gun</option><option>Concrete lifting rig</option></datalist></div>
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Service done</label><input class="inp" id="eq_svc" placeholder="Oil change, filters, seals"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Date</label><input class="inp" id="eq_date" type="date"></div>
+        <div class="form-group" style="flex:1;min-width:100px"><label class="form-label">Hours/meter</label><input class="inp" id="eq_meter" placeholder="1420 hrs"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Next due</label><input class="inp" id="eq_next" type="date"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddEquip()">LOG SERVICE</button>
+    </div>
+    <div class="card"><div class="card-title">EQUIPMENT LOG</div>${list}</div>`;
+  }
+  window.opsAddEquip = function(){
+    const name=($('eq_name')||{}).value||''; if(!name.trim()) return toast('Enter equipment');
+    const rec={ id:Date.now(), name:name.trim(), service:($('eq_svc')||{}).value||'', date:($('eq_date')||{}).value||today(),
+      meter:($('eq_meter')||{}).value||'', nextDue:($('eq_next')||{}).value||'' };
+    appState.equipment=appState.equipment||[]; appState.equipment.push(rec); saveCol('equipment');
+    toast('Maintenance logged'); renderOps('equipment');
+  };
+  window.opsDelEquip = function(id){ appState.equipment=(appState.equipment||[]).filter(e=>e.id!==id); saveCol('equipment'); renderOps('equipment'); };
+
+  // ---------- COMPLIANCE (OSHA 300 · odor complaints · permit auto-fill) ----------
+  function opsComplianceHTML(){
+    // OSHA 300 recordable incidents
+    const inc=(appState.incidents||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const incList = inc.length? inc.map(i=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(i.employee||'')} — ${esc(i.itype||'Injury')}</b><span style="color:var(--t2)">${esc(i.date||'')}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(i.jobName||'')}${i.outcome?' · '+esc(i.outcome):''}${i.description?' · '+esc(i.description):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelInc(${i.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No recordable incidents logged. Keep it that way — but log any injury/illness by job & date so the OSHA 300 writes itself.</div>';
+    // Odor / nuisance complaints
+    const cm=(appState.complaints||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const cmList = cm.length? cm.map(c=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(c.complainant||'Neighbor')}</b><span style="color:var(--t2)">${esc(c.date||'')}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(c.jobName||'')}${c.address?' · '+esc(c.address):''} — ${esc(c.description||'')}${c.resolution?' · ✔ '+esc(c.resolution):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelCmp(${c.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No complaints logged. If a neighbor gripes about odor, log it — a dated record protects you if it ever escalates.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🩹 OSHA 300 — RECORDABLE INCIDENTS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Employee</label><input class="inp" id="in_emp"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Job / location</label><input class="inp" id="in_job"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Type</label>
+          <select class="inp" id="in_type"><option>Injury</option><option>Illness</option><option>Isocyanate exposure</option><option>Near-miss</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Date</label><input class="inp" id="in_date" type="date"></div>
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Outcome</label>
+          <select class="inp" id="in_out"><option>First aid only (not recordable)</option><option>Other recordable</option><option>Restricted duty</option><option>Days away from work</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">What happened</label><input class="inp" id="in_desc" placeholder="Brief description"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddInc()">LOG INCIDENT</button>
+      <div style="margin-top:10px">${incList}</div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🌬️ ODOR / NUISANCE COMPLAINT LOG</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Complainant</label><input class="inp" id="cm_who" placeholder="Neighbor / name"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Job / address</label><input class="inp" id="cm_job"></div>
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Date</label><input class="inp" id="cm_date" type="date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Complaint</label><input class="inp" id="cm_desc" placeholder="Odor drifting, etc."></div>
+      <div class="form-group"><label class="form-label">Resolution / action</label><input class="inp" id="cm_res" placeholder="Ventilated, notified, followed up"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddCmp()">LOG COMPLAINT</button>
+      <div style="margin-top:10px">${cmList}</div>
+    </div>
+    <div class="card"><div class="card-title">📄 PERMIT AUTO-FILL</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">State</label>
+          <select class="inp" id="pf_state"><option>MT</option><option>ND</option><option>SD</option><option>WY</option></select></div>
+        <div class="form-group" style="flex:2;min-width:160px"><label class="form-label">Job type</label>
+          <select class="inp" id="pf_svc"><option>Spray foam insulation</option><option>SPF roofing</option><option>Concrete lifting</option><option>Insulation removal</option></select></div>
+      </div>
+      <button class="btn btn-cyan" style="width:100%" onclick="opsPermitPrefill()">GENERATE PREFILLED PERMIT INFO</button>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Fills your standard business identity so you never retype it. Contractor license # is owner-entered.</div>
+    </div>`;
+  }
+  window.opsAddInc = function(){
+    const emp=($('in_emp')||{}).value||''; if(!emp.trim()) return toast('Enter employee');
+    const rec={ id:Date.now(), employee:emp.trim(), jobName:($('in_job')||{}).value||'', itype:($('in_type')||{}).value||'Injury',
+      date:($('in_date')||{}).value||today(), outcome:($('in_out')||{}).value||'', description:($('in_desc')||{}).value||'' };
+    appState.incidents=appState.incidents||[]; appState.incidents.push(rec); saveCol('incidents'); toast('Incident logged'); renderOps('compliance');
+  };
+  window.opsDelInc = function(id){ appState.incidents=(appState.incidents||[]).filter(i=>i.id!==id); saveCol('incidents'); renderOps('compliance'); };
+  window.opsAddCmp = function(){
+    const who=($('cm_who')||{}).value||''; const desc=($('cm_desc')||{}).value||'';
+    if(!who.trim()&&!desc.trim()) return toast('Enter complaint details');
+    const rec={ id:Date.now(), complainant:who.trim()||'Neighbor', jobName:($('cm_job')||{}).value||'', date:($('cm_date')||{}).value||today(),
+      description:desc, resolution:($('cm_res')||{}).value||'' };
+    appState.complaints=appState.complaints||[]; appState.complaints.push(rec); saveCol('complaints'); toast('Complaint logged'); renderOps('compliance');
+  };
+  window.opsDelCmp = function(id){ appState.complaints=(appState.complaints||[]).filter(c=>c.id!==id); saveCol('complaints'); renderOps('compliance'); };
+  window.opsPermitPrefill = function(){
+    const st=($('pf_state')||{}).value||'MT'; const svc=($('pf_svc')||{}).value||'Spray foam insulation';
+    const sr=(STATE_RULES[st]||{}); const permit=PERMIT_RULES[svcKey(svc)]||'';
+    const txt=
+`BUILDING / TRADE PERMIT — PREFILL (${st})
+Job type: ${svc}
+
+CONTRACTOR / APPLICANT
+  Business:      ${MGSF.company}
+  Owner:         ${MGSF.owner}
+  Address:       ${MGSF.address}
+  Phone:         ${MGSF.phone}
+  Email:         ${MGSF.email}
+  SAM UEI:       ${MGSF.uei}
+  State license #: OWNER INPUT REQUIRED
+  Insurance / bond on file: OWNER INPUT REQUIRED
+
+STATE NOTES (${sr.name||st})
+  Material tax:  ${((sr.materialTax||0)*100).toFixed(1)}%  — ${sr.taxNote||''}
+  Permit guidance: ${permit}
+
+PROJECT (fill per job)
+  Site address:  __________________________
+  Scope / SF:    __________________________
+  Product / R-value: ______________________
+  Start date:    __________________________
+
+Verify current requirements with the local building department (AHJ) before filing.`;
+    try{ if(window.showKlyftonDraft) return showKlyftonDraft('PERMIT PREFILL — '+st+' · '+svc, txt, null); }catch(e){}
+    alert(txt);
+  };
+
+  // ---------- SUPPLIERS & SUBS (backup suppliers · 1099 subs · set usage) ----------
+  function opsSuppliersHTML(){
+    const sup=(appState.suppliers||[]).slice();
+    const supList = sup.length? sup.map(s=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(s.product||'')}</b><span style="color:var(--t2)">${esc(s.leadTime||'')}</span></div>
+        <div style="font-size:11px;color:var(--t3)">Primary: ${esc(s.primary||'?')} · Backup: <b style="color:var(--cy)">${esc(s.backup||'?')}</b>${s.contact?' · '+esc(s.contact):''}${s.notes?' · '+esc(s.notes):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelSup(${s.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No backup suppliers mapped. If ProFoam/NCFI has a hiccup, you want the fallback distributor + lead time on file already.</div>';
+    // 1099 subs
+    const subs=(appState.subs||[]).slice();
+    const subList = subs.length? subs.map(s=>{
+      const flag=(Number(s.ytdPaid)>=600 && !s.w9);
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px;${flag?'border-color:var(--or)':''}">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(s.name||'')}</b>
+          <span style="color:${flag?'var(--or)':'var(--gr)'}">${s.w9?'W-9 ✓':'W-9 MISSING'}${flag?' ⚠':''}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(s.business||'')}${s.contact?' · '+esc(s.contact):''} · YTD ${money(s.ytdPaid)}${Number(s.ytdPaid)>=600?' (1099 required)':''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelSub(${s.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No subs tracked. If you bring on contract crews, get the W-9 day one and track YTD pay — 1099s at $600+ won&#39;t sneak up in January.</div>';
+    // set usage
+    const su=(appState.setuse||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const suList = su.length? su.map(u=>`<div class="log-row"><span><b>${esc(u.jobNum||u.jobName||'')}</b> · ${esc(u.product||'')}</span><span style="color:var(--t2)">${u.sets} set${u.sets==1?'':'s'} · ${esc(u.date||'')} <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="opsDelSU(${u.id})">🗑</button></span></div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No set check-outs yet. Log every set out against a job number — ends the &#8220;did we use 6 or 8?&#8221; argument.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🚚 BACKUP SUPPLIER MAP</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Product / class</label><input class="inp" id="su_prod" placeholder="2.0# CC foam"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Lead time</label><input class="inp" id="su_lead" placeholder="3–5 days"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Primary</label><input class="inp" id="su_prim" placeholder="ProFoam"></div>
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Backup distributor</label><input class="inp" id="su_back" placeholder="IDI / SprayFoam Direct"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Contact / notes</label><input class="inp" id="su_ct" placeholder="Rep name, phone, min order"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddSup()">SAVE SUPPLIER</button>
+      <div style="margin-top:10px">${supList}</div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">👷 1099 SUBCONTRACTOR TRACKING</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Name</label><input class="inp" id="sb_name"></div>
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Business</label><input class="inp" id="sb_biz"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">YTD paid $</label><input class="inp" id="sb_ytd" type="number"></div>
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Contact</label><input class="inp" id="sb_ct"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">W-9 on file?</label><select class="inp" id="sb_w9"><option value="">No</option><option value="1">Yes</option></select></div>
+      </div>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:6px">Never store SSN/EIN here — just track that the W-9 is collected + YTD pay. Keep tax IDs in your secure files.</div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddSub()">SAVE SUB</button>
+      <div style="margin-top:10px">${subList}</div>
+    </div>
+    <div class="card"><div class="card-title">📦 SET USAGE — CHECK OUT TO A JOB</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Job #</label><input class="inp" id="us_num" placeholder="MGSF-104"></div>
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Product</label><input class="inp" id="us_prod" placeholder="ProSeal 2.0# CC"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Sets out</label><input class="inp" id="us_sets" type="number" step="0.5" value="1"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddSU()">CHECK OUT SET(S)</button>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Decrements matching inventory automatically. (Camera QR/barcode scan is a future add — this is the manual log that already ends the count argument.)</div>
+      <div style="margin-top:10px">${suList}</div>
+    </div>`;
+  }
+  window.opsAddSup = function(){
+    const prod=($('su_prod')||{}).value||''; if(!prod.trim()) return toast('Enter a product');
+    const rec={ id:Date.now(), product:prod.trim(), leadTime:($('su_lead')||{}).value||'', primary:($('su_prim')||{}).value||'',
+      backup:($('su_back')||{}).value||'', contact:($('su_ct')||{}).value||'', notes:'' };
+    appState.suppliers=appState.suppliers||[]; appState.suppliers.push(rec); saveCol('suppliers'); toast('Supplier saved'); renderOps('suppliers');
+  };
+  window.opsDelSup = function(id){ appState.suppliers=(appState.suppliers||[]).filter(s=>s.id!==id); saveCol('suppliers'); renderOps('suppliers'); };
+  window.opsAddSub = function(){
+    const name=($('sb_name')||{}).value||''; if(!name.trim()) return toast('Enter a name');
+    const rec={ id:Date.now(), name:name.trim(), business:($('sb_biz')||{}).value||'', ytdPaid:+($('sb_ytd')||{}).value||0,
+      contact:($('sb_ct')||{}).value||'', w9:!!($('sb_w9')||{}).value };
+    appState.subs=appState.subs||[]; appState.subs.push(rec); saveCol('subs'); toast('Sub saved'); renderOps('suppliers');
+  };
+  window.opsDelSub = function(id){ appState.subs=(appState.subs||[]).filter(s=>s.id!==id); saveCol('subs'); renderOps('suppliers'); };
+  window.opsAddSU = function(){
+    const prod=($('us_prod')||{}).value||''; const sets=+($('us_sets')||{}).value||0;
+    if(!prod.trim()||sets<=0) return toast('Enter product + sets');
+    const rec={ id:Date.now(), jobNum:($('us_num')||{}).value||'', product:prod.trim(), sets, date:today() };
+    appState.setuse=appState.setuse||[]; appState.setuse.push(rec); saveCol('setuse');
+    // decrement matching inventory if present
+    try{ const nm=prod.trim().toLowerCase(); const it=(appState.inventory||[]).find(i=>(i.item||'').toLowerCase().includes(nm)||nm.includes((i.item||'').toLowerCase()));
+      if(it){ it.qty=Math.max(0,(Number(it.qty)||0)-sets); saveCol('inventory'); if(Number(it.qty)<=Number(it.reorderAt)) toast('⚠ '+it.item+' hit reorder point'); } }catch(e){}
+    toast('Checked out '+sets+' set(s)'); renderOps('suppliers');
+  };
+  window.opsDelSU = function(id){ appState.setuse=(appState.setuse||[]).filter(u=>u.id!==id); saveCol('setuse'); renderOps('suppliers'); };
+
+  // ============================================================
+  // KLYFTON CONTEXT + ACTIONS wiring
+  // ============================================================
+  // Extra business context so the hive quotes travel/tax/permits and knows stock.
+  window.opsContext = function(){
+    const ctx={};
+    try{
+      ctx.travelPolicy = 'From '+MGSF.travel.base+': first '+MGSF.travel.freeRadius+' mi free, then round-trip $'+MGSF.travel.perMile.toFixed(2)+'/mi + crew drive time at $'+crewHourly()+'/hr.';
+      ctx.stateTax = Object.keys(STATE_RULES).map(k=>k+' '+(STATE_RULES[k].materialTax*100).toFixed(1)+'% materials').join(' · ');
+      const low=(appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt));
+      if(low.length) ctx.lowStock = low.map(i=>i.item+' ('+i.qty+' '+(i.unit||'')+')').join(', ');
+      const rv=(appState.reviews||[]).filter(r=>Number(r.stars)>0);
+      if(rv.length) ctx.reputation = (rv.reduce((s,r)=>s+Number(r.stars),0)/rv.length).toFixed(1)+'★ over '+rv.length+' reviews';
+      if((appState.jobcosts||[]).length){
+        let tr=0,tp=0; appState.jobcosts.forEach(c=>{const m=costMargin(c);tr+=m.rev;tp+=m.profit;});
+        if(tr>0) ctx.avgMargin=(tp/tr*100).toFixed(0)+'% avg job margin ('+appState.jobcosts.length+' costed)';
+      }
+      // Customer financing — so Klyfton offers it and can share the apply link.
+      if(MGSF.finance&&MGSF.finance.link) ctx.financing='Hearth financing available — apply link: '+MGSF.finance.link+' (offer on quotes; Klyfton can text/email it).';
+      // Expiring safety certs / overdue equipment so Klyfton can warn.
+      const exTr=(appState.training||[]).filter(t=>{const d=daysUntil(t.expires);return d!=null&&d<=60;}).map(t=>t.name+' '+t.topic+(daysUntil(t.expires)<0?' EXPIRED':' in '+daysUntil(t.expires)+'d'));
+      if(exTr.length) ctx.trainingDue=exTr.join('; ');
+      const odEq=(appState.equipment||[]).filter(e=>{const d=daysUntil(e.nextDue);return d!=null&&d<=14;}).map(e=>e.name+(daysUntil(e.nextDue)<0?' OVERDUE':' due '+daysUntil(e.nextDue)+'d'));
+      if(odEq.length) ctx.maintenanceDue=odEq.join('; ');
+      // Capacity snapshot.
+      try{ const c=opsCfg(); const wk=c.crewSize/2*c.setsPerDay*c.daysPerWeek;
+        const openL=(appState.leads||[]).filter(l=>!['Won','Lost'].includes(l.status)).length;
+        const actJ=(appState.jobs||[]).filter(j=>!['Paid','Cancelled','Completed'].includes(j.status)).length;
+        if(wk>0) ctx.capacity=((openL+actJ)*c.avgJobSets/wk).toFixed(1)+' weeks of backlog vs '+wk.toFixed(1)+' sets/wk capacity';
+      }catch(e){}
+    }catch(e){}
+    return ctx;
+  };
+
+  // Klyfton action descriptions (fallback used by klyftonActionDesc default)
+  window.opsActionDesc = function(a){
+    switch(a.type){
+      case 'log_cost':    return `Log job cost for <b>${esc(a.job||'?')}</b>${a.revenue?(' · rev $'+Number(a.revenue).toLocaleString()):''}`;
+      case 'log_contact': return `Log ${esc(a.ctype||'contact')} with <b>${esc(a.name||'?')}</b>`;
+      case 'log_review':  return `Log review — <b>${esc(a.customer||'?')}</b>${a.stars?(' '+a.stars+'★'):' (requested)'}`;
+      case 'set_inventory':return `Set stock — <b>${esc(a.item||'?')}</b> = ${a.qty!=null?a.qty:'?'}${a.reorderAt!=null?(' (reorder at '+a.reorderAt+')'):''}`;
+      case 'log_warranty': return `Log warranty — <b>${esc(a.customer||'?')}</b>${a.termYears?(' · '+a.termYears+' yr'):''}`;
+      case 'log_training': return `Log training — <b>${esc(a.name||'?')}</b>${a.topic?(' · '+esc(a.topic)):''}`;
+      case 'log_maintenance': return `Log maintenance — <b>${esc(a.equipment||'?')}</b>${a.service?(' · '+esc(a.service)):''}`;
+      case 'draft_sms':    return `Draft a text${a.to?(' to <b>'+esc(a.to)+'</b>'):''}`;
+      case 'share_financing': return `Send the <b>Hearth financing</b> link${a.to?(' to '+esc(a.to)):''}`;
+      case 'log_incident': return `Log OSHA incident — <b>${esc(a.employee||'?')}</b>${a.itype?(' · '+esc(a.itype)):''}`;
+      case 'log_complaint':return `Log complaint${a.jobName?(' on '+esc(a.jobName)):''}${a.complainant?(' from '+esc(a.complainant)):''}`;
+      case 'log_setuse':   return `Check out <b>${a.sets||'?'}</b> set(s) of ${esc(a.product||'?')}${a.jobNum?(' → '+esc(a.jobNum)):''}`;
+      default: return '';
+    }
+  };
+  // Execute an ops action. Returns true if it handled the type.
+  window.opsHandleAction = function(a){
+    if(!a||!a.type) return false;
+    if(a.type==='log_cost'){
+      const rec={ id:Date.now(), jobName:a.job||'Job', date:today(),
+        revenue:+a.revenue||0, material:+a.material||0, labor:+a.labor||0, equipment:+a.equipment||0, other:+a.other||0 };
+      appState.jobcosts=appState.jobcosts||[]; appState.jobcosts.push(rec); saveCol('jobcosts');
+      if(opsTab==='costing'&&document.getElementById('mod-ops').classList.contains('active')) renderOps('costing');
+      toast('Job cost logged'); return true;
+    }
+    if(a.type==='log_contact'){
+      const rec={ id:Date.now(), name:a.name||'', type:(a.ctype||'note'), note:a.note||'', date:a.when||today() };
+      appState.contacts=appState.contacts||[]; appState.contacts.push(rec); saveCol('contacts');
+      toast('Contact logged'); return true;
+    }
+    if(a.type==='log_review'){
+      const stars=+a.stars||0;
+      const rec={ id:Date.now(), customer:a.customer||'', stars, platform:a.platform||'Google', note:a.note||'', requested:stars===0, date:today() };
+      appState.reviews=appState.reviews||[]; appState.reviews.push(rec); saveCol('reviews');
+      toast('Review logged'); return true;
+    }
+    if(a.type==='set_inventory'){
+      appState.inventory=appState.inventory||[];
+      const nm=(a.item||'').toLowerCase();
+      let it=appState.inventory.find(i=>(i.item||'').toLowerCase()===nm);
+      if(!it){ it={ id:Date.now(), item:a.item||'Item', qty:0, unit:a.unit||'', reorderAt:0, supplier:a.supplier||'' }; appState.inventory.push(it); }
+      if(a.qty!=null) it.qty=+a.qty||0;
+      if(a.reorderAt!=null) it.reorderAt=+a.reorderAt||0;
+      if(a.unit) it.unit=a.unit; if(a.supplier) it.supplier=a.supplier;
+      saveCol('inventory'); toast('Inventory set'); return true;
+    }
+    if(a.type==='log_warranty'){
+      const rec={ id:Date.now(), customer:a.customer||'', job:a.job||'', wtype:a.wtype||'Workmanship',
+        termYears:+a.termYears||5, start:a.start||today(), notes:a.notes||'' };
+      appState.warranties=appState.warranties||[]; appState.warranties.push(rec); saveCol('warranties');
+      toast('Warranty logged'); return true;
+    }
+    if(a.type==='log_training'){
+      const rec={ id:Date.now(), name:a.name||'', topic:a.topic||'', date:a.date||today(), expires:a.expires||'' };
+      appState.training=appState.training||[]; appState.training.push(rec); saveCol('training');
+      toast('Training logged'); return true;
+    }
+    if(a.type==='log_maintenance'){
+      const rec={ id:Date.now(), name:a.equipment||'', service:a.service||'', date:a.date||today(), meter:a.meter||'', nextDue:a.nextDue||'' };
+      appState.equipment=appState.equipment||[]; appState.equipment.push(rec); saveCol('equipment');
+      toast('Maintenance logged'); return true;
+    }
+    if(a.type==='draft_sms'){
+      const body=(a.body||''); const to=(a.to||'');
+      const smsHref='sms:'+encodeURIComponent(to)+'?&body='+encodeURIComponent(body);
+      try{ if(window.showKlyftonDraft) showKlyftonDraft('TEXT DRAFT'+(to?(' — '+to):''), (to?('To: '+to+'\n\n'):'')+body, smsHref); }catch(e){}
+      return true;
+    }
+    if(a.type==='share_financing'){
+      const to=(a.to||''); const body=window.financeText();
+      const smsHref='sms:'+encodeURIComponent(to)+'?&body='+encodeURIComponent(body);
+      try{ if(window.showKlyftonDraft) showKlyftonDraft('FINANCING — Hearth'+(to?(' · '+to):''), body, smsHref); }catch(e){}
+      return true;
+    }
+    if(a.type==='log_incident'){
+      const rec={ id:Date.now(), employee:a.employee||'', jobName:a.jobName||a.job||'', itype:a.itype||'Injury',
+        date:a.date||today(), outcome:a.outcome||'', description:a.description||a.note||'' };
+      appState.incidents=appState.incidents||[]; appState.incidents.push(rec); saveCol('incidents'); toast('Incident logged'); return true;
+    }
+    if(a.type==='log_complaint'){
+      const rec={ id:Date.now(), complainant:a.complainant||'Neighbor', jobName:a.jobName||a.job||'', address:a.address||'',
+        date:a.date||today(), description:a.description||a.note||'', resolution:a.resolution||'' };
+      appState.complaints=appState.complaints||[]; appState.complaints.push(rec); saveCol('complaints'); toast('Complaint logged'); return true;
+    }
+    if(a.type==='log_setuse'){
+      const sets=+a.sets||0; if(sets<=0||!a.product) return true;
+      const rec={ id:Date.now(), jobNum:a.jobNum||a.job||'', product:a.product||'', sets, date:a.date||today() };
+      appState.setuse=appState.setuse||[]; appState.setuse.push(rec); saveCol('setuse');
+      try{ const nm=(a.product||'').toLowerCase(); const it=(appState.inventory||[]).find(i=>(i.item||'').toLowerCase().includes(nm)||nm.includes((i.item||'').toLowerCase()));
+        if(it){ it.qty=Math.max(0,(Number(it.qty)||0)-sets); saveCol('inventory'); } }catch(e){}
+      toast('Set usage logged'); return true;
+    }
+    return false;
+  };
+  window.OPS_ACTIONS = ['log_cost','log_contact','log_review','set_inventory','log_warranty','log_training','log_maintenance','draft_sms','share_financing','log_incident','log_complaint','log_setuse'];
 })();
 </script>
 

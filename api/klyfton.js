@@ -73,10 +73,27 @@ Supported types:
 - draft_proposal: {"type":"draft_proposal","customer":"","scope":"","price":0,"terms":""}  (pre-fills the Proposal screen for review)
 - material_order: {"type":"material_order","supplier":"","job":"","items":"one item per line, with qty"}  (a purchase list to review)
 - add_followup:   {"type":"add_followup","name":"","note":"","when":""}  (flags a lead for follow-up + logs the note)
-Rules: ONE block max; ONLY when the user asked you to do/draft/create something; OMIT it entirely
-for normal questions. Use the crew's real numbers/prices from context — never invent a price. For
-emails and proposals, write them in Clifton's voice, ready for him to review and send. Always give
-your short normal reply above the block.`;
+- update_lead:    {"type":"update_lead","name":"","status":"","value":0,"notes":""}  (change a lead — status moves it in the pipeline; to ARCHIVE a dead lead set status to "Lost", to close a win set "Won")
+- delete_lead:    {"type":"delete_lead","name":""}  (remove a lead entirely)
+- update_job:     {"type":"update_job","customer":"","status":"","value":0}  (change a job — status one of Scheduled/In Progress/Completed/Cancelled; "Completed" or "Cancelled" archives it off the active board)
+- delete_job:     {"type":"delete_job","customer":""}  (remove a job entirely)
+- log_cost:       {"type":"log_cost","job":"","revenue":0,"material":0,"labor":0,"equipment":0,"other":0}  (record job-costing actuals so margin history builds)
+- log_contact:    {"type":"log_contact","name":"","ctype":"call|text|email|visit|note","note":"","when":""}  (add to a customer's contact history)
+- log_review:     {"type":"log_review","customer":"","stars":0,"platform":"Google","note":""}  (track a review or request; stars 0 = review requested)
+- set_inventory:  {"type":"set_inventory","item":"","qty":0,"unit":"","reorderAt":0,"supplier":""}  (set stock on hand + reorder trigger)
+- log_warranty:   {"type":"log_warranty","customer":"","job":"","wtype":"","termYears":5,"start":"YYYY-MM-DD","notes":""}  (register a job warranty)
+- log_training:   {"type":"log_training","name":"","topic":"","date":"YYYY-MM-DD","expires":"YYYY-MM-DD"}  (OSHA/safety training record; expires optional)
+- log_maintenance:{"type":"log_maintenance","equipment":"","service":"","date":"YYYY-MM-DD","meter":"","nextDue":"YYYY-MM-DD"}  (equipment service log)
+- draft_sms:      {"type":"draft_sms","to":"","body":""}  (a customer text — SMS is short & friendly, NEVER auto-sent)
+- share_financing:{"type":"share_financing","to":""}  (draft a text with the Hearth financing apply link for a customer)
+- log_incident:   {"type":"log_incident","employee":"","itype":"Injury|Illness|Isocyanate exposure|Near-miss","jobName":"","outcome":"","description":"","date":"YYYY-MM-DD"}  (OSHA 300 recordable)
+- log_complaint:  {"type":"log_complaint","complainant":"","jobName":"","address":"","description":"","resolution":"","date":"YYYY-MM-DD"}  (neighbor odor/nuisance complaint record)
+- log_setuse:     {"type":"log_setuse","jobNum":"","product":"","sets":0}  (check foam sets out against a job number; decrements inventory)
+Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/remove something; OMIT
+it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
+the crew's real numbers/prices from context — never invent a price. For emails and proposals, write
+them in Clifton's voice, ready for him to review and send. Always give your short normal reply above
+the block. The user still taps a confirm button before anything is written or removed.`;
 
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
@@ -232,6 +249,33 @@ function contextBlock(context, memory) {
       c.push("Priced products (name=cost): " + context.products.slice(0, 40).join(", "));
     if (Array.isArray(context.materials) && context.materials.length)
       c.push("PRICE BOOK — real consumable / coating / equipment prices (name=$cost). Quote these EXACT numbers when asked; never invent one:\n" + context.materials.slice(0, 140).join("; "));
+    // Live record read — real leads/jobs so you can answer by name and act on the right record.
+    if (Array.isArray(context.leadRecords) && context.leadRecords.length) {
+      const lines = context.leadRecords.slice(0, 40).map((l) =>
+        "• " + (l.name || "?") + " [" + (l.status || "New") + "]" +
+        (l.service ? " " + l.service : "") + (l.state ? " " + l.state : "") +
+        (l.value ? " $" + Number(l.value).toLocaleString() : "") +
+        (l.phone ? " " + l.phone : "") + (l.town ? " — " + l.town : "") +
+        (l.source ? " (src: " + l.source + ")" : "") + (l.notes ? " — " + l.notes : ""));
+      c.push("LEADS ON FILE (real records — reference by name; you may propose update_lead / delete_lead / add_followup):\n" + lines.join("\n"));
+    }
+    if (Array.isArray(context.jobRecords) && context.jobRecords.length) {
+      const lines = context.jobRecords.slice(0, 40).map((j) =>
+        "• " + (j.customer || "?") + " [" + (j.status || "Scheduled") + "]" +
+        (j.service ? " " + j.service : "") + (j.state ? " " + j.state : "") +
+        (j.value ? " $" + Number(j.value).toLocaleString() : "") +
+        (j.date ? " " + j.date : "") + (j.address ? " — " + j.address : "") +
+        (j.crew ? " crew:" + j.crew : "") + (j.next ? " next:" + j.next : ""));
+      c.push("JOBS ON FILE (real records — reference by customer; you may propose update_job / delete_job):\n" + lines.join("\n"));
+    }
+    // Ops intel (travel/tax/permits/financing/inventory/capacity/compliance) from the Ops Center.
+    const opsMap = [
+      ["travelPolicy", "Travel policy"], ["stateTax", "State material tax"],
+      ["financing", "Customer financing"], ["lowStock", "LOW STOCK (reorder)"],
+      ["reputation", "Reputation"], ["avgMargin", "Job margin"], ["capacity", "Capacity"],
+      ["trainingDue", "Training expiring"], ["maintenanceDue", "Equipment service due"],
+    ];
+    opsMap.forEach(([k, label]) => { if (context[k]) c.push(label + ": " + context[k]); });
     if (c.length) parts.push("BUSINESS CONTEXT (use these real numbers first):\n" + c.join("\n"));
   }
   if (Array.isArray(memory) && memory.length) {
@@ -285,7 +329,10 @@ async function runMind(key, mindKey, userText, history, ctx, attachments) {
   messages.push({ role: "user", content: buildUserContent(userText, attachments) });
   const data = await callClaude(key, {
     model: WORKER_MODEL,
-    max_tokens: 1600,
+    // Headroom so adaptive thinking can't eat the whole budget and truncate the
+    // answer — estimates reason through board-foot math and need room for BOTH
+    // the thinking and the final quote (Sonnet 5 adaptive thinking guidance).
+    max_tokens: 8000,
     system,
     thinking: { type: "adaptive" },
     tools: [WEB_TOOL],
@@ -390,7 +437,7 @@ If there are durable facts worth remembering across sessions (a customer prefere
 price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
     const synth = await callClaude(key, {
       model: CRITIC_MODEL,
-      max_tokens: 2000,
+      max_tokens: 8000,
       system: synthSys,
       thinking: { type: "adaptive" },
       messages: [
