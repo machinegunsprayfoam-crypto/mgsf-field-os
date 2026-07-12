@@ -131,7 +131,7 @@ module.exports = async function handler(req, res) {
 
       // Folder name: YYYY-MM-DD — Customer — Project
       const date = new Date().toISOString().split('T')[0];
-      const folderName = [date, customer_name, project_name].filter(Boolean).join(' \u2014 ');
+      const folderName = [date, customer_name, project_name].filter(Boolean).join(' — ');
 
       const jobFolder = await createFolder(token, folderName, parentId);
 
