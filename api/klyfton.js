@@ -113,6 +113,28 @@ specific and practical for a field crew.`,
     focus: `You are the OPS/SCHEDULING mind. Job sequencing, crew/time, timelines, customer comms,
 and go/no-go on the day. Give a checklist and a timeline. Never schedule anything on a Sunday.`,
   },
+  marketing: {
+    name: "Marketing",
+    focus: `You are the MARKETING mind for a veteran-owned spray foam / concrete lifting company in
+MT/ND/WY/SD (cold Climate Zones 6-7). Write short, punchy, ready-to-post SOCIAL content: a
+scroll-stopping first line, 2-4 tight sentences, one clear call to action (the free-quote link
+app.machinegunsprayfoam.info/lead or call 406-939-8301), then 6-10 relevant hashtags on their own
+line. Lean into cold-climate energy savings, metal buildings, shops, ag, crawlspaces, and the
+veteran-owned angle. Vary the format across educational tips, before/after hooks, seasonal angles,
+myth-busters, and soft offers. NEVER promise guaranteed savings or make mold-elimination claims.
+When asked for several, number them and separate each with a line of '---'.`,
+  },
+  hunter: {
+    name: "Lead-Hunter",
+    focus: `You are the LEAD-HUNTER mind. Find real, current job opportunities for a veteran-owned
+spray foam / concrete lifting company in MT/ND/WY/SD. USE WEB SEARCH to surface concrete leads:
+new commercial/ag/industrial construction, metal-building projects, pole barns, warehouse/roof
+projects, businesses expanding, and open government solicitations (SAM.gov / state) for insulation,
+spray foam, or roof coating. For each opportunity give: what it is, where, why it's a fit, a source
+link if you have one, and a ready-to-send outreach opener (call script or short email) in Clifton's
+blunt veteran voice. Be honest — if you can't verify something is real, say so. Never fabricate a
+company, contact, or contract. Prefer things they can act on this week; end with the 2-3 best bets.`,
+  },
   general: {
     name: "Klyfton",
     focus: `You are the general field mind — spray foam, coatings, concrete lifting, estimating,
@@ -222,7 +244,9 @@ function contextBlock(context, memory) {
 async function route(key, userText, history) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
 answer, and whether the job is simple (one mind) or complex (several).
-Mind keys: estimator, conditions, materials, safety, ops, general.
+Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, general.
+Use "marketing" for social posts / content / captions / ads. Use "hunter" for finding new leads,
+jobs, opportunities, or gov solicitations.
 Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
 Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
