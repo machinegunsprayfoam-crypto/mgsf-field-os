@@ -1980,11 +1980,13 @@ const EST_FOAM = [
   {k:'ncfi_insulbloc_fw',   n:'NCFI InsulBloc 2.0# CC Fast/Winter',   cat:'CC', setCost:2763.6, yieldBF:4100},
 ];
 
+// Geo/lifting $/lb = current ProFoam catalog set price ÷ 1,100 lb/set
+// (1 set = 2 barrels × 550 lb each, per owner). Prior values over-priced ~35-40%.
 const EST_GEO = [
-  {k:'terrathane_038', n:'TerraThane 24-038', priceLb:4.42},
-  {k:'terrathane_042', n:'TerraThane 24-042', priceLb:4.03},
-  {k:'terrathane_044', n:'TerraThane 24-044', priceLb:4.23},
-  {k:'stratafill_028', n:'Strata-Fill 24-028', priceLb:5.26},
+  {k:'terrathane_038', n:'TerraThane 24-038', priceLb:2.803},
+  {k:'terrathane_042', n:'TerraThane 24-042', priceLb:2.593},
+  {k:'terrathane_044', n:'TerraThane 24-044', priceLb:2.601},
+  {k:'stratafill_028', n:'Strata-Fill 24-028', priceLb:3.182},
 ];
 
 // Coating $/gal = canonical drum (bulk) cost per gallon from the MGSF Master
