@@ -278,6 +278,7 @@ function contextBlock(context, memory) {
       ["financing", "Customer financing"], ["lowStock", "LOW STOCK (reorder)"],
       ["reputation", "Reputation"], ["avgMargin", "Job margin"], ["capacity", "Capacity"],
       ["trainingDue", "Training expiring"], ["maintenanceDue", "Equipment service due"],
+      ["insuranceDue", "Insurance/bond expiring"],
     ];
     opsMap.forEach(([k, label]) => { if (context[k]) c.push(label + ": " + context[k]); });
     if (c.length) parts.push("BUSINESS CONTEXT (use these real numbers first):\n" + c.join("\n"));

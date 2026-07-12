@@ -7575,7 +7575,7 @@ function mgUpdate(){
 // ============================================================
 (function(){
   // ---- hydrate new collections onto appState ----
-  const NEW_COLS = ['jobcosts','contacts','reviews','inventory','training','warranties','equipment','incidents','complaints','suppliers','subs','setuse'];
+  const NEW_COLS = ['jobcosts','contacts','reviews','inventory','training','warranties','equipment','incidents','complaints','suppliers','subs','setuse','insurance'];
   NEW_COLS.forEach(c=>{
     try{ appState[c] = JSON.parse(localStorage.getItem('klyfton_'+c)||'[]'); }
     catch(e){ appState[c] = []; }
@@ -8145,7 +8145,34 @@ function mgUpdate(){
         <div style="font-size:11px;color:var(--t3)">${esc(c.jobName||'')}${c.address?' · '+esc(c.address):''} — ${esc(c.description||'')}${c.resolution?' · ✔ '+esc(c.resolution):''}
           <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelCmp(${c.id})">🗑</button></div>
       </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No complaints logged. If a neighbor gripes about odor, log it — a dated record protects you if it ever escalates.</div>';
+    // Insurance & bonding — expiry-tracked (GL, auto, workers comp, bond, etc.)
+    const ins=(appState.insurance||[]).slice().sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
+    const dUntil=d=>{ if(!d) return null; return Math.round((new Date(d+'T00:00:00')-new Date(today()+'T00:00:00'))/86400000); };
+    const insList = ins.length? ins.map(p=>{
+      const du=dUntil(p.expires);
+      const stat=p.expires?(du<0?['EXPIRED','var(--or)']:du<=30?['DUE '+du+'d','var(--yw,#eab308)']:['ACTIVE','var(--gr)']):['—','var(--t2)'];
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px;${du!=null&&du<0?'border-color:var(--or)':''}">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(p.ptype||'Policy')}${p.carrier?(' — '+esc(p.carrier)):''}</b><span style="color:${stat[1]}">${stat[0]}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${p.expires?('exp '+esc(p.expires)):'no expiry set'}${p.limits?(' · '+esc(p.limits)):''}${p.notes?(' · '+esc(p.notes)):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelIns(${p.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No policies tracked. Add GL, auto, workers-comp, and your bond with expiry dates so a lapse never costs you a bid.</div>';
     return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🛡️ INSURANCE &amp; BONDING</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Policy type</label>
+          <input class="inp" id="ins_type" list="ins_types" placeholder="General Liability">
+          <datalist id="ins_types"><option>General Liability</option><option>Commercial Auto</option><option>Workers Comp</option><option>Umbrella / Excess</option><option>Surety Bond</option><option>Pollution / Environmental</option><option>Inland Marine (equipment)</option><option>Business Owners (BOP)</option></datalist></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Carrier</label><input class="inp" id="ins_carrier" placeholder="e.g. Nationwide"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Expires</label><input class="inp" id="ins_exp" type="date"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Limits / amount</label><input class="inp" id="ins_limits" placeholder="$1M/$2M"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Notes (agent, policy #)</label><input class="inp" id="ins_notes" placeholder="Agent name/phone"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddIns()">SAVE POLICY</button>
+      <div style="margin-top:10px">${insList}</div>
+    </div>
     <div class="card" style="margin-bottom:12px"><div class="card-title">🩹 OSHA 300 — RECORDABLE INCIDENTS</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Employee</label><input class="inp" id="in_emp"></div>
@@ -8199,6 +8226,13 @@ function mgUpdate(){
     appState.complaints=appState.complaints||[]; appState.complaints.push(rec); saveCol('complaints'); toast('Complaint logged'); renderOps('compliance');
   };
   window.opsDelCmp = function(id){ appState.complaints=(appState.complaints||[]).filter(c=>c.id!==id); saveCol('complaints'); renderOps('compliance'); };
+  window.opsAddIns = function(){
+    const t=($('ins_type')||{}).value||''; if(!t.trim()) return toast('Enter a policy type');
+    const rec={ id:Date.now(), ptype:t.trim(), carrier:($('ins_carrier')||{}).value||'', expires:($('ins_exp')||{}).value||'',
+      limits:($('ins_limits')||{}).value||'', notes:($('ins_notes')||{}).value||'' };
+    appState.insurance=appState.insurance||[]; appState.insurance.push(rec); saveCol('insurance'); toast('Policy saved'); renderOps('compliance');
+  };
+  window.opsDelIns = function(id){ appState.insurance=(appState.insurance||[]).filter(p=>p.id!==id); saveCol('insurance'); renderOps('compliance'); };
   window.opsPermitPrefill = function(){
     const st=($('pf_state')||{}).value||'MT'; const svc=($('pf_svc')||{}).value||'Spray foam insulation';
     const sr=(STATE_RULES[st]||{}); const permit=PERMIT_RULES[svcKey(svc)]||'';
@@ -8342,6 +8376,8 @@ Verify current requirements with the local building department (AHJ) before fili
       if(exTr.length) ctx.trainingDue=exTr.join('; ');
       const odEq=(appState.equipment||[]).filter(e=>{const d=daysUntil(e.nextDue);return d!=null&&d<=14;}).map(e=>e.name+(daysUntil(e.nextDue)<0?' OVERDUE':' due '+daysUntil(e.nextDue)+'d'));
       if(odEq.length) ctx.maintenanceDue=odEq.join('; ');
+      const exIns=(appState.insurance||[]).filter(p=>{const d=daysUntil(p.expires);return d!=null&&d<=45;}).map(p=>p.ptype+(daysUntil(p.expires)<0?' EXPIRED':' in '+daysUntil(p.expires)+'d'));
+      if(exIns.length) ctx.insuranceDue=exIns.join('; ');
       // Capacity snapshot.
       try{ const c=opsCfg(); const wk=c.crewSize/2*c.setsPerDay*c.daysPerWeek;
         const openL=(appState.leads||[]).filter(l=>!['Won','Lost'].includes(l.status)).length;
@@ -8484,6 +8520,8 @@ Verify current requirements with the local building department (AHJ) before fili
       ev.push({ date:d.toISOString().split('T')[0], kind:'warranty', icon:'🛡️', color:'var(--t2)', title:'Warranty ends: '+(w.customer||''), sub:(w.wtype||'')+' ('+w.termYears+'yr)' }); } });
     (appState.leads||[]).forEach(l=>{ if(l.status==='Follow-Up' && l.date) ev.push({ date:l.date, kind:'lead', icon:'📞', color:'var(--gr)',
       title:'Follow up: '+(l.name||''), sub:(l.notes||'').slice(0,60) }); });
+    (appState.insurance||[]).forEach(p=>{ if(p.expires) ev.push({ date:p.expires, kind:'insurance', icon:'🛡️', color:'var(--or)',
+      title:'Insurance renews: '+(p.ptype||'policy'), sub:(p.carrier||'')+(p.limits?(' · '+p.limits):'') }); });
     return ev;
   }
 
