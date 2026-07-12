@@ -5898,16 +5898,31 @@ function drawCharts(){
 // DASHBOARD INIT
 // ============================================================
 function initDashboard(){
-  // Priority actions
-  const priorities=[
-    {text:'Follow up: Rocky Mtn Logistics (7 days quiet)',urgency:'high'},
-    {text:'Qualify: Sarah Perkins new lead — call today',urgency:'med'},
-    {text:'Check Williston roofing job — Day 2 status',urgency:'high'},
-    {text:'Complete SDVOSB DD-214 submission',urgency:'med'},
-    {text:'QBO bank connection still pending',urgency:'low'},
-  ];
+  // Priority actions — computed from REAL data (no demo/phantom leads).
+  const leads=appState.leads||[], jobs=appState.jobs||[];
+  const daysAgo=d=>{ if(!d) return null; return Math.round((Date.now()-new Date(d+'T00:00:00'))/86400000); };
+  const priorities=[];
+  // Overdue scheduled jobs
+  jobs.filter(j=>j.date && !['Completed','Cancelled','Paid'].includes(j.status) && daysAgo(j.date)>0)
+      .forEach(j=>priorities.push({text:'Overdue job: '+(j.customer||j.name)+' (was '+j.date+')',urgency:'high'}));
+  // Follow-ups flagged
+  leads.filter(l=>l.status==='Follow-Up')
+      .forEach(l=>priorities.push({text:'Follow up: '+(l.name||'lead')+(l.date&&daysAgo(l.date)>2?(' ('+daysAgo(l.date)+'d quiet)'):''),urgency:'high'}));
+  // New leads to qualify
+  leads.filter(l=>l.status==='New').slice(0,3)
+      .forEach(l=>priorities.push({text:'Qualify new lead: '+(l.name||'')+(l.phone?(' — '+l.phone):''),urgency:'med'}));
+  // Jobs in progress
+  jobs.filter(j=>j.status==='In Progress')
+      .forEach(j=>priorities.push({text:'In progress: '+(j.customer||j.name)+' — check status',urgency:'high'}));
+  // Reorder alerts
+  (appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt))
+      .forEach(i=>priorities.push({text:'Reorder: '+i.item+' ('+i.qty+' '+(i.unit||'')+' left)',urgency:'med'}));
+  // Expiring certs
+  (appState.training||[]).filter(t=>{const du=t.expires?Math.round((new Date(t.expires+'T00:00:00')-Date.now())/86400000):null; return du!=null&&du<=60;})
+      .forEach(t=>priorities.push({text:'Cert due: '+(t.name||'')+' — '+(t.topic||''),urgency:'med'}));
+  if(!priorities.length) priorities.push({text:'No open items. Add a lead or job, or say "get me leads" to Klyfton.',urgency:'low'});
   const pl=document.getElementById('priorityList');
-  if(pl) pl.innerHTML=priorities.map(p=>`
+  if(pl) pl.innerHTML=priorities.slice(0,7).map(p=>`
   <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)">
     <span class="badge ${p.urgency==='high'?'badge-red':p.urgency==='med'?'badge-or':'badge-cy'}" style="white-space:nowrap;flex-shrink:0">${p.urgency.toUpperCase()}</span>
     <span style="font-size:12px;line-height:1.4">${p.text}</span>
@@ -5934,9 +5949,20 @@ function initDashboard(){
     <div class="progress-bar"><div class="progress-fill or" style="width:${v*100}%"></div></div>
   </div>`).join('');
   
-  // First AI greeting message
+  // First AI greeting — real numbers only, no phantom leads.
   setTimeout(()=>{
-    addMessage('Klyfton online. You have **'+appState.leads.filter(l=>!['Won','Lost'].includes(l.status)).length+' active leads**, **'+appState.jobs.filter(j=>j.status==='In Progress').length+' jobs in progress**, and **$'+Math.round(appState.leads.filter(l=>!['Won','Lost'].includes(l.status)).reduce((s,l)=>s+(l.value||0),0)/1000)+'K in pipeline**.\n\nPriority: Rocky Mtn Logistics went quiet 7 days ago. What do you want to tackle first?', 'ai', 'Klyfton online. You have active leads and jobs in progress. Rocky Mountain Logistics went quiet 7 days ago. What do you want to tackle first?');
+    const openLeads=appState.leads.filter(l=>!['Won','Lost'].includes(l.status));
+    const inProg=appState.jobs.filter(j=>j.status==='In Progress').length;
+    const pipe=Math.round(openLeads.reduce((s,l)=>s+(l.value||0),0)/1000);
+    let msg, voice;
+    if(!openLeads.length && !appState.jobs.length){
+      msg='Klyfton online. Clean slate — no leads or jobs yet. Add one, or say **"get me leads"** and I\'ll go hunting. What do you want to tackle?';
+      voice='Klyfton online. No leads or jobs yet. Say get me leads and I will go hunting.';
+    } else {
+      msg='Klyfton online. You have **'+openLeads.length+' open lead'+(openLeads.length===1?'':'s')+'**, **'+inProg+' job'+(inProg===1?'':'s')+' in progress**, and **$'+pipe+'K in pipeline**. What do you want to tackle first?';
+      voice='Klyfton online. You have '+openLeads.length+' open leads and '+inProg+' jobs in progress. What do you want to tackle first?';
+    }
+    addMessage(msg,'ai',voice);
   }, 1200);
 }
 
