@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
   setCors(req, res);
 
   if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
-  if (req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
+  if (req.method !== 'POST' && req.method !== 'GET') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
 
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -95,10 +95,14 @@ module.exports = async (req, res) => {
   }
 
   let body;
-  try { body = await readBody(req); }
-  catch (e) {
-    if (e.message === 'TOO_LARGE') { sendJson(res, 413, { ok: false, error: 'TOO_LARGE' }); return; }
-    sendJson(res, 400, { ok: false, error: 'BAD_REQUEST' }); return;
+  if (req.method === 'GET') {
+    body = {};
+  } else {
+    try { body = await readBody(req); }
+    catch (e) {
+      if (e.message === 'TOO_LARGE') { sendJson(res, 413, { ok: false, error: 'TOO_LARGE' }); return; }
+      sendJson(res, 400, { ok: false, error: 'BAD_REQUEST' }); return;
+    }
   }
 
   const check = body?.check || 'all';

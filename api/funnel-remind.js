@@ -59,8 +59,8 @@ module.exports = async (req, res) => {
   setCors(req, res);
 
   if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
-  if (req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
-  if (!isAuthorized(req.headers.authorization)) { sendJson(res, 401, { ok: false, error: 'UNAUTHORIZED' }); return; }
+  if (req.method !== 'POST' && req.method !== 'GET') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
+  if (req.method === 'POST' && !isAuthorized(req.headers.authorization)) { sendJson(res, 401, { ok: false, error: 'UNAUTHORIZED' }); return; }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { sendJson(res, 200, { configured: false }); return; }
 
   try {

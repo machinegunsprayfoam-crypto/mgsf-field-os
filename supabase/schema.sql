@@ -383,3 +383,42 @@ end $$;
 create index if not exists idx_leads_next_follow_up_at on public.leads(next_follow_up_at);
 create index if not exists idx_leads_last_contacted_at on public.leads(last_contacted_at);
 create index if not exists idx_lead_activity_log_lead_id on public.lead_activity_log(lead_id);
+
+-- ── Composite index for funnel-remind query (status + next_follow_up_at) ─────
+create index if not exists idx_leads_status_follow_up
+  on public.leads(status, next_follow_up_at)
+  where next_follow_up_at is not null;
+
+-- ── updated_at auto-maintenance ───────────────────────────────────────────────
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'customers','properties','estimates','projects','leads',
+    'inventory_items','equipment','govcon_docs','govcon_opportunities',
+    'safety_checklists','safety_incidents','marketing_posts','portal_tokens',
+    'lead_activity_log'
+  ]
+  loop
+    if not exists (
+      select 1 from pg_trigger
+      where tgname = 'trg_' || t || '_updated_at'
+        and tgrelid = ('public.' || t)::regclass
+    ) then
+      execute format(
+        'create trigger trg_%I_updated_at
+         before update on public.%I
+         for each row execute function public.set_updated_at()',
+        t, t
+      );
+    end if;
+  end loop;
+end $$;

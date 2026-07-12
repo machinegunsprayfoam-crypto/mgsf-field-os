@@ -10,6 +10,25 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 const PFX = "mgsf:ph:";     // one key per image
 const IDX = "mgsf:ph_index"; // array of {id, job, phase, ts}
 
+function allowOrigin(origin) {
+  if (!origin) return null;
+  let host;
+  try { host = new URL(origin).hostname; } catch (e) { return null; }
+  if (host === 'machinegunsprayfoam.info' || host.endsWith('.machinegunsprayfoam.info')) return origin;
+  if (host.endsWith('.vercel.app')) return origin;
+  if (host === 'localhost' || host === '127.0.0.1') return origin;
+  return null;
+}
+
+function setCors(req, res) {
+  const reflected = allowOrigin(req.headers.origin);
+  if (reflected) res.setHeader('Access-Control-Allow-Origin', reflected);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
 function authHeaders() { return { Authorization: "Bearer " + KV_TOKEN }; }
 
 async function kvGetRaw(key) {
@@ -33,13 +52,16 @@ async function getIndex() {
 }
 
 module.exports = async (req, res) => {
-  if (!KV_URL || !KV_TOKEN) { res.status(200).json({ configured: false }); return; }
+  setCors(req, res);
+
+  if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
+  if (!KV_URL || !KV_TOKEN) { res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: false })); return; }
 
   try {
     if (req.method === "GET") {
       const id = (req.query && req.query.id) || null;
-      if (id) { res.status(200).json({ configured: true, data: await kvGetRaw(PFX + id) }); return; }
-      res.status(200).json({ configured: true, index: await getIndex() });
+      if (id) { res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, data: await kvGetRaw(PFX + id) })); return; }
+      res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, index: await getIndex() }));
       return;
     }
 
@@ -54,25 +76,25 @@ module.exports = async (req, res) => {
         await Promise.all(ids.map((id) => kvDel(PFX + id)));
         const idx = (await getIndex()).filter((m) => !ids.includes(String(m.id)));
         await kvSetRaw(IDX, JSON.stringify(idx));
-        res.status(200).json({ configured: true, removed: ids.length });
+        res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, removed: ids.length }));
         return;
       }
 
       // Upload one image + its metadata.
       const id = body.id, data = body.data, meta = body.meta || {};
-      if (!id || !data) { res.status(400).json({ error: "missing id or data" }); return; }
+      if (!id || !data) { res.statusCode = 400; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: "missing id or data" })); return; }
       await kvSetRaw(PFX + id, String(data));
       const idx = await getIndex();
       if (!idx.some((m) => String(m.id) === String(id))) {
         idx.push({ id: String(id), job: meta.job || "", phase: meta.phase || "", ts: meta.ts || "" });
         await kvSetRaw(IDX, JSON.stringify(idx.slice(-2000)));
       }
-      res.status(200).json({ configured: true, ok: true });
+      res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, ok: true }));
       return;
     }
 
-    res.status(405).json({ error: "Method not allowed" });
+    res.statusCode = 405; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: "Method not allowed" }));
   } catch (e) {
-    res.status(200).json({ configured: true, error: String(e).slice(0, 200) });
+    res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, error: String(e).slice(0, 200) }));
   }
 };

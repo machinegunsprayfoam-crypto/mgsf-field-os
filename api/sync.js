@@ -20,6 +20,25 @@ const TOMB = "_tomb"; // tombstones: [{c, id}] — so deletes propagate across d
 const MEM = "memory";  // Klyfton's durable facts — plain strings, set-union across devices
 const PREFIX = "mgsf:";
 
+function allowOrigin(origin) {
+  if (!origin) return null;
+  let host;
+  try { host = new URL(origin).hostname; } catch (e) { return null; }
+  if (host === 'machinegunsprayfoam.info' || host.endsWith('.machinegunsprayfoam.info')) return origin;
+  if (host.endsWith('.vercel.app')) return origin;
+  if (host === 'localhost' || host === '127.0.0.1') return origin;
+  return null;
+}
+
+function setCors(req, res) {
+  const reflected = allowOrigin(req.headers.origin);
+  if (reflected) res.setHeader('Access-Control-Allow-Origin', reflected);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
 function authHeaders() {
   return { Authorization: "Bearer " + KV_TOKEN };
 }
@@ -55,9 +74,13 @@ function mergeById(existing, incoming) {
 }
 
 module.exports = async (req, res) => {
+  setCors(req, res);
+
+  if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
+
   // Dormant when no storage attached — the app keeps working on-device.
   if (!KV_URL || !KV_TOKEN) {
-    res.status(200).json({ configured: false });
+    res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: false }));
     return;
   }
 
@@ -71,7 +94,7 @@ module.exports = async (req, res) => {
         data[c] = rows.filter((r) => r && r.id != null && !tset.has(c + "|" + String(r.id)));
       }));
       const memory = await kvGet(MEM);
-      res.status(200).json({ configured: true, data, tomb, memory });
+      res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, data, tomb, memory }));
       return;
     }
 
@@ -87,7 +110,7 @@ module.exports = async (req, res) => {
         if (Array.isArray(body.remove) && body.remove.length) {
           const rm = new Set(body.remove.map(String));
           await kvSet(MEM, existing.filter((s) => !rm.has(String(s))));
-          res.status(200).json({ configured: true, collection: "memory", removed: body.remove.length });
+          res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, collection: "memory", removed: body.remove.length }));
           return;
         }
         const incoming = Array.isArray(body.records) ? body.records : [];
@@ -98,12 +121,12 @@ module.exports = async (req, res) => {
           if (t && !seen.has(t)) { seen.add(t); merged.push(t); }
         });
         await kvSet(MEM, merged.slice(-500));
-        res.status(200).json({ configured: true, collection: "memory", count: merged.length });
+        res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, collection: "memory", count: merged.length }));
         return;
       }
 
       if (!COLLECTIONS.includes(col)) {
-        res.status(400).json({ error: "unknown collection" });
+        res.statusCode = 400; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: "unknown collection" }));
         return;
       }
 
@@ -116,7 +139,7 @@ module.exports = async (req, res) => {
         const have = new Set(tomb.map((t) => t.c + "|" + String(t.id)));
         ids.forEach((id) => { if (!have.has(col + "|" + id)) tomb.push({ c: col, id }); });
         await kvSet(TOMB, tomb.slice(-3000));
-        res.status(200).json({ configured: true, collection: col, removed: ids.length });
+        res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, collection: col, removed: ids.length }));
         return;
       }
 
@@ -126,13 +149,13 @@ module.exports = async (req, res) => {
       const tset = new Set(tomb.map((t) => t.c + "|" + String(t.id)));
       const merged = mergeById(await kvGet(col), incoming).filter((r) => !tset.has(col + "|" + String(r.id)));
       await kvSet(col, merged);
-      res.status(200).json({ configured: true, collection: col, count: merged.length });
+      res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, collection: col, count: merged.length }));
       return;
     }
 
-    res.status(405).json({ error: "Method not allowed" });
+    res.statusCode = 405; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: "Method not allowed" }));
   } catch (e) {
     // Never hard-fail the client — it just keeps its local copy.
-    res.status(200).json({ configured: true, error: String(e).slice(0, 200) });
+    res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ configured: true, error: String(e).slice(0, 200) }));
   }
 };

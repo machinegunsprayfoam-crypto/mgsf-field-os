@@ -4,5 +4,15 @@
   "installCommand": "echo skip-install",
   "buildCommand": "mkdir -p public",
   "outputDirectory": "public",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "crons": [
+    {
+      "path": "/api/funnel-remind",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/asset-alert",
+      "schedule": "0 14 * * *"
+    }
+  ]
 }

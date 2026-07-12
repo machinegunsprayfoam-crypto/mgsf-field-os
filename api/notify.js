@@ -7,9 +7,37 @@
 
 const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
 
+function allowOrigin(origin) {
+  if (!origin) return null;
+  let host;
+  try { host = new URL(origin).hostname; } catch (e) { return null; }
+  if (host === 'machinegunsprayfoam.info' || host.endsWith('.machinegunsprayfoam.info')) return origin;
+  if (host.endsWith('.vercel.app')) return origin;
+  if (host === 'localhost' || host === '127.0.0.1') return origin;
+  return null;
+}
+
+function setCors(req, res) {
+  const reflected = allowOrigin(req.headers.origin);
+  if (reflected) res.setHeader('Access-Control-Allow-Origin', reflected);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
+function sendJson(res, status, obj) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(obj));
+}
+
 module.exports = async (req, res) => {
-  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-  if (!WEBHOOK) { res.status(200).json({ sent: false, configured: false }); return; }
+  setCors(req, res);
+
+  if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
+  if (req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
+  if (!WEBHOOK) { sendJson(res, 200, { sent: false, configured: false }); return; }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -39,8 +67,8 @@ module.exports = async (req, res) => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
-    res.status(200).json({ sent: r.ok, status: r.status, configured: true });
+    sendJson(res, 200, { sent: r.ok, status: r.status, configured: true });
   } catch (e) {
-    res.status(200).json({ sent: false, error: String(e).slice(0, 140), configured: true });
+    sendJson(res, 200, { sent: false, error: String(e).slice(0, 140), configured: true });
   }
 };
