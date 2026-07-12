@@ -38,6 +38,8 @@ const SPECIALISTS = [
   { id: "hunter", label: "Lead-Hunter" },
   { id: "general", label: "Klyfton" },
 ] as const;
+const MEMORY_MAX = 500;
+const MEMORY_PROMPT_WINDOW = 20;
 
 function makeId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -204,11 +206,11 @@ export default function KlyftonPage() {
           message: effectiveMessage,
           role: "admin",
           history,
-          memory,
+          memory: memory.slice(-MEMORY_PROMPT_WINDOW),
           context: {
             leads,
             jobs,
-            memory,
+            memory: memory.slice(-MEMORY_PROMPT_WINDOW),
             userRole: "admin",
             leadRecords: leads,
             jobRecords: jobs,
@@ -236,7 +238,7 @@ export default function KlyftonPage() {
       const remember = Array.isArray(data.remember) ? data.remember.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 
       if (remember.length > 0) {
-        setMemory((current) => [...current, ...remember].slice(-20));
+        setMemory((current) => [...current, ...remember].slice(-MEMORY_MAX));
       }
 
       setActiveSpecialist(specialist);
