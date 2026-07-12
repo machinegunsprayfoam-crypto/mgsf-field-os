@@ -656,9 +656,9 @@ canvas.chart{width:100%;height:100%}
               <div style="font-size:13px;font-weight:600;color:var(--or)">📄 Proposal</div>
               <div style="font-size:11px;color:var(--t2);margin-top:4px">Customer-ready proposal draft</div>
             </div>
-            <div class="card" style="cursor:pointer" onclick="insertPrompt('I have a prospect objecting to price. Give me the response script.')">
-              <div style="font-size:13px;font-weight:600;color:var(--or)">💬 Objection Handle</div>
-              <div style="font-size:11px;color:var(--t2);margin-top:4px">6 proven objection responses</div>
+            <div class="card" style="cursor:pointer" onclick="insertPrompt('Create a material order draft for this week based on low stock and active jobs.')">
+              <div style="font-size:13px;font-weight:600;color:var(--or)">🛢️ Material Order</div>
+              <div style="font-size:11px;color:var(--t2);margin-top:4px">Reorder plan + supplier draft</div>
             </div>
           </div>
         </div>
@@ -5595,14 +5595,57 @@ function showKlyftonDraft(title, textBody, mailto){
 function klyftonCopyDraft(id){ const el=document.getElementById(id); if(!el) return; el.focus(); el.select();
   try{ if(navigator.clipboard) navigator.clipboard.writeText(el.value); else document.execCommand('copy'); }catch(e){}
   notify('Copied ✓','success'); }
+function klyftonActionRoleAllowed(a){
+  const role = appRole || 'none';
+  const t = a && a.type;
+  if(!t || role==='none') return false;
+  if(role==='full' || role==='admin') return true;
+  const draftOnly = new Set(['draft_email','draft_sms','draft_proposal','material_order','share_financing']);
+  if(role==='readonly') return draftOnly.has(t);
+  if(role==='field'){
+    const fieldSafe = new Set([
+      'add_punch','log_training','log_maintenance','log_incident','log_complaint','log_setuse',
+      'draft_sms','draft_email','material_order','share_financing'
+    ]);
+    return fieldSafe.has(t);
+  }
+  return false;
+}
+function klyftonActionRecordHint(a){
+  if(!a || !a.type) return '';
+  try{
+    if(['update_lead','delete_lead','add_followup'].includes(a.type)){
+      const nm=(a.name||'').toLowerCase();
+      const lead=(appState.leads||[]).find(l=>(l.name||'').toLowerCase()===nm) || (appState.leads||[]).find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+      if(lead) return `Using lead record: <b>${esc(lead.name||'?')}</b>${lead.status?(' · '+esc(lead.status)) : ''}${lead.value?(' · $'+Number(lead.value).toLocaleString()):''}`;
+      return 'No matching lead record found yet — confirm anyway?';
+    }
+    if(['update_job','delete_job'].includes(a.type)){
+      const cn=(a.customer||'').toLowerCase();
+      const job=(appState.jobs||[]).find(j=>(j.customer||'').toLowerCase()===cn) || (appState.jobs||[]).find(j=>cn && (j.customer||'').toLowerCase().includes(cn));
+      if(job) return `Using job record: <b>${esc(job.customer||'?')}</b>${job.status?(' · '+esc(job.status)):''}${job.value?(' · $'+Number(job.value).toLocaleString()):''}`;
+      return 'No matching job record found yet — confirm anyway?';
+    }
+    if(a.type==='set_inventory' && a.item){
+      const nm=(a.item||'').toLowerCase();
+      const it=(appState.inventory||[]).find(i=>(i.item||'').toLowerCase()===nm) || (appState.inventory||[]).find(i=>nm && (i.item||'').toLowerCase().includes(nm));
+      if(it) return `Using inventory record: <b>${esc(it.item||'?')}</b> · qty ${Number(it.qty)||0}${it.reorderAt!=null?(' · reorder '+(Number(it.reorderAt)||0)) : ''}`;
+    }
+  }catch(e){}
+  return '';
+}
 function promptKlyftonAction(a){
   const desc = klyftonActionDesc(a); if(!desc) return;
+  const allowed = klyftonActionRoleAllowed(a);
+  const recHint = klyftonActionRecordHint(a);
   window.__pendingAction = a;
   const c=document.getElementById('chatMessages'); if(!c) return;
   const div=document.createElement('div'); div.className='msg ai'; div.id='klyftonActionPrompt';
   div.innerHTML=`<div class="msg-name" style="color:var(--cy)">KLYFTON WANTS TO ACT</div>${desc}
+    ${recHint?`<div style="margin-top:6px;font-size:11px;color:var(--t2)">${recHint}</div>`:''}
+    <div style="margin-top:6px;font-size:10px;color:${allowed?'var(--t2)':'var(--red)'}">Role: ${(appRole||'none').toUpperCase()}${allowed?'':' · action blocked for this role'}</div>
     <div style="margin-top:8px">
-      <button class="btn btn-primary" style="font-size:12px" onclick="doPendingKlyftonAction()">✅ Do it</button>
+      <button class="btn btn-primary" style="font-size:12px;${allowed?'':'opacity:.5;cursor:not-allowed'}" onclick="doPendingKlyftonAction()" ${allowed?'':'disabled'}>✅ Do it</button>
       <button class="btn btn-ghost" style="font-size:12px;margin-left:6px" onclick="cancelPendingKlyftonAction()">Cancel</button>
     </div>`;
   c.appendChild(div); c.scrollTop=c.scrollHeight;
@@ -5611,6 +5654,7 @@ function cancelPendingKlyftonAction(){ window.__pendingAction=null; const p=docu
 function doPendingKlyftonAction(){
   const a=window.__pendingAction; const p=document.getElementById('klyftonActionPrompt'); if(p) p.remove();
   window.__pendingAction=null; if(!a) return;
+  if(!klyftonActionRoleAllowed(a)){ notify('This action is blocked for your role','alert'); return; }
   const today=new Date().toISOString().split('T')[0];
   try{
     if(a.type==='add_lead'){
@@ -5708,9 +5752,20 @@ function gatherBizContext(){
     const jobs=appState.jobs||[], leads=appState.leads||[], ests=appState.estimates||[];
     const ctx={
       company:'Machine Gun Spray Foam & Concrete Lifting, LLC',
+      userRole: appRole || 'none',
+      userName: window._currentUser || '',
       activeJobs: jobs.filter(j=>j.status!=='Completed'&&j.status!=='Cancelled').length,
       openLeads: leads.filter(l=>!['Won','Lost'].includes(l.status)).length
     };
+    try{
+      const won=leads.filter(l=>l.status==='Won').length;
+      const lost=leads.filter(l=>l.status==='Lost').length;
+      const total=won+lost;
+      if(total>0) ctx.winRate=((won/total)*100).toFixed(1)+'% ('+won+'/'+total+')';
+      const pipeline=leads.filter(l=>!['Won','Lost'].includes(l.status)).reduce((s,l)=>s+(Number(l.value)||0),0);
+      ctx.pipelineValue='$'+pipeline.toLocaleString();
+      ctx.jobsWon=won;
+    }catch(e){}
     // Live record read — actual leads/jobs so Klyfton answers "what leads do I have?" with real names,
     // not just counts. Capped + trimmed to keep the prompt lean; newest first.
     try{

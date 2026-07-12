@@ -97,7 +97,11 @@ Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/rem
 it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
 the crew's real numbers/prices from context — never invent a price. For emails and proposals, write
 them in Clifton's voice, ready for him to review and send. Always give your short normal reply above
-the block. The user still taps a confirm button before anything is written or removed.`;
+the block. The user still taps a confirm button before anything is written or removed.
+Honor USER ROLE from context:
+- readonly: no data-changing actions (draft_* only)
+- field: only field-safe actions (add_punch, log_* safety/maintenance/inventory, draft_*)
+- admin/full: all actions allowed with human confirm.`;
 
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
@@ -133,6 +137,35 @@ specific and practical for a field crew.`,
     name: "Ops",
     focus: `You are the OPS/SCHEDULING mind. Job sequencing, crew/time, timelines, customer comms,
 and go/no-go on the day. Give a checklist and a timeline. Never schedule anything on a Sunday.`,
+  },
+  proposal: {
+    name: "Proposal-Drafter",
+    focus: `You are the PROPOSAL mind. Build tight customer-ready scope language, exclusions, assumptions,
+schedule windows, terms, and approval-ready draft wording from real estimate/job context. Never expose
+internal margin targets, labor rates, or raw internal pricing logic. Prefer draft_proposal actions.`,
+  },
+  crm: {
+    name: "CRM-FollowUp",
+    focus: `You are the CRM/FOLLOW-UP mind. Lead qualification, next steps, contact cadence, and concise
+follow-up scripts (text/email/call opener). Use real leads on file only. Favor add_followup, update_lead,
+log_contact, and draft_sms/draft_email actions when the user asks you to act.`,
+  },
+  inventory: {
+    name: "Inventory-Ordering",
+    focus: `You are the INVENTORY/PURCHASING mind. Stock checks, reorder planning, set usage, and supplier
+order drafts. Use low-stock and material context first. Prefer material_order, set_inventory, and log_setuse
+actions. Never invent vendor pricing; mark unknowns as owner to confirm.`,
+  },
+  reporting: {
+    name: "Reporting-KPI",
+    focus: `You are the REPORTING/KPI mind. Summarize pipeline, conversion, margin trend, crew utilization,
+and operational risks using provided records. Be numbers-first, call out gaps, and end with top actions.`,
+  },
+  govcon: {
+    name: "GovCon-Hunter",
+    focus: `You are the GOVCON OPPORTUNITY mind. Find current government/municipal opportunities for
+insulation, roofing, coatings, and concrete lifting in MT/WY/ND/SD. Use web search; cite source links;
+never fabricate entities, contacts, or solicitations. End with 2-3 best bets this week.`,
   },
   marketing: {
     name: "Marketing",
@@ -245,6 +278,8 @@ function contextBlock(context, memory) {
   const parts = [];
   if (context && typeof context === "object") {
     const c = [];
+    if (context.userRole) c.push("USER ROLE: " + context.userRole);
+    if (context.userName) c.push("USER NAME: " + context.userName);
     if (context.company) c.push("Company: " + context.company);
     if (context.activeJobs != null) c.push("Active jobs: " + context.activeJobs);
     if (context.openLeads != null) c.push("Open leads: " + context.openLeads);
@@ -293,9 +328,12 @@ function contextBlock(context, memory) {
 async function route(key, userText, history) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
 answer, and whether the job is simple (one mind) or complex (several).
-Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, general.
+Mind keys: estimator, conditions, materials, safety, ops, proposal, crm, inventory, reporting, govcon, marketing, hunter, general.
 Use "marketing" for social posts / content / captions / ads. Use "hunter" for finding new leads,
-jobs, opportunities, or gov solicitations.
+jobs, and local opportunities. Use "govcon" for public-sector solicitations, SAM/state/local bid
+research, and capability alignment. Use "proposal" for quote/proposal writing requests. Use "crm"
+for lead qualification/follow-up. Use "inventory" for stock/reorder/material order asks. Use
+"reporting" for KPI/pipeline/margin summaries.
 Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
 Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.

@@ -39,6 +39,25 @@ Create one command system for lead capture, estimating, proposals, job tracking,
 17. Google Drive sync
 18. Admin settings
 
+## AI Command Center (Klyfton Hive)
+
+Single front door: one Klyfton chat routes work to specialist agents and returns one reviewed answer.
+
+Initial production specialists:
+- Lead Qualifier / CRM Follow-up
+- Estimator
+- Proposal Drafter
+- Scheduler / Ops
+- Safety / JSA
+- Materials / Inventory / Ordering
+- Reporting / KPI
+- Opportunity Hunter (local + GovCon)
+
+Guardrails:
+- Agents draft; humans confirm every write/send action.
+- Role-aware action limits (readonly, field, admin/full).
+- Real records only (leads/jobs/inventory/pricing from app context).
+
 ## User roles
 
 - Owner/Admin: full access
