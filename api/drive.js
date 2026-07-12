@@ -165,7 +165,7 @@ module.exports = async (req, res) => {
     // ── CREATE JOB FOLDER ─────────────────────────────────────────────────
     if (mode === 'create_folder') {
       const rawName = String(body.jobName || 'New Job').replace(/[<>:"/\\|?*\x00-\x1f']/g, '-').replace(/-+/g, '-').trim().slice(0, 200);
-      const parentId = (body.parentFolderId || rootId) || undefined;
+      const parentId = rootId || undefined;
 
       const folder = await createFolder(token, rawName, parentId);
 

@@ -64,20 +64,43 @@ async function sbFetch(url, serviceKey, method, body) {
       'Authorization': 'Bearer ' + serviceKey,
       'Content-Type': 'application/json',
     }
-  };
-  if (method === 'POST' || method === 'PATCH') {
-    opts.headers['Prefer'] = 'return=representation';
-  }
-  if (body !== undefined) opts.body = JSON.stringify(body);
-  const r = await fetch(url, opts);
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const e = new Error('SUPABASE_ERROR');
-    e.detail = (data && (data.message || data.error)) ? String(data.message || data.error) : 'http_' + r.status;
-    throw e;
-  }
-  return data;
-}
+      };
+      if (method === 'POST' || method === 'PATCH') {
+        opts.headers['Prefer'] = 'return=representation';
+      }
+      if (body !== undefined) opts.body = JSON.stringify(body);
+      const r = await fetch(url, opts);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const e = new Error('SUPABASE_ERROR');
+        e.detail = (data && (data.message || data.error)) ? String(data.message || data.error) : 'http_' + r.status;
+        throw e;
+      }
+      return data;
+    }
+
+    async function sbCount(base, serviceKey, table, status) {
+      const where = status ? ('?status=eq.' + encodeURIComponent(status)) : '';
+      const r = await fetch(base + '/' + table + where, {
+        method: 'GET',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': 'Bearer ' + serviceKey,
+          'Prefer': 'count=exact',
+          'Range': '0-0',
+        },
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        const e = new Error('SUPABASE_ERROR');
+        e.detail = (data && (data.message || data.error)) ? String(data.message || data.error) : 'http_' + r.status;
+        throw e;
+      }
+      const contentRange = String(r.headers.get('content-range') || '');
+      const slash = contentRange.lastIndexOf('/');
+      const total = slash >= 0 ? parseInt(contentRange.slice(slash + 1), 10) : NaN;
+      return Number.isFinite(total) ? total : 0;
+    }
 
 function clean(s, max) {
   return String(s == null ? '' : s).trim().slice(0, max || 500);
@@ -188,18 +211,21 @@ module.exports = async (req, res) => {
 
     // ── DASHBOARD COUNTS ────────────────────────────────────────────────────
     if (mode === 'counts') {
-      const [custData, estData] = await Promise.all([
-        sbFetch(base + '/customers?select=id&limit=1000', sbKey, 'GET').catch(() => []),
-        sbFetch(base + '/estimates?select=id,status&limit=1000', sbKey, 'GET').catch(() => []),
+      const [customers, totalLeads, draft, sent, approved, won] = await Promise.all([
+        sbCount(base, sbKey, 'customers'),
+        sbCount(base, sbKey, 'estimates'),
+        sbCount(base, sbKey, 'estimates', 'draft'),
+        sbCount(base, sbKey, 'estimates', 'sent'),
+        sbCount(base, sbKey, 'estimates', 'approved'),
+        sbCount(base, sbKey, 'estimates', 'won'),
       ]);
-      const ests = Array.isArray(estData) ? estData : [];
       const counts = {
-        customers: Array.isArray(custData) ? custData.length : 0,
-        total_leads: ests.length,
-        draft: ests.filter(e => e.status === 'draft').length,
-        sent: ests.filter(e => e.status === 'sent').length,
-        approved: ests.filter(e => e.status === 'approved').length,
-        won: ests.filter(e => e.status === 'won').length,
+        customers,
+        total_leads: totalLeads,
+        draft,
+        sent,
+        approved,
+        won,
       };
       sendJson(res, 200, { ok: true, counts });
       return;

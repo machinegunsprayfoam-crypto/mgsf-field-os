@@ -63,6 +63,14 @@ function clean(s, max) {
   return String(s == null ? '' : s).trim().slice(0, max || 500);
 }
 
+function safeEq(a, b) {
+  const crypto = require('crypto');
+  const left = Buffer.from(String(a || ''), 'utf8');
+  const right = Buffer.from(String(b || ''), 'utf8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -177,6 +185,19 @@ module.exports = async (req, res) => {
   const message = clean(body.message, 2000);
   const totalFormatted = clean(body.totalFormatted, 40);
   const proposalId = clean(body.proposalId, 40);
+
+  const authSecret = String(process.env.CREW_CODE || '').trim();
+  const providedSecret = clean(
+    req.headers['x-crew-code']
+    || req.headers['x-api-key']
+    || body.crewCode
+    || body.authCode,
+    200
+  );
+  if (!authSecret || !safeEq(authSecret, providedSecret)) {
+    sendJson(res, 401, { ok: false, error: 'UNAUTHORIZED' });
+    return;
+  }
 
   let subject, html;
   if (type === 'review') {
