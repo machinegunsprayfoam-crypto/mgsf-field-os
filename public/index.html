@@ -2062,17 +2062,25 @@ const CONS_QUICK = {
 };
 
 // ── Dropdown HTML helpers ─────────────────────────────────────
+// Estimator favorites — owner stars the foams/coatings the crew runs most; they
+// jump to the top of the dropdowns. Managed in Price Book → ⭐ My Estimator List.
+function favGet(kind){ try{ const o=JSON.parse(localStorage.getItem('klyfton_fav')||'{}'); return new Set(o[kind]||[]); }catch(e){ return new Set(); } }
+function favToggle(kind,key){ let o={}; try{o=JSON.parse(localStorage.getItem('klyfton_fav')||'{}');}catch(e){} const s=new Set(o[kind]||[]); if(s.has(key)) s.delete(key); else s.add(key); o[kind]=[...s]; try{localStorage.setItem('klyfton_fav',JSON.stringify(o));}catch(e){} }
 function foamOptions(cats){
-  return EST_FOAM.filter(p=>cats.includes(p.cat)).map(p=>{
-    const cpBF = (p.setCost/p.yieldBF).toFixed(3);
-    return `<option value="${p.k}">${p.n} — $${cpBF}/BF</option>`;
-  }).join('');
+  const fav=favGet('foam');
+  const list=EST_FOAM.filter(p=>cats.includes(p.cat));
+  const opt=p=>`<option value="${p.k}">${fav.has(p.k)?'★ ':''}${p.n} — $${(p.setCost/p.yieldBF).toFixed(3)}/BF</option>`;
+  const f=list.filter(p=>fav.has(p.k)), r=list.filter(p=>!fav.has(p.k));
+  return (f.length&&r.length) ? `<optgroup label="★ Most used">${f.map(opt).join('')}</optgroup><optgroup label="All foams">${r.map(opt).join('')}</optgroup>` : list.map(opt).join('');
 }
 function geoOptions(){
   return EST_GEO.map(p=>`<option value="${p.k}">${p.n} — $${p.priceLb}/lb</option>`).join('');
 }
 function coatOptions(){
-  return EST_COAT.map(p=>`<option value="${p.k}">${p.n}${p.costGal===0?' [enter $/gal below]':''}</option>`).join('');
+  const fav=favGet('coat');
+  const opt=p=>`<option value="${p.k}">${fav.has(p.k)?'★ ':''}${p.n}${p.costGal===0?' [enter $/gal below]':''}</option>`;
+  const f=EST_COAT.filter(p=>fav.has(p.k)), r=EST_COAT.filter(p=>!fav.has(p.k));
+  return (f.length&&r.length) ? `<optgroup label="★ Most used">${f.map(opt).join('')}</optgroup><optgroup label="All coatings">${r.map(opt).join('')}</optgroup>` : EST_COAT.map(opt).join('');
 }
 function subOpts(types){
   return types.map(t=>`<option value="${t}">${SUBSTRATE_WASTE[t].label} (+${Math.round(SUBSTRATE_WASTE[t].waste*100)}% waste)</option>`).join('');
@@ -2100,7 +2108,7 @@ function calcBFCost(opts){
   const actualGm = sell>0 ? gp/sell : 0;
   const setsNeeded = Math.ceil(bf / p.yieldBF);
   return {rawMat, waste, cons, totalMat, laborHrs, laborCost, directCost,
-          sell, gp, actualGm, gm, bf, setsNeeded,
+          sell, gp, actualGm, gm, bf, setsNeeded, sqft: opts.sqft,
           productName:p.n, subLabel:sub.label,
           gonogo: actualGm>=gm-0.001 ? 'GO':'REVIEW'};
 }
@@ -3576,6 +3584,14 @@ function calculateBid(){
   const gm         = MGSF.gmTargets[market]||0.50;
   const projectGO  = blendedGM>=gm-0.001;
 
+  // Auto prep & time — crew-hours + days from production rates, foam sets to order,
+  // and a masking estimate (9ft×200ft roll = 1800 sq ft). All labeled as estimates.
+  const crewHrs  = results.reduce((s,r)=>s+(r.laborHrs||0),0);
+  const projDays = crewHrs>0 ? Math.max(1, Math.ceil(crewHrs/(2*8))) : 0;
+  const foamSets = results.reduce((s,r)=>s+(r.setsNeeded||0),0);
+  const prepSqft = results.reduce((s,r)=>s+(r.sqft||0),0);
+  const filmRolls= prepSqft>0 ? Math.ceil(prepSqft/1800) : 0;
+
   const typeLabels = {walls:'Walls (SPF)',gable:'Gable Walls (SPF)',rimjoist:'Rim Joists (SPF)',
     roofing:'SPF Roofing System',coating:'Coating',lifting:'Concrete Lifting (Poly)',
     insul_removal:'Insulation Removal',bpi:'BPI / Energy Audit',
@@ -3621,7 +3637,16 @@ function calculateBid(){
       <span style="font-weight:700;color:var(--or);font-size:17px">$${totalSell.toLocaleString('en',{maximumFractionDigits:0})}</span>
     </div>
   </div></div>
-  <div style="margin-top:10px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
+  <div style="margin-top:10px;padding:8px 10px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);border-radius:6px;font-size:12px">
+    <div style="font-weight:700;color:var(--cy);margin-bottom:5px">🧰 PREP &amp; TIME</div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;color:var(--tx)">
+      ${crewHrs>0?`<span>⏱️ ≈ ${Math.round(crewHrs)} crew-hrs ≈ <b>${projDays} day${projDays!==1?'s':''}</b> <span style="color:var(--t2)">(2-crew @ 8 hr)</span></span>`:''}
+      ${foamSets>0?`<span>🛢️ Order <b>${foamSets}</b> foam set${foamSets!==1?'s':''}</span>`:''}
+      ${filmRolls>0?`<span>🎞️ Masking film ~<b>${filmRolls}</b> roll${filmRolls!==1?'s':''} <span style="color:var(--t2)">(9ft×200ft, est.)</span></span>`:''}
+    </div>
+    <div style="font-size:10px;color:var(--t2);margin-top:5px">Prep is a starting estimate — mask adjacent surfaces, prime substrate, PPE. Set exact consumables in each item's CONSUMABLES panel.</div>
+  </div>
+  <div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
     ⚠️ DRAFT ONLY — Clifton approves all numbers before any bid is sent. Unsigned change orders are a hard closeout block.
   </div>
   <div style="margin-top:8px;display:flex;gap:8px">
@@ -6978,12 +7003,22 @@ function pbTable(cols, rows, n){
   const tr = rows.map(r=>'<tr>'+r.map((cell,i)=>`<td style="text-align:${rt(cols[i])?'right':'left'};padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05)">${cell}</td>`).join('')+'</tr>').join('');
   return `<div style="font-size:11px;color:var(--t2);margin:4px 2px 6px">${n} item${n!==1?'s':''}</div><div style="overflow-x:auto;max-height:62vh"><table style="width:100%;border-collapse:collapse">${'<thead><tr>'+th+'</tr></thead>'}<tbody>${tr}</tbody></table></div>`;
 }
+function pbFav(kind,key){ favToggle(kind,key); renderPriceBook(); }
 function renderPriceBook(){
-  const tabs=[['gear','Consumables & Equipment'],['foam','Foam Systems'],['coat','Coatings']];
-  const tb=document.getElementById('pb_tabs'); if(tb) tb.innerHTML=tabs.map(t=>`<button class="btn ${pbTab===t[0]?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 10px" onclick="pbSelect('${t[0]}')">${t[1]} (${PRICEBOOK[t[0]].length})</button>`).join('');
+  const tabs=[['fav','⭐ My Estimator List'],['gear','Consumables & Equipment'],['foam','Foam Systems'],['coat','Coatings']];
+  const tb=document.getElementById('pb_tabs'); if(tb) tb.innerHTML=tabs.map(t=>`<button class="btn ${pbTab===t[0]?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 10px" onclick="pbSelect('${t[0]}')">${t[1]}${PRICEBOOK[t[0]]?` (${PRICEBOOK[t[0]].length})`:''}</button>`).join('');
   const q=(((document.getElementById('pb_search')||{}).value)||'').trim().toLowerCase();
   const body=document.getElementById('pb_body'); if(!body) return;
   let html='';
+  if(pbTab==='fav'){
+    const ff=favGet('foam'), cf=favGet('coat');
+    const row=(kind,p)=>{ const on=(kind==='foam'?ff:cf).has(p.k);
+      return `<div class="log-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12px">${esc(p.n)}</span><button class="btn ${on?'btn-primary':'btn-ghost'}" style="font-size:12px;padding:3px 10px" onclick="pbFav('${kind}','${p.k}')">${on?'★ Starred':'☆ Star'}</button></div>`; };
+    body.innerHTML=`<div style="font-size:11px;color:var(--t2);margin:2px 2px 8px">Star the foams &amp; coatings you run most — they jump to the top of the Estimator dropdowns (everything else stays available below them).</div>
+      <div class="jsa-card"><h4 style="margin:0 0 6px">Foams (${EST_FOAM.length})</h4>${EST_FOAM.map(p=>row('foam',p)).join('')}</div>
+      <div class="jsa-card"><h4 style="margin:0 0 6px">Coatings (${EST_COAT.length})</h4>${EST_COAT.map(p=>row('coat',p)).join('')}</div>`;
+    return;
+  }
   if(pbTab==='gear'){
     const rows=PRICEBOOK.gear.filter(r=>!q||r.n.toLowerCase().includes(q)||(r.cat||'').toLowerCase().includes(q));
     html = pbTable(['Item','Category','Cost','+20%','+30%','+50%'], rows.map(r=>[esc(r.n),esc(r.cat),pbMoney(r.cost),pbMoney(r.m20),pbMoney(r.m30),pbMoney(r.m50)]), rows.length);
