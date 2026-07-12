@@ -318,6 +318,55 @@ canvas.chart{width:100%;height:100%}
 .apply-sf-btn{background:var(--cy);color:#000;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700}
 .apply-sf-btn:hover{opacity:.85}
 </style>
+<style id="mg-facelift">
+  /* ── Klyfton facelift: depth, neon, glass, motion (additive) ── */
+  body{
+    background:
+      radial-gradient(1100px 560px at 18% -12%, rgba(34,211,238,.07), transparent 60%),
+      radial-gradient(950px 480px at 105% -5%, rgba(249,115,22,.08), transparent 55%),
+      var(--bg, #0a0a12) !important;
+  }
+  .jsa-card, .card, .metric-card, .skill-card{
+    border:1px solid rgba(255,255,255,.07);
+    box-shadow: 0 2px 22px rgba(0,0,0,.38);
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  }
+  .jsa-card:hover, .card:hover, .metric-card:hover, .skill-card:hover{
+    border-color: rgba(34,211,238,.30);
+    box-shadow: 0 6px 30px rgba(0,0,0,.55), 0 0 20px rgba(34,211,238,.08);
+    transform: translateY(-1px);
+  }
+  .nav-item{ transition: background .18s ease, box-shadow .18s ease, color .18s ease; }
+  .nav-item:hover{ box-shadow: inset 3px 0 0 var(--or, #f97316); }
+  .nav-item.active{ box-shadow: inset 3px 0 0 var(--cy, #22d3ee), 0 0 24px rgba(34,211,238,.06); }
+  .btn-primary{ box-shadow: 0 0 16px rgba(249,115,22,.28); }
+  .btn-primary:hover{ box-shadow: 0 0 22px rgba(249,115,22,.45); }
+  .klyfton-avatar, .metric-icon{ filter: drop-shadow(0 0 8px rgba(249,115,22,.35)); }
+  /* subtle animated scanline sheen on the very top */
+  #app::before, body::before{ content:none; }
+
+  /* ── Field radio widget ── */
+  .mg-radio{ position:fixed; left:14px; bottom:14px; z-index:60; font-family:var(--font, system-ui); }
+  .mg-radio-toggle{ display:none; width:46px; height:46px; border-radius:50%; border:1px solid rgba(34,211,238,.35);
+    background:rgba(10,10,18,.92); color:#e8e8f0; font-size:20px; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.5), 0 0 18px rgba(34,211,238,.15); }
+  .mg-radio.collapsed .mg-radio-toggle{ display:block; }
+  .mg-radio.collapsed .mg-radio-panel{ display:none; }
+  .mg-radio-panel{ width:210px; background:rgba(12,12,20,.92); backdrop-filter:blur(10px);
+    border:1px solid rgba(34,211,238,.22); border-radius:12px; padding:10px; box-shadow:0 8px 30px rgba(0,0,0,.55); }
+  .mg-radio-head{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--cy,#22d3ee); font-weight:700; margin-bottom:8px }
+  .mg-radio-head button{ background:none; border:none; color:var(--t2,#8a8a9a); cursor:pointer; font-size:13px }
+  .mg-radio-stations{ display:flex; flex-direction:column; gap:4px; margin-bottom:8px; max-height:150px; overflow:auto }
+  .mg-st{ text-align:left; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); color:#d8d8e4;
+    border-radius:7px; padding:6px 8px; font-size:12px; cursor:pointer; transition:all .15s }
+  .mg-st:hover{ border-color:rgba(249,115,22,.4) }
+  .mg-st.on{ border-color:var(--or,#f97316); color:#fff; box-shadow:0 0 12px rgba(249,115,22,.25) }
+  .mg-radio-ctrl{ display:flex; align-items:center; gap:8px }
+  .mg-radio-ctrl button{ width:34px; height:30px; border-radius:7px; border:1px solid rgba(255,255,255,.12);
+    background:var(--or,#f97316); color:#000; font-weight:800; cursor:pointer }
+  .mg-radio-ctrl input[type=range]{ flex:1; accent-color:var(--or,#f97316) }
+  @media(max-width:720px){ .mg-radio{ left:10px; bottom:70px } }
+</style>
+
 </head>
 <body>
 <!-- BOOT SCREEN -->
@@ -1781,7 +1830,7 @@ function switchModule(id){
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
   if(id==='docs') renderDocLib();
-  if(id==='dashboard' && window.renderOpsBrief) renderOpsBrief();
+  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
@@ -4560,7 +4609,11 @@ function renderPipeline(){
       <div class="pipe-meta">${l.service||''} • ${l.state||''}</div>
       ${l.phone?`<div class="pipe-meta" style="margin-top:3px"><a href="tel:${l.phone}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">📞 ${l.phone}</a></div>`:''}
       ${l.email?`<div class="pipe-meta" style="margin-top:2px"><a href="mailto:${l.email}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">✉ ${l.email}</a></div>`:''}
-      <div class="pipe-meta" style="margin-top:4px;color:var(--t3)">${l.date||''} ${l.source?'• '+l.source:''}</div>`;
+      <div class="pipe-meta" style="margin-top:4px;color:var(--t3)">${l.date||''} ${l.source?'• '+l.source:''}</div>
+      <div style="display:flex;gap:6px;margin-top:7px">
+        <button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;flex:1" onclick="event.stopPropagation();openLeadDetail(${l.id})">✏️ Edit</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:var(--red)" title="Delete" onclick="event.stopPropagation();deleteLead(${l.id})">🗑</button>
+      </div>`;
       c.onclick=()=>openLeadDetail(l.id);
       div.appendChild(c);
     });
@@ -4628,6 +4681,7 @@ function saveLead(){
   save('leads');
   closeModal();
   renderPipeline();
+  if(window.renderDashMetrics) renderDashMetrics();
   notify(`Lead saved: ${name}`);
   playSound('success');
 }
@@ -4701,6 +4755,7 @@ function updateLead(id){
   save('leads');
   closeModal();
   renderPipeline();
+  if(window.renderDashMetrics) renderDashMetrics();
   notify(`${l.name} updated`);
   playSound('success');
 }
@@ -4719,10 +4774,13 @@ function updateLeadStatus(id){
 }
 
 function deleteLead(id){
+  const l = appState.leads.find(x=>x.id===id);
+  if(!confirm('Delete '+(l?('"'+l.name+'"'):'this lead')+'? This can\'t be undone.')) return;
   appState.leads = appState.leads.filter(x=>x.id!==id);
   save('leads');
   closeModal();
   renderPipeline();
+  if(window.renderDashMetrics) renderDashMetrics();
   notify('Lead deleted');
 }
 
@@ -5673,6 +5731,7 @@ function renderDocLib(){
         </div>
       </div>
       <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
+        ${d.hasPreview?`<button class="ded-add-btn" style="color:var(--cy);border-color:rgba(34,211,238,.4)" onclick="docAiBid('${d.id}')">🤖 AI Bid</button>`:''}
         ${d.hasPreview?`<button class="ded-add-btn" onclick="previewDoc('${d.id}')">👁 Preview</button>`:''}
         <button class="ded-add-btn" onclick="downloadDoc('${d.id}')">⬇ Download</button>
         <button class="ded-add-btn" style="color:var(--red)" onclick="deleteDoc('${d.id}')">✕ Remove</button>
@@ -5684,6 +5743,24 @@ function filterDocs(){ renderDocLib(); }
 
 function setDocCat(id,cat){ const d=docLib.find(x=>x.id===id); if(d){d.cat=cat;saveDocLib();renderDocLib();} }
 function setDocNote(id,notes){ const d=docLib.find(x=>x.id===id); if(d){d.notes=notes;saveDocLib();} }
+
+// Send a stored contractor doc (RFP / plans / spec / photo) to Klyfton for a bid draft.
+function docAiBid(id){
+  const d=docLib.find(x=>x.id===id); if(!d) return;
+  if(!d.dataUrl){ notify('Klyfton needs the file data — re-upload this PDF/image so it can read it','alert'); return; }
+  if(d.size>3.6*1024*1024){ notify('Large file — Klyfton may not be able to read all of it. A smaller PDF works best.','info'); }
+  const kind = d.ext==='pdf' ? 'pdf' : 'image';
+  const media = kind==='pdf' ? 'application/pdf' : (d.type||'image/jpeg');
+  const data = String(d.dataUrl).split(',')[1] || '';
+  window.__chatAtts = [{kind, media_type:media, data, name:d.name, preview: kind==='image'?d.dataUrl:null}];
+  if(typeof renderChatAtts==='function') renderChatAtts();
+  if(!appState.chatOpen) toggleChat();
+  const what = d.cat==='plans'?'set of plans' : d.cat==='specs'?'spec / RFP' : d.cat==='contract'?'contract' : 'document';
+  const input=document.getElementById('chatInput');
+  if(input) input.value='Read this '+what+' ("'+d.name+'") and help me bid it: identify the scope, square footage, product/thickness, and give an ESTIMATED price range using our real prices. List your assumptions and exactly what I need to verify before I send a number.';
+  if(typeof sendChat==='function') sendChat();
+  notify('Sent to Klyfton for a bid draft →','success');
+}
 
 function previewDoc(id){
   const d=docLib.find(x=>x.id===id); if(!d||!d.dataUrl) return;
@@ -6314,9 +6391,28 @@ document.addEventListener('click',()=>{
         const el=$('opsWx'); if(el) el.innerHTML=`🌦️ Glendive: <b>${Math.round(t)}°F</b>, dew ${Math.round(df)}°F, wind ${Math.round(w)} mph — <b style="color:${col}">${flag}</b>`;
       }).catch(()=>{ const el=$('opsWx'); if(el) el.innerHTML='🌦️ Spray weather: no signal — check the Weather tab on site.'; });
   };
+  // Real dashboard metrics — computed from actual jobs/leads (no more demo numbers).
+  window.renderDashMetrics = function(){
+    const leads=(appState.leads||[]), jobs=(appState.jobs||[]);
+    const openLeads=leads.filter(l=>l&&!['Won','Lost'].includes(l.status));
+    const activeJobs=jobs.filter(j=>j&&j.status!=='Completed'&&j.status!=='Cancelled');
+    const now=new Date(), ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    const revMTD=jobs.filter(j=>j&&j.status==='Completed'&&String(j.date||'').slice(0,7)===ym).reduce((s,j)=>s+(Number(j.value)||0),0);
+    const pipe=openLeads.reduce((s,l)=>s+(Number(l.value)||0),0);
+    const newLeadsWk=leads.filter(l=>l.date && daysSince(l.date)<7).length;
+    const set=(id,v)=>{ const el=$(id); if(el) el.textContent=v; };
+    const chg=(id,txt)=>{ const v=$(id); if(v){ const c=v.parentElement.querySelector('.metric-chg'); if(c) c.textContent=txt; } };
+    set('mtcRevenue', money(revMTD)); set('mtcLeads', openLeads.length);
+    set('mtcJobs', activeJobs.length); set('mtcPipeline', money(pipe));
+    chg('mtcRevenue', revMTD>0?'closed this month':'no closed jobs yet');
+    chg('mtcLeads', newLeadsWk>0?('↑ '+newLeadsWk+' this week'):'add your first lead');
+    chg('mtcJobs', activeJobs.length>0?(activeJobs.length+' in progress'):'none scheduled');
+    chg('mtcPipeline', pipe>0?(openLeads.length+' open leads'):'pipeline empty');
+  };
   // First paint after boot.
-  if(document.readyState==='complete') setTimeout(()=>window.renderOpsBrief&&renderOpsBrief(), 900);
-  else window.addEventListener('load', ()=> setTimeout(()=>window.renderOpsBrief&&renderOpsBrief(), 900));
+  const _dashPaint=()=>{ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); };
+  if(document.readyState==='complete') setTimeout(_dashPaint, 900);
+  else window.addEventListener('load', ()=> setTimeout(_dashPaint, 900));
 })();
 </script>
 
@@ -7166,6 +7262,60 @@ function renderGrow(){
     </div>`;
   }
 }
+</script>
+
+<div id="mgRadio" class="mg-radio collapsed">
+  <button class="mg-radio-toggle" onclick="mgRadioToggle()" title="Field radio">📻</button>
+  <div class="mg-radio-panel">
+    <div class="mg-radio-head"><span id="mgNow">📻 Field Radio</span><button onclick="mgRadioToggle()" title="Hide">▾</button></div>
+    <div class="mg-radio-stations" id="mgStations"></div>
+    <div class="mg-radio-ctrl">
+      <button id="mgPlay" onclick="mgPlayPause()">▶</button>
+      <input id="mgVol" type="range" min="0" max="1" step="0.05" value="0.7" oninput="mgSetVol(this.value)" title="Volume">
+    </div>
+  </div>
+  <audio id="mgAudio" preload="none"></audio>
+</div>
+<script>
+/* ===== Field Radio — free work-music stations (SomaFM, commercial-free) ===== */
+const MG_STATIONS=[
+  {n:'🥃 Boot Liquor — Americana', u:'https://ice1.somafm.com/bootliquor-128-mp3'},
+  {n:'🤘 Metal Detector', u:'https://ice1.somafm.com/metal-128-mp3'},
+  {n:'🎸 Left Coast 70s', u:'https://ice1.somafm.com/seventies-128-mp3'},
+  {n:'📼 Underground 80s', u:'https://ice1.somafm.com/u80s-128-mp3'},
+  {n:'🧊 Groove Salad — chill', u:'https://ice1.somafm.com/groovesalad-128-mp3'},
+  {n:'🎧 Indie Pop Rocks', u:'https://ice1.somafm.com/indiepop-128-mp3'},
+];
+let mgCur=-1, mgPlaying=false;
+function mgRadioToggle(){ const r=document.getElementById('mgRadio'); if(r) r.classList.toggle('collapsed'); }
+function mgRenderStations(){
+  const box=document.getElementById('mgStations'); if(!box) return;
+  box.innerHTML=MG_STATIONS.map((s,i)=>`<button class="mg-st${i===mgCur?' on':''}" onclick="mgPlayStation(${i})">${s.n}</button>`).join('');
+}
+function mgPlayStation(i){
+  const a=document.getElementById('mgAudio'); if(!a) return;
+  mgCur=i; a.src=MG_STATIONS[i].u; a.volume=parseFloat((document.getElementById('mgVol')||{}).value||0.7);
+  a.play().then(()=>{ mgPlaying=true; mgUpdate(); }).catch(()=>{ mgPlaying=false; mgUpdate(); });
+  try{ localStorage.setItem('mg_radio_station', String(i)); }catch(e){}
+  mgUpdate();
+}
+function mgPlayPause(){
+  const a=document.getElementById('mgAudio'); if(!a) return;
+  if(mgPlaying){ a.pause(); mgPlaying=false; }
+  else { if(mgCur<0) mgCur=0; if(!a.src) a.src=MG_STATIONS[mgCur].u; a.play().then(()=>{mgPlaying=true;mgUpdate();}).catch(()=>{}); mgPlaying=true; }
+  mgUpdate();
+}
+function mgSetVol(v){ const a=document.getElementById('mgAudio'); if(a) a.volume=parseFloat(v); try{localStorage.setItem('mg_radio_vol',String(v));}catch(e){} }
+function mgUpdate(){
+  const now=document.getElementById('mgNow'), pb=document.getElementById('mgPlay');
+  if(now) now.textContent = (mgCur>=0 && mgPlaying) ? MG_STATIONS[mgCur].n.replace(/^[^ ]+ /,'▶ ') : '📻 Field Radio';
+  if(pb) pb.textContent = mgPlaying ? '❚❚' : '▶';
+  mgRenderStations();
+}
+(function(){
+  try{ const v=localStorage.getItem('mg_radio_vol'); if(v!=null){ const el=document.getElementById('mgVol'); if(el) el.value=v; } }catch(e){}
+  mgRenderStations();
+})();
 </script>
 
 </body>
