@@ -5482,6 +5482,60 @@ function renderChatAtts(){
 }
 function removeChatAtt(i){ window.__chatAtts.splice(i,1); renderChatAtts(); }
 
+// A live AI bubble that fills in as the hive streams tokens, then gets finalized
+// with the clean (marker-stripped) answer. Falls back gracefully if streaming isn't used.
+function addStreamingAiBubble(){
+  const container=document.getElementById('chatMessages');
+  const div=document.createElement('div'); div.className='msg ai';
+  const name=document.createElement('div'); name.className='msg-name'; name.textContent='KLYFTON';
+  const body=document.createElement('div');
+  body.innerHTML='<span style="opacity:.55">▍</span>';
+  const time=document.createElement('div'); time.className='msg-time';
+  time.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  div.appendChild(name); div.appendChild(body); div.appendChild(time);
+  container.appendChild(div); container.scrollTop=container.scrollHeight;
+  return {
+    setText:function(t){ body.innerHTML=markdownLite(t||'')+'<span style="opacity:.55">▍</span>'; container.scrollTop=container.scrollHeight; },
+    finalize:function(t, spk){ body.innerHTML=markdownLite(t||''); container.scrollTop=container.scrollHeight; if(spk && appState.soundOn){ try{ speak(spk); }catch(e){} } }
+  };
+}
+
+// POST to the hive. If the server streams (SSE), forward text deltas to onDelta and
+// resolve with the final {text, remember, minds, mode, configured}. If it returns JSON
+// (GROW tools, not-configured, crew-code), just parse and resolve. Rejects on network/abort.
+async function klyftonStream(payload, signal, onDelta){
+  const r = await fetch('/api/klyfton', {
+    method:'POST',
+    headers:{'content-type':'application/json','accept':'text/event-stream'},
+    body: JSON.stringify(payload),
+    signal
+  });
+  const ct = r.headers.get('content-type') || '';
+  if(ct.indexOf('text/event-stream') === -1 || !r.body || !r.body.getReader){
+    const d = await r.json().catch(()=>null);
+    return d || {text:''};
+  }
+  const reader = r.body.getReader(); const dec = new TextDecoder();
+  let buf='', preview='', result=null;
+  for(;;){
+    const {done, value} = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, {stream:true});
+    let idx;
+    while((idx = buf.indexOf('\n\n')) !== -1){
+      const chunk = buf.slice(0, idx); buf = buf.slice(idx+2);
+      const line = chunk.split('\n').find(l=>l.indexOf('data:')===0);
+      if(!line) continue;
+      const data = line.slice(5).trim();
+      if(!data) continue;
+      let ev; try{ ev=JSON.parse(data); }catch(e){ continue; }
+      if(ev.t){ preview += ev.t; if(onDelta) onDelta(preview); }
+      if(ev.done){ result = ev; }
+    }
+  }
+  return result || {text: preview};
+}
+
 function sendChat(){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -5495,29 +5549,34 @@ function sendChat(){
   window.__chatAtts=[]; renderChatAtts();
   addMessage(text,'user','',atts);
   playSound('click');
-  
-  // Set typing indicator
-  document.getElementById('chatStatus').textContent='● THINKING...';
 
-  // Ask the Klyfton Hive (router → specialist minds → synthesizer/critic); fall back offline.
+  const statusEl = document.getElementById('chatStatus');
+  if(statusEl) statusEl.textContent='● THINKING...';
+
+  // Ask the Klyfton Hive (router → specialist minds → synthesizer/critic), streaming.
   if(!appState.chatHistory) appState.chatHistory = [];
   if(!appState.memory) appState.memory = [];
   const hist = appState.chatHistory.slice(-10);
   appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
-  fetch('/api/klyfton', {
-    method:'POST',
-    headers:{'content-type':'application/json'},
-    body: JSON.stringify({
-      message:text,
-      history:hist,
-      memory: appState.memory.slice(-20),
-      context: gatherBizContext(),
-      // Photos/PDFs the crew attached — the hive reads these via Claude vision.
-      attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data}))
-    })
-  })
-  .then(r=>r.json())
+
+  const bubble = addStreamingAiBubble();
+  const ac = new AbortController();
+  let timedOut = false;
+  // Honest client-side deadline — under the function's maxDuration (60s) so we stop
+  // ourselves cleanly instead of showing a fake "offline" reply on a slow-but-working call.
+  const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 58000);
+
+  klyftonStream({
+    message:text,
+    history:hist,
+    memory: appState.memory.slice(-20),
+    context: gatherBizContext(),
+    // Photos/PDFs the crew attached — the hive reads these via Claude vision.
+    attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data})),
+    stream:true
+  }, ac.signal, function(prev){ bubble.setText(prev); })
   .then(d=>{
+    clearTimeout(to);
     let resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
     // Klyfton may propose an action — pull it out of the text; the user confirms before it runs.
     const parsed = parseKlyftonAction(resp); resp = parsed.clean;
@@ -5528,7 +5587,7 @@ function sendChat(){
       appState.memory = appState.memory.slice(-50);
       save('memory');
     }
-    addMessage(resp,'ai',resp);
+    bubble.finalize(resp, resp);
     if(parsed.action) promptKlyftonAction(parsed.action);
     // Show the hive at work: which minds answered.
     let status='● READY';
@@ -5537,18 +5596,27 @@ function sendChat(){
         ? '🐝 '+d.minds.length+' minds: '+d.minds.join(', ')
         : '● '+d.minds[0];
     }
-    document.getElementById('chatStatus').textContent=status;
+    if(d && d.configured===false) status='⚙️ Add ANTHROPIC_API_KEY in Vercel';
+    if(statusEl) statusEl.textContent=status;
     playSound('nav');
   })
   .catch(()=>{
-    // Offline / no backend — use the local canned responder so the app still replies.
+    clearTimeout(to);
+    if(timedOut){
+      // Not offline — the hive just ran long. Be honest instead of faking a canned reply.
+      bubble.finalize("That's a heavy one — I ran long and stopped so I'm not leaving you hanging. Ask it again, or narrow it down a bit, and I'll take another swing.");
+      if(statusEl) statusEl.textContent='● TIMED OUT';
+      playSound('nav');
+      return;
+    }
+    // True network/offline failure — use the local canned responder so the app still replies.
     if(atts.length){
-      addMessage("I can't read photos or PDFs while offline — that needs a connection to the hive. Your attachment is still here; try again when you've got signal.",'ai','');
+      bubble.finalize("I can't read photos or PDFs without a connection to the hive. Your attachment is still here — try again when you've got signal.");
     } else {
       const {text:resp, voice} = processChat(text);
-      addMessage(resp,'ai',voice);
+      bubble.finalize(resp, voice);
     }
-    document.getElementById('chatStatus').textContent='● OFFLINE';
+    if(statusEl) statusEl.textContent = (navigator.onLine===false) ? '● OFFLINE' : '● CONNECTION ISSUE';
     playSound('nav');
   });
 }
