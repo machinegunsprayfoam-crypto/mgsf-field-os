@@ -16,6 +16,52 @@ const ROUTER_MODEL = "claude-haiku-4-5";
 const WORKER_MODEL = "claude-sonnet-5";
 const CRITIC_MODEL = "claude-sonnet-5";
 
+// ---- Monthly cost cap (opt-in) ------------------------------------------------
+// Reuses the same Vercel KV / Upstash the sync module uses. Dormant unless KV is
+// attached AND KLYFTON_MONTHLY_BUDGET_USD is set. Spend is tracked per calendar
+// month (UTC) under mgsf:klyfton_cost:YYYY-MM; the key rolls over automatically.
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+const MONTHLY_BUDGET_USD = parseFloat(process.env.KLYFTON_MONTHLY_BUDGET_USD || "0") || 0;
+const KV_ON = !!(KV_URL && KV_TOKEN);
+
+// USD per 1M tokens [input, output] — sticker prices (ignore intro discounts on
+// purpose so the cap errs on the safe side: it stops a hair early, never late).
+const PRICE = {
+  "claude-haiku-4-5": [1, 5],
+  "claude-sonnet-5": [3, 15],
+  "claude-opus-4-8": [5, 25],
+};
+function costOf(model, usage) {
+  if (!usage) return 0;
+  const k = Object.keys(PRICE).find((p) => (model || "").indexOf(p) === 0) || "claude-sonnet-5";
+  const [pin, pout] = PRICE[k];
+  const inTok = (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
+  const outTok = usage.output_tokens || 0;
+  return (inTok * pin + outTok * pout) / 1e6;
+}
+function costKey() {
+  const d = new Date();
+  return "mgsf:klyfton_cost:" + d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0");
+}
+async function kvSpentThisMonth() {
+  try {
+    const r = await fetch(KV_URL + "/get/" + encodeURIComponent(costKey()), { headers: { Authorization: "Bearer " + KV_TOKEN } });
+    if (!r.ok) return 0;
+    const j = await r.json();
+    const v = parseFloat(j && j.result);
+    return isFinite(v) ? v : 0;
+  } catch { return 0; }
+}
+async function kvAddSpend(usd) {
+  try {
+    await fetch(KV_URL + "/incrbyfloat/" + encodeURIComponent(costKey()) + "/" + encodeURIComponent(usd), {
+      method: "POST",
+      headers: { Authorization: "Bearer " + KV_TOKEN },
+    });
+  } catch {}
+}
+
 // Shared voice — every mind answers the way the owner wants (MOGS owner profile).
 const BASE_VOICE = `You serve Machine Gun Spray Foam & Concrete Lifting, LLC (owner: Clifton Behner,
 a USMC combat veteran). Answer his way:
@@ -211,7 +257,8 @@ function splitMemory(raw) {
 }
 
 // One Anthropic call, resuming through pause_turn so server-side web search can finish.
-async function callClaude(key, payload) {
+// `meter` (optional {usd}) accumulates the dollar cost of the call for the monthly cap.
+async function callClaude(key, payload, meter) {
   let data;
   for (let i = 0; i < 4; i++) {
     const r = await fetch(ANTHROPIC_URL, {
@@ -242,6 +289,7 @@ async function callClaude(key, payload) {
     console.log("[klyfton] call " + ((data && data.model) || "?") +
       " in=" + ((u && u.input_tokens) || 0) + " out=" + ((u && u.output_tokens) || 0));
   } catch (e) {}
+  if (meter) meter.usd += costOf(data && data.model, data && data.usage);
   return data;
 }
 
@@ -296,7 +344,7 @@ function contextBlock(context, memory) {
 }
 
 // The Queen: cheap classifier that decides which minds to recruit and how big the job is.
-async function route(key, userText, history) {
+async function route(key, userText, history, meter) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
 answer, and whether the job is simple (one mind) or complex (several).
 Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, general.
@@ -316,7 +364,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
       max_tokens: 300,
       system: sys,
       messages: [{ role: "user", content: (recent ? recent + "\n\n" : "") + "U: " + userText }],
-    });
+    }, meter);
     const j = textFrom(data.content).match(/\{[\s\S]*\}/);
     const parsed = j ? JSON.parse(j[0]) : null;
     let minds = (parsed && Array.isArray(parsed.minds) ? parsed.minds : [])
@@ -331,7 +379,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 }
 
 // Run one specialist mind on the question.
-async function runMind(key, mindKey, userText, history, ctx, attachments) {
+async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
   const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
@@ -348,7 +396,7 @@ async function runMind(key, mindKey, userText, history, ctx, attachments) {
     thinking: { type: "adaptive" },
     tools: [WEB_TOOL],
     messages,
-  });
+  }, meter);
   return { mind: spec.name, text: textFrom(data.content), model: data.model || WORKER_MODEL };
 }
 
@@ -377,7 +425,7 @@ function sseSend(res, obj) {
 
 // One streaming Anthropic call. Forwards text deltas via onText; returns the full text.
 // Used only for the synthesizer (no tools → no pause_turn to resume mid-stream).
-async function callClaudeStream(key, payload, onText) {
+async function callClaudeStream(key, payload, onText, meter) {
   const r = await fetch(ANTHROPIC_URL, {
     method: "POST",
     headers: {
@@ -421,6 +469,7 @@ async function callClaudeStream(key, payload, onText) {
     }
   }
   try { console.log("[klyfton] stream " + (model || "?") + " in=" + inTok + " out=" + outTok); } catch (e) {}
+  if (meter) meter.usd += costOf(model, { input_tokens: inTok, output_tokens: outTok });
   return { text: full, model };
 }
 
@@ -510,17 +559,37 @@ same question. Merge them into ONE answer in the owner's voice. Your job as crit
 If there are durable facts worth remembering across sessions (a customer preference, a confirmed
 price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
 
+  // Per-request cost meter — every model call adds its dollar cost here.
+  const meter = { usd: 0 };
+
+  // Monthly cost cap (opt-in): needs KV attached AND KLYFTON_MONTHLY_BUDGET_USD set.
+  // Over budget → refuse new AI work with a friendly note. The estimator, JSA drafts,
+  // and time clock never touch this endpoint, so they keep working.
+  if (KV_ON && MONTHLY_BUDGET_USD > 0) {
+    const spent = await kvSpentThisMonth();
+    if (spent >= MONTHLY_BUDGET_USD) {
+      const msg = "🧯 Klyfton has reached this month's AI budget ($" + MONTHLY_BUDGET_USD.toFixed(0) +
+        "). It resets on the 1st. Owner: raise KLYFTON_MONTHLY_BUDGET_USD in Vercel to lift it. The estimator, JSA drafts, and time clock all still work.";
+      if (wantStream) { sseInit(res); sseSend(res, { done: true, configured: true, capped: true, text: msg }); res.end(); }
+      else res.status(200).json({ configured: true, capped: true, text: msg });
+      return;
+    }
+  }
+
+  // The finally records this request's spend to KV (even with no budget set — so the
+  // running monthly total is always watchable), on both the success and error paths.
+  try {
   // ---- Streaming path: SSE, streams the synthesizer's tokens on hive answers ----
   if (wantStream) {
     sseInit(res);
     try {
       const plan = isTrivial(userText, attachments)
         ? { minds: ["general"], complexity: "simple" }
-        : await route(key, routeText, history);
+        : await route(key, routeText, history, meter);
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
-        const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments);
+        const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, meter);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model });
         res.end();
@@ -529,7 +598,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
       // Complex job → run the swarm (non-streamed), then stream the synthesizer.
       const workers = await Promise.all(
-        plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments).catch(() => null))
+        plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments, meter).catch(() => null))
       );
       const answers = workers.filter((w) => w && w.text);
       if (!answers.length) {
@@ -557,7 +626,8 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
             { role: "user", content: `Question:\n${userText}\n\nSpecialist answers:\n\n${panel}` },
           ],
         },
-        (t) => emit(t)
+        (t) => emit(t),
+        meter
       );
       const { text, remember } = splitMemory(raw || answers[0].text);
       sseSend(res, { done: true, text, remember, configured: true, mode: "hive", minds: answers.map((a) => a.mind), model: model || CRITIC_MODEL });
@@ -579,11 +649,11 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     // 1) Queen recruits the minds (skipped for trivial greetings/acks).
     const plan = isTrivial(userText, attachments)
       ? { minds: ["general"], complexity: "simple" }
-      : await route(key, routeText, history);
+      : await route(key, routeText, history, meter);
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments);
+      const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, meter);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       res.status(200).json({
         text,
@@ -598,7 +668,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments).catch(() => null))
+      plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments, meter).catch(() => null))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
@@ -621,7 +691,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       messages: [
         { role: "user", content: `Question:\n${userText}\n\nSpecialist answers:\n\n${panel}` },
       ],
-    });
+    }, meter);
     const { text, remember } = splitMemory(textFrom(synth.content) || answers[0].text);
     res.status(200).json({
       text,
@@ -637,5 +707,10 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       error: String(e.detail || e).slice(0, 300),
       configured: true,
     });
+  }
+  } finally {
+    if (KV_ON && meter.usd > 0) {
+      try { await kvAddSpend(meter.usd.toFixed(6)); } catch (e) {}
+    }
   }
 };
