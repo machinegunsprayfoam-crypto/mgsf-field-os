@@ -22,7 +22,10 @@ const CRITIC_MODEL = "claude-sonnet-5";
 // month (UTC) under mgsf:klyfton_cost:YYYY-MM; the key rolls over automatically.
 const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
-const MONTHLY_BUDGET_USD = parseFloat(process.env.KLYFTON_MONTHLY_BUDGET_USD || "0") || 0;
+// Default budget $50/mo. Override in Vercel with KLYFTON_MONTHLY_BUDGET_USD (set it to
+// "0" to turn the cap off entirely and just track spend).
+const _budgetRaw = process.env.KLYFTON_MONTHLY_BUDGET_USD;
+const MONTHLY_BUDGET_USD = (_budgetRaw != null && _budgetRaw !== "") ? (parseFloat(_budgetRaw) || 0) : 50;
 const KV_ON = !!(KV_URL && KV_TOKEN);
 
 // USD per 1M tokens [input, output] — sticker prices (ignore intro discounts on
