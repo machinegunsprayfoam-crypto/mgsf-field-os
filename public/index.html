@@ -1481,12 +1481,19 @@ const MGSF = {
 // ============================================================
 // APP STATE
 // ============================================================
+// Load an array collection from localStorage, tolerating corruption — malformed JSON
+// OR a non-array value both yield []. A non-array crew value used to silently break
+// "add crew member" (crewAdd's .find/.push threw, so the tap did nothing).
+function lsArr(key){
+  try{ const v=JSON.parse(localStorage.getItem('klyfton_'+key)||'[]'); return Array.isArray(v)?v:[]; }
+  catch(e){ return []; }
+}
 let appState = {
-  leads: JSON.parse(localStorage.getItem('klyfton_leads')||'[]'),
-  jobs: JSON.parse(localStorage.getItem('klyfton_jobs')||'[]'),
-  estimates: JSON.parse(localStorage.getItem('klyfton_estimates')||'[]'),
-  memory: JSON.parse(localStorage.getItem('klyfton_memory')||'[]'),
-  crew: JSON.parse(localStorage.getItem('klyfton_crew')||'[]'),
+  leads: lsArr('leads'),
+  jobs: lsArr('jobs'),
+  estimates: lsArr('estimates'),
+  memory: lsArr('memory'),
+  crew: lsArr('crew'),
   scopeItems: [],
   soundOn: true,
   voiceOn: false,
@@ -1500,7 +1507,10 @@ let appState = {
 // (or sync down from other crew devices once cloud storage is attached). No demo seeds.
 
 function save(key){
-  try{localStorage.setItem('klyfton_'+key, JSON.stringify(appState[key]))}catch(e){}
+  // Returns false when the write fails (e.g. localStorage full) so callers can warn
+  // instead of silently losing data.
+  try{ localStorage.setItem('klyfton_'+key, JSON.stringify(appState[key])); return true; }
+  catch(e){ return false; }
 }
 
 // ============================================================
@@ -4395,20 +4405,29 @@ function renderCrew(){
     </div>`).join('') : '<div style="color:var(--t2);font-size:12px;padding:6px">No crew yet. Add yourself as Owner first, then Talia (Admin) and Daniel (Field).</div>';
 }
 function crewAdd(){
-  const g=id=>((document.getElementById(id)||{}).value||'').trim();
-  const name=g('cr_name'), pin=g('cr_pin');
-  if(!name) return notify('Enter a name','alert');
-  if(!/^\d{4}$/.test(pin)) return notify('PIN must be exactly 4 digits','alert');
-  const dupe=(appState.crew||[]).find(m=>m.pin===pin && m.id!==_crewEditId);
-  if(dupe) return notify('That PIN is already used by '+dupe.name,'alert');
-  const rec={ id:_crewEditId||Date.now(), name, role:g('cr_role')||'field', phone:g('cr_phone'), email:g('cr_email'), pin };
-  appState.crew=appState.crew||[];
-  if(_crewEditId){ const i=appState.crew.findIndex(m=>m.id===_crewEditId); if(i>=0) appState.crew[i]=rec; else appState.crew.push(rec); }
-  else appState.crew.push(rec);
-  _crewEditId=null; save('crew');
-  ['cr_name','cr_phone','cr_email','cr_pin'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
-  const rs=document.getElementById('cr_role'); if(rs) rs.value='field';
-  renderCrew(); notify('Crew member saved ✓','success');
+  // Wrapped so a bad state can never make the button silently do nothing — any failure
+  // now surfaces a message instead of a dead tap.
+  try{
+    const g=id=>((document.getElementById(id)||{}).value||'').trim();
+    const name=g('cr_name'), pin=g('cr_pin');
+    if(!name) return notify('Enter a name','alert');
+    if(!/^\d{4}$/.test(pin)) return notify('PIN must be exactly 4 digits','alert');
+    // Guard against a corrupted (non-array) crew value in storage.
+    if(!Array.isArray(appState.crew)) appState.crew=[];
+    const dupe=appState.crew.find(m=>m && m.pin===pin && m.id!==_crewEditId);
+    if(dupe) return notify('That PIN is already used by '+dupe.name,'alert');
+    const rec={ id:_crewEditId||Date.now(), name, role:g('cr_role')||'field', phone:g('cr_phone'), email:g('cr_email'), pin };
+    if(_crewEditId){ const i=appState.crew.findIndex(m=>m && m.id===_crewEditId); if(i>=0) appState.crew[i]=rec; else appState.crew.push(rec); }
+    else appState.crew.push(rec);
+    _crewEditId=null;
+    const ok=save('crew');
+    ['cr_name','cr_phone','cr_email','cr_pin'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+    const rs=document.getElementById('cr_role'); if(rs) rs.value='field';
+    renderCrew();
+    notify(ok ? 'Crew member saved ✓' : 'Added — but device storage is full, so it may not stick. Free up space (remove old photos/backups) and re-save.', ok ? 'success' : 'alert');
+  }catch(e){
+    notify('Could not save crew member: '+((e&&e.message)||e),'alert');
+  }
 }
 function crewEdit(id){
   const m=(appState.crew||[]).find(x=>x.id===id); if(!m) return; _crewEditId=id;
