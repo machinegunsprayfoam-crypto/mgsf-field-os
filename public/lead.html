@@ -149,6 +149,10 @@
         +encodeURIComponent('New lead: '+lead.name+' — '+lead.service)+'&body='+body;
     }
 
+    // Ping the owner right away (text/email) if an alerts webhook is configured. Fire-and-forget.
+    try{ fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({event:'new_lead', lead:lead})}); }catch(e){}
+
     // Primary: drop the lead straight into the pipeline via the sync backend.
     fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({collection:'leads', records:[lead]})})

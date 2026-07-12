@@ -1121,6 +1121,16 @@ canvas.chart{width:100%;height:100%}
           <button class="btn btn-cyan" style="width:100%" onclick="crewAdd()">➕ ADD / SAVE CREW MEMBER</button>
         </div>
         <div class="admin-section">
+          <div class="admin-section-title">🔔 NOTIFICATIONS — TEXT / EMAIL ME ON NEW LEADS</div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.6">
+            Get a text or email the second a customer submits the web quote form.<br>
+            <b>Setup (once):</b> make a free <b>Zapier</b> Zap → trigger <b>Webhooks by Zapier → Catch Hook</b> → it gives you a URL. Action: <b>SMS by Zapier</b> or <b>Gmail</b>. Then in <b>Vercel → mgsf-fieldos → Settings → Environment Variables</b>, add <b>ALERTS_WEBHOOK_URL</b> = that URL, and redeploy.<br>
+            Once set, every web lead pings your phone. Test it here:
+          </div>
+          <button class="btn btn-cyan" style="margin-top:8px" onclick="klyftonTestAlert()">📲 Send me a test alert</button>
+          <span id="notifyStatus" style="font-size:11px;margin-left:8px"></span>
+        </div>
+        <div class="admin-section">
           <div class="admin-section-title">🗂️ DATA MANAGER — EDIT / DELETE ANY RECORD</div>
           <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Fix or remove anything — leads, jobs, estimates, forms, proposals, change orders, punches, and more. Changes save and sync immediately.</div>
           <div id="dm_tabs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
@@ -4348,6 +4358,25 @@ function adminSave(){
   if(s){ s.textContent='✔ Saved!'; s.style.color='var(--gr)'; setTimeout(()=>{ s.textContent=''; },3000); }
   notify('Admin settings saved','ok');
 }
+// ── NOTIFICATIONS — fire an alerts webhook (text/email) on key events ──
+window.klyftonNotify = function(event, extra){
+  try{
+    fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify(Object.assign({event:event||'alert'}, extra||{}))}).catch(()=>{});
+  }catch(e){}
+};
+window.klyftonTestAlert = function(){
+  const s=document.getElementById('notifyStatus'); if(s){ s.textContent='Sending…'; s.style.color='var(--t2)'; }
+  fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({event:'test', message:'✅ Klyfton test alert — your notifications are wired up.'})})
+    .then(r=>r.json()).then(d=>{ if(s){
+      if(d.configured===false){ s.textContent='Not set up yet — add ALERTS_WEBHOOK_URL in Vercel first.'; s.style.color='var(--yw,#eab308)'; }
+      else if(d.sent){ s.textContent='✔ Sent! Check your phone/email.'; s.style.color='var(--gr)'; }
+      else { s.textContent='Webhook set but it didn’t accept it (status '+(d.status||'?')+'). Check the Zap is on.'; s.style.color='var(--or)'; }
+    }})
+    .catch(()=>{ if(s){ s.textContent='Could not reach the notifier.'; s.style.color='var(--or)'; } });
+};
+
 // ── CREW / TEAM profiles + PINs (Admin) ──────────────────────
 let _crewEditId = null;
 function crewRoleLabel(r){ return {full:'Owner',admin:'Admin',field:'Field',readonly:'View'}[r]||r; }
@@ -5589,6 +5618,8 @@ function doPendingKlyftonAction(){
       appState.leads.push({id:Date.now(), name:a.name||'New lead', value:Number(a.value)||0,
         service:a.service||'', state:a.state||'MT', status:'New', date:today, notes:a.notes||'', source:'Klyfton AI'});
       save('leads'); if(window.renderPipeline) renderPipeline(); notify('Lead added ✓','success');
+      const _l=appState.leads[appState.leads.length-1];
+      if(window.klyftonNotify) klyftonNotify('new_lead',{lead:{name:_l.name,service:_l.service,value:_l.value,source:_l.source}});
     } else if(a.type==='add_job'){
       if(!appState.jobs) appState.jobs=[];
       appState.jobs.push({id:Date.now(), customer:a.customer||'New job', service:a.service||'', value:Number(a.value)||0, status:'Scheduled', date:today});
@@ -7853,7 +7884,7 @@ function mgUpdate(){
   };
   window.opsAdjInv = function(id,d){ const i=(appState.inventory||[]).find(x=>x.id===id); if(!i) return;
     i.qty=Math.max(0,(Number(i.qty)||0)+d); saveCol('inventory');
-    if(Number(i.qty)<=Number(i.reorderAt)) toast('⚠ '+i.item+' hit reorder point'); renderOps('inventory'); };
+    if(Number(i.qty)<=Number(i.reorderAt)){ toast('⚠ '+i.item+' hit reorder point'); if(window.klyftonNotify) klyftonNotify('reorder',{message:'⚠ Reorder: '+i.item+' is down to '+i.qty+' '+(i.unit||'')}); } renderOps('inventory'); };
   window.opsDelInv = function(id){ appState.inventory=(appState.inventory||[]).filter(i=>i.id!==id); saveCol('inventory'); renderOps('inventory'); };
   window.opsDraftReorder = function(){
     const low=(appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt));
