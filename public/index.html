@@ -1987,13 +1987,18 @@ const EST_GEO = [
   {k:'stratafill_028', n:'Strata-Fill 24-028', priceLb:5.26},
 ];
 
+// Coating $/gal = canonical drum (bulk) cost per gallon from the MGSF Master
+// Pricing DB. MGSF stocks these through Profoam — Gaco is NOT a supplied line,
+// so it was removed rather than carry a fabricated price. Silicones first
+// (best over SPF — ponding-resistant), then acrylic elastomerics.
 const EST_COAT = [
-  {k:'gacoflex_s20',   n:'GacoFlex S20 Acrylic Elastomeric',   costGal:0, galPer100:1.0, coatsDefault:2},
-  {k:'gacoflex_s2100', n:'GacoFlex S2100 Elastomeric',         costGal:0, galPer100:1.0, coatsDefault:2},
-  {k:'gacopro_si',     n:'GacoPro Silicone',                   costGal:0, galPer100:1.5, coatsDefault:1},
-  {k:'enduratech_si',  n:'EnduraTech Silicone 70-025',         costGal:0, galPer100:1.5, coatsDefault:1},
-  {k:'ug_5700hs',      n:'Ultra-Guard 5700 HS',                costGal:33.75, galPer100:0.8, coatsDefault:2},
-  {k:'ug_5500ls',      n:'Ultra-Guard 5500 LS',                costGal:31.25, galPer100:1.2, coatsDefault:2},
+  {k:'ug_5700hs',    n:'GC Ultra-Guard 5700 HS Silicone',     costGal:33.75, galPer100:0.8, coatsDefault:2},
+  {k:'ug_5500ls',    n:'GC Ultra-Guard 5500 LS Silicone',     costGal:31.25, galPer100:1.2, coatsDefault:2},
+  {k:'rugged_si92',  n:'Rugged Coatings Si92 Silicone',       costGal:51.25, galPer100:1.5, coatsDefault:1},
+  {k:'gc_ultraflex', n:'GC Ultra-Flex 1000 Acrylic',          costGal:16.57, galPer100:1.0, coatsDefault:2},
+  {k:'armor100',     n:'Armor Coat 100 Acrylic',              costGal:20.25, galPer100:1.0, coatsDefault:2},
+  {k:'armor60',      n:'Armor Coat 60 Acrylic',               costGal:19.11, galPer100:1.0, coatsDefault:2},
+  {k:'enduratech_r', n:'NCFI Enduratech R Acrylic',           costGal:19.38, galPer100:1.0, coatsDefault:2},
 ];
 
 // Substrate-specific waste factors
@@ -2196,7 +2201,7 @@ function geoOptions(){
 }
 function coatOptions(){
   const fav=favGet('coat');
-  const opt=p=>`<option value="${p.k}">${fav.has(p.k)?'★ ':''}${p.n}${p.costGal===0?' [enter $/gal below]':''}</option>`;
+  const opt=p=>`<option value="${p.k}">${fav.has(p.k)?'★ ':''}${p.n}${p.costGal>0?' — $'+p.costGal.toFixed(2)+'/gal':' [enter $/gal below]'}</option>`;
   const f=EST_COAT.filter(p=>fav.has(p.k)), r=EST_COAT.filter(p=>!fav.has(p.k));
   return (f.length&&r.length) ? `<optgroup label="★ Most used">${f.map(opt).join('')}</optgroup><optgroup label="All coatings">${r.map(opt).join('')}</optgroup>` : EST_COAT.map(opt).join('');
 }
@@ -2439,7 +2444,7 @@ function buildScopeHTML(id, type, pre={}){
         <select class="inp" id="si${id}_sub" onchange="updateScopePreview(${id})">${subOpts(['foam','metal','tpo','concrete','masonry','wood'])}</select>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--yw);margin-top:4px">⚠️ Enter your actual cost/gal — coating price not stored in system</div>
+    <div style="font-size:11px;color:var(--yw);margin-top:4px">💡 Cost/gal auto-fills from the Price Book (canonical drum cost) — override if your actual cost differs</div>
     ${consPanel}${prev}`;
   }
 
@@ -3352,6 +3357,10 @@ function setCoverageDefault(id, prodKey){
   if(el && !el.value) el.value = p.galPer100;
   const coatsEl = document.getElementById('si'+id+'_coats');
   if(coatsEl && !coatsEl.value) coatsEl.value = p.coatsDefault;
+  // Auto-fill $/gal from the Price Book (canonical drum cost) — the estimator
+  // reads si_costgal, so without this the stored price never hit the math.
+  const costEl = document.getElementById('si'+id+'_costgal');
+  if(costEl && !costEl.value && p.costGal>0) costEl.value = p.costGal;
 }
 
 function removeJobItem(id){
