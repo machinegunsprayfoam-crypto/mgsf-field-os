@@ -346,6 +346,96 @@ async function runMind(key, mindKey, userText, history, ctx, attachments) {
   return { mind: spec.name, text: textFrom(data.content), model: data.model || WORKER_MODEL };
 }
 
+// Short greetings / acks don't need the Queen — skip the router round-trip and
+// answer straight from the general mind. Saves a Haiku call + latency on most turns.
+function isTrivial(text, attachments) {
+  if (Array.isArray(attachments) && attachments.length) return false;
+  const t = (text || "").trim();
+  if (!t) return false;
+  if (t.length <= 12) return true;
+  if (t.length < 40 && /^(hi|hey|hello|yo|sup|thanks|thank you|thx|ty|ok|okay|k|cool|nice|great|good morning|good afternoon|good evening|good job|well done|test|testing|ping|you there|u there)\b/i.test(t)) return true;
+  return false;
+}
+
+// --- Streaming (SSE) plumbing: cut the dead-air on long hive answers ---
+function sseInit(res) {
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // don't let a proxy buffer the stream
+}
+function sseSend(res, obj) {
+  try { res.write("data: " + JSON.stringify(obj) + "\n\n"); } catch (e) {}
+}
+
+// One streaming Anthropic call. Forwards text deltas via onText; returns the full text.
+// Used only for the synthesizer (no tools → no pause_turn to resume mid-stream).
+async function callClaudeStream(key, payload, onText) {
+  const r = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({ ...payload, stream: true }),
+  });
+  if (!r.ok) {
+    const errText = await r.text();
+    const e = new Error("anthropic_" + r.status);
+    e.detail = errText.slice(0, 300);
+    throw e;
+  }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", full = "", model = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const chunk = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      const line = chunk.split("\n").find((l) => l.indexOf("data:") === 0);
+      if (!line) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      let ev; try { ev = JSON.parse(data); } catch (e) { continue; }
+      if (ev.type === "message_start" && ev.message && ev.message.model) model = ev.message.model;
+      if (ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta") {
+        full += ev.delta.text;
+        if (onText) onText(ev.delta.text);
+      }
+    }
+  }
+  return { text: full, model };
+}
+
+// Marker-safe emitter: stream text to the client but never leak the tail-of-message
+// [[MEMORY]] / [[ACTION]] blocks into the live preview. Markers are terminal per the
+// prompt, so once we see "[[" everything after is markers — stop the preview there.
+function makeEmitter(res) {
+  let holding = false, pend = "";
+  return function (t) {
+    if (holding) return;
+    pend += t;
+    const mi = pend.indexOf("[[");
+    if (mi === -1) {
+      const keep = pend.endsWith("[") ? 1 : 0; // a lone trailing "[" might start "[["
+      const out = pend.slice(0, pend.length - keep);
+      if (out) sseSend(res, { t: out });
+      pend = keep ? pend.slice(-1) : "";
+    } else {
+      const out = pend.slice(0, mi);
+      if (out) sseSend(res, { t: out });
+      pend = "";
+      holding = true;
+    }
+  };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -394,9 +484,91 @@ module.exports = async (req, res) => {
   const routeText = userText || "[user attached " + attachments.length + " " +
     (attachments.some((a) => a.kind === "pdf") ? "file(s)" : "photo(s)") + " with no caption]";
 
+  // Client opts into token streaming with { stream:true } (or an SSE Accept header).
+  const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
+
+  // The synthesizer prompt is the same whether we stream it or not.
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}${ctx}
+
+You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
+same question. Merge them into ONE answer in the owner's voice. Your job as critic:
+- Cut contradictions; if minds disagree on a number, flag it and say what to verify.
+- Remove anything that looks fabricated or unsupported. Keep real, sourced, or clearly-ESTIMATED facts.
+- Lead with the TL;DR/number, then options+pick if it's a decision, then a tight checklist.
+- One screen. Do not mention "minds", "agents", or this process — just answer the owner.
+If there are durable facts worth remembering across sessions (a customer preference, a confirmed
+price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
+
+  // ---- Streaming path: SSE, streams the synthesizer's tokens on hive answers ----
+  if (wantStream) {
+    sseInit(res);
+    try {
+      const plan = isTrivial(userText, attachments)
+        ? { minds: ["general"], complexity: "simple" }
+        : await route(key, routeText, history);
+
+      // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
+      if (plan.complexity === "simple" || plan.minds.length <= 1) {
+        const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments);
+        const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
+        sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model });
+        res.end();
+        return;
+      }
+
+      // Complex job → run the swarm (non-streamed), then stream the synthesizer.
+      const workers = await Promise.all(
+        plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments).catch(() => null))
+      );
+      const answers = workers.filter((w) => w && w.text);
+      if (!answers.length) {
+        sseSend(res, { done: true, text: "The hive came back empty — try rephrasing.", configured: true });
+        res.end();
+        return;
+      }
+      if (answers.length === 1) {
+        const { text, remember } = splitMemory(answers[0].text);
+        sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
+        res.end();
+        return;
+      }
+
+      const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
+      const emit = makeEmitter(res);
+      const { text: raw, model } = await callClaudeStream(
+        key,
+        {
+          model: CRITIC_MODEL,
+          max_tokens: 8000,
+          system: buildSynthSys(),
+          thinking: { type: "adaptive" },
+          messages: [
+            { role: "user", content: `Question:\n${userText}\n\nSpecialist answers:\n\n${panel}` },
+          ],
+        },
+        (t) => emit(t)
+      );
+      const { text, remember } = splitMemory(raw || answers[0].text);
+      sseSend(res, { done: true, text, remember, configured: true, mode: "hive", minds: answers.map((a) => a.mind), model: model || CRITIC_MODEL });
+      res.end();
+    } catch (e) {
+      sseSend(res, {
+        done: true,
+        configured: true,
+        text: "⚠️ Klyfton hit a snag reaching the hive (" + String(e.message || e).slice(0, 60) + "). Try again in a moment.",
+        error: String(e.detail || e).slice(0, 200),
+      });
+      try { res.end(); } catch (_) {}
+    }
+    return;
+  }
+
+  // ---- Non-streaming path (JSON) — used by GROW tools and as the fallback ----
   try {
-    // 1) Queen recruits the minds.
-    const plan = await route(key, routeText, history);
+    // 1) Queen recruits the minds (skipped for trivial greetings/acks).
+    const plan = isTrivial(userText, attachments)
+      ? { minds: ["general"], complexity: "simple" }
+      : await route(key, routeText, history);
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
@@ -430,20 +602,10 @@ module.exports = async (req, res) => {
 
     // 4) Synthesizer + critic: merge the minds, kill contradictions/fabrication, one answer out.
     const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
-    const synthSys = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}${ctx}
-
-You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
-same question. Merge them into ONE answer in the owner's voice. Your job as critic:
-- Cut contradictions; if minds disagree on a number, flag it and say what to verify.
-- Remove anything that looks fabricated or unsupported. Keep real, sourced, or clearly-ESTIMATED facts.
-- Lead with the TL;DR/number, then options+pick if it's a decision, then a tight checklist.
-- One screen. Do not mention "minds", "agents", or this process — just answer the owner.
-If there are durable facts worth remembering across sessions (a customer preference, a confirmed
-price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
     const synth = await callClaude(key, {
       model: CRITIC_MODEL,
       max_tokens: 8000,
-      system: synthSys,
+      system: buildSynthSys(),
       thinking: { type: "adaptive" },
       messages: [
         { role: "user", content: `Question:\n${userText}\n\nSpecialist answers:\n\n${panel}` },
