@@ -1960,24 +1960,24 @@ function getTimeOfDay(){
 // ── Product Catalogs ─────────────────────────────────────────
 const EST_FOAM = [
   // CC 2.0# — General insulation
-  {k:'ncfi_agrithane',   n:'NCFI AgriThane 2.0# CC',              cat:'CC',   setCost:2842, yieldBF:4100},
-  {k:'ncfi_insulbloc',   n:'NCFI InsulBloc 2.0# CC',              cat:'CC',   setCost:2842, yieldBF:4100},
-  {k:'ncfi_insulstar17', n:'NCFI InsulStar 1.7# CC',              cat:'CC',   setCost:2930.2, yieldBF:4100},
+  {k:'ncfi_agrithane',   n:'NCFI AgriThane 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4100},
+  {k:'ncfi_insulbloc',   n:'NCFI InsulBloc 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4100},
+  {k:'ncfi_insulstar17', n:'NCFI InsulStar 1.7# CC',              cat:'CC',   setCost:2822.4, yieldBF:4100},
   {k:'accufoam_cc20',    n:'Accufoam CC 2.0#',                    cat:'CC',   setCost:2881.2, yieldBF:4100},
   {k:'jm_corbond4',      n:'JM Corbond IV 2.0# CC',               cat:'CC',   setCost:2905.5, yieldBF:4100},
   {k:'profoam_proseal',  n:'ProFoam ProSeal 2.0# CC',             cat:'CC',   setCost:2856.75, yieldBF:4100},
   // CC 2.8# Roofing
-  {k:'ncfi_enduratech',  n:'NCFI Enduratech HFO 2.8# (Roofing)',  cat:'Roof', setCost:2750, yieldBF:3500},
+  {k:'ncfi_enduratech',  n:'NCFI Enduratech HFO 2.8# (Roofing)',  cat:'Roof', setCost:2500, yieldBF:3500},
   // OC 0.5#
-  {k:'ncfi_oc',          n:'NCFI OC 0.5#',                        cat:'OC',   setCost:1992.8, yieldBF:14500},
+  {k:'ncfi_oc',          n:'NCFI OC 0.5#',                        cat:'OC',   setCost:1880, yieldBF:14500},
   {k:'accufoam_af1',     n:'Accufoam AF1 0.5#',                   cat:'OC',   setCost:2140.8, yieldBF:14500},
   {k:'jm_corbond05',     n:'JM Corbond 0.5#',                     cat:'OC',   setCost:2103.75, yieldBF:14500},
   {k:'profoam_profill',  n:'ProFoam ProFill 0.5#',                cat:'OC',   setCost:2075.7, yieldBF:14500},
   {k:'profoam_hybridpro',n:'ProFoam HybridPro 1.0# ⚠️ Low Yield',cat:'OC',   setCost:1954.15, yieldBF:5000},
   // Seasonal blends (ProFoam catalog) — same class yields as their base products
-  {k:'ncfi_insulstar17_fw', n:'NCFI InsulStar 1.7# CC Fast/Winter',   cat:'CC', setCost:2930.2, yieldBF:4100},
-  {k:'ncfi_insulstar17_ss', n:'NCFI InsulStar 1.7# CC Slow/Summer',   cat:'CC', setCost:2930.2, yieldBF:4100},
-  {k:'ncfi_insulbloc_fw',   n:'NCFI InsulBloc 2.0# CC Fast/Winter',   cat:'CC', setCost:2842, yieldBF:4100},
+  {k:'ncfi_insulstar17_fw', n:'NCFI InsulStar 1.7# CC Fast/Winter',   cat:'CC', setCost:2822.4, yieldBF:4100},
+  {k:'ncfi_insulstar17_ss', n:'NCFI InsulStar 1.7# CC Slow/Summer',   cat:'CC', setCost:2822.4, yieldBF:4100},
+  {k:'ncfi_insulbloc_fw',   n:'NCFI InsulBloc 2.0# CC Fast/Winter',   cat:'CC', setCost:2763.6, yieldBF:4100},
 ];
 
 const EST_GEO = [
@@ -2098,7 +2098,7 @@ const RIM_DEDS = [
 
 // ── Fireproofing / Protective Coating Products ────────────────
 const FP_PRODUCTS = [
-  {k:'dc315',        n:'DC315 Intumescent (over SPF)',        unit:'gal',  coverSF:200, costPer:95,  laborSFHr:350, desc:'IFT DC315 — thermal barrier over closed/open cell foam'},
+  {k:'dc315',        n:'DC315 Intumescent (over SPF)',        unit:'gal',  coverSF:115, costPer:88.04, laborSFHr:350, desc:'IFTI DC315 15-min thermal barrier over SPF — IDI/Northern Supply $440.20/5gal (closest supplier); ProFoam $339.05/5gal if ordered with foam. ~115 SF/gal @ 15-min barrier; use override for other ratings'},
   {k:'blazetex',     n:'BlazeShield II / Blazetex SFRM',     unit:'bag',  coverSF:80,  costPer:52,  laborSFHr:200, desc:'Cementitious SFRM — wet-spray, structural fire rating'},
   {k:'cafco300',     n:'CAFCO 300 SFRM (structural steel)',   unit:'bag',  coverSF:70,  costPer:60,  laborSFHr:160, desc:'Cementitious SFRM for W-sections, HSS, decking'},
   {k:'intumescent',  n:'Intumescent Coating (thin-film)',     unit:'gal',  coverSF:100, costPer:140, laborSFHr:280, desc:'Thin-film intumescent for structural steel/wood'},
