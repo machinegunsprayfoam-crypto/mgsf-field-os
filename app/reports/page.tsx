@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase, type Lead, type Project } from "@/lib/supabase";
+import { serviceLabels, type ServiceType } from "@/lib/estimating";
 
 const QUALIFIED_STAGES = new Set([
   "qualified",
@@ -336,7 +337,7 @@ export default function ReportsPage() {
               <tbody>
                 {byService.map((service) => (
                   <tr key={service.service_type}>
-                    <td style={{ fontWeight: 600 }}>{service.service_type}</td>
+                    <td style={{ fontWeight: 600 }}>{serviceLabels[service.service_type as ServiceType] ?? service.service_type}</td>
                     <td className="text-muted">{service.count}</td>
                     <td style={{ fontWeight: 600, color: "var(--success)" }}>{fmt$(service.revenue)}</td>
                     <td>

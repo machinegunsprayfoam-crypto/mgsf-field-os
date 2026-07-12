@@ -33,6 +33,7 @@ export default function InventoryPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
+  const [adjustAmounts, setAdjustAmounts] = useState<Record<string, string>>({});
 
   async function fetchItems() {
     setLoading(true);
@@ -79,6 +80,14 @@ export default function InventoryPage() {
     const newQty = Math.max(0, item.quantity_on_hand + delta);
     await supabase.from("inventory_items").update({ quantity_on_hand: newQty }).eq("id", id);
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity_on_hand: newQty } : i));
+  }
+
+  async function applyCustomAdjust(id: string, add: boolean) {
+    const raw = adjustAmounts[id];
+    const amount = parseFloat(raw);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    await adjustQty(id, add ? amount : -amount);
+    setAdjustAmounts((prev) => ({ ...prev, [id]: "" }));
   }
 
   const filtered = filter === "all" ? items
@@ -229,9 +238,20 @@ export default function InventoryPage() {
                       <td className="text-muted">${item.unit_cost.toFixed(2)}</td>
                       <td style={{ fontWeight: 600 }}>${(item.quantity_on_hand * item.unit_cost).toLocaleString("en-US", { maximumFractionDigits: 2 })}</td>
                       <td>
-                        <div className="flex gap-3" style={{ alignItems: "center" }}>
-                          <button className="btn btn-ghost" style={{ padding: "3px 10px" }} onClick={() => adjustQty(item.id, -1)}>−</button>
-                          <button className="btn btn-ghost" style={{ padding: "3px 10px" }} onClick={() => adjustQty(item.id, 1)}>+</button>
+                        <div className="flex gap-3" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                          <button className="btn btn-ghost" style={{ padding: "3px 10px" }} onClick={() => adjustQty(item.id, -1)}>−1</button>
+                          <button className="btn btn-ghost" style={{ padding: "3px 10px" }} onClick={() => adjustQty(item.id, 1)}>+1</button>
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            placeholder="qty"
+                            value={adjustAmounts[item.id] ?? ""}
+                            onChange={(e) => setAdjustAmounts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                            style={{ width: 56, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)", fontSize: 13, padding: "3px 6px" }}
+                          />
+                          <button className="btn btn-ghost" style={{ padding: "3px 8px", fontSize: 12 }} onClick={() => applyCustomAdjust(item.id, false)}>−</button>
+                          <button className="btn btn-ghost" style={{ padding: "3px 8px", fontSize: 12 }} onClick={() => applyCustomAdjust(item.id, true)}>+</button>
                         </div>
                       </td>
                     </tr>

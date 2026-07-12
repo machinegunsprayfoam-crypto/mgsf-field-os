@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase, type Lead, type Project } from "@/lib/supabase";
-
-type CustomerSummary = { first_name: string | null; last_name: string | null; company_name: string | null };
+import { formatJoinedCustomerName, formatCustomerName, type CustomerSummary } from "@/lib/display";
 
 type ProjectWithCustomer = Pick<Project, "id" | "project_name" | "scheduled_date" | "crew_lead" | "status"> & {
   customers: CustomerSummary | CustomerSummary[] | null;
@@ -72,18 +71,8 @@ const NEXT_ACTIONS: Record<string, string> = {
   lost: "Archive",
 };
 
-function customerRecord(project: ProjectWithCustomer) {
-  return Array.isArray(project.customers) ? project.customers[0] ?? null : project.customers;
-}
-
-function customerName(project: ProjectWithCustomer) {
-  const customer = customerRecord(project);
-  if (!customer) return "—";
-  return (customer.company_name ?? [customer.first_name, customer.last_name].filter(Boolean).join(" ")) || "—";
-}
-
 function leadName(lead: Lead) {
-  return (lead.company_name ?? [lead.first_name, lead.last_name].filter(Boolean).join(" ")) || "—";
+  return formatCustomerName(lead) || "—";
 }
 
 function currency(value: number | null) {
@@ -348,6 +337,7 @@ export default function HomePage() {
             { href: "/leads", label: "📋 New Lead" },
             { href: "/estimate", label: "⚡ New Estimate" },
             { href: "/photos", label: "📷 Log Photos" },
+            { href: "/klyfton", label: "🤖 Ask Klyfton" },
           ].map((action) => (
             <a
               key={action.href}
@@ -380,7 +370,7 @@ export default function HomePage() {
                   {dashboard.todayJobs.map((project) => (
                     <tr key={project.id}>
                       <td style={{ fontWeight: 600 }}>{project.project_name}</td>
-                      <td>{customerName(project)}</td>
+                      <td>{formatJoinedCustomerName(project.customers)}</td>
                       <td>{project.crew_lead ?? "—"}</td>
                     </tr>
                   ))}

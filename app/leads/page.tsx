@@ -90,6 +90,7 @@ export default function LeadsPage() {
   const [error, setError] = useState("");
   const [dismissedStale, setDismissedStale] = useState(false);
   const [stageFilter, setStageFilter] = useState<"all" | FunnelStage>("all");
+  const [search, setSearch] = useState("");
 
   async function fetchLeads() {
     setLoading(true);
@@ -256,10 +257,18 @@ export default function LeadsPage() {
     [leads]
   );
 
-  const filteredLeads = useMemo(
-    () => (stageFilter === "all" ? leads : leads.filter((lead) => toStage(lead.status) === stageFilter)),
-    [leads, stageFilter]
-  );
+  const filteredLeads = useMemo(() => {
+    const byStage = stageFilter === "all" ? leads : leads.filter((lead) => toStage(lead.status) === stageFilter);
+    if (!search.trim()) return byStage;
+    const q = search.toLowerCase();
+    return byStage.filter((lead) =>
+      displayName(lead).toLowerCase().includes(q) ||
+      (lead.phone ?? "").toLowerCase().includes(q) ||
+      (lead.email ?? "").toLowerCase().includes(q) ||
+      (lead.city ?? "").toLowerCase().includes(q) ||
+      (lead.service_interest ?? "").toLowerCase().includes(q)
+    );
+  }, [leads, stageFilter, search]);
 
   return (
     <>
@@ -405,7 +414,14 @@ export default function LeadsPage() {
           <h2>
             {stageFilter === "all" ? "All leads" : FUNNEL_STAGE_LABEL[stageFilter]} ({filteredLeads.length})
           </h2>
-          <div className="flex gap-3" style={{ flexWrap: "wrap" }}>
+          <div className="flex gap-3" style={{ flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              type="search"
+              placeholder="Search name, phone, email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius)", color: "var(--text)", fontSize: 14, padding: "7px 12px", minWidth: 200 }}
+            />
             <button className={`btn ${stageFilter === "all" ? "btn-primary" : "btn-ghost"}`} onClick={() => setStageFilter("all")}>
               All ({leads.length})
             </button>

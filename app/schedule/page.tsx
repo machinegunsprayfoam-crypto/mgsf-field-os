@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { supabase, type Project } from "@/lib/supabase";
+import { formatCustomerName, type CustomerSummary } from "@/lib/display";
 
 type ProjectWithCustomer = Project & {
-  customers: { first_name: string | null; last_name: string | null; company_name: string | null } | null;
+  customers: CustomerSummary | null;
 };
 
 function customerName(p: ProjectWithCustomer) {
-  const c = p.customers;
-  if (!c) return "—";
-  return (c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")) || "—";
+  return formatCustomerName(p.customers);
 }
 
 function daysInMonth(year: number, month: number) {

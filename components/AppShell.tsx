@@ -1,11 +1,17 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "@/lib/auth/context";
 import { AuthGuard } from "@/lib/auth/guard";
 
 const NAV_SECTIONS = [
+  {
+    label: "AI",
+    links: [
+      { href: "/klyfton", label: "⚡ Klyfton AI" },
+    ],
+  },
   {
     label: "Pipeline",
     links: [
@@ -36,18 +42,18 @@ const NAV_SECTIONS = [
   },
 ];
 
-function Sidebar() {
+function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
 
   return (
-    <nav className="sidebar">
+    <>
       <div className="sidebar-logo">
         <span className="logo-icon">⚡</span>
         <span className="logo-text">Klyfton</span>
       </div>
       <div style={{ padding: "0 12px 12px", color: "var(--text-muted)", fontSize: 12, lineHeight: 1.4 }}>
-        Estimator-only app for Machine Gun Spray Foam &amp; Concrete Lifting.
+        Field OS for Machine Gun Spray Foam &amp; Concrete Lifting.
       </div>
       <ul className="nav-links" style={{ flex: 1, overflowY: "auto" }}>
         {NAV_SECTIONS.map((section) => (
@@ -61,6 +67,7 @@ function Sidebar() {
                 <a
                   key={link.href}
                   href={link.href}
+                  onClick={onNavClick}
                   style={{
                     display: "block",
                     padding: "8px 12px",
@@ -86,6 +93,7 @@ function Sidebar() {
             {user.email}
           </div>
           <button
+            type="button"
             onClick={() => signOut()}
             className="btn btn-ghost"
             style={{ fontSize: 12, padding: "5px 10px", width: "100%", justifyContent: "center" }}
@@ -94,12 +102,56 @@ function Sidebar() {
           </button>
         </div>
       )}
+    </>
+  );
+}
+
+function Sidebar() {
+  return (
+    <nav className="sidebar">
+      <SidebarContent />
     </nav>
+  );
+}
+
+function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.55)",
+          zIndex: 40,
+        }}
+      />
+      <nav
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: 260,
+          background: "var(--surface)",
+          borderRight: "1px solid var(--border)",
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          padding: "20px 0",
+          overflowY: "auto",
+        }}
+      >
+        <SidebarContent onNavClick={onClose} />
+      </nav>
+    </>
   );
 }
 
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const isPublic = pathname === "/login" || pathname?.startsWith("/portal");
 
   if (isPublic) {
@@ -110,6 +162,23 @@ function Shell({ children }: { children: ReactNode }) {
     <AuthGuard>
       <div className="layout">
         <Sidebar />
+        {/* Mobile top bar */}
+        <div className="mobile-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>⚡</span>
+            <span style={{ fontWeight: 700, fontSize: 16, color: "var(--accent)" }}>Klyfton</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="btn btn-ghost"
+            style={{ padding: "6px 12px", fontSize: 18, lineHeight: 1 }}
+            aria-label="Open navigation"
+          >
+            ☰
+          </button>
+        </div>
+        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
         <main className="main-content">{children}</main>
       </div>
     </AuthGuard>

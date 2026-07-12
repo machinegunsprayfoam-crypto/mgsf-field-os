@@ -32,6 +32,7 @@ export default function CustomersPage() {
   const [form, setForm] = useState<NewCustomer>(blank);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   async function fetchCustomers() {
     setLoading(true);
@@ -80,6 +81,18 @@ export default function CustomersPage() {
     if (c.company_name) return c.company_name;
     return [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
   }
+
+  const filteredCustomers = search.trim()
+    ? customers.filter((c) => {
+        const q = search.toLowerCase();
+        return (
+          displayName(c).toLowerCase().includes(q) ||
+          (c.phone ?? "").toLowerCase().includes(q) ||
+          (c.email ?? "").toLowerCase().includes(q) ||
+          (c.lead_source ?? "").toLowerCase().includes(q)
+        );
+      })
+    : customers;
 
   return (
     <>
@@ -151,11 +164,20 @@ export default function CustomersPage() {
       )}
 
       <div className="card">
-        <h2>All customers</h2>
+        <div className="flex items-center justify-between" style={{ gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+          <h2>All customers ({filteredCustomers.length}{search ? " matching" : ""})</h2>
+          <input
+            type="search"
+            placeholder="Search name, phone, email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius)", color: "var(--text)", fontSize: 14, padding: "7px 12px", minWidth: 220 }}
+          />
+        </div>
         {loading ? (
           <p className="text-muted">Loading...</p>
-        ) : customers.length === 0 ? (
-          <div className="empty-state">No customers yet. Add your first one above.</div>
+        ) : filteredCustomers.length === 0 ? (
+          <div className="empty-state">{search ? "No customers match your search." : "No customers yet. Add your first one above."}</div>
         ) : (
           <div className="table-wrap">
             <table>
@@ -170,7 +192,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {customers.map((c) => (
+                {filteredCustomers.map((c) => (
                   <tr key={c.id}>
                     <td style={{ fontWeight: 600 }}>{displayName(c)}</td>
                     <td>

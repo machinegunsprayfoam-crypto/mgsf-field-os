@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase, type Project } from "@/lib/supabase";
-
-type CustomerSummary = { first_name: string | null; last_name: string | null; company_name: string | null };
+import { formatJoinedCustomerName, type CustomerSummary } from "@/lib/display";
 
 type ProjectWithCustomer = Project & {
   customers: CustomerSummary | CustomerSummary[] | null;
@@ -33,14 +32,8 @@ const STATUS_COLUMNS = [
   { key: "on_hold", label: "On hold", color: "badge-gray" },
 ];
 
-function customerRecord(project: ProjectWithCustomer) {
-  return Array.isArray(project.customers) ? project.customers[0] ?? null : project.customers;
-}
-
 function customerName(p: ProjectWithCustomer) {
-  const c = customerRecord(p);
-  if (!c) return "—";
-  return (c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")) || "—";
+  return formatJoinedCustomerName(p.customers);
 }
 
 export default function ProjectsPage() {

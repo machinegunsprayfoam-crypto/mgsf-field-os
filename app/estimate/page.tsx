@@ -181,7 +181,14 @@ export default function EstimatePage() {
       return;
     }
 
-    const estimateNumber = `EST-${Date.now()}`;
+    // Generate a human-readable estimate number: EST-YYYY-NNNN (sequential within the year)
+    const year = new Date().getFullYear();
+    const { count: existingCount } = await supabase
+      .from("estimates")
+      .select("id", { count: "exact", head: true })
+      .like("estimate_number", `EST-${year}-%`);
+    const seq = String((existingCount ?? 0) + 1).padStart(4, "0");
+    const estimateNumber = `EST-${year}-${seq}`;
     const { error: estimateNumberError } = await supabase
       .from("estimates")
       .update({ estimate_number: estimateNumber })

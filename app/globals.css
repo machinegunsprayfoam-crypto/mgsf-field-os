@@ -48,6 +48,38 @@ body {
   z-index: 10;
 }
 
+/* Mobile header — hidden on desktop */
+.mobile-header {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    z-index: 30;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+    padding-top: 68px !important;
+  }
+}
+
 .sidebar-logo {
   display: flex;
   align-items: center;

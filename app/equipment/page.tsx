@@ -48,6 +48,7 @@ export default function EquipmentPage() {
   const [svcType, setSvcType] = useState("");
   const [svcNotes, setSvcNotes] = useState("");
   const [svcCost, setSvcCost] = useState("");
+  const [svcNextDate, setSvcNextDate] = useState("");
 
   async function fetchEquipment() {
     setLoading(true);
@@ -98,8 +99,16 @@ export default function EquipmentPage() {
       cost: svcCost ? parseFloat(svcCost) : null,
       notes: svcNotes.trim() || null,
     });
+    // Update next_service_date and status on the equipment record if provided
+    if (svcNextDate) {
+      await supabase
+        .from("equipment")
+        .update({ next_service_date: svcNextDate, status: "operational" })
+        .eq("id", equipmentId);
+    }
     setShowService(null);
-    setSvcDate(""); setSvcType(""); setSvcNotes(""); setSvcCost("");
+    setSvcDate(""); setSvcType(""); setSvcNotes(""); setSvcCost(""); setSvcNextDate("");
+    fetchEquipment();
   }
 
   async function updateStatus(id: string, status: string) {
@@ -244,13 +253,17 @@ export default function EquipmentPage() {
               <input type="number" min={0} value={svcCost} onChange={(e) => setSvcCost(e.target.value)} />
             </div>
             <div className="field">
+              <label>Next service date</label>
+              <input type="date" value={svcNextDate} onChange={(e) => setSvcNextDate(e.target.value)} />
+            </div>
+            <div className="field">
               <label>Notes</label>
               <input value={svcNotes} onChange={(e) => setSvcNotes(e.target.value)} />
             </div>
           </div>
           <div className="flex gap-3 mt-6">
             <button className="btn btn-primary" onClick={() => logService(showService)}>Save service log</button>
-            <button className="btn btn-ghost" onClick={() => setShowService(null)}>Cancel</button>
+            <button className="btn btn-ghost" onClick={() => { setShowService(null); setSvcNextDate(""); }}>Cancel</button>
           </div>
         </div>
       )}
@@ -304,7 +317,7 @@ export default function EquipmentPage() {
                         ) : "—"}
                       </td>
                       <td>
-                        <button className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => { setShowService(e.id); setSvcDate(""); setSvcType(""); setSvcNotes(""); setSvcCost(""); }}>
+                        <button className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => { setShowService(e.id); setSvcDate(""); setSvcType(""); setSvcNotes(""); setSvcCost(""); setSvcNextDate(""); }}>
                           Log service
                         </button>
                       </td>
