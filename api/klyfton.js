@@ -59,17 +59,24 @@ When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).
 const ACTIONS = `TAKING ACTION IN THE APP:
-If the user clearly wants you to DO something in the app (add/log/create/remember), add ONE
+If the user clearly wants you to DO something in the app (add/log/create/draft/remember), add ONE
 action block as the VERY LAST line, after your normal short reply. The user gets a confirm
-button — you never write data silently. Format (raw JSON, no code fences):
+button — you never write data or send anything silently. You DRAFT; the human approves/sends.
+Format (raw JSON, no code fences):
 [[ACTION]]{"type":"...", ...}[[/ACTION]]
 Supported types:
-- add_lead: {"type":"add_lead","name":"","value":0,"service":"","state":"MT","notes":""}
-- add_job: {"type":"add_job","customer":"","service":"","value":0}
-- add_punch: {"type":"add_punch","name":""}
-- remember: {"type":"remember","fact":""}
-Rules: ONE block max; ONLY when the user asked to add/log/create/remember something; OMIT it
-entirely for normal questions. Always give your short normal reply above the block.`;
+- add_lead:       {"type":"add_lead","name":"","value":0,"service":"","state":"MT","notes":""}
+- add_job:        {"type":"add_job","customer":"","service":"","value":0}
+- add_punch:      {"type":"add_punch","name":""}
+- remember:       {"type":"remember","fact":""}
+- draft_email:    {"type":"draft_email","to":"","subject":"","body":""}  (follow-ups, quotes, review asks — NEVER auto-sent)
+- draft_proposal: {"type":"draft_proposal","customer":"","scope":"","price":0,"terms":""}  (pre-fills the Proposal screen for review)
+- material_order: {"type":"material_order","supplier":"","job":"","items":"one item per line, with qty"}  (a purchase list to review)
+- add_followup:   {"type":"add_followup","name":"","note":"","when":""}  (flags a lead for follow-up + logs the note)
+Rules: ONE block max; ONLY when the user asked you to do/draft/create something; OMIT it entirely
+for normal questions. Use the crew's real numbers/prices from context — never invent a price. For
+emails and proposals, write them in Clifton's voice, ready for him to review and send. Always give
+your short normal reply above the block.`;
 
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
