@@ -478,6 +478,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('jsa');renderJSA()" id="nav-jsa">
         <div class="nav-icon">🦺</div><div class="nav-label">JSA</div>
       </div>
+      <div class="nav-item" onclick="switchModule('spray');renderSpray()" id="nav-spray">
+        <div class="nav-icon">🔧</div><div class="nav-label">Spray</div>
+      </div>
       <div class="nav-item" onclick="switchModule('clock');renderClock()" id="nav-clock">
         <div class="nav-icon">⏱️</div><div class="nav-label">CLOCK</div>
       </div>
@@ -1176,6 +1179,7 @@ canvas.chart{width:100%;height:100%}
       <div id="mod-jsa" class="module">
         <div class="mod-head"><h2>🦺 Job Safety Analysis</h2>
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700;color:var(--cy)">🔧 Spray Settings & Specs — where to start (tap to open)</summary><div id="jsaSprayBody" style="margin-top:10px">—</div></details>
         <div id="jsaForm" class="jsa-wrap"></div>
         <div class="jsa-actions">
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
@@ -1183,6 +1187,13 @@ canvas.chart{width:100%;height:100%}
         </div>
         <h3 style="margin-top:22px">Saved JSAs</h3>
         <div id="jsaList"></div>
+      </div>
+
+      <!-- SPRAY SETTINGS MODULE -->
+      <div id="mod-spray" class="module">
+        <div class="mod-head"><h2>🔧 Spray Settings & Specs</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="sprayBody">—</div>
       </div>
 
       <!-- TIME CLOCK MODULE (KLYFTON_WAVE1) -->
@@ -1885,6 +1896,7 @@ function switchModule(id){
   document.getElementById('mod-'+id).classList.add('active');
   document.getElementById('nav-'+id).classList.add('active');
   
+  if(id==='spray'||id==='jsa'){ if(window.renderSpray) renderSpray(); }
   if(id==='intel') setTimeout(()=>drawCharts(),100);
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
@@ -1912,7 +1924,7 @@ const BOOT_MSGS = [
   'Loading MGSF knowledge base...',
   'Calibrating estimating engine...',
   'Syncing pricing database (445 items)...',
-  'Connecting to Google Drive...',
+  'Connecting to cloud sync...',
   'Initializing voice systems...',
   'Loading CRM data...',
   'Checking field conditions...',
@@ -7719,6 +7731,99 @@ function renderGrow(){
   </div>
   <audio id="mgAudio" preload="none"></audio>
 </div>
+<script>
+/* ===== Spray Settings & Specs — crew reference (from MGSF rig doc + foam spec sheet) =====
+   Run windows are STARTING POINTS. The specific foam's TDS + ambient/substrate + our PH-2
+   placard are the final word. Max fluid 190°F — never exceed. */
+const SPRAY_RUN = {
+  CC:   {label:'Closed-Cell',     temp:'110–130°F (≈120°F typ)', psi:'1,000–1,500 psi',            extra:'Hose ≈ primary or slightly below'},
+  OC:   {label:'Open-Cell',       temp:'~120–130°F (per TDS)',   psi:'per product TDS',            extra:'Hose ≈ primary'},
+  Roof: {label:'Roofing (HD CC)', temp:'120–130°F+ (warmer)',    psi:'higher end for atomization', extra:'Thin passes ~0.5–1.5″'},
+};
+// Per-product specs pulled from MGSF_Foam_Spec_Sheet.csv (Drive). Blank = not published there.
+const SPRAY_SPECS = {
+  ncfi_agrithane:     {r:'', lift:'', ba:'HFO', code:'', note:'Ag buildings; natural or black'},
+  ncfi_insulbloc:     {r:'', lift:'', ba:'HFO', code:'ER-0340', note:'Commercial CC'},
+  ncfi_insulstar17:   {r:'', lift:'', ba:'HFO', code:'', note:'High-yield 1.7#'},
+  accufoam_cc20:      {r:'R-7.5/in', lift:'3.5″', ba:'HFO', code:'', note:''},
+  jm_corbond4:        {r:'R-7.0/in', lift:'', ba:'HFO', code:'UES ER-980', note:'High-yield 5K'},
+  profoam_proseal:    {r:'', lift:'', ba:'HFO', code:'ER-1017', note:'GWP 1; summer/winter blends'},
+  ncfi_enduratech:    {r:'R-6.7/in', lift:'~0.5–1.5″/pass', ba:'HFO', code:'', note:'Roofing; warmer + higher psi'},
+  ncfi_oc:            {r:'R-3.7/in', lift:'', ba:'water-blown', code:'', note:''},
+  accufoam_af1:       {r:'', lift:'', ba:'water-blown', code:'', note:'Highest-yield; no-mix'},
+  jm_corbond05:       {r:'R-3.8/in', lift:'', ba:'water-blown', code:'CCRR-1079', note:''},
+  profoam_profill:    {r:'', lift:'', ba:'water-blown', code:'ER-1016', note:'No-mix; cavity/block-fill'},
+  profoam_hybridpro:  {r:'', lift:'', ba:'water-blown', code:'', note:'1# higher-density OC'},
+  ncfi_insulstar17_fw:{r:'', lift:'', ba:'HFO', code:'', note:'Fast/Winter blend'},
+  ncfi_insulstar17_ss:{r:'', lift:'', ba:'HFO', code:'', note:'Slow/Summer blend'},
+};
+// PURE: given one hour's weather + foam category, recommend where to START in the TDS window.
+function sprayStartRec(h, cat){
+  h=h||{}; const T=h.temp, D=h.dewpoint, W=h.wind, P=(h.pop!=null?h.pop:0);
+  const c=[]; let blend='Regular', go='GO';
+  const spread=(T!=null&&D!=null)?T-D:null;
+  if(T!=null){ if(T<50) blend='Fast / Winter'; else if(T>80) blend='Slow / Summer'; }
+  const win = cat==='Roof' ? [125,130] : cat==='OC' ? [120,130] : [115,130];
+  let tempStart;
+  if(T!=null && T<50) tempStart=win[1];
+  else if(T!=null && T>85) tempStart=win[0];
+  else tempStart=Math.round((win[0]+win[1])/2);
+  if(T!=null && T<35){ go='NO-GO'; c.push('Ambient '+Math.round(T)+'°F — below 35°F, don’t spray'); }
+  else if(T!=null && T<45) c.push('Cool '+Math.round(T)+'°F — warm the drums, expect longer warm-up, run the winter blend');
+  if(T!=null && T>100) c.push('Hot '+Math.round(T)+'°F — fast rise; stay at the cool end');
+  if(spread!=null){ if(spread<5){ go='NO-GO'; c.push('Dew-point spread '+Math.round(spread)+'°F — condensation risk, don’t spray'); } else if(spread<8) c.push('Tight dew spread '+Math.round(spread)+'°F — check substrate for condensation'); }
+  if(W!=null){ if(W>20){ go='NO-GO'; c.push('Wind '+Math.round(W)+' mph — overspray; tent or reschedule'); } else if(W>15) c.push('Wind '+Math.round(W)+' mph — mask/tent for overspray'); }
+  if(P>=50){ go='NO-GO'; c.push('Rain '+P+'% — no exterior spray'); } else if(P>=25) c.push('Rain '+P+'% — watch the sky');
+  return {blend, tempStart, go, spread, cautions:c};
+}
+window.spraySpecHTML = function(){
+  const runCards = Object.keys(SPRAY_RUN).map(k=>{const r=SPRAY_RUN[k];return `<div style="flex:1;min-width:150px;background:var(--s3);border-radius:6px;padding:8px 10px"><div style="font-size:11px;font-weight:700;color:var(--cy)">${r.label}</div><div style="font-size:12px;margin-top:3px">🌡️ ${r.temp}</div><div style="font-size:12px">📊 ${r.psi}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${r.extra} · A ≈ B (±100 psi)</div></div>`;}).join('');
+  const rows = EST_FOAM.map(p=>{const s=SPRAY_SPECS[p.k]||{};return `<tr><td style="padding:4px 6px">${p.n}</td><td style="padding:4px 6px;text-align:center">${p.cat}</td><td style="padding:4px 6px;text-align:right">${(p.yieldBF||0).toLocaleString()}</td><td style="padding:4px 6px;text-align:center">${s.r||'—'}</td><td style="padding:4px 6px;text-align:center">${s.lift||'—'}</td><td style="padding:4px 6px;text-align:center">${s.ba||'—'}</td><td style="padding:4px 6px">${[s.code,s.note].filter(Boolean).join(' · ')||'—'}</td></tr>`;}).join('');
+  return `
+  <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
+    ⚠️ <b>Starting points — verify the foam’s TDS, ambient & substrate, and our PH-2 placard before spraying.</b>
+    Substrate ~50–120°F · <b>Max fluid 190°F — never exceed</b> · Feed 200–250 psi · Retract iso pump at every stop.
+  </div>
+  <div class="card" style="margin-bottom:10px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25)">
+    <div style="font-size:11px;font-weight:700;color:var(--cy);margin-bottom:6px">🌦️ WHERE TO START TODAY — pull the forecast for the job</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="flex:1;min-width:160px"><label class="form-label">Job address or city, ST</label><input class="inp" id="spray_addr" placeholder="e.g. Glendive, MT" value=""></div>
+      <button class="btn btn-primary" style="flex:0 0 auto" onclick="renderSprayStart()">Get start point</button>
+    </div>
+    <div id="spray_start_out" style="margin-top:8px;font-size:12px;color:var(--t2)">Enter the job location — I’ll pull the NWS forecast and recommend a starting blend + heat setting within the TDS window.</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${runCards}</div>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="color:var(--cy);text-align:left;border-bottom:1px solid var(--bd)">
+      <th style="padding:4px 6px">Product</th><th style="padding:4px 6px">Type</th><th style="padding:4px 6px;text-align:right">Yield BF/set</th><th style="padding:4px 6px">R/in</th><th style="padding:4px 6px">Max lift/pass</th><th style="padding:4px 6px">Blowing</th><th style="padding:4px 6px">Code / notes</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>
+  <div style="font-size:11px;color:var(--t2);margin-top:8px">Geo/lifting (TerraThane, Strata-Fill) runs on the PX-7 pour gun — different process. Source: MGSF rig doc + foam spec sheet (Drive). Yields are your real numbers, not the sheet’s theoretical.</div>`;
+};
+window.renderSprayStart = async function(){
+  const out=document.getElementById('spray_start_out'); if(!out) return;
+  const addr=(document.getElementById('spray_addr')||{}).value||'';
+  if(!addr.trim()){ out.innerHTML='<span style="color:var(--yw)">Enter a job address or city first.</span>'; return; }
+  out.innerHTML='Pulling forecast…';
+  try{
+    const r=await fetch('/api/weather',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({address:addr})});
+    const j=await r.json();
+    if(!j||!j.ok||!(j.next24&&j.next24.length)){ out.innerHTML='<span style="color:var(--yw)">Couldn’t get a forecast for that location — set heat off the TDS window below and measure substrate on site.</span>'; return; }
+    const h=j.next24[0];
+    const mk=(cat,label)=>{const rec=sprayStartRec(h,cat);const col=rec.go==='NO-GO'?'var(--red)':rec.go==='CAUTION'?'var(--yw)':'var(--gr)';return `<div style="background:var(--s3);border-radius:6px;padding:6px 9px;flex:1;min-width:150px"><div style="font-size:11px;font-weight:700;color:var(--cy)">${label}</div><div style="font-size:13px;margin-top:2px">Start ~<b>${rec.tempStart}°F</b> primary/hose · <b>${rec.blend}</b></div><div style="font-size:11px;color:${col};font-weight:700">${rec.go}</div></div>`;};
+    const base=sprayStartRec(h,'CC');
+    const cautions=base.cautions.length?('<div style="margin-top:6px;font-size:12px;color:var(--yw)">⚠️ '+base.cautions.join('<br>⚠️ ')+'</div>'):'<div style="margin-top:6px;font-size:12px;color:var(--gr)">Conditions look workable — still measure substrate temp on site.</div>';
+    const loc=(j.location&&(j.location.matched||j.location.city))||addr;
+    out.innerHTML=`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${loc} · now ~${h.temp!=null?Math.round(h.temp)+'°F':'—'}, dew ${h.dewpoint!=null?Math.round(h.dewpoint)+'°F':'—'}, wind ${h.wind!=null?h.wind+' mph':'—'}, rain ${h.pop!=null?h.pop+'%':'—'}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${mk('CC','Closed-Cell')}${mk('OC','Open-Cell')}${mk('Roof','Roofing')}</div>
+      ${cautions}
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Starting point only — confirm against the specific foam’s TDS and the PH-2 placard; measure actual substrate temp before you pull the trigger.</div>`;
+  }catch(e){ out.innerHTML='<span style="color:var(--yw)">Forecast unavailable offline — use the TDS window below and measure substrate on site.</span>'; }
+};
+window.renderSpray = function(){
+  ['sprayBody','jsaSprayBody'].forEach(id=>{const el=document.getElementById(id); if(el && !el.dataset.filled){ el.innerHTML=spraySpecHTML(); el.dataset.filled='1'; }});
+};
+</script>
+
 <script>
 /* ===== Field Radio — commercial-free work music (SomaFM + Radio Paradise) =====
    All streams are HTTPS + ad-free + no key. Grouped by genre. No indie/pop. */
