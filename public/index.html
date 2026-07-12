@@ -1105,6 +1105,22 @@ canvas.chart{width:100%;height:100%}
 
         <!-- DATA MANAGER (KLYFTON_WAVE6) -->
         <div class="admin-section">
+          <div class="admin-section-title">👷 CREW / TEAM — PROFILES &amp; PINS</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Add each worker with their number, email, role, and a 4-digit PIN. Their PIN logs them in with that role. Owner sees everything; Admin runs office/scheduling; Field gets jobs, JSA, clock, photos.</div>
+          <div id="crewList" style="margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Name</label><input class="admin-inp" id="cr_name" placeholder="Daniel Ford"></div>
+            <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Role</label>
+              <select class="admin-inp" id="cr_role"><option value="full">Owner (all access)</option><option value="admin">Admin (office/scheduling)</option><option value="field">Field crew</option><option value="readonly">View only</option></select></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Phone</label><input class="admin-inp" id="cr_phone" type="tel" placeholder="406-…"></div>
+            <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Email</label><input class="admin-inp" id="cr_email" type="email"></div>
+            <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">PIN (4 digits)</label><input class="admin-inp" id="cr_pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="0000"></div>
+          </div>
+          <button class="btn btn-cyan" style="width:100%" onclick="crewAdd()">➕ ADD / SAVE CREW MEMBER</button>
+        </div>
+        <div class="admin-section">
           <div class="admin-section-title">🗂️ DATA MANAGER — EDIT / DELETE ANY RECORD</div>
           <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Fix or remove anything — leads, jobs, estimates, forms, proposals, change orders, punches, and more. Changes save and sync immediately.</div>
           <div id="dm_tabs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
@@ -1460,6 +1476,7 @@ let appState = {
   jobs: JSON.parse(localStorage.getItem('klyfton_jobs')||'[]'),
   estimates: JSON.parse(localStorage.getItem('klyfton_estimates')||'[]'),
   memory: JSON.parse(localStorage.getItem('klyfton_memory')||'[]'),
+  crew: JSON.parse(localStorage.getItem('klyfton_crew')||'[]'),
   scopeItems: [],
   soundOn: true,
   voiceOn: false,
@@ -1854,6 +1871,7 @@ function switchModule(id){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
     if(window.renderDataManager) renderDataManager();
+    if(window.renderCrew) renderCrew();
   }
 }
 
@@ -4029,7 +4047,16 @@ function updatePinDots(){
   }
 }
 function pinSubmit(){
-  // Load any admin-overridden PINs
+  // Crew PINs first — each worker's PIN logs them in with their role + name.
+  const crewMatch = (appState.crew||[]).find(m=>m && m.pin===_pinBuffer);
+  if(crewMatch){
+    appRole = crewMatch.role || 'field';
+    window._currentUser = crewMatch.name || '';
+    hidePinOverlay();
+    onPinSuccess(appRole, crewMatch.name);
+    return;
+  }
+  // Load any admin-overridden PINs (legacy owner/office PINs still work)
   const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
   const pinFull = saved.pinFull || PIN_FULL;
   const pinRead = saved.pinRead || PIN_READ;
@@ -4050,23 +4077,20 @@ function pinSubmit(){
     setTimeout(()=>{ updatePinDots(); if(errEl) errEl.textContent=''; },1200);
   }
 }
-function onPinSuccess(role){
+function onPinSuccess(role, name){
   // Apply admin overrides to MGSF constants
   adminApplyOverrides();
-  // Show/hide admin nav based on role
+  // Owner-only Admin panel (settings, PINs, crew, pricing) — full access only.
   const adminNav = document.getElementById('nav-admin');
   if(adminNav) adminNav.style.display = role==='full'?'flex':'none';
-  // Apply readonly restrictions
-  if(role==='readonly'){
-    document.querySelectorAll('input,select,textarea,button.btn-orange,.btn-cyan').forEach(el=>{
-      if(!el.closest('#chatPanel') && !el.closest('#mod-dashboard')) el.setAttribute('data-was-readonly','1');
-    });
-    // Lighter touch — just disable estimate builder inputs
+  // Field crew + view-only: lock the estimator/pricing builder; field keeps jobs/JSA/clock/photos.
+  if(role==='readonly' || role==='field'){
     const estMod = document.getElementById('mod-estimate');
     if(estMod) estMod.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=true; el.style.opacity='.6'; });
   }
   initDashboard();
-  speak('Access granted. Good '+getTimeOfDay()+', '+(role==='full'?'Clifton':'Talia')+'. Welcome to Klyfton AI.');
+  const who = name || (role==='full'?'Clifton':role==='admin'?'Talia':role==='field'?'crew':'crew');
+  speak('Access granted. Good '+getTimeOfDay()+', '+who+'. Welcome to Klyfton AI.');
 }
 
 // ── ADMIN — Load, Save, Apply ────────────────────────────────
@@ -4324,6 +4348,54 @@ function adminSave(){
   if(s){ s.textContent='✔ Saved!'; s.style.color='var(--gr)'; setTimeout(()=>{ s.textContent=''; },3000); }
   notify('Admin settings saved','ok');
 }
+// ── CREW / TEAM profiles + PINs (Admin) ──────────────────────
+let _crewEditId = null;
+function crewRoleLabel(r){ return {full:'Owner',admin:'Admin',field:'Field',readonly:'View'}[r]||r; }
+function renderCrew(){
+  const el=document.getElementById('crewList'); if(!el) return;
+  const c=appState.crew||[];
+  const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
+  el.innerHTML = c.length ? c.map(m=>`
+    <div class="log-row" style="align-items:center;gap:8px">
+      <div style="flex:1">
+        <b>${E(m.name||'')}</b> <span class="badge badge-cy" style="font-size:9px">${crewRoleLabel(m.role)}</span>
+        <div style="font-size:11px;color:var(--t2)">${E(m.phone||'')}${m.phone&&m.email?' · ':''}${E(m.email||'')} · PIN ••••</div>
+      </div>
+      <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="crewEdit(${m.id})">✏️ Edit</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="crewDelete(${m.id})">🗑</button>
+    </div>`).join('') : '<div style="color:var(--t2);font-size:12px;padding:6px">No crew yet. Add yourself as Owner first, then Talia (Admin) and Daniel (Field).</div>';
+}
+function crewAdd(){
+  const g=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=g('cr_name'), pin=g('cr_pin');
+  if(!name) return notify('Enter a name','alert');
+  if(!/^\d{4}$/.test(pin)) return notify('PIN must be exactly 4 digits','alert');
+  const dupe=(appState.crew||[]).find(m=>m.pin===pin && m.id!==_crewEditId);
+  if(dupe) return notify('That PIN is already used by '+dupe.name,'alert');
+  const rec={ id:_crewEditId||Date.now(), name, role:g('cr_role')||'field', phone:g('cr_phone'), email:g('cr_email'), pin };
+  appState.crew=appState.crew||[];
+  if(_crewEditId){ const i=appState.crew.findIndex(m=>m.id===_crewEditId); if(i>=0) appState.crew[i]=rec; else appState.crew.push(rec); }
+  else appState.crew.push(rec);
+  _crewEditId=null; save('crew');
+  ['cr_name','cr_phone','cr_email','cr_pin'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  const rs=document.getElementById('cr_role'); if(rs) rs.value='field';
+  renderCrew(); notify('Crew member saved ✓','success');
+}
+function crewEdit(id){
+  const m=(appState.crew||[]).find(x=>x.id===id); if(!m) return; _crewEditId=id;
+  const set=(i,v)=>{const e=document.getElementById(i); if(e) e.value=v||'';};
+  set('cr_name',m.name); set('cr_role',m.role||'field'); set('cr_phone',m.phone); set('cr_email',m.email); set('cr_pin',m.pin);
+  try{ document.getElementById('cr_name').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+  notify('Editing '+m.name+' — change fields, then Save','info');
+}
+function crewDelete(id){
+  const m=(appState.crew||[]).find(x=>x.id===id); if(!m) return;
+  if(!confirm('Remove '+m.name+"? Their PIN will stop working.")) return;
+  appState.crew=(appState.crew||[]).filter(x=>x.id!==id);
+  if(_crewEditId===id) _crewEditId=null;
+  save('crew'); renderCrew(); notify('Removed '+m.name,'success');
+}
+
 // Wipe old sample/demo leads, jobs & estimates — locally AND in the cloud store
 // (so they don't sync back onto other devices). Real records you've entered go too,
 // so it's confirm-gated with the counts.
@@ -7188,7 +7260,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
    exactly as before (on-device). Once KV is attached, every crew phone shares the same jobs,
    leads, estimates, JSAs, punches, material logs, and sign-offs. Photos stay on-device for now. */
 (function(){
-  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms','changeorders','invoices'];
+  const COLS = ['jobs','leads','estimates','jsas','tc_punches','matlogs','signoffs','proposals','forms','changeorders','invoices','crew'];
   const last = {};
   let on = false;
   // Prefer live state; fall back to localStorage so every collection syncs even if a module
