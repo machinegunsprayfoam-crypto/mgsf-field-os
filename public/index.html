@@ -112,7 +112,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 
 /* CONTENT */
 #content{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.module{display:none;flex:1;overflow-y:auto;padding:16px}
+.module{display:none;flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 .module.active{display:flex;flex-direction:column;gap:12px}
 
 /* CHAT PANEL */
@@ -755,8 +755,8 @@ canvas.chart{width:100%;height:100%}
         </div>
 
         <!-- Row 2: Job Type Buttons -->
-        <div class="card">
-          <div class="card-title">Add Job Scope</div>
+        <div class="card" style="position:sticky;top:0;z-index:6">
+          <div class="card-title">Add Job Scope — tap to add each area (walls, lid, gables… all on one bid)</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             <button class="jtype-btn" onclick="addJobItem('walls')">🧱 WALLS</button>
             <button class="jtype-btn" onclick="addJobItem('gable')">▲ GABLE WALLS</button>
