@@ -54,7 +54,11 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
 - Reference board-foot costs (VERIFY against current ProFoam before quoting; the in-app
   estimator + ProFoam catalog are authoritative): OC ~$0.122/BF, CC ProSeal 2.0# ~$0.587/BF,
   ProZone roofing 3.0# ~$0.68/BF, Enduratech 2.8# HFO ~$0.982/BF.
-When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.`;
+When a price isn't confirmed, say so and mark it ESTIMATED — never invent one.
+NEVER invent, assume, or "remember" a lead, job, or customer. Only ever reference the exact
+records shown in LEADS ON FILE / JOBS ON FILE below. If those lists are empty or absent, tell the
+owner plainly that there are no leads/jobs on file yet — do NOT make up a company name, a follow-up,
+or a "went quiet" reminder. Real records only.`;
 
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).
