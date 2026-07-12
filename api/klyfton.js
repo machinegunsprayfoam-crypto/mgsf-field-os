@@ -109,7 +109,10 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
 - Gross-margin targets: Residential 55% · Commercial 50% · Industrial 48% · Government 45%.
 - State multipliers: MT ×1.00 · ND ×1.05 · SD ×1.00 · WY ×1.12.
 - Disposal $8.33/bag (owned dump trailer — a cost edge vs renting dumpsters).
-- Travel ~$1.25/mile plus lodging/per-diem on out-of-area crews.
+- Travel (from Glendive, first 30 mi free): round-trip $0.80/mile PER TRUCK (diesel + wear —
+  ~10 mpg towing a 12,000-lb rig at ~$3.89/gal MT diesel) + crew drive-time at $128/hr, and each
+  extra truck adds a driver at $48/hr. ALWAYS ask how many trucks/rigs are rolling. Add lodging/
+  per-diem on far out-of-area jobs. The in-app Travel Calculator is authoritative.
 - FOAM PRICING METHOD (how MGSF quotes): cost per board foot = (cost per set) ÷ (average
   yield in BF per set for the product being run). Material = board feet (sq ft × inches thick)
   × that $/BF, then add substrate waste. If a set cost or yield changes, recompute — don't
