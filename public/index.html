@@ -1279,6 +1279,12 @@ canvas.chart{width:100%;height:100%}
         <div class="jsa-card"><h4>Customer</h4>
           <label class="fl">Customer / company *</label><input id="pr_cust" class="admin-inp" placeholder="Who it's for">
           <label class="fl">Project address</label><input id="pr_addr" class="admin-inp" placeholder="Job site">
+          <label class="fl">Customer type <span style="color:var(--t2);font-weight:400">(shapes the benefit section in the PDF)</span></label>
+          <select id="pr_custtype" class="admin-inp" style="width:100%">
+            <option value="homeowner">🏠 Homeowner</option>
+            <option value="business">🏢 Business Owner</option>
+            <option value="gc">🏗️ General Contractor</option>
+          </select>
         </div>
         <div class="jsa-card"><h4>Scope of work</h4>
           <textarea id="pr_scope" class="admin-inp" style="height:90px" placeholder="What we'll do — e.g. 3in closed-cell to underside of metal roof deck, 6,000 sq ft…"></textarea>
