@@ -781,6 +781,7 @@ canvas.chart{width:100%;height:100%}
             <div class="row">
               <button class="btn btn-primary" onclick="calculateBid()">⚡ BUILD BID</button>
               <button class="btn btn-ghost" onclick="clearBid()">CLEAR ALL</button>
+              <button class="btn btn-ghost" onclick="estToProposal()">📄 → PROPOSAL</button>
               <button class="btn btn-cyan" onclick="exportEstimate()">📄 EXPORT PDF</button>
             </div>
             <div id="runningTotal" style="font-size:14px;color:var(--or);font-weight:700"></div>
@@ -3752,7 +3753,7 @@ function calculateBid(){
     <span class="lbl" style="font-weight:700;color:var(--cy)">TOTAL SELL PRICE</span>
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:12px;font-weight:700;color:${goColor}">${projectGO?'✓ GO':'⚠ REVIEW GM'}</span>
-      <span style="font-weight:700;color:var(--or);font-size:17px">$${totalSell.toLocaleString('en',{maximumFractionDigits:0})}</span>
+      <span style="font-weight:700;color:var(--or);font-size:17px" data-grand-total="${totalSell}">$${totalSell.toLocaleString('en',{maximumFractionDigits:0})}</span>
     </div>
   </div></div>
   <div style="margin-top:10px;padding:8px 10px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);border-radius:6px;font-size:12px">
@@ -3767,8 +3768,9 @@ function calculateBid(){
   <div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
     ⚠️ DRAFT ONLY — Clifton approves all numbers before any bid is sent. Unsigned change orders are a hard closeout block.
   </div>
-  <div style="margin-top:8px;display:flex;gap:8px">
+  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-primary" onclick="saveEstimate(${Math.round(totalSell)},'${custName.replace(/'/g,"\\'")}')">💾 SAVE ESTIMATE</button>
+    <button class="btn btn-ghost" onclick="estToProposal()">📄 → PROPOSAL</button>
     <button class="btn btn-ghost" onclick="createLeadFromEstimate('${custName.replace(/'/g,"\\'")}',${Math.round(totalSell)})">→ CREATE LEAD</button>
   </div>`;
 
@@ -3886,15 +3888,45 @@ function quickEstimate(){
     return;
   }
   const ggColor = gonogo==='GO'?'var(--gr)':'var(--yw)';
-  document.getElementById('qResult').innerHTML=`
+  let html=`
   <div style="display:flex;align-items:center;gap:10px">
     <span style="color:${ggColor};font-weight:700;font-size:13px">${gonogo}</span>
-    <span style="font-size:15px;color:var(--or);font-weight:700">$${sell.toLocaleString('en',{maximumFractionDigits:0})}</span>
+    <span style="font-size:15px;color:var(--or);font-weight:700" data-total="${sell}">$${sell.toLocaleString('en',{maximumFractionDigits:0})}</span>
     <span style="font-size:11px;color:var(--t2)">${svcNames[svc]||svc} · ${sqft.toLocaleString()} sqft · ${state}</span>
   </div>
   <div style="font-size:11px;color:var(--t2);margin-top:4px">
     Mat $${mat.toFixed(0)} | Labor $${lab.toFixed(0)} | GP $${gp.toFixed(0)} (${Math.round(actualGm*100)}%)
   </div>`;
+  html += `<button class="btn btn-primary" style="margin-top:8px;font-size:12px" onclick="saveQuickEstimate()">💾 Save as Estimate</button>`;
+  document.getElementById('qResult').innerHTML = html;
+}
+
+function saveQuickEstimate(){
+  const svc = (document.getElementById('qService')||{}).value;
+  const sqft = parseFloat((document.getElementById('qSqft')||{}).value)||0;
+  const thick = parseFloat((document.getElementById('qThick')||{}).value)||0;
+  const state = (document.getElementById('qState')||{}).value;
+  const market = (document.getElementById('qMarket')||{}).value;
+  const resultEl = document.getElementById('qResult');
+  const totalText = resultEl ? resultEl.querySelector('[data-total]') : null;
+  const total = totalText ? parseFloat(totalText.dataset.total) : 0;
+  if (!sqft || !total) { notify('Run the estimate first, then save', 'alert'); return; }
+  const est = {
+    id: Date.now(),
+    customer: '',
+    service: ({cc:'Closed Cell',oc:'Open Cell',roof:'SPF Roofing',lift:'Concrete Lifting',geo:'Geotech'}[svc] || svc),
+    sqft, thick, state, market,
+    value: Math.round(total),
+    total: Math.round(total),
+    date: new Date().toISOString().split('T')[0],
+    source: 'Quick Estimate',
+    notes: 'Created from Quick Estimate on dashboard'
+  };
+  if (!appState.estimates) appState.estimates = [];
+  appState.estimates.push(est);
+  save('estimates');
+  notify('Estimate saved — open Estimator to add customer name & details', 'success');
+  playSound('success');
 }
 
 function saveEstimate(val, name){
@@ -3902,8 +3934,30 @@ function saveEstimate(val, name){
     state:document.getElementById('eState').value,market:document.getElementById('eMarket').value};
   appState.estimates.push(est);
   save('estimates');
-  notify(`Estimate $${val.toLocaleString()} saved for ${name}`);
+  notify(`Estimate $${val.toLocaleString()} saved for ${name} — tap → Proposal to pre-fill the proposal`, 'success');
   playSound('success');
+}
+
+function estToProposal(){
+  const result = document.getElementById('bidResult');
+  const custEl = document.getElementById('eCustName');
+  const addrEl = document.getElementById('eAddr');
+  const notesEl = document.getElementById('eNotes');
+  const cust = custEl ? custEl.value : '';
+  const addr = addrEl ? addrEl.value : '';
+  let total = 0;
+  const totalEl = result ? result.querySelector('[data-grand-total]') : null;
+  if (totalEl) total = parseFloat(totalEl.dataset.grandTotal) || 0;
+  switchModule('proposal');
+  if (window.renderProposal) renderProposal();
+  setTimeout(() => {
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+    set('pr_cust', cust);
+    set('pr_addr', addr);
+    set('pr_price', total || '');
+    set('pr_scope', notesEl ? notesEl.value : '');
+    notify('Proposal pre-filled from estimate — review and save', 'success');
+  }, 100);
 }
 
 function createLeadFromEstimate(name, val){
@@ -5011,7 +5065,8 @@ function renderJobs(){
         <div class="job-actions">
           <button class="btn btn-ghost" onclick="event.stopPropagation();openJobDetail(${j.id})" style="font-size:10px;padding:4px 8px">EDIT</button>
           <button class="btn btn-cyan" onclick="event.stopPropagation();openJobLog(${j.id})" style="font-size:10px;padding:4px 8px">LOG</button>
-          ${st.id!=='Paid'&&st.id!=='Cancelled'?`<button class="btn btn-orange" onclick="event.stopPropagation();advanceJobStatus(${j.id})" style="font-size:10px;padding:4px 8px">→ ${nextSt.id==='Cancelled'?'PAID':nextSt.id.toUpperCase()}</button>`:''}
+          ${!['Paid','Cancelled'].includes(st.id)?`<button class="btn btn-orange" onclick="event.stopPropagation();advanceJobStatus(${j.id})" style="font-size:10px;padding:4px 8px">→ ${nextSt.id==='Cancelled'?'PAID':nextSt.id.toUpperCase()}</button>`:''}
+          ${['In Progress','Invoiced','Paid'].includes(st.id)?`<button class="btn btn-ghost" onclick="event.stopPropagation();jobToInvoice(${j.id})" style="font-size:10px;padding:4px 8px;color:var(--cy)">🧾 INVOICE</button>`:''}
         </div>`;
       col.appendChild(card);
     });
@@ -5185,6 +5240,22 @@ function advanceJobStatus(id){
 }
 
 function updateJobStatus(id){ advanceJobStatus(id); }
+
+function jobToInvoice(id){
+  const j = appState.jobs.find(x=>x.id===id);
+  if (!j) return;
+  switchModule('invoice');
+  if (window.renderInvoice) renderInvoice();
+  setTimeout(() => {
+    const set = (el, v) => { const e = document.getElementById(el); if (e && v != null) e.value = v; };
+    set('in_cust', j.customer || j.name);
+    set('in_addr', j.address || '');
+    set('in_amt', j.value || '');
+    set('in_desc', (j.service || '') + (j.sqft ? ' · ' + j.sqft + ' SF' : '') + (j.notes ? '\n\n' + j.notes : ''));
+    set('in_due', 'Net 15');
+    notify('Invoice pre-filled from job ' + (j.jobNum||'') + ' — review and save', 'success');
+  }, 150);
+}
 
 function openJobLog(id){
   const j=appState.jobs.find(x=>x.id===id);
@@ -6073,14 +6144,40 @@ function exportDocList(){
 // INTEL CHARTS
 // ============================================================
 function drawCharts(){
+  const jobs = appState.jobs || [];
+  // Revenue by service type — from jobs with value
+  const svcMap = {
+    'Closed Cell': 0, 'Open Cell': 0, 'SPF Roofing': 0,
+    'Concrete Lifting': 0, 'Other': 0
+  };
+  jobs.forEach(j => {
+    const v = Number(j.value) || 0;
+    const s = (j.service || '').toLowerCase();
+    if (s.includes('closed') || s.includes('cc') || s.includes('close')) svcMap['Closed Cell'] += v;
+    else if (s.includes('open') || s.includes('oc')) svcMap['Open Cell'] += v;
+    else if (s.includes('roof')) svcMap['SPF Roofing'] += v;
+    else if (s.includes('lift') || s.includes('concrete') || s.includes('slab')) svcMap['Concrete Lifting'] += v;
+    else svcMap['Other'] += v;
+  });
+  const svcLabels = Object.keys(svcMap);
+  const svcVals = svcLabels.map(k => svcMap[k]);
+  const hasData = svcVals.some(v => v > 0);
   drawBarChart('revenueChart',
-    ['CC Foam','OC Foam','Roofing','Concrete','Geotech'],
-    [68000,21000,24000,8500,3300],
+    hasData ? svcLabels : ['No jobs yet','','','',''],
+    hasData ? svcVals : [1,0,0,0,0],
     ['#f97316','#22c55e','#00d4ff','#fbbf24','#a78bfa']
   );
+  // Revenue by state
+  const stateMap = { MT:0, WY:0, ND:0, SD:0 };
+  jobs.forEach(j => {
+    const st = (j.state || 'MT').toUpperCase();
+    if (stateMap[st] !== undefined) stateMap[st] += Number(j.value) || 0;
+  });
+  const stVals = Object.values(stateMap);
+  const hasStData = stVals.some(v => v > 0);
   drawBarChart('stateChart',
     ['MT','WY','ND','SD'],
-    [72000,28000,18000,6800],
+    hasStData ? stVals : [1,0,0,0],
     ['#f97316','#00d4ff','#22c55e','#fbbf24']
   );
 }
@@ -7337,18 +7434,86 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     const arr=LS('invoices',[]); arr.unshift(v);
     if(SS('invoices',arr)){ notify('Invoice saved','success'); renderInvoiceList(); }
   };
-  window.renderInvoiceList=function(){
-    const box=$('in_list'); if(!box) return; const arr=LS('invoices',[]);
-    if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No invoices yet.</p>'; return; }
-    box.innerHTML=arr.map(v=>{ const bal=(Number(v.amt)||0)-(Number(v.dep)||0);
-      return `<div class="log-row"><span><b>${esc(v.num||'INV')}</b> · ${esc(v.cust)}<br>
-        <span style="color:var(--t2)">${money(v.amt)} · bal ${money(bal)} · ${esc(v.date)} · <b style="color:${v.paid?'var(--gr)':'var(--yw)'}">${v.paid?'PAID':'UNPAID'}</b></span></span>
-        <span><button class="btn btn-ghost" style="font-size:11px" onclick="invTogglePaid('${v.id}')">${v.paid?'Mark unpaid':'Mark paid'}</button>
-        <button class="btn btn-ghost" style="font-size:11px;color:var(--red)" onclick="delInvoice('${v.id}')">✕</button></span></div>`;
+  window.renderInvoiceList = function(){
+    const box = $('in_list');
+    if (!box) return;
+    const arr = LS('invoices', []);
+    if (!arr.length) { box.innerHTML = '<p style="color:var(--t2);font-size:13px">No invoices yet.</p>'; return; }
+    
+    const today = new Date();
+    const unpaid = arr.filter(v => !v.paid);
+    const arBuckets = { current:0, d30:0, d60:0, d90:0 };
+    unpaid.forEach(v => {
+      const age = v.date ? Math.floor((today - new Date(v.date)) / 86400000) : 0;
+      const bal = (Number(v.amt)||0) - (Number(v.dep)||0);
+      if (age <= 30) arBuckets.current += bal;
+      else if (age <= 60) arBuckets.d30 += bal;
+      else if (age <= 90) arBuckets.d60 += bal;
+      else arBuckets.d90 += bal;
+    });
+    const totalAR = Object.values(arBuckets).reduce((a,b)=>a+b,0);
+    
+    const arHtml = totalAR > 0 ? `
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--or);font-weight:700;margin-bottom:10px">📊 ACCOUNTS RECEIVABLE AGING</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+          <div><div style="font-size:16px;font-weight:700;color:var(--gr)">${money(arBuckets.current)}</div><div style="font-size:9px;color:var(--t2)">CURRENT (0-30d)</div></div>
+          <div><div style="font-size:16px;font-weight:700;color:var(--yw)">${money(arBuckets.d30)}</div><div style="font-size:9px;color:var(--t2)">31-60 DAYS</div></div>
+          <div><div style="font-size:16px;font-weight:700;color:var(--or)">${money(arBuckets.d60)}</div><div style="font-size:9px;color:var(--t2)">61-90 DAYS</div></div>
+          <div><div style="font-size:16px;font-weight:700;color:var(--red)">${money(arBuckets.d90)}</div><div style="font-size:9px;color:var(--t2)">90+ DAYS</div></div>
+        </div>
+        <div style="text-align:center;margin-top:8px;font-size:12px;color:var(--t2)">Total outstanding: <strong style="color:var(--or)">${money(totalAR)}</strong> across ${unpaid.length} invoice${unpaid.length===1?'':'s'}</div>
+      </div>` : '';
+
+    box.innerHTML = arHtml + arr.map(v => {
+      const bal = (Number(v.amt)||0) - (Number(v.dep)||0);
+      const age = v.date ? Math.floor((today - new Date(v.date)) / 86400000) : 0;
+      const ageColor = !v.paid ? (age > 90 ? 'var(--red)' : age > 60 ? 'var(--or)' : age > 30 ? 'var(--yw)' : 'var(--gr)') : 'var(--t3)';
+      return `<div class="log-row"><span><b>${esc(v.num||'INV')}</b> · ${esc(v.cust)}
+        <br><span style="color:var(--t2)">${money(v.amt)} · bal ${money(bal)} · ${esc(v.date)}${v.paid?' · paid '+esc(v.paidAt||''):'·  <span style="color:'+ageColor+'">'+(v.paid?'':'age '+age+'d')+'</span>'}</span>
+        <br><b style="color:${v.paid?'var(--gr)':'var(--yw)'}">${v.paid?'PAID ✓':'UNPAID'}</b></span>
+        <span style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <button class="btn btn-ghost" style="font-size:11px" onclick="invTogglePaid('${v.id}')">${v.paid?'Mark unpaid':'✅ Mark paid'}</button>
+          ${!v.paid?`<button class="btn btn-ghost" style="font-size:10px;color:var(--cy)" onclick="invSendReminder('${v.id}')">📲 Reminder</button>`:''}
+          <button class="btn btn-ghost" style="font-size:11px;color:var(--red)" onclick="delInvoice('${v.id}')">✕</button>
+        </span></div>`;
     }).join('');
   };
-  window.invTogglePaid=function(id){ const arr=LS('invoices',[]); const v=arr.find(x=>x.id===id); if(v){ v.paid=!v.paid; SS('invoices',arr); renderInvoiceList(); } };
+  window.invTogglePaid = function(id){
+    const arr = LS('invoices', []);
+    const v = arr.find(x => x.id === id);
+    if (!v) return;
+    v.paid = !v.paid;
+    v.paidAt = v.paid ? new Date().toISOString().split('T')[0] : '';
+    SS('invoices', arr);
+    renderInvoiceList();
+    if (v.paid && v.cust) {
+      const wantReview = confirm('Invoice marked paid for ' + v.cust + '.\n\nSend a review request text? (tap OK to draft it)');
+      if (wantReview) {
+        const reviewLink = 'https://g.page/r/Camo7qu2xWrVEAE/review';
+        const txt = 'Hi ' + v.cust.split(' ')[0] + ', thanks for choosing Machine Gun Spray Foam! If you\'re happy with the work, 60 seconds here helps a veteran-owned small business: ' + reviewLink + '\n— Clifton, 406-939-8301';
+        if (window.__chatAtts !== undefined) {
+          const input = document.getElementById('chatInput');
+          if (input) input.value = 'Draft a review request text for ' + v.cust + ': ' + txt;
+          if (!appState.chatOpen) toggleChat();
+        }
+        try {
+          navigator.clipboard.writeText(txt).then(() => notify('Review request text copied to clipboard ✓', 'success'));
+        } catch(e) { notify('Review request: ' + txt.slice(0, 60) + '…', 'info'); }
+      }
+    }
+  };
   window.delInvoice=function(id){ SS('invoices', LS('invoices',[]).filter(v=>v.id!==id)); renderInvoiceList(); };
+  window.invSendReminder = function(id){
+    const arr = LS('invoices', []);
+    const v = arr.find(x => x.id === id);
+    if (!v) return;
+    const bal = (Number(v.amt)||0) - (Number(v.dep)||0);
+    const txt = 'Hi ' + (v.cust||'').split(' ')[0] + ', this is a friendly reminder that invoice ' + (v.num||'') + ' for ' + money(bal) + ' is outstanding. Please let me know if you have any questions. — Clifton, Machine Gun Spray Foam, 406-939-8301';
+    try {
+      navigator.clipboard.writeText(txt).then(() => notify('Payment reminder copied ✓ — paste into a text or email', 'success'));
+    } catch(e) { notify('Copy this: ' + txt.slice(0, 80) + '…', 'info'); }
+  };
 })();
 </script>
 
