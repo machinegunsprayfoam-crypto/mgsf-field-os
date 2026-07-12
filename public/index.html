@@ -1164,6 +1164,7 @@ canvas.chart{width:100%;height:100%}
         <textarea id="chatInput" placeholder="Ask Klyfton anything, or tap ＋ to send a photo or PDF..." onkeydown="chatKeydown(event)"></textarea>
         <div class="chat-actions">
           <button class="chat-attach-btn" id="chatAttachBtn" onclick="document.getElementById('chatFile').click()" title="Attach photo or PDF">＋</button>
+          <button class="chat-attach-btn" id="chatScanBtn" onclick="klyftonScan()" title="Scan a quote, invoice, or material label — Klyfton reads it straight in">📷</button>
           <button class="voice-btn-chat" id="chatVoiceBtn" onclick="toggleVoiceInput()" title="Voice input">🎙️</button>
           <button class="chat-send" onclick="sendChat()">SEND ↵</button>
         </div>
@@ -5071,9 +5072,14 @@ function openNewJob(defaultStatus){
   </div>`);
 }
 
+// Company rule: no work scheduled on Sundays (protect family time). Warn, allow override.
+function isSundayISO(d){ return !!d && new Date(d+'T12:00:00').getDay()===0; }
+function sundayOkay(d){ return !isSundayISO(d) || confirm("That's a Sunday — MGSF protects Sundays and doesn't schedule work. Schedule it anyway?"); }
+
 function saveJob(){
   const name=(document.getElementById('nj_name')||{}).value.trim();
   if(!name){notify('Job name required','alert');return;}
+  if(!sundayOkay((document.getElementById('nj_date')||{}).value)) return;
   const job={
     id:Date.now(),
     jobNum:nextJobNum(),
@@ -5145,6 +5151,7 @@ function updateJob(id){
   const j=appState.jobs.find(x=>x.id===id);
   if(!j) return;
   const gv = sel => (document.getElementById(sel)||{}).value||'';
+  if(!sundayOkay(gv('ej_date'))) return;
   j.name       = gv('ej_name') || j.name;
   j.customer   = gv('ej_cust');
   j.phone      = gv('ej_phone');
@@ -5512,6 +5519,17 @@ function renderChatAtts(){
   box.style.display = window.__chatAtts.length ? 'flex' : 'none';
 }
 function removeChatAtt(i){ window.__chatAtts.splice(i,1); renderChatAtts(); }
+
+// Guided scan (#3 scan-to-record): reuse the chat photo pipeline, but pre-load an
+// extraction prompt so Klyfton reads a competitor quote / invoice / material label /
+// jobsite and proposes the right record or action (draft_proposal, log_cost, add_lead…).
+function klyftonScan(){
+  const inp=document.getElementById('chatInput');
+  if(inp && !inp.value.trim()){
+    inp.value="Read the attached photo/scan and pull out the details. If it's a competitor quote, extract the scope and price and draft a matching proposal in our voice. If it's an invoice or receipt, extract the vendor, line items, and totals and log it as a job cost. If it's a material or product label, tell me the product, density/thickness, and any spec numbers. If it's a jobsite, identify the substrate, estimate the dimensions/sqft, and give a rough ESTIMATED bid range. State every assumption; never invent a number.";
+  }
+  const f=document.getElementById('chatFile'); if(f) f.click();
+}
 
 // A live AI bubble that fills in as the hive streams tokens, then gets finalized
 // with the clean (marker-stripped) answer. Falls back gracefully if streaming isn't used.
