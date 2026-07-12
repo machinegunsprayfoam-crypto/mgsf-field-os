@@ -86,6 +86,9 @@ Supported types:
 - log_maintenance:{"type":"log_maintenance","equipment":"","service":"","date":"YYYY-MM-DD","meter":"","nextDue":"YYYY-MM-DD"}  (equipment service log)
 - draft_sms:      {"type":"draft_sms","to":"","body":""}  (a customer text — SMS is short & friendly, NEVER auto-sent)
 - share_financing:{"type":"share_financing","to":""}  (draft a text with the Hearth financing apply link for a customer)
+- log_incident:   {"type":"log_incident","employee":"","itype":"Injury|Illness|Isocyanate exposure|Near-miss","jobName":"","outcome":"","description":"","date":"YYYY-MM-DD"}  (OSHA 300 recordable)
+- log_complaint:  {"type":"log_complaint","complainant":"","jobName":"","address":"","description":"","resolution":"","date":"YYYY-MM-DD"}  (neighbor odor/nuisance complaint record)
+- log_setuse:     {"type":"log_setuse","jobNum":"","product":"","sets":0}  (check foam sets out against a job number; decrements inventory)
 Rules: ONE block max; ONLY when the user asked you to do/draft/create/change/remove something; OMIT
 it entirely for normal questions. For update/delete, match by the name/customer the user gives. Use
 the crew's real numbers/prices from context — never invent a price. For emails and proposals, write
@@ -246,6 +249,33 @@ function contextBlock(context, memory) {
       c.push("Priced products (name=cost): " + context.products.slice(0, 40).join(", "));
     if (Array.isArray(context.materials) && context.materials.length)
       c.push("PRICE BOOK — real consumable / coating / equipment prices (name=$cost). Quote these EXACT numbers when asked; never invent one:\n" + context.materials.slice(0, 140).join("; "));
+    // Live record read — real leads/jobs so you can answer by name and act on the right record.
+    if (Array.isArray(context.leadRecords) && context.leadRecords.length) {
+      const lines = context.leadRecords.slice(0, 40).map((l) =>
+        "• " + (l.name || "?") + " [" + (l.status || "New") + "]" +
+        (l.service ? " " + l.service : "") + (l.state ? " " + l.state : "") +
+        (l.value ? " $" + Number(l.value).toLocaleString() : "") +
+        (l.phone ? " " + l.phone : "") + (l.town ? " — " + l.town : "") +
+        (l.source ? " (src: " + l.source + ")" : "") + (l.notes ? " — " + l.notes : ""));
+      c.push("LEADS ON FILE (real records — reference by name; you may propose update_lead / delete_lead / add_followup):\n" + lines.join("\n"));
+    }
+    if (Array.isArray(context.jobRecords) && context.jobRecords.length) {
+      const lines = context.jobRecords.slice(0, 40).map((j) =>
+        "• " + (j.customer || "?") + " [" + (j.status || "Scheduled") + "]" +
+        (j.service ? " " + j.service : "") + (j.state ? " " + j.state : "") +
+        (j.value ? " $" + Number(j.value).toLocaleString() : "") +
+        (j.date ? " " + j.date : "") + (j.address ? " — " + j.address : "") +
+        (j.crew ? " crew:" + j.crew : "") + (j.next ? " next:" + j.next : ""));
+      c.push("JOBS ON FILE (real records — reference by customer; you may propose update_job / delete_job):\n" + lines.join("\n"));
+    }
+    // Ops intel (travel/tax/permits/financing/inventory/capacity/compliance) from the Ops Center.
+    const opsMap = [
+      ["travelPolicy", "Travel policy"], ["stateTax", "State material tax"],
+      ["financing", "Customer financing"], ["lowStock", "LOW STOCK (reorder)"],
+      ["reputation", "Reputation"], ["avgMargin", "Job margin"], ["capacity", "Capacity"],
+      ["trainingDue", "Training expiring"], ["maintenanceDue", "Equipment service due"],
+    ];
+    opsMap.forEach(([k, label]) => { if (context[k]) c.push(label + ": " + context[k]); });
     if (c.length) parts.push("BUSINESS CONTEXT (use these real numbers first):\n" + c.join("\n"));
   }
   if (Array.isArray(memory) && memory.length) {

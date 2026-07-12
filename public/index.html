@@ -5579,6 +5579,19 @@ function gatherBizContext(){
       activeJobs: jobs.filter(j=>j.status!=='Completed'&&j.status!=='Cancelled').length,
       openLeads: leads.filter(l=>!['Won','Lost'].includes(l.status)).length
     };
+    // Live record read — actual leads/jobs so Klyfton answers "what leads do I have?" with real names,
+    // not just counts. Capped + trimmed to keep the prompt lean; newest first.
+    try{
+      const fmt$=n=>n?(' $'+Number(n).toLocaleString()):'';
+      ctx.leadRecords = leads.slice(-40).reverse().map(l=>({
+        name:l.name||'?', status:l.status||'New', service:l.service||l.building||'', state:l.state||'',
+        value:Number(l.value)||0, source:l.source||'', phone:l.phone||'', town:l.address||l.town||'', notes:(l.notes||'').slice(0,120)
+      }));
+      ctx.jobRecords = jobs.slice(-40).reverse().map(j=>({
+        customer:j.customer||j.name||'?', status:j.status||'Scheduled', service:j.service||'', state:j.state||'',
+        value:Number(j.value)||0, date:j.date||'', address:j.address||'', crew:j.crew||'', next:j.nextAction||''
+      }));
+    }catch(e){}
     const last=ests[ests.length-1];
     if(last){
       const tot=last.total||last.grandTotal||last.amount;
@@ -7402,7 +7415,7 @@ function mgUpdate(){
 // ============================================================
 (function(){
   // ---- hydrate new collections onto appState ----
-  const NEW_COLS = ['jobcosts','contacts','reviews','inventory','training','warranties','equipment'];
+  const NEW_COLS = ['jobcosts','contacts','reviews','inventory','training','warranties','equipment','incidents','complaints','suppliers','subs','setuse'];
   NEW_COLS.forEach(c=>{
     try{ appState[c] = JSON.parse(localStorage.getItem('klyfton_'+c)||'[]'); }
     catch(e){ appState[c] = []; }
@@ -7497,6 +7510,8 @@ function mgUpdate(){
     {k:'warranty', label:'🛡️ Warranty'},
     {k:'training', label:'🦺 Safety/Training'},
     {k:'equipment',label:'🔧 Equipment'},
+    {k:'compliance',label:'🛡️ Compliance'},
+    {k:'suppliers',label:'🚚 Suppliers & Subs'},
     {k:'financing',label:'💳 Financing'},
     {k:'rules',    label:'🧾 Travel · Tax · Permits'}
   ];
@@ -7513,6 +7528,8 @@ function mgUpdate(){
     else if(opsTab==='warranty') body.innerHTML = opsWarrantyHTML();
     else if(opsTab==='training') body.innerHTML = opsTrainingHTML();
     else if(opsTab==='equipment')body.innerHTML = opsEquipmentHTML();
+    else if(opsTab==='compliance')body.innerHTML = opsComplianceHTML();
+    else if(opsTab==='suppliers')body.innerHTML = opsSuppliersHTML();
     else if(opsTab==='financing')body.innerHTML = opsFinancingHTML();
     else if(opsTab==='rules')    body.innerHTML = opsRulesHTML();
   };
@@ -7952,6 +7969,195 @@ function mgUpdate(){
   };
   window.opsDelEquip = function(id){ appState.equipment=(appState.equipment||[]).filter(e=>e.id!==id); saveCol('equipment'); renderOps('equipment'); };
 
+  // ---------- COMPLIANCE (OSHA 300 · odor complaints · permit auto-fill) ----------
+  function opsComplianceHTML(){
+    // OSHA 300 recordable incidents
+    const inc=(appState.incidents||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const incList = inc.length? inc.map(i=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(i.employee||'')} — ${esc(i.itype||'Injury')}</b><span style="color:var(--t2)">${esc(i.date||'')}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(i.jobName||'')}${i.outcome?' · '+esc(i.outcome):''}${i.description?' · '+esc(i.description):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelInc(${i.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No recordable incidents logged. Keep it that way — but log any injury/illness by job & date so the OSHA 300 writes itself.</div>';
+    // Odor / nuisance complaints
+    const cm=(appState.complaints||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const cmList = cm.length? cm.map(c=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(c.complainant||'Neighbor')}</b><span style="color:var(--t2)">${esc(c.date||'')}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(c.jobName||'')}${c.address?' · '+esc(c.address):''} — ${esc(c.description||'')}${c.resolution?' · ✔ '+esc(c.resolution):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelCmp(${c.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No complaints logged. If a neighbor gripes about odor, log it — a dated record protects you if it ever escalates.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🩹 OSHA 300 — RECORDABLE INCIDENTS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Employee</label><input class="inp" id="in_emp"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Job / location</label><input class="inp" id="in_job"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Type</label>
+          <select class="inp" id="in_type"><option>Injury</option><option>Illness</option><option>Isocyanate exposure</option><option>Near-miss</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Date</label><input class="inp" id="in_date" type="date"></div>
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Outcome</label>
+          <select class="inp" id="in_out"><option>First aid only (not recordable)</option><option>Other recordable</option><option>Restricted duty</option><option>Days away from work</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">What happened</label><input class="inp" id="in_desc" placeholder="Brief description"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddInc()">LOG INCIDENT</button>
+      <div style="margin-top:10px">${incList}</div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🌬️ ODOR / NUISANCE COMPLAINT LOG</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Complainant</label><input class="inp" id="cm_who" placeholder="Neighbor / name"></div>
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Job / address</label><input class="inp" id="cm_job"></div>
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Date</label><input class="inp" id="cm_date" type="date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Complaint</label><input class="inp" id="cm_desc" placeholder="Odor drifting, etc."></div>
+      <div class="form-group"><label class="form-label">Resolution / action</label><input class="inp" id="cm_res" placeholder="Ventilated, notified, followed up"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddCmp()">LOG COMPLAINT</button>
+      <div style="margin-top:10px">${cmList}</div>
+    </div>
+    <div class="card"><div class="card-title">📄 PERMIT AUTO-FILL</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">State</label>
+          <select class="inp" id="pf_state"><option>MT</option><option>ND</option><option>SD</option><option>WY</option></select></div>
+        <div class="form-group" style="flex:2;min-width:160px"><label class="form-label">Job type</label>
+          <select class="inp" id="pf_svc"><option>Spray foam insulation</option><option>SPF roofing</option><option>Concrete lifting</option><option>Insulation removal</option></select></div>
+      </div>
+      <button class="btn btn-cyan" style="width:100%" onclick="opsPermitPrefill()">GENERATE PREFILLED PERMIT INFO</button>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Fills your standard business identity so you never retype it. Contractor license # is owner-entered.</div>
+    </div>`;
+  }
+  window.opsAddInc = function(){
+    const emp=($('in_emp')||{}).value||''; if(!emp.trim()) return toast('Enter employee');
+    const rec={ id:Date.now(), employee:emp.trim(), jobName:($('in_job')||{}).value||'', itype:($('in_type')||{}).value||'Injury',
+      date:($('in_date')||{}).value||today(), outcome:($('in_out')||{}).value||'', description:($('in_desc')||{}).value||'' };
+    appState.incidents=appState.incidents||[]; appState.incidents.push(rec); saveCol('incidents'); toast('Incident logged'); renderOps('compliance');
+  };
+  window.opsDelInc = function(id){ appState.incidents=(appState.incidents||[]).filter(i=>i.id!==id); saveCol('incidents'); renderOps('compliance'); };
+  window.opsAddCmp = function(){
+    const who=($('cm_who')||{}).value||''; const desc=($('cm_desc')||{}).value||'';
+    if(!who.trim()&&!desc.trim()) return toast('Enter complaint details');
+    const rec={ id:Date.now(), complainant:who.trim()||'Neighbor', jobName:($('cm_job')||{}).value||'', date:($('cm_date')||{}).value||today(),
+      description:desc, resolution:($('cm_res')||{}).value||'' };
+    appState.complaints=appState.complaints||[]; appState.complaints.push(rec); saveCol('complaints'); toast('Complaint logged'); renderOps('compliance');
+  };
+  window.opsDelCmp = function(id){ appState.complaints=(appState.complaints||[]).filter(c=>c.id!==id); saveCol('complaints'); renderOps('compliance'); };
+  window.opsPermitPrefill = function(){
+    const st=($('pf_state')||{}).value||'MT'; const svc=($('pf_svc')||{}).value||'Spray foam insulation';
+    const sr=(STATE_RULES[st]||{}); const permit=PERMIT_RULES[svcKey(svc)]||'';
+    const txt=
+`BUILDING / TRADE PERMIT — PREFILL (${st})
+Job type: ${svc}
+
+CONTRACTOR / APPLICANT
+  Business:      ${MGSF.company}
+  Owner:         ${MGSF.owner}
+  Address:       ${MGSF.address}
+  Phone:         ${MGSF.phone}
+  Email:         ${MGSF.email}
+  SAM UEI:       ${MGSF.uei}
+  State license #: OWNER INPUT REQUIRED
+  Insurance / bond on file: OWNER INPUT REQUIRED
+
+STATE NOTES (${sr.name||st})
+  Material tax:  ${((sr.materialTax||0)*100).toFixed(1)}%  — ${sr.taxNote||''}
+  Permit guidance: ${permit}
+
+PROJECT (fill per job)
+  Site address:  __________________________
+  Scope / SF:    __________________________
+  Product / R-value: ______________________
+  Start date:    __________________________
+
+Verify current requirements with the local building department (AHJ) before filing.`;
+    try{ if(window.showKlyftonDraft) return showKlyftonDraft('PERMIT PREFILL — '+st+' · '+svc, txt, null); }catch(e){}
+    alert(txt);
+  };
+
+  // ---------- SUPPLIERS & SUBS (backup suppliers · 1099 subs · set usage) ----------
+  function opsSuppliersHTML(){
+    const sup=(appState.suppliers||[]).slice();
+    const supList = sup.length? sup.map(s=>`<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(s.product||'')}</b><span style="color:var(--t2)">${esc(s.leadTime||'')}</span></div>
+        <div style="font-size:11px;color:var(--t3)">Primary: ${esc(s.primary||'?')} · Backup: <b style="color:var(--cy)">${esc(s.backup||'?')}</b>${s.contact?' · '+esc(s.contact):''}${s.notes?' · '+esc(s.notes):''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelSup(${s.id})">🗑</button></div>
+      </div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No backup suppliers mapped. If ProFoam/NCFI has a hiccup, you want the fallback distributor + lead time on file already.</div>';
+    // 1099 subs
+    const subs=(appState.subs||[]).slice();
+    const subList = subs.length? subs.map(s=>{
+      const flag=(Number(s.ytdPaid)>=600 && !s.w9);
+      return `<div class="log-row" style="flex-direction:column;align-items:stretch;gap:2px;${flag?'border-color:var(--or)':''}">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(s.name||'')}</b>
+          <span style="color:${flag?'var(--or)':'var(--gr)'}">${s.w9?'W-9 ✓':'W-9 MISSING'}${flag?' ⚠':''}</span></div>
+        <div style="font-size:11px;color:var(--t3)">${esc(s.business||'')}${s.contact?' · '+esc(s.contact):''} · YTD ${money(s.ytdPaid)}${Number(s.ytdPaid)>=600?' (1099 required)':''}
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;float:right" onclick="opsDelSub(${s.id})">🗑</button></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No subs tracked. If you bring on contract crews, get the W-9 day one and track YTD pay — 1099s at $600+ won&#39;t sneak up in January.</div>';
+    // set usage
+    const su=(appState.setuse||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const suList = su.length? su.map(u=>`<div class="log-row"><span><b>${esc(u.jobNum||u.jobName||'')}</b> · ${esc(u.product||'')}</span><span style="color:var(--t2)">${u.sets} set${u.sets==1?'':'s'} · ${esc(u.date||'')} <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="opsDelSU(${u.id})">🗑</button></span></div>`).join('') : '<div style="color:var(--t2);font-size:13px;padding:8px">No set check-outs yet. Log every set out against a job number — ends the &#8220;did we use 6 or 8?&#8221; argument.</div>';
+    return `
+    <div class="card" style="margin-bottom:12px"><div class="card-title">🚚 BACKUP SUPPLIER MAP</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:140px"><label class="form-label">Product / class</label><input class="inp" id="su_prod" placeholder="2.0# CC foam"></div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Lead time</label><input class="inp" id="su_lead" placeholder="3–5 days"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Primary</label><input class="inp" id="su_prim" placeholder="ProFoam"></div>
+        <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Backup distributor</label><input class="inp" id="su_back" placeholder="IDI / SprayFoam Direct"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Contact / notes</label><input class="inp" id="su_ct" placeholder="Rep name, phone, min order"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddSup()">SAVE SUPPLIER</button>
+      <div style="margin-top:10px">${supList}</div>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">👷 1099 SUBCONTRACTOR TRACKING</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Name</label><input class="inp" id="sb_name"></div>
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Business</label><input class="inp" id="sb_biz"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">YTD paid $</label><input class="inp" id="sb_ytd" type="number"></div>
+        <div class="form-group" style="flex:2;min-width:130px"><label class="form-label">Contact</label><input class="inp" id="sb_ct"></div>
+        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">W-9 on file?</label><select class="inp" id="sb_w9"><option value="">No</option><option value="1">Yes</option></select></div>
+      </div>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:6px">Never store SSN/EIN here — just track that the W-9 is collected + YTD pay. Keep tax IDs in your secure files.</div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddSub()">SAVE SUB</button>
+      <div style="margin-top:10px">${subList}</div>
+    </div>
+    <div class="card"><div class="card-title">📦 SET USAGE — CHECK OUT TO A JOB</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Job #</label><input class="inp" id="us_num" placeholder="MGSF-104"></div>
+        <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Product</label><input class="inp" id="us_prod" placeholder="ProSeal 2.0# CC"></div>
+        <div class="form-group" style="flex:1;min-width:90px"><label class="form-label">Sets out</label><input class="inp" id="us_sets" type="number" step="0.5" value="1"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="opsAddSU()">CHECK OUT SET(S)</button>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px">Decrements matching inventory automatically. (Camera QR/barcode scan is a future add — this is the manual log that already ends the count argument.)</div>
+      <div style="margin-top:10px">${suList}</div>
+    </div>`;
+  }
+  window.opsAddSup = function(){
+    const prod=($('su_prod')||{}).value||''; if(!prod.trim()) return toast('Enter a product');
+    const rec={ id:Date.now(), product:prod.trim(), leadTime:($('su_lead')||{}).value||'', primary:($('su_prim')||{}).value||'',
+      backup:($('su_back')||{}).value||'', contact:($('su_ct')||{}).value||'', notes:'' };
+    appState.suppliers=appState.suppliers||[]; appState.suppliers.push(rec); saveCol('suppliers'); toast('Supplier saved'); renderOps('suppliers');
+  };
+  window.opsDelSup = function(id){ appState.suppliers=(appState.suppliers||[]).filter(s=>s.id!==id); saveCol('suppliers'); renderOps('suppliers'); };
+  window.opsAddSub = function(){
+    const name=($('sb_name')||{}).value||''; if(!name.trim()) return toast('Enter a name');
+    const rec={ id:Date.now(), name:name.trim(), business:($('sb_biz')||{}).value||'', ytdPaid:+($('sb_ytd')||{}).value||0,
+      contact:($('sb_ct')||{}).value||'', w9:!!($('sb_w9')||{}).value };
+    appState.subs=appState.subs||[]; appState.subs.push(rec); saveCol('subs'); toast('Sub saved'); renderOps('suppliers');
+  };
+  window.opsDelSub = function(id){ appState.subs=(appState.subs||[]).filter(s=>s.id!==id); saveCol('subs'); renderOps('suppliers'); };
+  window.opsAddSU = function(){
+    const prod=($('us_prod')||{}).value||''; const sets=+($('us_sets')||{}).value||0;
+    if(!prod.trim()||sets<=0) return toast('Enter product + sets');
+    const rec={ id:Date.now(), jobNum:($('us_num')||{}).value||'', product:prod.trim(), sets, date:today() };
+    appState.setuse=appState.setuse||[]; appState.setuse.push(rec); saveCol('setuse');
+    // decrement matching inventory if present
+    try{ const nm=prod.trim().toLowerCase(); const it=(appState.inventory||[]).find(i=>(i.item||'').toLowerCase().includes(nm)||nm.includes((i.item||'').toLowerCase()));
+      if(it){ it.qty=Math.max(0,(Number(it.qty)||0)-sets); saveCol('inventory'); if(Number(it.qty)<=Number(it.reorderAt)) toast('⚠ '+it.item+' hit reorder point'); } }catch(e){}
+    toast('Checked out '+sets+' set(s)'); renderOps('suppliers');
+  };
+  window.opsDelSU = function(id){ appState.setuse=(appState.setuse||[]).filter(u=>u.id!==id); saveCol('setuse'); renderOps('suppliers'); };
+
   // ============================================================
   // KLYFTON CONTEXT + ACTIONS wiring
   // ============================================================
@@ -7998,6 +8204,9 @@ function mgUpdate(){
       case 'log_maintenance': return `Log maintenance — <b>${esc(a.equipment||'?')}</b>${a.service?(' · '+esc(a.service)):''}`;
       case 'draft_sms':    return `Draft a text${a.to?(' to <b>'+esc(a.to)+'</b>'):''}`;
       case 'share_financing': return `Send the <b>Hearth financing</b> link${a.to?(' to '+esc(a.to)):''}`;
+      case 'log_incident': return `Log OSHA incident — <b>${esc(a.employee||'?')}</b>${a.itype?(' · '+esc(a.itype)):''}`;
+      case 'log_complaint':return `Log complaint${a.jobName?(' on '+esc(a.jobName)):''}${a.complainant?(' from '+esc(a.complainant)):''}`;
+      case 'log_setuse':   return `Check out <b>${a.sets||'?'}</b> set(s) of ${esc(a.product||'?')}${a.jobNum?(' → '+esc(a.jobNum)):''}`;
       default: return '';
     }
   };
@@ -8060,9 +8269,27 @@ function mgUpdate(){
       try{ if(window.showKlyftonDraft) showKlyftonDraft('FINANCING — Hearth'+(to?(' · '+to):''), body, smsHref); }catch(e){}
       return true;
     }
+    if(a.type==='log_incident'){
+      const rec={ id:Date.now(), employee:a.employee||'', jobName:a.jobName||a.job||'', itype:a.itype||'Injury',
+        date:a.date||today(), outcome:a.outcome||'', description:a.description||a.note||'' };
+      appState.incidents=appState.incidents||[]; appState.incidents.push(rec); saveCol('incidents'); toast('Incident logged'); return true;
+    }
+    if(a.type==='log_complaint'){
+      const rec={ id:Date.now(), complainant:a.complainant||'Neighbor', jobName:a.jobName||a.job||'', address:a.address||'',
+        date:a.date||today(), description:a.description||a.note||'', resolution:a.resolution||'' };
+      appState.complaints=appState.complaints||[]; appState.complaints.push(rec); saveCol('complaints'); toast('Complaint logged'); return true;
+    }
+    if(a.type==='log_setuse'){
+      const sets=+a.sets||0; if(sets<=0||!a.product) return true;
+      const rec={ id:Date.now(), jobNum:a.jobNum||a.job||'', product:a.product||'', sets, date:a.date||today() };
+      appState.setuse=appState.setuse||[]; appState.setuse.push(rec); saveCol('setuse');
+      try{ const nm=(a.product||'').toLowerCase(); const it=(appState.inventory||[]).find(i=>(i.item||'').toLowerCase().includes(nm)||nm.includes((i.item||'').toLowerCase()));
+        if(it){ it.qty=Math.max(0,(Number(it.qty)||0)-sets); saveCol('inventory'); } }catch(e){}
+      toast('Set usage logged'); return true;
+    }
     return false;
   };
-  window.OPS_ACTIONS = ['log_cost','log_contact','log_review','set_inventory','log_warranty','log_training','log_maintenance','draft_sms','share_financing'];
+  window.OPS_ACTIONS = ['log_cost','log_contact','log_review','set_inventory','log_warranty','log_training','log_maintenance','draft_sms','share_financing','log_incident','log_complaint','log_setuse'];
 })();
 </script>
 
