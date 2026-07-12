@@ -7793,7 +7793,7 @@ function mgUpdate(){
   });
 
   // ---- Travel policy (crew rolls from Glendive, MT) ----
-  MGSF.travel = { base:'Glendive, MT', perMile:0.70, freeRadius:30, driveMph:55 };
+  MGSF.travel = { base:'Glendive, MT', perMile:0.80, freeRadius:30, driveMph:55, driverRate:48 };
 
   // Crew $/hr for drive-time labor (installer + helper)
   function crewHourly(){ try{ return (MGSF.labor.installer||80)+(MGSF.labor.helper||48); }catch(e){ return 128; } }
@@ -7807,13 +7807,16 @@ function mgUpdate(){
     const per   = opt.perMile!=null?opt.perMile:MGSF.travel.perMile;
     const free  = opt.freeRadius!=null?opt.freeRadius:MGSF.travel.freeRadius;
     const mph   = opt.driveMph!=null?opt.driveMph:MGSF.travel.driveMph;
-    if(miles<=free) return {miles, roundTrip:miles*2, mileageCost:0, driveHours:0, driveLabor:0, total:0, note:'Within '+free+'-mi free radius'};
+    const trucks= Math.max(1, Math.round(Number(opt.trucks)||1));
+    const drRate= opt.driverRate!=null?opt.driverRate:(MGSF.travel.driverRate||48);
+    if(miles<=free) return {miles, trucks, roundTrip:miles*2, mileageCost:0, driveHours:0, driveLabor:0, total:0, note:'Within '+free+'-mi free radius'};
     const rt = miles*2;
-    const mileageCost = rt*per;
+    const mileageCost = rt*per*trucks;              // each rig burns its own fuel + wear
     const driveHours  = rt/mph;
-    const driveLabor  = driveHours*crewHourly();
-    return { miles, roundTrip:rt, mileageCost, driveHours, driveLabor, total:mileageCost+driveLabor,
-             note:rt+' mi round trip @ $'+per.toFixed(2)+'/mi + '+driveHours.toFixed(1)+' hr drive' };
+    // Lead truck carries the base crew; each extra truck adds one driver at the driver rate.
+    const driveLabor  = driveHours*(crewHourly() + drRate*(trucks-1));
+    return { miles, trucks, roundTrip:rt, mileageCost, driveHours, driveLabor, total:mileageCost+driveLabor,
+             note:rt+' mi round trip @ $'+per.toFixed(2)+'/mi × '+trucks+' truck'+(trucks>1?'s':'')+' + '+driveHours.toFixed(1)+' hr drive' };
   };
 
   // ---- State tax + permit rules (MT/ND/SD/WY) ----
@@ -8119,8 +8122,9 @@ function mgUpdate(){
     return `
     <div class="card" style="margin-bottom:12px"><div class="card-title">🚚 TRAVEL CALCULATOR (from ${esc(t.base)})</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">One-way miles</label><input class="inp" id="tv_mi" type="number" inputmode="decimal" oninput="opsCalcTravel()"></div>
-        <div style="flex:2;min-width:160px;font-size:12px;color:var(--t2)" id="tv_out">Enter miles — first ${t.freeRadius} mi are free; beyond that it's round-trip $${t.perMile.toFixed(2)}/mi + crew drive time.</div>
+        <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">One-way miles</label><input class="inp" id="tv_mi" type="number" inputmode="decimal" oninput="opsCalcTravel()"></div>
+        <div class="form-group" style="flex:0 0 90px;min-width:80px"><label class="form-label"># Trucks</label><input class="inp" id="tv_trucks" type="number" inputmode="numeric" min="1" step="1" value="1" oninput="opsCalcTravel()"></div>
+        <div style="flex:2;min-width:160px;font-size:12px;color:var(--t2)" id="tv_out">Enter miles — first ${t.freeRadius} mi are free; beyond that it's round-trip $${t.perMile.toFixed(2)}/mi per truck + crew drive time.</div>
       </div>
     </div>
     <div class="card" style="margin-bottom:12px"><div class="card-title">STATE MATERIAL TAX</div>${stateRows}
@@ -8129,9 +8133,9 @@ function mgUpdate(){
       <div style="font-size:10px;color:var(--t3);margin-top:6px">General guidance — always confirm with the local building department (AHJ).</div></div>`;
   }
   window.opsCalcTravel = function(){
-    const mi=+($('tv_mi')||{}).value||0; const r=calcTravel(mi); const o=$('tv_out'); if(!o) return;
+    const mi=+($('tv_mi')||{}).value||0; const trucks=+($('tv_trucks')||{}).value||1; const r=calcTravel(mi,{trucks}); const o=$('tv_out'); if(!o) return;
     if(r.total<=0){ o.innerHTML='<span style="color:var(--gr)">'+r.note+' — no travel charge.</span>'; return; }
-    o.innerHTML=`<b style="color:var(--or)">Add ${money(r.total)}</b> — ${money(r.mileageCost)} mileage + ${money(r.driveLabor)} drive labor (${r.driveHours.toFixed(1)} hr). <span style="color:var(--t3)">${r.note}</span>`;
+    o.innerHTML=`<b style="color:var(--or)">Add ${money(r.total)}</b> — ${money(r.mileageCost)} mileage (${r.trucks} truck${r.trucks>1?'s':''}) + ${money(r.driveLabor)} drive labor (${r.driveHours.toFixed(1)} hr). <span style="color:var(--t3)">${r.note}</span>`;
   };
 
   // ---- Customer financing (Hearth) — real partner links + banners from Clifton ----
@@ -8570,7 +8574,7 @@ Verify current requirements with the local building department (AHJ) before fili
   window.opsContext = function(){
     const ctx={};
     try{
-      ctx.travelPolicy = 'From '+MGSF.travel.base+': first '+MGSF.travel.freeRadius+' mi free, then round-trip $'+MGSF.travel.perMile.toFixed(2)+'/mi + crew drive time at $'+crewHourly()+'/hr.';
+      ctx.travelPolicy = 'From '+MGSF.travel.base+': first '+MGSF.travel.freeRadius+' mi free, then round-trip $'+MGSF.travel.perMile.toFixed(2)+'/mi PER TRUCK + crew drive time at $'+crewHourly()+'/hr; each extra truck adds a driver at $'+(MGSF.travel.driverRate||48)+'/hr. Ask how many trucks/rigs are rolling.';
       ctx.stateTax = Object.keys(STATE_RULES).map(k=>k+' '+(STATE_RULES[k].materialTax*100).toFixed(1)+'% materials').join(' · ');
       const low=(appState.inventory||[]).filter(i=>Number(i.qty)<=Number(i.reorderAt));
       if(low.length) ctx.lowStock = low.map(i=>i.item+' ('+i.qty+' '+(i.unit||'')+')').join(', ');
