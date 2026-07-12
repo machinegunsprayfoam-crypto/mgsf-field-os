@@ -6832,10 +6832,12 @@ document.addEventListener('click',()=>{
     window.toggleProposalEnergyFields();
     renderProposalList();
   };
+  const getProposalCustomerType = value => value || CUSTOMER_TYPES.HOMEOWNER;
+  const isGcProposal = value => getProposalCustomerType(value) === CUSTOMER_TYPES.GC;
   window.toggleProposalEnergyFields = function(){
     const card = $('pr_roi_card');
     if(!card) return;
-    card.style.display = (($('pr_custtype')||{}).value || CUSTOMER_TYPES.HOMEOWNER) === CUSTOMER_TYPES.GC ? 'none' : 'block';
+    card.style.display = isGcProposal((($('pr_custtype')||{}).value)) ? 'none' : 'block';
   };
   window.proposalFromEstimate = function(){
     const id=($('pr_est')||{}).value; if(!id) return;
@@ -6846,7 +6848,7 @@ document.addEventListener('click',()=>{
   function proposalDoc(p){
     // ---------- BENEFIT BULLETS ----------
     const sc = (p.scope||'').toLowerCase();
-    const ct = p.custtype || CUSTOMER_TYPES.HOMEOWNER;
+    const ct = getProposalCustomerType(p.custtype);
     const isCC      = /closed.?cell|2[\s.]?[08]#|2[\s.]?lb\b|cc\b/.test(sc);
     const isOC      = /open.?cell|0\.5#|half.?lb|oc\b/.test(sc);
     const isRoof    = /roof/.test(sc);
@@ -6919,7 +6921,7 @@ document.addEventListener('click',()=>{
     const bill  = parseFloat(p.energybill)||0;
     const pct   = parseFloat(p.savingspct)||0;
     const price = parseFloat(p.price)||0;
-    if(bill > 0 && pct > 0 && ct !== CUSTOMER_TYPES.GC){
+    if(bill > 0 && pct > 0 && !isGcProposal(ct)){
       const monthly  = bill * pct / 100;
       const annual   = monthly * 12;
       const paybackMos = price > 0 ? Math.ceil(price / monthly) : 0;
@@ -6997,7 +6999,7 @@ document.addEventListener('click',()=>{
     return { id:'PROP'+Date.now(), date:new Date().toISOString().split('T')[0],
       cust:g('pr_cust'), addr:g('pr_addr'), scope:g('pr_scope'), price:g('pr_price'),
       terms:g('pr_terms'), excl:g('pr_excl'), hearth:($('pr_hearth')||{}).checked,
-      custtype:g('pr_custtype')||CUSTOMER_TYPES.HOMEOWNER,
+      custtype:getProposalCustomerType(g('pr_custtype')),
       energybill:g('pr_energybill'), savingspct:g('pr_savingspct') };
   }
   window.printProposal = function(){
