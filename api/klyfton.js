@@ -236,6 +236,12 @@ async function callClaude(key, payload) {
     }
     break;
   }
+  // Cost visibility — one line per call in the Vercel function logs (model + token usage).
+  try {
+    const u = data && data.usage;
+    console.log("[klyfton] call " + ((data && data.model) || "?") +
+      " in=" + ((u && u.input_tokens) || 0) + " out=" + ((u && u.output_tokens) || 0));
+  } catch (e) {}
   return data;
 }
 
@@ -389,7 +395,7 @@ async function callClaudeStream(key, payload, onText) {
   }
   const reader = r.body.getReader();
   const dec = new TextDecoder();
-  let buf = "", full = "", model = "";
+  let buf = "", full = "", model = "", inTok = 0, outTok = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -403,13 +409,18 @@ async function callClaudeStream(key, payload, onText) {
       const data = line.slice(5).trim();
       if (!data || data === "[DONE]") continue;
       let ev; try { ev = JSON.parse(data); } catch (e) { continue; }
-      if (ev.type === "message_start" && ev.message && ev.message.model) model = ev.message.model;
+      if (ev.type === "message_start" && ev.message) {
+        if (ev.message.model) model = ev.message.model;
+        if (ev.message.usage && ev.message.usage.input_tokens) inTok = ev.message.usage.input_tokens;
+      }
+      if (ev.type === "message_delta" && ev.usage && ev.usage.output_tokens != null) outTok = ev.usage.output_tokens;
       if (ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta") {
         full += ev.delta.text;
         if (onText) onText(ev.delta.text);
       }
     }
   }
+  try { console.log("[klyfton] stream " + (model || "?") + " in=" + inTok + " out=" + outTok); } catch (e) {}
   return { text: full, model };
 }
 

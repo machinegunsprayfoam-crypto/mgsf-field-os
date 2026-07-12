@@ -223,8 +223,9 @@ module.exports = async (req, res) => {
       if (!content.length) { sendJson(res, 400, { ok: false, error: 'NO_USABLE_FILES' }); return; }
       content.push({ type: 'text', text: 'Produce the DRAFT takeoff JSON for the attached plan/spec files. Remember: draft for human review.' });
       const reply = await callAnthropic(apiKey, {
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         max_tokens: 2048,
+        thinking: { type: 'disabled' }, // structured JSON extraction — keep it fast, no thinking budget eaten
         system: TAKEOFF_SYSTEM,
         messages: [{ role: 'user', content: content }]
       });
@@ -253,8 +254,9 @@ module.exports = async (req, res) => {
       if (!content.length) { sendJson(res, 400, { ok: false, error: 'NO_USABLE_FILES' }); return; }
       content.push({ type: 'text', text: 'Extract the total annual energy cost from this utility bill as strict JSON.' });
       const reply = await callAnthropic(apiKey, {
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         max_tokens: 512,
+        thinking: { type: 'disabled' }, // structured JSON extraction — keep it fast, no thinking budget eaten
         system: ROI_BILL_SYSTEM,
         messages: [{ role: 'user', content: content }]
       });

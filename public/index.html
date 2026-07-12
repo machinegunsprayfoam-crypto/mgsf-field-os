@@ -5500,6 +5500,17 @@ function addStreamingAiBubble(){
   };
 }
 
+// Optional crew code. If the owner sets CREW_CODE in Vercel, the server requires a
+// matching { code } — without this the app would brick with "🔒 Crew code required".
+// The code is stored per-device once entered.
+function klyftonCode(){ try{ return (localStorage.getItem('klyfton_crew_code')||'').trim(); }catch(e){ return ''; } }
+function klyftonLocked(text){ return typeof text==='string' && (text.indexOf('Crew code required')>=0 || text.indexOf('🔒')===0); }
+function klyftonPromptCode(){
+  const code = (typeof prompt==='function') ? prompt('Klyfton is locked. Enter the crew code your owner set:') : '';
+  if(code && code.trim()){ try{ localStorage.setItem('klyfton_crew_code', code.trim()); }catch(e){} return true; }
+  return false;
+}
+
 // POST to the hive. If the server streams (SSE), forward text deltas to onDelta and
 // resolve with the final {text, remember, minds, mode, configured}. If it returns JSON
 // (GROW tools, not-configured, crew-code), just parse and resolve. Rejects on network/abort.
@@ -5560,65 +5571,80 @@ function sendChat(){
   appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
 
   const bubble = addStreamingAiBubble();
-  const ac = new AbortController();
-  let timedOut = false;
-  // Honest client-side deadline — under the function's maxDuration (60s) so we stop
-  // ourselves cleanly instead of showing a fake "offline" reply on a slow-but-working call.
-  const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 58000);
 
-  klyftonStream({
-    message:text,
-    history:hist,
-    memory: appState.memory.slice(-20),
-    context: gatherBizContext(),
-    // Photos/PDFs the crew attached — the hive reads these via Claude vision.
-    attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data})),
-    stream:true
-  }, ac.signal, function(prev){ bubble.setText(prev); })
-  .then(d=>{
-    clearTimeout(to);
-    let resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
-    // Klyfton may propose an action — pull it out of the text; the user confirms before it runs.
-    const parsed = parseKlyftonAction(resp); resp = parsed.clean;
-    appState.chatHistory.push({role:'assistant', content:resp});
-    // Store durable "colony memory" facts the hive chose to keep.
-    if(d && Array.isArray(d.remember) && d.remember.length){
-      d.remember.forEach(f=>{ if(f && !appState.memory.includes(f)) appState.memory.push(f); });
-      appState.memory = appState.memory.slice(-50);
-      save('memory');
-    }
-    bubble.finalize(resp, resp);
-    if(parsed.action) promptKlyftonAction(parsed.action);
-    // Show the hive at work: which minds answered.
-    let status='● READY';
-    if(d && d.minds && d.minds.length){
-      status = d.mode==='hive'
-        ? '🐝 '+d.minds.length+' minds: '+d.minds.join(', ')
-        : '● '+d.minds[0];
-    }
-    if(d && d.configured===false) status='⚙️ Add ANTHROPIC_API_KEY in Vercel';
-    if(statusEl) statusEl.textContent=status;
-    playSound('nav');
-  })
-  .catch(()=>{
-    clearTimeout(to);
-    if(timedOut){
-      // Not offline — the hive just ran long. Be honest instead of faking a canned reply.
-      bubble.finalize("That's a heavy one — I ran long and stopped so I'm not leaving you hanging. Ask it again, or narrow it down a bit, and I'll take another swing.");
-      if(statusEl) statusEl.textContent='● TIMED OUT';
+  // The network round-trip, wrapped so we can retry once if the app turns out to be
+  // crew-code locked (owner set CREW_CODE in Vercel). The user bubble + history are
+  // already in place, so a retry reuses them.
+  function run(){
+    const ac = new AbortController();
+    let timedOut = false;
+    // Honest client-side deadline — under the function's maxDuration (60s) so we stop
+    // ourselves cleanly instead of showing a fake "offline" reply on a slow-but-working call.
+    const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 58000);
+
+    return klyftonStream({
+      message:text,
+      history:hist,
+      memory: appState.memory.slice(-20),
+      context: gatherBizContext(),
+      // Photos/PDFs the crew attached — the hive reads these via Claude vision.
+      attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data})),
+      code: klyftonCode(),
+      stream:true
+    }, ac.signal, function(prev){ bubble.setText(prev); })
+    .then(d=>{
+      clearTimeout(to);
+      // Crew-code lock — let them enter it and retry once, instead of a dead end.
+      if(klyftonLocked(d && d.text)){
+        if(statusEl) statusEl.textContent='🔒 LOCKED';
+        if(klyftonPromptCode()){ bubble.setText(''); return run(); }
+        bubble.finalize((d && d.text) || '🔒 Klyfton is locked — a crew code is required.');
+        return;
+      }
+      let resp = (d && d.text) ? d.text : "I didn't catch that — try again.";
+      // Klyfton may propose an action — pull it out of the text; the user confirms before it runs.
+      const parsed = parseKlyftonAction(resp); resp = parsed.clean;
+      appState.chatHistory.push({role:'assistant', content:resp});
+      // Store durable "colony memory" facts the hive chose to keep.
+      if(d && Array.isArray(d.remember) && d.remember.length){
+        d.remember.forEach(f=>{ if(f && !appState.memory.includes(f)) appState.memory.push(f); });
+        appState.memory = appState.memory.slice(-50);
+        save('memory');
+      }
+      bubble.finalize(resp, resp);
+      if(parsed.action) promptKlyftonAction(parsed.action);
+      // Show the hive at work: which minds answered.
+      let status='● READY';
+      if(d && d.minds && d.minds.length){
+        status = d.mode==='hive'
+          ? '🐝 '+d.minds.length+' minds: '+d.minds.join(', ')
+          : '● '+d.minds[0];
+      }
+      if(d && d.configured===false) status='⚙️ Add ANTHROPIC_API_KEY in Vercel';
+      if(statusEl) statusEl.textContent=status;
       playSound('nav');
-      return;
-    }
-    // True network/offline failure — use the local canned responder so the app still replies.
-    if(atts.length){
-      bubble.finalize("I can't read photos or PDFs without a connection to the hive. Your attachment is still here — try again when you've got signal.");
-    } else {
-      const {text:resp, voice} = processChat(text);
-      bubble.finalize(resp, voice);
-    }
-    if(statusEl) statusEl.textContent = (navigator.onLine===false) ? '● OFFLINE' : '● CONNECTION ISSUE';
-    playSound('nav');
-  });
+    })
+    .catch(()=>{
+      clearTimeout(to);
+      if(timedOut){
+        // Not offline — the hive just ran long. Be honest instead of faking a canned reply.
+        bubble.finalize("That's a heavy one — I ran long and stopped so I'm not leaving you hanging. Ask it again, or narrow it down a bit, and I'll take another swing.");
+        if(statusEl) statusEl.textContent='● TIMED OUT';
+        playSound('nav');
+        return;
+      }
+      // True network/offline failure — use the local canned responder so the app still replies.
+      if(atts.length){
+        bubble.finalize("I can't read photos or PDFs without a connection to the hive. Your attachment is still here — try again when you've got signal.");
+      } else {
+        const {text:resp, voice} = processChat(text);
+        bubble.finalize(resp, voice);
+      }
+      if(statusEl) statusEl.textContent = (navigator.onLine===false) ? '● OFFLINE' : '● CONNECTION ISSUE';
+      playSound('nav');
+    });
+  }
+  run();
 }
 
 // ---- Klyfton actions: parse → confirm → execute (never auto-write) ----
@@ -7532,9 +7558,11 @@ function growGenerate(prompt){
   if(st) st.textContent='Klyfton is working…';
   if(out) out.innerHTML='';
   fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20)})})
+    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():'')})})
   .then(function(r){return r.json();})
-  .then(function(d){ const text=(d&&d.text)||"Klyfton didn't return anything — try again."; if(out) out.innerHTML=growResultBox(text); if(st) st.textContent=(d&&d.configured===false)?'⚙️ Turn on ANTHROPIC_API_KEY in Vercel to use this.':''; })
+  .then(function(d){
+    if(typeof klyftonLocked==='function' && klyftonLocked(d&&d.text)){ if(klyftonPromptCode()){ growGenerate(prompt); return; } }
+    const text=(d&&d.text)||"Klyfton didn't return anything — try again."; if(out) out.innerHTML=growResultBox(text); if(st) st.textContent=(d&&d.configured===false)?'⚙️ Turn on ANTHROPIC_API_KEY in Vercel to use this.':''; })
   .catch(function(){ if(out) out.innerHTML='<p style="color:var(--red);font-size:13px">Couldn\'t reach Klyfton — needs the API key live in Vercel.</p>'; if(st) st.textContent=''; });
 }
 function growContent(type,label){
