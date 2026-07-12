@@ -517,6 +517,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('ops');renderOps()" id="nav-ops">
         <div class="nav-icon">🧰</div><div class="nav-label">OPS CENTER</div>
       </div>
+      <div class="nav-item" onclick="switchModule('calendar');renderCalendar()" id="nav-calendar">
+        <div class="nav-icon">📆</div><div class="nav-label">SCHEDULE</div>
+      </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
         <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
       </div>
@@ -1346,6 +1349,11 @@ canvas.chart{width:100%;height:100%}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap" id="ops_tabs"></div>
         <div id="ops_body"></div>
+      </div>
+      <div id="mod-calendar" class="module">
+        <div class="mod-head"><h2>📆 Schedule</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="cal_body"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -8290,6 +8298,94 @@ Verify current requirements with the local building department (AHJ) before fili
     return false;
   };
   window.OPS_ACTIONS = ['log_cost','log_contact','log_review','set_inventory','log_warranty','log_training','log_maintenance','draft_sms','share_financing','log_incident','log_complaint','log_setuse'];
+})();
+</script>
+
+<script>
+// ============================================================
+// KLYFTON — SCHEDULE / CALENDAR (unified agenda)
+// Jobs by date + Ops due-dates (training, equipment, warranty),
+// overdue flagged, Sundays protected (family time — MOGS rule).
+// ============================================================
+(function(){
+  const $ = id => document.getElementById(id);
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function today(){ return new Date().toISOString().split('T')[0]; }
+  function daysUntil(d){ if(!d) return null; const ms=new Date(d+'T00:00:00')-new Date(today()+'T00:00:00'); return Math.round(ms/86400000); }
+  function isSunday(d){ try{ return new Date(d+'T00:00:00').getDay()===0; }catch(e){ return false; } }
+  function fmtDate(d){ try{ const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); }catch(e){ return d; } }
+
+  // Build the event list from jobs + Ops records that carry a date.
+  function gatherEvents(){
+    const ev=[];
+    (appState.jobs||[]).forEach(j=>{
+      if(!j.date) return;
+      const active=!['Completed','Cancelled','Paid'].includes(j.status);
+      ev.push({ date:j.date, kind:'job', icon:'🔧', color:'var(--or)',
+        title:(j.customer||j.name||'Job'), sub:(j.service||'')+(j.crew?(' · 👤 '+j.crew):'')+(j.status?(' · '+j.status):''), done:!active });
+    });
+    (appState.equipment||[]).forEach(e=>{ if(e.nextDue) ev.push({ date:e.nextDue, kind:'maint', icon:'🔧', color:'var(--cy)',
+      title:'Service: '+(e.name||'equipment'), sub:e.service||'' }); });
+    (appState.training||[]).forEach(t=>{ if(t.expires) ev.push({ date:t.expires, kind:'cert', icon:'🦺', color:'var(--yw,#eab308)',
+      title:'Cert expires: '+(t.name||''), sub:t.topic||'' }); });
+    (appState.warranties||[]).forEach(w=>{ if(w.start&&w.termYears){ const d=new Date(w.start+'T00:00:00'); d.setFullYear(d.getFullYear()+Number(w.termYears));
+      ev.push({ date:d.toISOString().split('T')[0], kind:'warranty', icon:'🛡️', color:'var(--t2)', title:'Warranty ends: '+(w.customer||''), sub:(w.wtype||'')+' ('+w.termYears+'yr)' }); } });
+    (appState.leads||[]).forEach(l=>{ if(l.status==='Follow-Up' && l.date) ev.push({ date:l.date, kind:'lead', icon:'📞', color:'var(--gr)',
+      title:'Follow up: '+(l.name||''), sub:(l.notes||'').slice(0,60) }); });
+    return ev;
+  }
+
+  window.renderCalendar = function(){
+    const body=$('cal_body'); if(!body) return;
+    const evs=gatherEvents();
+    const overdue=evs.filter(e=>!e.done && daysUntil(e.date)<0).sort((a,b)=>a.date.localeCompare(b.date));
+    const upcoming=evs.filter(e=>daysUntil(e.date)>=0).sort((a,b)=>a.date.localeCompare(b.date));
+    // this-week job count
+    const wkJobs=(appState.jobs||[]).filter(j=>{ const d=daysUntil(j.date); return d!=null&&d>=0&&d<=7&&!['Completed','Cancelled','Paid'].includes(j.status); });
+    const nextJob=upcoming.find(e=>e.kind==='job');
+
+    const row=e=>{
+      const du=daysUntil(e.date); const when=du===0?'TODAY':du===1?'tomorrow':du<0?(Math.abs(du)+'d ago'):('in '+du+'d');
+      const sun=isSunday(e.date);
+      return `<div class="log-row" style="align-items:flex-start;gap:10px;${e.done?'opacity:.5':''}${du<0&&!e.done?';border-color:var(--or)':''}">
+        <div style="min-width:74px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:${e.color}">${fmtDate(e.date)}</div>
+          <div style="font-size:10px;color:var(--t3)">${when}${sun?' · ☀️Sun':''}</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${e.icon} ${esc(e.title)}</div>
+          ${e.sub?`<div style="font-size:11px;color:var(--t2)">${esc(e.sub)}</div>`:''}
+          ${sun&&e.kind==='job'?`<div style="font-size:10px;color:var(--yw,#eab308)">⚠ Sunday — protect family time; reschedule if you can.</div>`:''}
+        </div></div>`;
+    };
+
+    // group upcoming by date bucket labels
+    let listHtml='';
+    if(overdue.length){ listHtml+=`<div class="card" style="margin-bottom:12px;border-color:var(--or)"><div class="card-title" style="color:var(--or)">⚠ OVERDUE / PAST DUE (${overdue.length})</div>${overdue.map(row).join('')}</div>`; }
+    listHtml+=`<div class="card"><div class="card-title">UPCOMING</div>${upcoming.length?upcoming.map(row).join(''):'<div style="color:var(--t2);font-size:13px;padding:10px">Nothing scheduled. Add a job with a date, or Klyfton can — say &#8220;schedule the Miller job Tuesday&#8221;.</div>'}</div>`;
+
+    body.innerHTML=`
+      <div class="metric-row" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="job-sum-chip"><div class="job-sum-val">${wkJobs.length}</div><div class="job-sum-lbl">JOBS THIS WEEK</div></div>
+        <div class="job-sum-chip"><div class="job-sum-val" style="color:${overdue.length?'var(--or)':'var(--gr)'}">${overdue.length}</div><div class="job-sum-lbl">OVERDUE</div></div>
+        <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--cy)">${nextJob?fmtDate(nextJob.date):'—'}</div><div class="job-sum-lbl">NEXT JOB</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Pulls from jobs, equipment service, cert expirations, and warranty end dates. Set a job&#39;s date in JOBS to put it here. Klyfton can schedule too (it never books a Sunday).</div>
+      ${listHtml}`;
+  };
+
+  // Klyfton context: what's on deck this week, so the ops mind can answer "what's Daniel booked?"
+  const _prevCtx = window.opsContext;
+  window.opsContext = function(){
+    const ctx = _prevCtx ? _prevCtx() : {};
+    try{
+      const soon=(appState.jobs||[]).filter(j=>{ const d=daysUntil(j.date); return d!=null&&d>=0&&d<=7&&!['Completed','Cancelled','Paid'].includes(j.status); })
+        .sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+        .map(j=>(j.customer||j.name||'job')+' '+fmtDate(j.date)+(j.crew?(' ('+j.crew+')'):''));
+      if(soon.length) ctx.schedule='This week: '+soon.join('; ');
+    }catch(e){}
+    return ctx;
+  };
 })();
 </script>
 
