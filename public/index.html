@@ -2531,18 +2531,23 @@ async function submitLeadIntake(){
 }
 
 function leadIntakeToBidFromData(d){
-  const id='L'+Date.now().toString(36).toUpperCase();
+  const id='bid_'+Date.now();
   const svcMap={spray_foam:'Spray Foam Insulation',roofing:'SPF Roofing',concrete:'Concrete Lifting',polyurea:'Polyurea Coatings',other:'Other'};
   const svcLabel=svcMap[d.serviceType]||d.serviceType||'Service';
   const addr=[d.street,d.city,d.state].filter(Boolean).join(', ');
+  const budget=parseFloat(d.budget)||0;
+  const sf=parseFloat(d.squareFeet)||0;
+  const svc=d.serviceType||'foam';
   const bid={
-    id, status:'draft', created:Date.now(),
-    customer:{name:(d.firstName+' '+d.lastName).trim(), phone:d.phone||'', email:d.email||'', company:''},
-    address:addr, city:d.city||'', state:d.state||'MT',
-    scopes:[{svc:svcLabel,qty:d.squareFeet||0,unit:'sqft',price:d.budget||0,desc:d.description||'',notes:d.accessNotes||''}],
-    total:d.budget||0, margin:0, cost:0,
-    notes:'Lead source: '+(d.leadSource||'—')+' | Urgency: '+(d.urgency||'—')+(d.accessNotes?'\nAccess: '+d.accessNotes:''),
-    leadSource:d.leadSource||'', urgency:d.urgency||'', customerType:d.customerType||'residential',
+    id, createdAt:new Date().toISOString(), createdBy:user, status:'draft',
+    customer:{name:((d.firstName||'')+' '+(d.lastName||'')).trim()||'Unknown', phone:d.phone||'', email:d.email||'', address:addr},
+    state:d.state||'MT', market:d.customerType==='commercial'?'commercial':'residential',
+    scopes:[{service:svc, product:svcLabel, qty:sf||1, sf:sf, bf:0, sell:budget, cost:0, gm:0, matCost:0, laborCost:0, mob:0, extra:0, consCost:0}],
+    service:svc, bf:0, sf:sf, matCost:0,
+    totalCost:0, bidTotal:budget, sellPrice:budget, gmTarget:0,
+    jobDate:'', jobNotes:'', roi:{}, photos:[],
+    consoleNotes:'Lead source: '+(d.leadSource||'—')+' | Urgency: '+(d.urgency||'—')+(d.accessNotes?'\nAccess: '+d.accessNotes:'')+(d.description?'\n'+d.description:''),
+    leadSource:d.leadSource||'', expiresAt:Date.now()+30*86400000,
   };
   bids.unshift(bid);
   lsSet(KB,JSON.stringify(bids));
@@ -2557,11 +2562,22 @@ async function loadLeadsRemote(){
     const d=await r.json();
     if(!d.ok||!d.leads||!d.leads.length){card.style.display='none';return;}
     card.style.display='';
-    list.innerHTML=d.leads.map(l=>{
+    list.innerHTML='';
+    d.leads.forEach(l=>{
       const name=[(l.customers||{}).first_name,(l.customers||{}).last_name].filter(Boolean).join(' ')||'—';
       const date=l.created_at?new Date(l.created_at).toLocaleDateString():'';
-      return `<div class="statrow" style="cursor:pointer" onclick="openLeadFromSb('${l.id||''}')"><span>${name} — ${l.service_type||'—'}</span><span class="v" style="font-size:11px">${l.status||''} ${date}</span></div>`;
-    }).join('');
+      const div=document.createElement('div');
+      div.className='statrow';div.style.cursor='pointer';
+      const s1=document.createElement('span');
+      s1.textContent=name+' \u2014 '+(l.service_type||'\u2014');
+      const s2=document.createElement('span');
+      s2.className='v';s2.style.fontSize='11px';
+      s2.textContent=(l.status||'')+' '+date;
+      div.appendChild(s1);div.appendChild(s2);
+      const sbId=String(l.id||'');
+      div.addEventListener('click',function(){openLeadFromSb(sbId);});
+      list.appendChild(div);
+    });
   }catch(e){card.style.display='none';}
 }
 
@@ -2764,6 +2780,8 @@ function renderCrewPhotos(j){
 
 function crewPhoto(input,stage){
   const j=crewJ();if(!j||!input.files||!input.files[0])return;
+  const MAX_PHOTOS=15;
+  if((j.crewPhotos||[]).length>=MAX_PHOTOS){toast('Photo limit reached ('+MAX_PHOTOS+' max per job). Remove a photo to add more.',true);return;}
   const file=input.files[0];
   const reader=new FileReader();
   reader.onload=function(e){
