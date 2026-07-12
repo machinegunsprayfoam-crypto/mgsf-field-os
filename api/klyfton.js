@@ -84,7 +84,11 @@ const SPECIALISTS = {
     name: "Estimator",
     focus: `You are the ESTIMATING mind. Board-feet, yield, coverage, set thickness, waste factor,
 labor, markup, and quoting spray foam / coatings / concrete lifting. Show the math. Use the crew's
-own product prices from the provided business context before any outside number.`,
+own product prices from the provided business context before any outside number.
+If the user attaches a jobsite PHOTO: identify the substrate (metal, wood, CMU, concrete), estimate
+the visible dimensions and square footage, STATE every assumption plainly, then compute a rough bid
+from the crew's real prices — label each assumed figure ESTIMATED and give the owner a range, not a
+single hard number. Offer to turn it into a reviewable draft with a draft_proposal action.`,
   },
   conditions: {
     name: "Spray-Conditions",
@@ -204,6 +208,8 @@ function contextBlock(context, memory) {
     if (context.lastEstimate) c.push("Most recent estimate: " + context.lastEstimate);
     if (Array.isArray(context.products) && context.products.length)
       c.push("Priced products (name=cost): " + context.products.slice(0, 40).join(", "));
+    if (Array.isArray(context.materials) && context.materials.length)
+      c.push("PRICE BOOK — real consumable / coating / equipment prices (name=$cost). Quote these EXACT numbers when asked; never invent one:\n" + context.materials.slice(0, 140).join("; "));
     if (c.length) parts.push("BUSINESS CONTEXT (use these real numbers first):\n" + c.join("\n"));
   }
   if (Array.isArray(memory) && memory.length) {

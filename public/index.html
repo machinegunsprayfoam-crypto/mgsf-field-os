@@ -5468,6 +5468,15 @@ function gatherBizContext(){
     try{ (EST_COAT||[]).forEach(p=>{ if(p&&p.n&&p.costGal) prods.push(p.n+'=$'+p.costGal+'/gal'); }); }catch(e){}
     try{ (EST_GEO ||[]).forEach(p=>{ if(p&&p.n&&p.priceLb) prods.push(p.n+'=$'+p.priceLb+'/lb'); }); }catch(e){}
     if(prods.length) ctx.products=prods;
+    // Price Book — real consumable / coating / equipment prices so Klyfton quotes YOUR numbers.
+    try{
+      if(typeof PRICEBOOK!=='undefined'){
+        const mats=[];
+        (PRICEBOOK.gear||[]).forEach(g=>{ if(g&&g.n&&g.cost!=null) mats.push(g.n+' ('+g.cat+')=$'+g.cost); });
+        (PRICEBOOK.coat||[]).forEach(c=>{ if(c&&c.n&&c.price!=null) mats.push(c.n+'=$'+c.price); });
+        if(mats.length) ctx.materials=mats.slice(0,140);
+      }
+    }catch(e){}
     return ctx;
   }catch(e){ return {company:'Machine Gun Spray Foam & Concrete Lifting, LLC'}; }
 }
