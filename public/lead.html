@@ -136,6 +136,17 @@
       status: 'new', funnel_stage: 'new', source: 'web_intake', value: 0,
       date: new Date().toISOString().split('T')[0]
     };
+    var stateGuess = ((lead.address || '').match(/\b(MT|WY|ND|SD)\b/i) || [])[1] || 'MT';
+    var formData = {
+      id: lead.id,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      service: lead.service,
+      state: stateGuess.toUpperCase(),
+      message: lead.notes,
+      notes: lead.notes
+    };
 
     function done(){ f.style.display='none'; document.getElementById('ok').style.display='block';
       window.scrollTo(0,0); }
@@ -152,6 +163,30 @@
     // Ping the owner right away (text/email) if an alerts webhook is configured. Fire-and-forget.
     try{ fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({event:'new_lead', lead:lead})}); }catch(e){}
+
+    // Sync lead to CRM
+    try {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'leads',
+          records: [{
+            id: formData.id,
+            name: formData.name,
+            phone: formData.phone || '',
+            email: formData.email || '',
+            service: formData.service || '',
+            state: formData.state || 'MT',
+            value: 0,
+            status: 'New',
+            source: 'Website Lead Form',
+            notes: formData.message || formData.notes || '',
+            date: new Date().toISOString().split('T')[0]
+          }]
+        })
+      });
+    } catch(e) {}
 
     // Primary: drop the lead straight into the pipeline via the sync backend.
     fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},

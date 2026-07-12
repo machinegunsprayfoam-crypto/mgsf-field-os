@@ -1162,6 +1162,13 @@ canvas.chart{width:100%;height:100%}
       <div id="chatMessages"></div>
       <div class="chat-input-area">
         <div id="chatAtts" class="chat-atts"></div>
+        <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap" id="aiModeBar">
+          <button class="btn btn-ghost" style="font-size:9px;padding:3px 7px;letter-spacing:.5px" id="aiMode_general" onclick="setAIMode('general')" title="General assistant">⚡ GENERAL</button>
+          <button class="btn btn-ghost" style="font-size:9px;padding:3px 7px;letter-spacing:.5px" id="aiMode_field" onclick="setAIMode('field')" title="Field mode — brief, voice-ready">🦺 FIELD</button>
+          <button class="btn btn-ghost" style="font-size:9px;padding:3px 7px;letter-spacing:.5px" id="aiMode_estimate" onclick="setAIMode('estimate')" title="Estimating mode — pricing focused">🔢 ESTIMATE</button>
+          <button class="btn btn-ghost" style="font-size:9px;padding:3px 7px;letter-spacing:.5px" id="aiMode_sales" onclick="setAIMode('sales')" title="Sales mode — close the deal">🎯 SALES</button>
+          <button class="btn btn-ghost" style="font-size:9px;padding:3px 7px;letter-spacing:.5px" id="aiMode_exec" onclick="setAIMode('exec')" title="Executive mode — business view">📊 EXEC</button>
+        </div>
         <textarea id="chatInput" placeholder="Ask Klyfton anything, or tap ＋ to send a photo or PDF..." onkeydown="chatKeydown(event)"></textarea>
         <div class="chat-actions">
           <button class="chat-attach-btn" id="chatAttachBtn" onclick="document.getElementById('chatFile').click()" title="Attach photo or PDF">＋</button>
@@ -4424,6 +4431,19 @@ function adminSave(){
   const s = document.getElementById('admStatus');
   if(s){ s.textContent='✔ Saved!'; s.style.color='var(--gr)'; setTimeout(()=>{ s.textContent=''; },3000); }
   notify('Admin settings saved','ok');
+  // Check open estimates for margin impact after price change
+  function checkEstimatesForPriceImpact(){
+    const ests = appState.estimates || [];
+    if (!ests.length) return;
+    const open = ests.filter(e => !['Won','Lost','Cancelled'].includes(e.status||''));
+    if (!open.length) return;
+    notify(`⚠ ${open.length} open estimate${open.length===1?'':'s'} may need repricing — check the Estimator`, 'info');
+    setTimeout(() => {
+      const msg = document.getElementById('chatInput');
+      if (msg) msg.placeholder = 'Material prices updated. Ask: "Which estimates need repricing?"';
+    }, 500);
+  }
+  setTimeout(checkEstimatesForPriceImpact, 300);
 }
 // ── NOTIFICATIONS — fire an alerts webhook (text/email) on key events ──
 window.klyftonNotify = function(event, extra){
@@ -5010,6 +5030,32 @@ function nextJobNum(){
   return `MGSF-${year}-${String(max+1).padStart(3,'0')}`;
 }
 
+function checkJobWeather(date, location){
+  if (!date) return;
+  const daysOut = Math.floor((new Date(date) - new Date()) / 86400000);
+  if (daysOut < 0 || daysOut > 7) return;
+  const city = location || 'Glendive, MT';
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=47.1053&longitude=-104.7126&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=America%2FDenver&forecast_days=8`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.daily) return;
+      const idx = Math.min(daysOut, data.daily.time.length - 1);
+      const hi = data.daily.temperature_2m_max[idx];
+      const lo = data.daily.temperature_2m_min[idx];
+      const wind = data.daily.wind_speed_10m_max[idx];
+      const precip = data.daily.precipitation_sum[idx];
+      let warnings = [];
+      if (lo < 35) warnings.push('🌡️ Low of ' + Math.round(lo) + '°F — substrate may be too cold for SPF');
+      if (hi > 105) warnings.push('🌡️ High of ' + Math.round(hi) + '°F — chemical temps may spike');
+      if (wind > 20) warnings.push('💨 Wind ' + Math.round(wind) + ' mph — open spray risk');
+      if (precip > 0.1) warnings.push('🌧️ Precipitation ' + precip.toFixed(2) + '" forecast');
+      if (warnings.length) {
+        notify('⚠ Weather alert for job date (' + city + '):\n' + warnings.join('\n'), 'info');
+      }
+    })
+    .catch(() => {});
+}
+
 function renderJobs(){
   const search = ((document.getElementById('jobSearch')||{}).value||'').toLowerCase();
   const jobs = (appState.jobs||[]).filter(j=> !search ||
@@ -5147,6 +5193,7 @@ function saveJob(){
   closeModal();
   renderJobs();
   notify(`Job created: ${job.jobNum} — ${name}`,'ok');
+  checkJobWeather(job.date, job.address);
   playSound('success');
 }
 
@@ -5211,6 +5258,7 @@ function updateJob(id){
   closeModal();
   renderJobs();
   notify(`${j.jobNum} updated`,'ok');
+  checkJobWeather(j.date, j.address);
   playSound('click');
 }
 
@@ -5595,7 +5643,7 @@ function sendChat(){
       message:text,
       history:hist,
       memory: appState.memory.slice(-20),
-      context: gatherBizContext(),
+      context: { ...gatherBizContext(), aiMode: _aiMode, aiModePrompt: AI_MODE_PROMPTS[_aiMode]||'' },
       // Photos/PDFs the crew attached — the hive reads these via Claude vision.
       attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data}))
     })
@@ -5635,6 +5683,25 @@ function sendChat(){
     playSound('nav');
   });
 }
+
+let _aiMode = 'general';
+const AI_MODE_PROMPTS = {
+  general: '',
+  field: 'FIELD MODE: Give extremely short, direct responses. Under 3 sentences unless numbers are involved. No fluff. The crew is in the field wearing gloves.',
+  estimate: 'ESTIMATE MODE: Focus entirely on numbers, material costs, labor, and margins. Show your math. Flag any number that needs verification. Use MGSF real product prices.',
+  sales: 'SALES MODE: Help close this deal. Use BANT qualification. Provide objection handling scripts. Draft follow-ups. Focus on speed-to-close.',
+  exec: 'EXEC MODE: Business performance focus. Analyze trends, margins, pipeline health. Give strategic recommendations. Use the real job/lead data provided.'
+};
+function setAIMode(mode){
+  _aiMode = mode;
+  document.querySelectorAll('[id^="aiMode_"]').forEach(b => b.classList.remove('active','btn-primary'));
+  document.querySelectorAll('[id^="aiMode_"]').forEach(b => b.classList.add('btn-ghost'));
+  const btn = document.getElementById('aiMode_' + mode);
+  if (btn) { btn.classList.remove('btn-ghost'); btn.classList.add('btn-primary','active'); }
+  const modeNames = {general:'General',field:'Field',estimate:'Estimating',sales:'Sales',exec:'Executive'};
+  notify('Mode: ' + (modeNames[mode]||mode), 'info');
+}
+document.addEventListener('DOMContentLoaded', () => { setAIMode('general'); });
 
 // ---- Klyfton actions: parse → confirm → execute (never auto-write) ----
 function parseKlyftonAction(text){

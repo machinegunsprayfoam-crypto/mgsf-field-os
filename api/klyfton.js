@@ -363,9 +363,9 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 }
 
 // Run one specialist mind on the question.
-async function runMind(key, mindKey, userText, history, ctx, attachments) {
+async function runMind(key, mindKey, userText, history, ctx, attachments, modePrompt = '') {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}\n\n${spec.focus}${modePrompt}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -426,6 +426,7 @@ module.exports = async (req, res) => {
   }
 
   const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
+  const modePrompt = (body.context && body.context.aiModePrompt) ? '\n\n' + body.context.aiModePrompt : '';
   const ctx = contextBlock(body.context, body.memory);
 
   // The router is text-only; give it a hint when a message is just an attachment.
@@ -438,7 +439,7 @@ module.exports = async (req, res) => {
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments);
+      const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, modePrompt);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       res.status(200).json({
         text,
@@ -453,7 +454,7 @@ module.exports = async (req, res) => {
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments).catch(() => null))
+      plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments, modePrompt).catch(() => null))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
@@ -468,7 +469,7 @@ module.exports = async (req, res) => {
 
     // 4) Synthesizer + critic: merge the minds, kill contradictions/fabrication, one answer out.
     const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
-    const synthSys = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}${ctx}
+    const synthSys = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}${modePrompt}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
