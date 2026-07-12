@@ -5914,7 +5914,7 @@ function doPendingKlyftonAction(){
       }
       return;
     } else if (a.type === 'create_review_request') {
-      const txt = 'Hi ' + (a.customer||'').split(' ')[0] + ', thanks for choosing Machine Gun Spray Foam! If you\'re happy with the work, 60 seconds here makes a real difference for a veteran-owned small business: https://g.page/r/Camo7qu2xWrVEAE/review — Clifton, 406-939-8301';
+      const txt = 'Hi ' + ((a.customer||'').split(' ')[0] || 'there') + ', thanks for choosing Machine Gun Spray Foam! If you\'re happy with the work, 60 seconds here makes a real difference for a veteran-owned small business: https://g.page/r/Camo7qu2xWrVEAE/review — Clifton, 406-939-8301';
       showKlyftonDraft('REVIEW REQUEST — ' + (a.customer||''), txt, a.phone ? 'sms:'+a.phone+'?body='+encodeURIComponent(txt) : '');
       return;
     } else if(window.opsHandleAction && window.opsHandleAction(a)){
@@ -7605,7 +7605,8 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
       const wantReview = confirm('Invoice marked paid for ' + v.cust + '.\n\nSend a review request text? (tap OK to draft it)');
       if (wantReview) {
         const reviewLink = 'https://g.page/r/Camo7qu2xWrVEAE/review';
-        const txt = 'Hi ' + v.cust.split(' ')[0] + ', thanks for choosing Machine Gun Spray Foam! If you\'re happy with the work, 60 seconds here helps a veteran-owned small business: ' + reviewLink + '\n— Clifton, 406-939-8301';
+        const firstName = (v.cust || '').split(' ')[0] || 'there';
+        const txt = 'Hi ' + firstName + ', thanks for choosing Machine Gun Spray Foam! If you\'re happy with the work, 60 seconds here helps a veteran-owned small business: ' + reviewLink + '\n— Clifton, 406-939-8301';
         if (window.__chatAtts !== undefined) {
           const input = document.getElementById('chatInput');
           if (input) input.value = 'Draft a review request text for ' + v.cust + ': ' + txt;
@@ -7623,7 +7624,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     const v = arr.find(x => x.id === id);
     if (!v) return;
     const bal = (Number(v.amt)||0) - (Number(v.dep)||0);
-    const txt = 'Hi ' + (v.cust||'').split(' ')[0] + ', this is a friendly reminder that invoice ' + (v.num||'') + ' for ' + money(bal) + ' is outstanding. Please let me know if you have any questions. — Clifton, Machine Gun Spray Foam, 406-939-8301';
+    const txt = 'Hi ' + ((v.cust||'').split(' ')[0] || 'there') + ', this is a friendly reminder that invoice ' + (v.num||'') + ' for ' + money(bal) + ' is outstanding. Please let me know if you have any questions. — Clifton, Machine Gun Spray Foam, 406-939-8301';
     try {
       navigator.clipboard.writeText(txt).then(() => notify('Payment reminder copied ✓ — paste into a text or email', 'success'));
     } catch(e) { notify('Copy this: ' + txt.slice(0, 80) + '…', 'info'); }
