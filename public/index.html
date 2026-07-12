@@ -216,6 +216,16 @@ select.inp option{background:var(--s2)}
 .voice-btn-chat{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;padding:8px 10px;cursor:pointer;font-size:14px;transition:all .2s}
 .voice-btn-chat:hover{border-color:var(--cy);color:var(--cy)}
 .voice-btn-chat.listening{border-color:var(--red);color:var(--red);animation:pulseBorder .5s infinite}
+.chat-attach-btn{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;padding:8px 11px;cursor:pointer;font-size:16px;line-height:1;font-weight:700;transition:all .2s}
+.chat-attach-btn:hover{border-color:var(--or);color:var(--or)}
+.chat-atts{display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chat-att{position:relative;width:52px;height:52px;border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2);display:flex;align-items:center;justify-content:center}
+.chat-att img{width:100%;height:100%;object-fit:cover}
+.chat-att-pdf{font-size:9px;color:var(--t2);padding:4px;text-align:center;line-height:1.2;word-break:break-all}
+.chat-att-x{position:absolute;top:1px;right:1px;width:16px;height:16px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;font-size:9px;line-height:16px;cursor:pointer}
+.chat-att-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chat-att-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--bd)}
+.chat-att-file{font-size:11px;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:4px 8px}
 
 /* ESTIMATE RESULT */
 .est-result{background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.25);border-radius:var(--r);padding:16px;margin-top:12px}
@@ -1062,11 +1072,14 @@ canvas.chart{width:100%;height:100%}
       </div>
       <div id="chatMessages"></div>
       <div class="chat-input-area">
-        <textarea id="chatInput" placeholder="Ask Klyfton anything about MGSF, estimates, jobs, leads..." onkeydown="chatKeydown(event)"></textarea>
+        <div id="chatAtts" class="chat-atts"></div>
+        <textarea id="chatInput" placeholder="Ask Klyfton anything, or tap ＋ to send a photo or PDF..." onkeydown="chatKeydown(event)"></textarea>
         <div class="chat-actions">
+          <button class="chat-attach-btn" id="chatAttachBtn" onclick="document.getElementById('chatFile').click()" title="Attach photo or PDF">＋</button>
           <button class="voice-btn-chat" id="chatVoiceBtn" onclick="toggleVoiceInput()" title="Voice input">🎙️</button>
           <button class="chat-send" onclick="sendChat()">SEND ↵</button>
         </div>
+        <input type="file" id="chatFile" accept="image/*,application/pdf" multiple style="display:none" onchange="handleChatFiles(this.files); this.value='';">
       </div>
     </div>
 
@@ -5135,14 +5148,22 @@ function processChat(input){
   return {text: response, voice: voiceText};
 }
 
-function addMessage(text, who, speak_text=''){
+function addMessage(text, who, speak_text='', atts=null){
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className='msg '+(who==='user'?'user':'ai');
-  
+
   if(who==='ai') div.innerHTML=`<div class="msg-name">KLYFTON</div>${markdownLite(text)}`;
-  else div.textContent=text;
-  
+  else {
+    let html = text ? esc(text).replace(/\n/g,'<br>') : '';
+    if(atts && atts.length){
+      html += '<div class="chat-att-row">' + atts.map(a=> a.kind==='image'
+        ? '<img class="chat-att-thumb" src="'+(a.preview || ('data:'+(a.media_type||'image/jpeg')+';base64,'+a.data))+'" alt="">'
+        : '<span class="chat-att-file">📄 '+esc(a.name||'PDF')+'</span>').join('') + '</div>';
+    }
+    div.innerHTML = html;
+  }
+
   const time=document.createElement('div');
   time.className='msg-time';
   time.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -5164,16 +5185,84 @@ function markdownLite(text){
     .replace(/^•\s/gm,'<span style="color:var(--or)">▸</span> ');
 }
 
+// ---- Chat attachments: photos / PDFs the crew uploads for Klyfton to read ----
+// Images are downscaled client-side (keeps the Vercel payload small + token cost sane);
+// on send they go to the hive as Claude vision / document blocks so the minds actually SEE them.
+window.__chatAtts = window.__chatAtts || [];
+const CHAT_ATT_MAX = 6;      // max attachments per message
+const IMG_MAX_EDGE = 1568;   // downscale long edge — plenty for Klyfton's vision
+const PDF_MAX_BYTES = 3 * 1024 * 1024;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function handleChatFiles(files){
+  const list = Array.from(files||[]);
+  if(!list.length) return;
+  if(!appState.chatOpen) toggleChat();
+  list.forEach(f=>{
+    if(window.__chatAtts.length >= CHAT_ATT_MAX){ notify('Max '+CHAT_ATT_MAX+' attachments per message','alert'); return; }
+    if(f.type && f.type.indexOf('image/')===0) addImageAtt(f);
+    else if(f.type==='application/pdf') addPdfAtt(f);
+    else notify('Only photos and PDFs — skipped '+(f.name||'that file'),'info');
+  });
+}
+
+function addImageAtt(file){
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=function(){
+    let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    const scale=Math.min(1, IMG_MAX_EDGE/Math.max(w,h));
+    w=Math.max(1,Math.round(w*scale)); h=Math.max(1,Math.round(h*scale));
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    let dataUrl; try{ dataUrl=cv.toDataURL('image/jpeg',0.82); }catch(e){ notify('Could not process that image','alert'); return; }
+    window.__chatAtts.push({kind:'image', media_type:'image/jpeg', data:dataUrl.split(',')[1], name:file.name||'photo.jpg', preview:dataUrl});
+    renderChatAtts(); playSound('click');
+  };
+  img.onerror=function(){ URL.revokeObjectURL(url); notify('Could not read that image','alert'); };
+  img.src=url;
+}
+
+function addPdfAtt(file){
+  if(file.size > PDF_MAX_BYTES){ notify('PDF too big (max 3MB) — '+(file.name||''),'alert'); return; }
+  const r=new FileReader();
+  r.onload=function(){
+    window.__chatAtts.push({kind:'pdf', media_type:'application/pdf', data:String(r.result).split(',')[1], name:file.name||'document.pdf', preview:null});
+    renderChatAtts(); playSound('click');
+  };
+  r.onerror=function(){ notify('Could not read that PDF','alert'); };
+  r.readAsDataURL(file);
+}
+
+function renderChatAtts(){
+  const box=document.getElementById('chatAtts'); if(!box) return;
+  box.innerHTML='';
+  window.__chatAtts.forEach((a,i)=>{
+    const chip=document.createElement('div'); chip.className='chat-att';
+    chip.innerHTML = a.kind==='image'
+      ? '<img src="'+a.preview+'" alt="">'
+      : '<span class="chat-att-pdf">📄 '+esc((a.name||'PDF').slice(0,20))+'</span>';
+    const x=document.createElement('button'); x.className='chat-att-x'; x.textContent='✕';
+    x.title='Remove'; x.onclick=function(){ removeChatAtt(i); };
+    chip.appendChild(x); box.appendChild(chip);
+  });
+  box.style.display = window.__chatAtts.length ? 'flex' : 'none';
+}
+function removeChatAtt(i){ window.__chatAtts.splice(i,1); renderChatAtts(); }
+
 function sendChat(){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
-  if(!text) return;
-  
+  const atts = (window.__chatAtts||[]).slice();
+  if(!text && !atts.length) return;
+
   // Ensure chat panel is open
   if(!appState.chatOpen){ toggleChat(); }
-  
+
   input.value='';
-  addMessage(text,'user');
+  window.__chatAtts=[]; renderChatAtts();
+  addMessage(text,'user','',atts);
   playSound('click');
   
   // Set typing indicator
@@ -5183,7 +5272,7 @@ function sendChat(){
   if(!appState.chatHistory) appState.chatHistory = [];
   if(!appState.memory) appState.memory = [];
   const hist = appState.chatHistory.slice(-10);
-  appState.chatHistory.push({role:'user', content:text});
+  appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
   fetch('/api/klyfton', {
     method:'POST',
     headers:{'content-type':'application/json'},
@@ -5191,7 +5280,9 @@ function sendChat(){
       message:text,
       history:hist,
       memory: appState.memory.slice(-20),
-      context: gatherBizContext()
+      context: gatherBizContext(),
+      // Photos/PDFs the crew attached — the hive reads these via Claude vision.
+      attachments: atts.map(a=>({kind:a.kind, media_type:a.media_type, data:a.data}))
     })
   })
   .then(r=>r.json())
@@ -5220,8 +5311,12 @@ function sendChat(){
   })
   .catch(()=>{
     // Offline / no backend — use the local canned responder so the app still replies.
-    const {text:resp, voice} = processChat(text);
-    addMessage(resp,'ai',voice);
+    if(atts.length){
+      addMessage("I can't read photos or PDFs while offline — that needs a connection to the hive. Your attachment is still here; try again when you've got signal.",'ai','');
+    } else {
+      const {text:resp, voice} = processChat(text);
+      addMessage(resp,'ai',voice);
+    }
     document.getElementById('chatStatus').textContent='● OFFLINE';
     playSound('nav');
   });

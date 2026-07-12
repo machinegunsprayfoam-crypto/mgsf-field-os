@@ -120,6 +120,28 @@ function textFrom(content) {
     .trim();
 }
 
+// Turn the crew's uploaded photos/PDFs into Claude content blocks so a mind can SEE them.
+// Images -> vision blocks; PDFs -> document blocks. Returns a plain string when nothing is attached.
+function buildUserContent(text, attachments) {
+  const atts = Array.isArray(attachments) ? attachments : [];
+  if (!atts.length) return text;
+  const blocks = [];
+  for (const a of atts) {
+    if (!a || !a.data) continue;
+    if (a.kind === "image") {
+      blocks.push({ type: "image", source: { type: "base64", media_type: a.media_type || "image/jpeg", data: a.data } });
+    } else if (a.kind === "pdf") {
+      blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: a.data } });
+    }
+  }
+  if (!blocks.length) return text;
+  const hasPdf = atts.some((a) => a.kind === "pdf");
+  const fallback = "Look at the attached " + (hasPdf ? "document" : "photo") + " and tell me what I need to know.";
+  // Images/documents first, then the text — the shape Claude expects.
+  blocks.push({ type: "text", text: text && text.trim() ? text : fallback });
+  return blocks;
+}
+
 // Pull an optional [[MEMORY]] a ;; b [[/MEMORY]] block out of an answer so the client can
 // store durable colony facts. Returns { text (clean), remember: [] }.
 function splitMemory(raw) {
@@ -217,13 +239,13 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 }
 
 // Run one specialist mind on the question.
-async function runMind(key, mindKey, userText, history, ctx) {
+async function runMind(key, mindKey, userText, history, ctx, attachments) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
   const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
-  messages.push({ role: "user", content: userText });
+  messages.push({ role: "user", content: buildUserContent(userText, attachments) });
   const data = await callClaude(key, {
     model: WORKER_MODEL,
     max_tokens: 1600,
@@ -265,7 +287,13 @@ module.exports = async (req, res) => {
   }
 
   const userText = (body.message || "").toString().trim();
-  if (!userText) {
+
+  // Photos / PDFs the crew attached — capped so one message can't blow the payload.
+  const attachments = (Array.isArray(body.attachments) ? body.attachments : [])
+    .filter((a) => a && a.data && (a.kind === "image" || a.kind === "pdf"))
+    .slice(0, 6);
+
+  if (!userText && !attachments.length) {
     res.status(400).json({ error: "Missing message" });
     return;
   }
@@ -273,13 +301,17 @@ module.exports = async (req, res) => {
   const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
   const ctx = contextBlock(body.context, body.memory);
 
+  // The router is text-only; give it a hint when a message is just an attachment.
+  const routeText = userText || "[user attached " + attachments.length + " " +
+    (attachments.some((a) => a.kind === "pdf") ? "file(s)" : "photo(s)") + " with no caption]";
+
   try {
     // 1) Queen recruits the minds.
-    const plan = await route(key, userText, history);
+    const plan = await route(key, routeText, history);
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMind(key, plan.minds[0], userText, history, ctx);
+      const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       res.status(200).json({
         text,
@@ -294,7 +326,7 @@ module.exports = async (req, res) => {
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMind(key, m, userText, history, ctx).catch(() => null))
+      plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments).catch(() => null))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
