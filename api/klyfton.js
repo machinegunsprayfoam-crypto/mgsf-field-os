@@ -20,8 +20,18 @@ const CRITIC_MODEL = "claude-sonnet-5";
 // Reuses the same Vercel KV / Upstash the sync module uses. Dormant unless KV is
 // attached AND KLYFTON_MONTHLY_BUDGET_USD is set. Spend is tracked per calendar
 // month (UTC) under mgsf:klyfton_cost:YYYY-MM; the key rolls over automatically.
-const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+// Scan env by suffix (case-insensitive) so any prefix/casing the storage
+// integration injects works — e.g. Storage_KV_REST_API_URL from the Upstash
+// marketplace store. Mirrors the resolver in api/sync.js.
+function _kvEnv(suffixRe, excludeRe) {
+  for (const k of Object.keys(process.env)) {
+    if (excludeRe && excludeRe.test(k)) continue;
+    if (suffixRe.test(k) && process.env[k]) return process.env[k];
+  }
+  return undefined;
+}
+const KV_URL = _kvEnv(/KV_REST_API_URL$/i) || _kvEnv(/REST_API_URL$/i) || _kvEnv(/UPSTASH_REDIS_REST_URL$/i);
+const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i, /READ_ONLY/i) || _kvEnv(/REST_API_TOKEN$/i, /READ_ONLY/i);
 // Default budget $50/mo. Override in Vercel with KLYFTON_MONTHLY_BUDGET_USD (set it to
 // "0" to turn the cap off entirely and just track spend).
 const _budgetRaw = process.env.KLYFTON_MONTHLY_BUDGET_USD;

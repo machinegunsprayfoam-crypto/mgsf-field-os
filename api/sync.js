@@ -8,10 +8,19 @@
 // To switch on: Vercel → mgsf-fieldos → Storage → add KV (Upstash) → connect to project.
 // Vercel injects KV_REST_API_URL + KV_REST_API_TOKEN automatically. Then redeploy.
 
-// Accept whichever names Vercel injects — classic Vercel KV or the Upstash marketplace
-// integration — so the owner just clicks "connect" and it works, no key juggling.
-const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+// Accept whichever names the storage integration injects — classic Vercel KV,
+// Upstash direct, or a prefixed marketplace store (e.g. Storage_KV_REST_API_URL).
+// Scan env case-insensitively by suffix so the owner just clicks "connect" and it
+// works, no matter the prefix or casing — no key juggling.
+function _kvEnv(suffixRe, excludeRe) {
+  for (const k of Object.keys(process.env)) {
+    if (excludeRe && excludeRe.test(k)) continue;
+    if (suffixRe.test(k) && process.env[k]) return process.env[k];
+  }
+  return undefined;
+}
+const KV_URL = _kvEnv(/KV_REST_API_URL$/i) || _kvEnv(/REST_API_URL$/i) || _kvEnv(/UPSTASH_REDIS_REST_URL$/i);
+const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i, /READ_ONLY/i) || _kvEnv(/REST_API_TOKEN$/i, /READ_ONLY/i);
 
 // Collections we sync. Photos are intentionally excluded (base64 images are too heavy for
 // this store — they stay on-device until we add blob storage).
