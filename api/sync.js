@@ -15,7 +15,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 
 // Collections we sync. Photos are intentionally excluded (base64 images are too heavy for
 // this store — they stay on-device until we add blob storage).
-const COLLECTIONS = ["jobs", "leads", "estimates", "jsas", "tc_punches", "matlogs", "signoffs", "proposals", "forms", "changeorders", "invoices", "jobcosts", "contacts", "reviews", "inventory", "training", "warranties", "equipment", "incidents", "complaints", "suppliers", "subs", "setuse", "crew"];
+const COLLECTIONS = ["jobs", "leads", "estimates", "jsas", "tc_punches", "matlogs", "signoffs", "proposals", "forms", "changeorders", "invoices", "jobcosts", "contacts", "reviews", "inventory", "training", "warranties", "equipment", "incidents", "complaints", "suppliers", "subs", "setuse", "crew", "insurance"];
 const TOMB = "_tomb"; // tombstones: [{c, id}] — so deletes propagate across devices
 const MEM = "memory";  // Klyfton's durable facts — plain strings, set-union across devices
 const PREFIX = "mgsf:";
