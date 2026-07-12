@@ -1296,6 +1296,14 @@ canvas.chart{width:100%;height:100%}
           </div>
           <label class="chk" style="margin-top:8px"><input type="checkbox" id="pr_hearth" checked><span>Include Hearth financing option</span></label>
         </div>
+        <div class="jsa-card" id="pr_roi_card">
+          <h4>Energy Savings Estimate <span style="color:var(--t2);font-weight:400;font-size:11px">(optional — adds ROI section to PDF)</span></h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="fl">Current monthly energy bill $</label><input type="number" id="pr_energybill" class="admin-inp" placeholder="0" min="0" style="width:100%"></div>
+            <div><label class="fl">Estimated savings % <span style="color:var(--t2)">(typical: 20–40% resi · 15–30% comm)</span></label><input type="number" id="pr_savingspct" class="admin-inp" placeholder="25" min="1" max="60" style="width:100%"></div>
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-top:6px">Leave blank to skip the ROI section. Not a guarantee — actual results vary.</div>
+        </div>
         <div class="jsa-card"><h4>Exclusions</h4>
           <textarea id="pr_excl" class="admin-inp" style="height:70px">Permits, engineering, electrical/plumbing relocation, and drywall/finish work unless listed above. Price valid 30 days.</textarea>
         </div>
@@ -6829,8 +6837,127 @@ document.addEventListener('click',()=>{
     if($('pr_price') && !$('pr_price').value) $('pr_price').value=e.value||'';
   };
   function proposalDoc(p){
-    const hearth = p.hearth ? `<div style="margin:14px 0;padding:12px;border:1px solid #f97316;border-radius:6px">
-      <b>Financing available</b> — pay over time through Hearth. Apply in minutes: <br>${esc(CO.hearth)}</div>` : '';
+    // ---------- BENEFIT BULLETS ----------
+    const sc = (p.scope||'').toLowerCase();
+    const ct = p.custtype || 'homeowner';
+    const isCC      = /closed.?cell|2[\s.]?[08]#|2[\s.]?lb\b|cc\b/.test(sc);
+    const isOC      = /open.?cell|0\.5#|half.?lb|oc\b/.test(sc);
+    const isRoof    = /roof/.test(sc);
+    const isCrawl   = /crawl/.test(sc);
+    const isMetal   = /metal|pole.?barn|shop/.test(sc);
+    const isConcrete= /concret|lift|slab|void/.test(sc);
+    const bullets = [];
+    if(ct === 'homeowner'){
+      if(isCC || (!isOC && !isRoof && !isConcrete)){
+        bullets.push('Air-seals the building envelope completely — stops drafts, hot spots, and humidity swings for good');
+        if(isCC) bullets.push('R-6.5 per inch — the highest R-value per inch of any insulation available');
+        bullets.push('Acts as a vapor barrier — keeps moisture out of your walls and structure');
+      }
+      if(isOC){
+        bullets.push('Fills every cavity completely — no gaps, no convection loops robbing you of comfort');
+        bullets.push('Superior sound dampening — noticeably quieter rooms');
+        bullets.push('R-3.7 per inch — efficiently fills deep cavities at lower material cost');
+      }
+      if(isCrawl){
+        bullets.push('Seals moisture out at the source — prevents mold, rot, and radon entry into living space');
+        bullets.push('Makes floors above dramatically warmer in winter');
+        bullets.push('Protects structural wood from moisture damage for decades');
+      }
+      if(isRoof){
+        bullets.push('Seamless monolithic membrane — no seams or fasteners to fail over time');
+        bullets.push('Foam self-flashes every penetration, vent, and joint — no gaps left behind');
+        bullets.push('A fraction of full tear-off and replacement cost');
+      }
+      if(isMetal) bullets.push('Stops air infiltration through metal panel seams completely — fiberglass cannot do this');
+      bullets.push('One installation lasts the life of the building — no settling, sagging, or replacement');
+      bullets.push('Reduces HVAC runtime — your system works less, lasts longer, and costs less to run every month');
+    } else if(ct === 'business'){
+      if(!isConcrete){
+        bullets.push('Documented 20–40% reduction in heating and cooling energy load — straight to the bottom line');
+        bullets.push('Section 179D eligible — federal commercial energy-efficient building deduction (consult your CPA)');
+        bullets.push('Consistent building temperature — fewer comfort complaints from staff and customers');
+        bullets.push('Reduces HVAC cycling — extends mechanical system lifespan and lowers maintenance costs');
+      }
+      if(isRoof){
+        bullets.push('Roof restoration vs. replacement — SPF + coating averages 25–40% of full tear-off cost');
+        bullets.push('Extends roof service life 10–20 years per application without shutting down operations');
+        bullets.push('Eliminates active leaks — protects inventory, equipment, and liability exposure immediately');
+        bullets.push('Energy Star rated coating options — reflect solar heat and cut cooling loads');
+      }
+      if(isConcrete){
+        bullets.push('Restores structural support under settled slabs — eliminates trip hazards and liability');
+        bullets.push('Minimal disruption — no excavation, back in service same day');
+      }
+      bullets.push('One-time capital improvement — depreciable asset, no ongoing maintenance cost');
+    } else {
+      bullets.push('IRC R316 / IBC 2603 compliant — meets code for occupied spaces with DC-315 thermal barrier');
+      bullets.push('Single-trade air seal — eliminates separate house wrap, tape, and caulking subcontractors');
+      bullets.push('Installs after rough MEP, before drywall — fits cleanly into your critical path');
+      if(isRoof){
+        bullets.push('Self-flashing around all penetrations — no separate flashing sub required');
+        bullets.push('Manufacturer-backed system with TER documentation ready for AHJ submittal');
+      }
+      bullets.push('Blower door ready — meets IECC 2021 air leakage targets in a single pass');
+      bullets.push('LEED and ASHRAE 90.1 credit-eligible — strengthens your energy compliance documentation');
+      bullets.push('SDS, product data sheets, and DC-315 TER available for your submittal package');
+    }
+    const headingLabel = ct==='gc' ? 'WHAT THIS MEANS FOR YOUR JOB' : ct==='business' ? 'YOUR BUSINESS CASE' : 'WHAT THIS DOES FOR YOU';
+    const whyFoam = `<div style="margin:18px 0;padding:14px 16px;background:#fffbf5;border-left:4px solid #f97316;border-radius:0 6px 6px 0">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#b45309;margin-bottom:10px">WHY SPRAY FOAM — ${headingLabel}</div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.9;color:#333">${bullets.map(b=>`<li>${b}</li>`).join('')}</ul>
+    </div>`;
+
+    // ---------- ROI SECTION ----------
+    let roiSection = '';
+    const bill  = parseFloat(p.energybill)||0;
+    const pct   = parseFloat(p.savingspct)||0;
+    const price = parseFloat(p.price)||0;
+    if(bill > 0 && pct > 0 && ct !== 'gc'){
+      const monthly  = bill * pct / 100;
+      const annual   = monthly * 12;
+      const paybackMos = price > 0 ? Math.ceil(price / monthly) : 0;
+      const paybackYrs = paybackMos > 0 ? (paybackMos / 12).toFixed(1) : null;
+      const tRows = [5, 10, 20].map(y => {
+        const saved = monthly * 12 * y;
+        const net   = saved - price;
+        return `<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #d1fae5">${y} years</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #d1fae5;text-align:right;font-weight:700;color:#15803d">$${Math.round(saved).toLocaleString('en-US')}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #d1fae5;text-align:right;font-weight:700;color:${net>=0?'#15803d':'#dc2626'}">${net>=0?'+':''}$${Math.round(net).toLocaleString('en-US')}</td>
+        </tr>`;
+      }).join('');
+      roiSection = `<div style="margin:18px 0;padding:14px 16px;background:#f0fdf4;border-left:4px solid #16a34a;border-radius:0 6px 6px 0">
+        <div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#15803d;margin-bottom:12px">ESTIMATED RETURN ON INVESTMENT</div>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+          <div><div style="font-size:30px;font-weight:900;color:#15803d;line-height:1">$${Math.round(monthly).toLocaleString('en-US')}</div><div style="font-size:10px;color:#555;letter-spacing:.5px;margin-top:2px">EST. MONTHLY SAVINGS</div></div>
+          <div><div style="font-size:30px;font-weight:900;color:#15803d;line-height:1">$${Math.round(annual).toLocaleString('en-US')}</div><div style="font-size:10px;color:#555;letter-spacing:.5px;margin-top:2px">EST. ANNUAL SAVINGS</div></div>
+          ${paybackYrs?`<div><div style="font-size:30px;font-weight:900;color:#b45309;line-height:1">${paybackYrs} yrs</div><div style="font-size:10px;color:#555;letter-spacing:.5px;margin-top:2px">PAYBACK PERIOD</div></div>`:''}
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:#dcfce7">
+            <th style="padding:7px 10px;text-align:left;font-size:11px;letter-spacing:.5px;color:#15803d;font-weight:700">YEAR</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;letter-spacing:.5px;color:#15803d;font-weight:700">TOTAL ENERGY SAVED</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;letter-spacing:.5px;color:#15803d;font-weight:700">NET AFTER INSTALL COST</th>
+          </tr></thead>
+          <tbody>${tRows}</tbody>
+        </table>
+        <div style="margin-top:10px;font-size:10px;color:#888;line-height:1.5">Based on ${pct}% reduction on a $${Math.round(bill)}/mo energy bill. Estimates reflect typical results for this application — actual savings vary by usage, climate, and existing conditions. This is not a guarantee.</div>
+      </div>`;
+    }
+
+    // ---------- WHY MGSF ----------
+    const whyMGSF = `<div style="margin:18px 0;padding:12px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.5px;color:#555;margin-bottom:8px">WHY MACHINE GUN SPRAY FOAM &amp; CONCRETE LIFTING</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 20px;font-size:12px;color:#333;line-height:1.8">
+        <span>🇺🇸 Veteran-Owned (VOSB)</span><span>✅ BPI Certified</span><span>✅ Licensed &amp; Insured</span>
+        <span>✅ Registered on SAM.gov</span><span>✅ Local crew — not a franchise</span><span>📞 406-939-8301 — Clifton answers</span>
+      </div>
+    </div>`;
+
+    // ---------- HEARTH ----------
+    const hearth = p.hearth ? `<div style="margin:14px 0;padding:12px;border:1px solid #f97316;border-radius:6px;font-size:13px">
+      <b>Financing available</b> — pay over time through Hearth. Apply in minutes:<br>${esc(CO.hearth)}</div>` : '';
+
     return `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:24px">
       <div style="border-bottom:3px solid #f97316;padding-bottom:12px;margin-bottom:16px">
         <div style="font-size:22px;font-weight:800;letter-spacing:.5px">${esc(CO.name)}</div>
@@ -6841,11 +6968,14 @@ document.addEventListener('click',()=>{
         <div style="text-align:right"><b>Date</b><br>${esc(p.date)}<br><b>Valid</b> 30 days</div>
       </div>
       <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px">Scope of Work</h3>
-      <div style="font-size:13px;white-space:pre-wrap">${esc(p.scope||'')}</div>
+      <div style="font-size:13px;white-space:pre-wrap;margin-bottom:4px">${esc(p.scope||'')}</div>
+      ${whyFoam}
+      ${roiSection}
       <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:16px">Investment</h3>
       <div style="font-size:26px;font-weight:800;color:#111">${money(p.price)}</div>
-      ${p.terms?`<div style="font-size:12px;color:#444">${esc(p.terms)}</div>`:''}
+      ${p.terms?`<div style="font-size:12px;color:#444;margin-top:4px">${esc(p.terms)}</div>`:''}
       ${hearth}
+      ${whyMGSF}
       <h3 style="border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:14px">Exclusions</h3>
       <div style="font-size:12px;color:#444;white-space:pre-wrap">${esc(p.excl||'')}</div>
       <div style="margin-top:34px;display:flex;justify-content:space-between;font-size:12px">
@@ -6859,7 +6989,9 @@ document.addEventListener('click',()=>{
     const g=id=>($(id)||{}).value||'';
     return { id:'PROP'+Date.now(), date:new Date().toISOString().split('T')[0],
       cust:g('pr_cust'), addr:g('pr_addr'), scope:g('pr_scope'), price:g('pr_price'),
-      terms:g('pr_terms'), excl:g('pr_excl'), hearth:($('pr_hearth')||{}).checked };
+      terms:g('pr_terms'), excl:g('pr_excl'), hearth:($('pr_hearth')||{}).checked,
+      custtype:g('pr_custtype')||'homeowner',
+      energybill:g('pr_energybill'), savingspct:g('pr_savingspct') };
   }
   window.printProposal = function(){
     const p=gatherProposal();
@@ -6891,6 +7023,8 @@ document.addEventListener('click',()=>{
     const p=(LS('proposals',[])).find(x=>x.id===id); if(!p) return;
     const set=(i,v)=>{ if($(i)) $(i).value=v||''; };
     set('pr_cust',p.cust); set('pr_addr',p.addr); set('pr_scope',p.scope); set('pr_price',p.price); set('pr_terms',p.terms); set('pr_excl',p.excl);
+    set('pr_energybill',p.energybill); set('pr_savingspct',p.savingspct);
+    if($('pr_custtype') && p.custtype) $('pr_custtype').value=p.custtype;
     if($('pr_hearth')) $('pr_hearth').checked=!!p.hearth;
     notify('Loaded — edit or print','info');
   };
