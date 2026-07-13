@@ -468,6 +468,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('intel')" id="nav-intel">
         <div class="nav-icon">📊</div><div class="nav-label">INTEL</div>
       </div>
+      <div class="nav-item" onclick="switchModule('gov');renderGov()" id="nav-gov">
+        <div class="nav-icon">🎯</div><div class="nav-label">GOV</div>
+      </div>
       <div class="nav-item" onclick="switchModule('skills')" id="nav-skills">
         <div class="nav-icon">🔌</div><div class="nav-label">SKILLS</div>
       </div>
@@ -994,6 +997,44 @@ canvas.chart{width:100%;height:100%}
       </div>
 
       <!-- ADMIN MODULE -->
+      <div id="mod-gov" class="module">
+        <div class="row" style="justify-content:space-between;margin-bottom:4px">
+          <h2 style="font-size:16px;color:var(--or)">🎯 GOV OPPORTUNITIES — SAM.gov</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:12px">Live federal contract opportunities in your lane (insulation, roofing, spray foam, weatherization). You're a <b>veteran-owned small business</b> — watch the set-aside column for VOSB/SDVOSB jobs you have an edge on. Klyfton can draft the outreach; nothing is submitted automatically.</div>
+
+        <!-- API key card -->
+        <div class="admin-section">
+          <div class="admin-section-title">🔑 SAM.gov API KEY</div>
+          <div id="govKeyStat" style="font-size:11px;color:var(--yw);margin-bottom:8px">Not connected — paste your free SAM.gov API key below.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input id="gov_key" class="admin-inp" type="password" style="flex:1;min-width:200px" placeholder="Paste your SAM.gov API key">
+            <button class="btn btn-ghost" onclick="govSaveKey()">Save key</button>
+          </div>
+          <div style="font-size:10px;color:var(--t2);margin-top:6px">Stored on this device only, never shown in quotes. Get a free key at sam.gov → Account Details → Public API Key.</div>
+        </div>
+
+        <!-- Filters -->
+        <div class="admin-section">
+          <div class="admin-section-title">SEARCH FILTERS</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="form-group" style="flex:2;min-width:160px"><label class="form-label">Keyword (optional)</label><input class="admin-inp" id="gov_kw" placeholder="spray foam, insulation, roof…"></div>
+            <div class="form-group" style="flex:1;min-width:110px"><label class="form-label">Posted within</label>
+              <select class="admin-inp" id="gov_days"><option value="30">Last 30 days</option><option value="90" selected>Last 90 days</option><option value="180">Last 6 months</option><option value="365">Last year</option></select></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:160px"><label class="form-label">States (comma-sep)</label><input class="admin-inp" id="gov_states" value="MT,ND,SD,WY"></div>
+            <div class="form-group" style="flex:1;min-width:160px"><label class="form-label">NAICS (comma-sep)</label><input class="admin-inp" id="gov_naics" value="238310,238160"></div>
+            <div class="form-group" style="flex:1;min-width:150px"><label class="form-label">Set-aside</label>
+              <select class="admin-inp" id="gov_setaside"><option value="">Any</option><option value="VSA">Veteran-Owned (VOSB)</option><option value="SDVOSBC">Service-Disabled Vet (SDVOSB)</option><option value="SBA">Total Small Business</option></select></div>
+          </div>
+          <button class="btn btn-orange" style="width:100%;margin-top:4px" id="govSearchBtn" onclick="govSearch()">🔍 Search SAM.gov</button>
+        </div>
+
+        <div id="govResults" style="font-size:12px;color:var(--t2)">Add your key, set filters, then Search to pull live opportunities.</div>
+      </div>
+
       <div id="mod-admin" class="module">
         <div class="row" style="justify-content:space-between;margin-bottom:4px">
           <h2 style="font-size:16px;color:var(--or)">⚙️ ADMIN — MGSF CONSTANTS &amp; SETTINGS</h2>
@@ -1936,6 +1977,7 @@ function switchModule(id){
   
   if(id==='spray'||id==='jsa'){ if(window.renderSpray) renderSpray(); }
   if(id==='photos'){ if(window.driveStatus) driveStatus(); }
+  if(id==='gov'){ if(window.renderGov) renderGov(); }
   if(id==='intel') setTimeout(()=>drawCharts(),100);
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
@@ -5546,6 +5588,94 @@ function klyClearAll(){
   const c=document.getElementById('chatMessages'); if(c) c.innerHTML='';
   try{ notify('Klyfton memory cleared — fresh slate','success'); }catch(e){}
   klyMemRefresh();
+}
+
+// ================= SAM.gov GOV opportunities (🎯 GOV tab) =================
+function govKey(){ try{ return (localStorage.getItem('klyfton_sam_key')||'').trim(); }catch(e){ return ''; } }
+function govSaveKey(){
+  const el=document.getElementById('gov_key'); if(!el) return; const k=(el.value||'').trim();
+  try{ localStorage.setItem('klyfton_sam_key', k); }catch(e){}
+  try{ notify(k?'SAM.gov key saved ✓':'SAM.gov key cleared','success'); }catch(e){}
+  el.value=''; govStatus();
+}
+async function govStatus(){
+  const s=document.getElementById('govKeyStat'); if(!s) return; const k=govKey();
+  if(k){ s.innerHTML='<span style="color:var(--gr)">Connected — key saved on this device. Set filters and Search.</span>'; return; }
+  try{ const r=await fetch('/api/samgov'); const j=await r.json();
+    s.innerHTML = j.configured ? '<span style="color:var(--gr)">Connected (server key). Set filters and Search.</span>'
+                              : '<span style="color:var(--yw)">Not connected — paste your free SAM.gov API key below.</span>';
+  }catch(e){ s.innerHTML='<span style="color:var(--yw)">Not connected — paste your free SAM.gov API key below.</span>'; }
+}
+function renderGov(){ govStatus(); }
+window.__govOpps = window.__govOpps || [];
+async function govSearch(){
+  const out=document.getElementById('govResults'), btn=document.getElementById('govSearchBtn'); if(!out) return;
+  const key=govKey();
+  const val=id=>{ const e=document.getElementById(id); return e?(e.value||'').trim():''; };
+  const csv=v=>v.split(',').map(s=>s.trim()).filter(Boolean);
+  const payload={
+    apiKey:key||undefined,
+    title:val('gov_kw')||undefined,
+    days:parseInt(val('gov_days'),10)||90,
+    states:csv(val('gov_states')),
+    naics:csv(val('gov_naics')),
+    setAside:val('gov_setaside')||undefined,
+    limit:25,
+  };
+  out.textContent='Searching SAM.gov…'; if(btn) btn.disabled=true;
+  const done=()=>{ if(btn) btn.disabled=false; };
+  try{
+    const r=await fetch('/api/samgov',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json();
+    if(!j.configured){ out.innerHTML='<span style="color:var(--yw)">No SAM.gov key yet — paste it above, tap Save key, then Search.</span>'; return done(); }
+    if(!j.ok){ out.innerHTML='<span style="color:var(--red)">SAM.gov error: '+esc(j.error||'unknown')+(j.status?(' ('+j.status+')'):'')+'</span>'; return done(); }
+    const opps=Array.isArray(j.opportunities)?j.opportunities:[];
+    window.__govOpps=opps;
+    if(!opps.length){ out.innerHTML='<span style="color:var(--t2)">No open opportunities matched those filters. Try widening the date range, states, or NAICS.</span>'; return done(); }
+    out.innerHTML='<div style="margin:4px 0 10px;color:var(--gr);font-size:11px">Found '+opps.length+' opportunit'+(opps.length===1?'y':'ies')+' — newest first.</div>'+
+      opps.map((o,i)=>{
+        const due=o.due?('Due '+esc(String(o.due).slice(0,10))):'';
+        const sa=o.setAside?('<span style="color:var(--cy)">'+esc(o.setAside)+'</span>'):'';
+        return '<div class="admin-section" style="margin-bottom:8px">'
+          +'<div style="font-weight:600;color:var(--t1);margin-bottom:3px">'+esc(o.title)+'</div>'
+          +'<div style="font-size:11px;color:var(--t2);line-height:1.5">'+esc(o.agency||'')+'<br>'
+          +[esc(o.type||''), sa, o.place?('📍 '+esc(o.place)):'', o.naics?('NAICS '+esc(o.naics)):''].filter(Boolean).join(' · ')+'<br>'
+          +[o.posted?('Posted '+esc(String(o.posted).slice(0,10))):'', due].filter(Boolean).join(' · ')+'</div>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'
+          +(o.link?('<a class="btn btn-ghost" style="font-size:11px;padding:5px 9px" href="'+esc(o.link)+'" target="_blank" rel="noopener">View on SAM.gov ↗</a>'):'')
+          +'<button class="btn btn-cyan" style="font-size:11px;padding:5px 9px" onclick="govAddLead('+i+')">➕ Add as lead</button>'
+          +'<button class="btn btn-ghost" style="font-size:11px;padding:5px 9px" onclick="govAsk('+i+')">🤖 Ask Klyfton</button>'
+          +'</div></div>';
+      }).join('');
+    try{ notify('SAM.gov: '+opps.length+' opportunities','success'); }catch(e){}
+  }catch(e){ out.innerHTML='<span style="color:var(--red)">Search failed: '+esc(String(e.message||e))+'</span>'; }
+  done();
+}
+function govAddLead(i){
+  const o=(window.__govOpps||[])[i]; if(!o) return;
+  if(!appState.leads) appState.leads=[];
+  const lead={
+    id:Date.now(), name:(o.title||'SAM.gov opportunity').slice(0,120),
+    company:o.agency||'', phone:'', email:'',
+    service:'Government', state:o.state||'',
+    value:0, source:'SAM.gov'+(o.sol?(' #'+o.sol):''),
+    notes:[o.type, o.setAside, o.place, o.due?('Due '+String(o.due).slice(0,10)):'', o.link].filter(Boolean).join(' · '),
+    status:'New', date:new Date().toISOString().split('T')[0],
+  };
+  appState.leads.push(lead); save('leads');
+  if(window.renderPipeline) try{ renderPipeline(); }catch(e){}
+  if(window.renderDashMetrics) try{ renderDashMetrics(); }catch(e){}
+  try{ notify('Added to leads: '+lead.name.slice(0,40),'success'); }catch(e){}
+}
+function govAsk(i){
+  const o=(window.__govOpps||[])[i]; if(!o) return;
+  const q='Here\'s a SAM.gov opportunity: "'+(o.title||'')+'" from '+(o.agency||'a federal agency')
+    +(o.setAside?(' ('+o.setAside+')'):'')+(o.due?(', response due '+String(o.due).slice(0,10)):'')
+    +'. Is this a fit for us, and if so draft a short outreach/capability opener in Clifton\'s voice.';
+  const inp=document.getElementById('chatInput'); if(inp){ inp.value=q; }
+  if(!appState.chatOpen && window.toggleChat) toggleChat();
+  switchModule('chat');
+  if(window.sendChat) setTimeout(()=>sendChat(),150);
 }
 
 // ---- Chat attachments: photos / PDFs the crew uploads for Klyfton to read ----

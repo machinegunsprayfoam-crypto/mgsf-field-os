@@ -181,6 +181,9 @@ there (left/bottom nav). The screens:
   bids (walls + lifting + roofing on one job); uses the real product prices + travel calc.
 - 🏗️ JOBS: the job board (Scheduled / In Progress / Completed). 👥 CRM: leads + customers pipeline.
 - 📊 INTEL: reports/analytics. 🔌 SKILLS: integrations. 📁 DOCS: document library.
+- 🎯 GOV: live SAM.gov federal opportunity search (insulation/roofing/foam/weatherization in
+  MT/ND/SD/WY) — filter by NAICS, state, set-aside; one-tap "Add as lead" or "Ask Klyfton" to
+  draft outreach. We're a veteran-owned small business (VOSB), so flag VOSB/SDVOSB set-asides.
 - 🦺 JSA: pre-spray Job Safety Analysis (includes the spray settings panel). 🔧 Spray: per-foam
   temps/pressures/yields + a weather-aware "where to start" for the crew.
 - ⏱️ CLOCK: crew time clock. 🌦️ WEATHER: live NWS Spray Window (GO/NO-GO by the hour).
