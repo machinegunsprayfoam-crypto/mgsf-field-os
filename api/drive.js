@@ -11,7 +11,13 @@
 //      it as `webappUrl` on each request — no Vercel env var needed.
 // Only Apps Script exec URLs are accepted (so this proxy can't be used as an open relay).
 
-const ENV_URL = process.env.GDRIVE_WEBAPP_URL || process.env.GOOGLE_APPS_SCRIPT_URL || "";
+// Owner's Apps Script /exec endpoint, baked in so every device is connected to Drive out of the
+// box (no pasting on a new phone). Server-side only — this file runs as a Vercel function and is
+// NOT shipped to the browser, so the URL isn't exposed in the public page source. An env var still
+// overrides it, and the script itself is write-only (no data read-back). Rotate by redeploying the
+// Apps Script and updating this default (or set GDRIVE_WEBAPP_URL in Vercel).
+const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbwhgGsim51nqa5qDVsUrmfiJjLMJlTDwrwlqlOgzoObl07CtJ-NX1GJFPBM-FeK6BgBAA/exec";
+const ENV_URL = process.env.GDRIVE_WEBAPP_URL || process.env.GOOGLE_APPS_SCRIPT_URL || DEFAULT_URL;
 const ENV_TOKEN = process.env.GDRIVE_TOKEN || ""; // optional shared secret checked by the script
 
 // Accept only Google Apps Script web-app exec endpoints.
