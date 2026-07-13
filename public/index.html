@@ -1140,6 +1140,17 @@ canvas.chart{width:100%;height:100%}
           <div id="dm_body"></div>
         </div>
 
+        <div class="admin-section">
+          <div class="admin-section-title">🧠 KLYFTON MEMORY</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Klyfton keeps your <b>chat history</b> and the <b>facts it's told to remember</b> on this device, so it picks up where you left off between sessions. Clear it here if the chat gets cluttered or you want a clean slate. This only wipes Klyfton's memory — it does <b>not</b> touch your leads, jobs, estimates, or settings.</div>
+          <div id="klyMemStat" style="font-size:11px;color:var(--t2);margin-bottom:8px">—</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="klyClearChat()">🧹 Clear chat history</button>
+            <button class="btn btn-ghost" onclick="klyClearFacts()">🧠 Clear remembered facts</button>
+            <button class="btn btn-ghost" style="color:#ef4444;border-color:rgba(239,68,68,.4)" onclick="klyClearAll()">🗑️ Clear ALL Klyfton memory</button>
+          </div>
+        </div>
+
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-orange" id="admSaveBtn" onclick="adminSave()">💾 SAVE ALL SETTINGS</button>
           <button class="btn btn-ghost" onclick="adminReset()">↩ RESET TO DEFAULTS</button>
@@ -1690,16 +1701,31 @@ function speak(text){
     const synth = window.speechSynthesis;
     synth.cancel();
     const utt = new SpeechSynthesisUtterance(text);
-    // Try to get a good voice
-    const voices = synth.getVoices();
-    const preferred = voices.find(v=>v.name.includes('Samantha')||v.name.includes('Karen')||v.name.includes('Victoria')||v.name.includes('Google US English Female')||v.lang==='en-US');
+    // Klyfton's voice: a MALE, BRITISH (English) accent. Pick the best available:
+    // 1) a known male UK voice by name, 2) any en-GB voice that isn't obviously female,
+    // 3) any en-GB voice, 4) any male-sounding English voice. Falls back to default.
+    const voices = synth.getVoices() || [];
+    const MALE_UK = /(Daniel|Arthur|Oliver|George|Ryan|Google UK English Male|Microsoft (George|Ryan)|Male)/i;
+    const FEMALE = /(female|Samantha|Karen|Victoria|Serena|Kate|Stephanie|Hazel|Susan|Fiona|Moira|Tessa|Zira|Google UK English Female)/i;
+    const gb = voices.filter(v=>/en[-_]GB/i.test(v.lang));
+    const preferred =
+      voices.find(v=>/en[-_]GB/i.test(v.lang) && MALE_UK.test(v.name)) ||
+      voices.find(v=>MALE_UK.test(v.name)) ||
+      gb.find(v=>!FEMALE.test(v.name)) ||
+      gb[0] ||
+      voices.find(v=>/^en/i.test(v.lang) && MALE_UK.test(v.name));
     if(preferred) utt.voice = preferred;
-    utt.rate = 1.05;
-    utt.pitch = 1.0;
+    utt.lang = (preferred && preferred.lang) || 'en-GB';
+    utt.rate = 1.0;
+    // Slightly lower pitch reads more masculine when only a generic voice is available.
+    utt.pitch = 0.9;
     utt.volume = 0.9;
     synth.speak(utt);
   }catch(e){}
 }
+// Warm the voice list — some browsers populate getVoices() asynchronously, so the
+// first spoken line can miss the male UK voice unless we've triggered a load.
+try{ if(window.speechSynthesis){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ try{ window.speechSynthesis.getVoices(); }catch(e){} }; } }catch(e){}
 
 // ============================================================
 // VOICE INPUT (Speech Recognition)
@@ -1920,6 +1946,7 @@ function switchModule(id){
     adminLoad();
     if(window.renderDataManager) renderDataManager();
     if(window.renderCrew) renderCrew();
+    if(window.klyMemRefresh) klyMemRefresh();
   }
 }
 
@@ -5490,6 +5517,37 @@ function renderChatHistory(){
   h.forEach(m=>{ if(m && m.content) addMessage(String(m.content), m.role==='assistant'?'ai':'user', ''); });
 }
 
+// ---- Klyfton memory controls (Admin) — clear chat history and/or remembered facts ----
+function klyMemRefresh(){
+  const el=document.getElementById('klyMemStat'); if(!el) return;
+  const nC=Array.isArray(appState.chatHistory)?appState.chatHistory.length:0;
+  const nF=Array.isArray(appState.memory)?appState.memory.length:0;
+  el.innerHTML='Currently remembering <b>'+nC+'</b> chat message'+(nC===1?'':'s')+' and <b>'+nF+'</b> saved fact'+(nF===1?'':'s')+'.';
+}
+function klyClearChat(){
+  const n=Array.isArray(appState.chatHistory)?appState.chatHistory.length:0;
+  if(n && !confirm('Clear Klyfton\'s chat history ('+n+' message'+(n===1?'':'s')+') on this device? Your saved facts, leads, jobs and estimates are NOT affected.')) return;
+  appState.chatHistory=[]; save('chatHistory');
+  const c=document.getElementById('chatMessages'); if(c) c.innerHTML='';
+  try{ notify('Klyfton chat history cleared','info'); }catch(e){}
+  klyMemRefresh();
+}
+function klyClearFacts(){
+  const n=Array.isArray(appState.memory)?appState.memory.length:0;
+  if(n && !confirm('Clear the '+n+' fact'+(n===1?'':'s')+' Klyfton has been told to remember? This syncs to your other devices. Leads, jobs and estimates are NOT affected.')) return;
+  appState.memory=[]; save('memory');
+  try{ notify('Klyfton remembered facts cleared','info'); }catch(e){}
+  klyMemRefresh();
+}
+function klyClearAll(){
+  if(!confirm('Wipe ALL of Klyfton\'s memory on this device — chat history AND remembered facts — for a clean slate?\n\nThis does NOT delete your leads, jobs, estimates, or settings. It cannot be undone.')) return;
+  appState.chatHistory=[]; save('chatHistory');
+  appState.memory=[]; save('memory');
+  const c=document.getElementById('chatMessages'); if(c) c.innerHTML='';
+  try{ notify('Klyfton memory cleared — fresh slate','success'); }catch(e){}
+  klyMemRefresh();
+}
+
 // ---- Chat attachments: photos / PDFs the crew uploads for Klyfton to read ----
 // Images are downscaled client-side (keeps the Vercel payload small + token cost sane);
 // on send they go to the hive as Claude vision / document blocks so the minds actually SEE them.
@@ -5652,9 +5710,9 @@ function sendChat(){
   // Ask the Klyfton Hive (router → specialist minds → synthesizer/critic), streaming.
   if(!appState.chatHistory) appState.chatHistory = [];
   if(!appState.memory) appState.memory = [];
-  const hist = appState.chatHistory.slice(-10);
+  const hist = appState.chatHistory.slice(-20);
   appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
-  appState.chatHistory = appState.chatHistory.slice(-60); save('chatHistory');
+  appState.chatHistory = appState.chatHistory.slice(-120); save('chatHistory');
 
   const bubble = addStreamingAiBubble();
 
@@ -5691,7 +5749,7 @@ function sendChat(){
       // Klyfton may propose an action — pull it out of the text; the user confirms before it runs.
       const parsed = parseKlyftonAction(resp); resp = parsed.clean;
       appState.chatHistory.push({role:'assistant', content:resp});
-      appState.chatHistory = appState.chatHistory.slice(-60); save('chatHistory');
+      appState.chatHistory = appState.chatHistory.slice(-120); save('chatHistory');
       // Store durable "colony memory" facts the hive chose to keep.
       if(d && Array.isArray(d.remember) && d.remember.length){
         d.remember.forEach(f=>{ if(f && !appState.memory.includes(f)) appState.memory.push(f); });

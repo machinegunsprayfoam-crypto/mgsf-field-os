@@ -627,7 +627,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
+  const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
   const ctx = contextBlock(body.context, body.memory);
 
   // The router is text-only; give it a hint when a message is just an attachment.
