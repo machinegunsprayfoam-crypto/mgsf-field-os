@@ -1,97 +1,49 @@
-/**
- * /api/drive.js
- *
- * Google Drive sync utility for MGSF Field OS.
- * Creates a job folder structure under a configured parent folder.
- *
- * Required env vars:
- *   GOOGLE_SERVICE_ACCOUNT_JSON  — Service account credentials JSON (stringified)
- *   GOOGLE_DRIVE_PARENT_ID       — Parent folder ID in Google Drive
- */
+// Google Drive backup — pushes leads/jobs/estimates (as CSV) and job photos into a
+// folder in the OWNER'S Google Drive. Server-to-server proxy to a Google Apps Script
+// Web App that runs as the owner (no service-account key to juggle, no browser CORS).
+//
+// (Replaces an earlier version that required the `googleapis` npm package — this app
+// installs no npm deps, so that version could never run. This one uses global fetch only.)
+//
+// DORMANT until GDRIVE_WEBAPP_URL is set (the app just shows "not connected"). To switch on:
+//   1. script.google.com -> New project -> paste the Klyfton Drive Backup Code.gs.
+//   2. Deploy -> New deployment -> Web app -> Execute as: Me -> Who has access: Anyone.
+//   3. Copy the /exec URL -> Vercel env GDRIVE_WEBAPP_URL (optionally GDRIVE_TOKEN to match
+//      the token in the script) -> redeploy.
 
-const { google } = require("googleapis");
+const WEBAPP_URL = process.env.GDRIVE_WEBAPP_URL || process.env.GOOGLE_APPS_SCRIPT_URL || "";
+const TOKEN = process.env.GDRIVE_TOKEN || ""; // optional shared secret checked by the script
+const CONFIGURED = !!WEBAPP_URL;
 
-async function getDriveClient() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON not set");
-  const credentials = JSON.parse(raw);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/drive"],
+async function readBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string" && req.body.length) { try { return JSON.parse(req.body); } catch { return {}; } }
+  return await new Promise((resolve) => {
+    let d = ""; req.on("data", (c) => (d += c));
+    req.on("end", () => { try { resolve(d ? JSON.parse(d) : {}); } catch { resolve({}); } });
+    req.on("error", () => resolve({}));
   });
-  return google.drive({ version: "v3", auth });
 }
 
-async function createFolder(drive, name, parentId) {
-  const res = await drive.files.create({
-    requestBody: {
-      name,
-      mimeType: "application/vnd.google-apps.folder",
-      parents: [parentId],
-    },
-    fields: "id, webViewLink",
-  });
-  return res.data;
-}
+module.exports = async (req, res) => {
+  if (req.method === "GET") { res.status(200).json({ configured: CONFIGURED }); return; }
+  if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
+  if (!CONFIGURED) { res.status(200).json({ configured: false }); return; }
 
-async function ensureSubfolders(drive, parentId, subfolders) {
-  const results = {};
-  for (const name of subfolders) {
-    const folder = await createFolder(drive, name, parentId);
-    results[name] = folder.id;
+  const body = await readBody(req);
+  if (TOKEN) body.token = TOKEN; // pass the shared secret through to the script
+
+  try {
+    const r = await fetch(WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      redirect: "follow", // Apps Script /exec 302-redirects to googleusercontent — follow it
+    });
+    const text = await r.text();
+    let json; try { json = JSON.parse(text); } catch { json = { ok: false, error: "bad_script_response", raw: text.slice(0, 300) }; }
+    res.status(200).json(Object.assign({ configured: true }, json));
+  } catch (e) {
+    res.status(200).json({ configured: true, ok: false, error: String((e && e.message) || e).slice(0, 300) });
   }
-  return results;
-}
-
-module.exports = async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { action, project_name, customer_name, project_id } = req.body ?? {};
-
-  if (!action) {
-    return res.status(400).json({ error: "action is required" });
-  }
-
-  // ── create_job_folder ──────────────────────────────────────────────────────
-  if (action === "create_job_folder") {
-    if (!project_name) return res.status(400).json({ error: "project_name is required" });
-
-    const parentId = process.env.GOOGLE_DRIVE_PARENT_ID;
-    if (!parentId) return res.status(500).json({ error: "GOOGLE_DRIVE_PARENT_ID not configured" });
-
-    try {
-      const drive = await getDriveClient();
-
-      // Folder name: YYYY-MM-DD — Customer — Project
-      const date = new Date().toISOString().split("T")[0];
-      const folderName = [date, customer_name, project_name].filter(Boolean).join(" — ");
-
-      const jobFolder = await createFolder(drive, folderName, parentId);
-
-      // Create standard subfolders
-      await ensureSubfolders(drive, jobFolder.id, [
-        "01-Proposal",
-        "02-Contract",
-        "03-Photos-Before",
-        "04-Photos-During",
-        "05-Photos-After",
-        "06-Closeout",
-        "07-Invoice",
-      ]);
-
-      return res.status(200).json({
-        ok: true,
-        folder_id: jobFolder.id,
-        folder_url: jobFolder.webViewLink,
-        folder_name: folderName,
-      });
-    } catch (err) {
-      console.error("Drive error:", err);
-      return res.status(500).json({ error: err.message ?? "Drive error" });
-    }
-  }
-
-  return res.status(400).json({ error: `Unknown action: ${action}` });
 };

@@ -1238,6 +1238,13 @@ canvas.chart{width:100%;height:100%}
           </div>
           <div style="font-size:11px;color:var(--t2);margin-top:6px">Photos are stored on this device (compressed). Save the important ones off-device too.</div>
         </div>
+        <div class="jsa-card" id="driveCard" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div><b style="color:var(--cy)">☁️ Google Drive Backup</b><div id="driveStat" style="font-size:11px;color:var(--t2)">Checking…</div></div>
+            <button class="btn btn-primary" id="driveBtn" onclick="driveBackup()">☁️ Back up to Drive</button>
+          </div>
+          <div id="driveOut" style="font-size:12px;color:var(--t2);margin-top:8px"></div>
+        </div>
         <div id="ph_grid"></div>
       </div>
 
@@ -1897,6 +1904,7 @@ function switchModule(id){
   document.getElementById('nav-'+id).classList.add('active');
   
   if(id==='spray'||id==='jsa'){ if(window.renderSpray) renderSpray(); }
+  if(id==='photos'){ if(window.driveStatus) driveStatus(); }
   if(id==='intel') setTimeout(()=>drawCharts(),100);
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
@@ -7731,6 +7739,41 @@ function renderGrow(){
   </div>
   <audio id="mgAudio" preload="none"></audio>
 </div>
+<script>
+/* ===== Google Drive Backup (client) — talks to the /api/drive proxy ===== */
+async function driveStatus(){
+  const s=document.getElementById('driveStat'); if(!s) return;
+  try{ const r=await fetch('/api/drive'); const j=await r.json();
+    if(j.configured) s.innerHTML='<span style="color:var(--gr)">Connected — leads, jobs, estimates & photos back up to your Drive.</span>';
+    else s.innerHTML='<span style="color:var(--yw)">Not connected — one-time owner setup (GDRIVE_WEBAPP_URL in Vercel).</span>';
+  }catch(e){ s.textContent='Status unavailable offline.'; }
+}
+async function driveBackup(){
+  const out=document.getElementById('driveOut'), btn=document.getElementById('driveBtn'); if(!out) return;
+  out.textContent='Backing up…'; if(btn) btn.disabled=true;
+  const done=()=>{ if(btn) btn.disabled=false; };
+  try{
+    const la=k=>{ try{return Array.isArray(appState[k])?appState[k]:[];}catch(e){return [];} };
+    const collections={ leads:la('leads'), jobs:la('jobs'), estimates:la('estimates') };
+    const r1=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'backup',collections})});
+    const j1=await r1.json();
+    if(!j1.configured){ out.innerHTML='<span style="color:var(--yw)">Google Drive isn’t connected yet — one-time owner setup needed.</span>'; return done(); }
+    if(!j1.ok){ out.innerHTML='<span style="color:var(--red)">Backup error: '+(j1.error||'unknown')+'</span>'; return done(); }
+    const photos=la('photos'); let pOk=0,pFail=0;
+    for(const p of photos){
+      if(!p||!p.data) continue;
+      const name=((p.job||'job')+'-'+(p.phase||'')+'-'+(p.id||pOk)+'.jpg').replace(/[^\w.\-]+/g,'_');
+      try{ const rp=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'photo',name,dataUrl:p.data,job:p.job||'',phase:p.phase||''})});
+        const jp=await rp.json(); if(jp.ok) pOk++; else pFail++; }catch(e){ pFail++; }
+    }
+    const rec=Object.keys(j1.files||{}).map(k=>k+' '+(j1.files[k].rows!=null?j1.files[k].rows:'')).join(' · ');
+    out.innerHTML='<span style="color:var(--gr)">✅ Backed up — '+(rec||'records')+' · photos '+pOk+' ok'+(pFail?(', '+pFail+' failed'):'')+'.</span>';
+    try{ notify('Backed up to Google Drive','success'); }catch(e){}
+  }catch(e){ out.innerHTML='<span style="color:var(--red)">Backup failed: '+String(e.message||e)+'</span>'; }
+  done();
+}
+</script>
+
 <script>
 /* ===== Spray Settings & Specs — crew reference (from MGSF rig doc + foam spec sheet) =====
    Run windows are STARTING POINTS. The specific foam's TDS + ambient/substrate + our PH-2
