@@ -101,7 +101,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 #main{display:flex;flex:1;overflow:hidden}
 
 /* SIDEBAR */
-#sidebar{width:var(--navw,124px);min-width:58px;max-width:280px;background:rgba(8,8,16,.95);border-right:1px solid var(--bd);display:flex;flex-flow:row wrap;align-content:flex-start;justify-content:center;padding:12px 6px;gap:6px 8px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;position:relative;box-sizing:border-box}
+#sidebar{width:var(--navw,124px);min-width:58px;max-width:280px;background:rgba(8,8,16,.95);border-right:1px solid var(--bd);display:flex;flex-flow:row wrap;align-content:flex-start;justify-content:center;padding:12px 6px 96px;gap:6px 8px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;position:relative;box-sizing:border-box}
+#sidebar::-webkit-scrollbar{width:6px}
+#sidebar::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
 #navResize{position:absolute;top:0;right:0;width:11px;height:100%;cursor:ew-resize;touch-action:none;z-index:6}
 #navResize::before{content:"";position:absolute;top:50%;right:2px;transform:translateY(-50%);width:3px;height:34px;border-radius:3px;background:var(--bd)}
 #navResize:hover::before,#navResize.drag::before{background:var(--or,#f97316)}
@@ -6819,7 +6821,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-13-hive-timeout-fix';
+const APP_BUILD = '2026-07-13-sidebar-scroll';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
