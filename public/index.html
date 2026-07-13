@@ -101,14 +101,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 #main{display:flex;flex:1;overflow:hidden}
 
 /* SIDEBAR */
-#sidebar{width:58px;background:rgba(8,8,16,.95);border-right:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;flex-shrink:0}
+#sidebar{width:var(--navw,124px);min-width:58px;max-width:280px;background:rgba(8,8,16,.95);border-right:1px solid var(--bd);display:flex;flex-flow:row wrap;align-content:flex-start;justify-content:center;padding:12px 6px;gap:6px 8px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;position:relative;box-sizing:border-box}
+#navResize{position:absolute;top:0;right:0;width:11px;height:100%;cursor:ew-resize;touch-action:none;z-index:6}
+#navResize::before{content:"";position:absolute;top:50%;right:2px;transform:translateY(-50%);width:3px;height:34px;border-radius:3px;background:var(--bd)}
+#navResize:hover::before,#navResize.drag::before{background:var(--or,#f97316)}
 .nav-item{width:46px;height:46px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;border:1px solid transparent;gap:3px}
 .nav-item:hover{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.15)}
 .nav-item.active{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.4);box-shadow:0 0 12px rgba(249,115,22,.15)}
 .nav-icon{font-size:18px;line-height:1}
 .nav-label{font-size:8px;letter-spacing:.5px;color:var(--t2);text-transform:uppercase}
 .nav-item.active .nav-label{color:var(--or)}
-.nav-divider{width:30px;height:1px;background:var(--bd);margin:4px 0}
+.nav-divider{flex-basis:100%;width:auto;height:1px;background:var(--bd);margin:2px 6px}
 
 /* CONTENT */
 #content{flex:1;overflow:hidden;display:flex;flex-direction:column}
@@ -448,6 +451,7 @@ canvas.chart{width:100%;height:100%}
   <div id="main">
     <!-- SIDEBAR NAV -->
     <div id="sidebar">
+      <div id="navResize" title="Drag to resize the menu"></div>
       <div class="nav-item active" onclick="switchModule('dashboard')" id="nav-dashboard">
         <div class="nav-icon">⚡</div><div class="nav-label">HQ</div>
       </div>
@@ -495,6 +499,9 @@ canvas.chart{width:100%;height:100%}
       </div>
       <div class="nav-item" onclick="switchModule('materials');renderMaterials()" id="nav-materials">
         <div class="nav-icon">🛢️</div><div class="nav-label">MATERIAL</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('sheets');renderSheets()" id="nav-sheets">
+        <div class="nav-icon">📑</div><div class="nav-label">SHEETS</div>
       </div>
       <div class="nav-item" onclick="switchModule('signoff');renderSignoff()" id="nav-signoff">
         <div class="nav-icon">✍️</div><div class="nav-label">SIGN-OFF</div>
@@ -997,6 +1004,16 @@ canvas.chart{width:100%;height:100%}
       </div>
 
       <!-- ADMIN MODULE -->
+      <div id="mod-sheets" class="module">
+        <div class="row" style="justify-content:space-between;margin-bottom:4px">
+          <h2 style="font-size:16px;color:var(--or)">📑 DATA SHEETS — SDS &amp; TDS</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Every product in your price book. <b>SDS</b> = Safety Data Sheet (hazards, PPE, first aid — keep on the rig, OSHA requires it). <b>TDS</b> = Technical Data Sheet (yield, mix ratio, temps/pressures, cure). Tap to pull the manufacturer's current sheet, or ask Klyfton for the key points. Save the PDF to 📁 Docs → “SDS / Safety” so it's on every device offline.</div>
+        <input id="sheets_q" class="admin-inp" style="width:100%;margin-bottom:10px" placeholder="🔎 Filter products (e.g. InsulStar, ProSeal, Si92)…" oninput="renderSheets()">
+        <div id="sheetsList" style="font-size:12px;color:var(--t2)">Loading products…</div>
+      </div>
+
       <div id="mod-gov" class="module">
         <div class="row" style="justify-content:space-between;margin-bottom:4px">
           <h2 style="font-size:16px;color:var(--or)">🎯 GOV OPPORTUNITIES — SAM.gov</h2>
@@ -1981,6 +1998,7 @@ function switchModule(id){
   if(id==='spray'||id==='jsa'){ if(window.renderSpray) renderSpray(); }
   if(id==='photos'){ if(window.driveStatus) driveStatus(); }
   if(id==='gov'){ if(window.renderGov) renderGov(); }
+  if(id==='sheets'){ if(window.renderSheets) renderSheets(); }
   if(id==='intel') setTimeout(()=>drawCharts(),100);
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
@@ -5653,6 +5671,61 @@ function govRenderNaicsChips(){
   }).join('');
 }
 function renderGov(){ govStatus(); govRenderNaicsChips(); }
+
+// ================= DATA SHEETS — SDS & TDS (📑 SHEETS tab) =================
+function sheetUrl(name, kind){ return 'https://www.google.com/search?q='+encodeURIComponent(name+' '+kind); }
+window.__sheetItems = window.__sheetItems || [];
+function renderSheets(){
+  const box=document.getElementById('sheetsList'); if(!box) return;
+  let pb=null; try{ pb=PRICEBOOK; }catch(e){}
+  const items=[];
+  if(pb){
+    (pb.foam||[]).forEach(x=>{ if(x&&x.n) items.push({n:x.n,cat:x.cat||'Foam'}); });
+    (pb.coat||[]).forEach(x=>{ if(x&&x.n) items.push({n:x.n,cat:'Coating'}); });
+  }
+  window.__sheetItems=items;
+  const q=((document.getElementById('sheets_q')||{}).value||'').toLowerCase().trim();
+  const filt=items.map((x,i)=>({x,i})).filter(o=>!q||o.x.n.toLowerCase().includes(q));
+  if(!items.length){ box.innerHTML='<div style="color:var(--yw)">No products loaded. You can still ask Klyfton for any product\'s SDS/TDS in the AI tab.</div>'; return; }
+  if(!filt.length){ box.innerHTML='<div style="color:var(--t2)">No products match “'+esc(q)+'”. Try a shorter word.</div>'; return; }
+  box.innerHTML='<div style="font-size:11px;color:var(--t2);margin-bottom:8px">'+filt.length+' product'+(filt.length===1?'':'s')+'</div>'+
+    filt.map(o=>{
+      const x=o.x;
+      return '<div class="log-row" style="align-items:center">'
+        +'<div style="min-width:0"><div style="color:var(--t1);font-size:12px;overflow-wrap:anywhere">'+esc(x.n)+'</div>'
+        +'<div style="font-size:10px;color:var(--t2)">'+esc(x.cat)+'</div></div>'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
+        +'<a class="btn btn-ghost" style="font-size:11px;padding:5px 8px" target="_blank" rel="noopener" href="'+sheetUrl(x.n,'SDS safety data sheet')+'">🔎 SDS</a>'
+        +'<a class="btn btn-ghost" style="font-size:11px;padding:5px 8px" target="_blank" rel="noopener" href="'+sheetUrl(x.n,'TDS technical data sheet')+'">📋 TDS</a>'
+        +'<button class="btn btn-cyan" style="font-size:11px;padding:5px 8px" onclick="sheetsAsk('+o.i+')">🤖 Ask</button>'
+        +'</div></div>';
+    }).join('');
+}
+function sheetsAsk(i){
+  const x=(window.__sheetItems||[])[i]; if(!x) return;
+  const q='Give me the key SDS + TDS points for "'+x.n+'": from the SDS — Section 2 hazards, Section 4 first aid, Section 8 PPE/exposure limits; from the TDS — yield per set, mix ratio, spray temps/pressures, and cure/recoat times. Cite the manufacturer sheets with links and tell me to verify against the printed copy on the rig.';
+  const inp=document.getElementById('chatInput'); if(inp){ inp.value=q; }
+  if(!appState.chatOpen && window.toggleChat) toggleChat();
+  switchModule('chat');
+  if(window.sendChat) setTimeout(()=>sendChat(),150);
+}
+
+// ================= Sidebar resize (tap & drag) =================
+function initNavResize(){
+  const sb=document.getElementById('sidebar'), h=document.getElementById('navResize'); if(!sb||!h) return;
+  if(h.dataset.rz) return; h.dataset.rz='1';
+  try{ const w=parseInt(localStorage.getItem('klyfton_navw'),10); if(w) sb.style.width=w+'px'; }catch(e){}
+  const clamp=w=>Math.max(58,Math.min(260,w));
+  let dragging=false, startX=0, startW=0;
+  h.addEventListener('pointerdown',e=>{ dragging=true; startX=e.clientX; startW=sb.getBoundingClientRect().width; h.classList.add('drag'); try{h.setPointerCapture(e.pointerId);}catch(_){}; e.preventDefault(); });
+  const move=e=>{ if(!dragging) return; sb.style.width=clamp(startW+(e.clientX-startX))+'px'; e.preventDefault(); };
+  const end=()=>{ if(!dragging) return; dragging=false; h.classList.remove('drag'); try{ localStorage.setItem('klyfton_navw', String(Math.round(sb.getBoundingClientRect().width))); }catch(e){} };
+  window.addEventListener('pointermove',move,{passive:false});
+  window.addEventListener('pointerup',end); window.addEventListener('pointercancel',end);
+  // double-tap the handle to snap back to the default 2-column width
+  h.addEventListener('dblclick',()=>{ sb.style.width='124px'; try{ localStorage.setItem('klyfton_navw','124'); }catch(e){} });
+}
+try{ if(document.readyState!=='loading') initNavResize(); else window.addEventListener('DOMContentLoaded', initNavResize); }catch(e){}
 window.__govOpps = window.__govOpps || [];
 async function govSearch(){
   const out=document.getElementById('govResults'), btn=document.getElementById('govSearchBtn'); if(!out) return;
