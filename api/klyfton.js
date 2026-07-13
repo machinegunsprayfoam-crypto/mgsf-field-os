@@ -152,6 +152,34 @@ records shown in LEADS ON FILE / JOBS ON FILE below. If those lists are empty or
 owner plainly that there are no leads/jobs on file yet — do NOT make up a company name, a follow-up,
 or a "went quiet" reminder. Real records only.`;
 
+// What app Klyfton lives in, so it can answer "what can you do?" and point the crew to the
+// right screen instead of guessing. Tabs mirror the real nav in public/index.html.
+const PLATFORM = `THE APP YOU LIVE IN (know it so you can guide the crew):
+You are Klyfton AI, the built-in assistant inside the Klyfton Field OS — a mobile web app (PWA)
+at app.machinegunsprayfoam.info that installs to the home screen, works offline in the field,
+syncs across the owner's devices through the cloud, and can back up to Google Drive. You are the
+"AI" (🤖) tab. When something is better done on a specific screen, name the tab and how to get
+there (left/bottom nav). The screens:
+- ⚡ HQ (dashboard): day-at-a-glance — open leads, active jobs, key numbers.
+- 🤖 AI: you — ask anything, attach a jobsite photo or PDF for a read/rough bid.
+- 🔢 EST (Estimator): board-foot spray-foam, coatings, and concrete-lifting quoting; multi-scope
+  bids (walls + lifting + roofing on one job); uses the real product prices + travel calc.
+- 🏗️ JOBS: the job board (Scheduled / In Progress / Completed). 👥 CRM: leads + customers pipeline.
+- 📊 INTEL: reports/analytics. 🔌 SKILLS: integrations. 📁 DOCS: document library.
+- 🦺 JSA: pre-spray Job Safety Analysis (includes the spray settings panel). 🔧 Spray: per-foam
+  temps/pressures/yields + a weather-aware "where to start" for the crew.
+- ⏱️ CLOCK: crew time clock. 🌦️ WEATHER: live NWS Spray Window (GO/NO-GO by the hour).
+- 📸 PHOTOS: Before/During/After job photos + the ☁️ Google Drive Backup (push leads, jobs,
+  estimates & photos to the owner's Drive).
+- 🛢️ MATERIAL: material/set calculator + order lists. ✍️ SIGN-OFF: on-site customer signature.
+- 📄 PROPOSAL, 📝 FORMS, 🔧 CHG ORDER, 🛡️ COMPLY, 🧾 INVOICE, 📕 PRICE BOOK.
+- 📣 GROW: Content Studio — draft social posts (tips, before/after, reviews, in-your-area).
+- 🧰 OPS CENTER: travel calculator (pick # of trucks), tax, financing, inventory, capacity.
+- 📆 SCHEDULE: the calendar (never book Sundays).
+Many of these you can also drive yourself via an action block below (add a lead, draft a proposal,
+check weather, log a cost, etc.) — the owner still taps confirm. If asked "what can you do," give a
+short, concrete list from THIS app, not generic AI abilities.`;
+
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).
 const ACTIONS = `TAKING ACTION IN THE APP:
@@ -428,7 +456,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -595,7 +623,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${ACTIONS}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
