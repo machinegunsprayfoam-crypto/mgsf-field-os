@@ -1243,6 +1243,11 @@ canvas.chart{width:100%;height:100%}
             <div><b style="color:var(--cy)">☁️ Google Drive Backup</b><div id="driveStat" style="font-size:11px;color:var(--t2)">Checking…</div></div>
             <button class="btn btn-primary" id="driveBtn" onclick="driveBackup()">☁️ Back up to Drive</button>
           </div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <input id="drive_url" class="admin-inp" style="flex:1;min-width:180px" placeholder="Paste your Apps Script /exec URL">
+            <button class="btn btn-ghost" onclick="driveSaveUrl()">Save URL</button>
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Paste the Apps Script <b>/exec</b> URL to turn on backup — no Vercel needed.</div>
           <div id="driveOut" style="font-size:12px;color:var(--t2);margin-top:8px"></div>
         </div>
         <div id="ph_grid"></div>
@@ -7740,30 +7745,41 @@ function renderGrow(){
   <audio id="mgAudio" preload="none"></audio>
 </div>
 <script>
-/* ===== Google Drive Backup (client) — talks to the /api/drive proxy ===== */
+/* ===== Google Drive Backup (client) — talks to the /api/drive proxy =====
+   URL can come from a Vercel env var OR be pasted right here (stored on-device). */
+function driveCfg(){ try{ return { url:(localStorage.getItem('klyfton_drive_url')||'').trim(), token:(localStorage.getItem('klyfton_drive_token')||'').trim() }; }catch(e){ return {url:'',token:''}; } }
+function driveSaveUrl(){
+  const el=document.getElementById('drive_url'); if(!el) return; const u=(el.value||'').trim();
+  if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec/.test(u)){ notify('That isn’t an Apps Script /exec URL','alert'); return; }
+  try{ localStorage.setItem('klyfton_drive_url',u); }catch(e){}
+  notify(u?'Drive URL saved ✓':'Drive URL cleared','success'); driveStatus();
+}
 async function driveStatus(){
-  const s=document.getElementById('driveStat'); if(!s) return;
+  const s=document.getElementById('driveStat'); const cfg=driveCfg();
+  const el=document.getElementById('drive_url'); if(el && !el.value && cfg.url) el.value=cfg.url;
+  if(!s) return;
   try{ const r=await fetch('/api/drive'); const j=await r.json();
-    if(j.configured) s.innerHTML='<span style="color:var(--gr)">Connected — leads, jobs, estimates & photos back up to your Drive.</span>';
-    else s.innerHTML='<span style="color:var(--yw)">Not connected — one-time owner setup (GDRIVE_WEBAPP_URL in Vercel).</span>';
-  }catch(e){ s.textContent='Status unavailable offline.'; }
+    if(j.configured || cfg.url) s.innerHTML='<span style="color:var(--gr)">Connected — tap “Back up to Drive” to push leads, jobs, estimates &amp; photos.</span>';
+    else s.innerHTML='<span style="color:var(--yw)">Not connected — paste your Apps Script /exec URL below.</span>';
+  }catch(e){ s.innerHTML= cfg.url ? '<span style="color:var(--gr)">Ready (offline).</span>' : 'Status unavailable offline.'; }
 }
 async function driveBackup(){
   const out=document.getElementById('driveOut'), btn=document.getElementById('driveBtn'); if(!out) return;
+  const cfg=driveCfg();
   out.textContent='Backing up…'; if(btn) btn.disabled=true;
   const done=()=>{ if(btn) btn.disabled=false; };
   try{
     const la=k=>{ try{return Array.isArray(appState[k])?appState[k]:[];}catch(e){return [];} };
     const collections={ leads:la('leads'), jobs:la('jobs'), estimates:la('estimates') };
-    const r1=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'backup',collections})});
+    const r1=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'backup',collections,webappUrl:cfg.url,token:cfg.token})});
     const j1=await r1.json();
-    if(!j1.configured){ out.innerHTML='<span style="color:var(--yw)">Google Drive isn’t connected yet — one-time owner setup needed.</span>'; return done(); }
+    if(!j1.configured){ out.innerHTML='<span style="color:var(--yw)">Not connected — paste your Apps Script /exec URL above, tap Save URL, then try again.</span>'; return done(); }
     if(!j1.ok){ out.innerHTML='<span style="color:var(--red)">Backup error: '+(j1.error||'unknown')+'</span>'; return done(); }
     const photos=la('photos'); let pOk=0,pFail=0;
     for(const p of photos){
       if(!p||!p.data) continue;
       const name=((p.job||'job')+'-'+(p.phase||'')+'-'+(p.id||pOk)+'.jpg').replace(/[^\w.\-]+/g,'_');
-      try{ const rp=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'photo',name,dataUrl:p.data,job:p.job||'',phase:p.phase||''})});
+      try{ const rp=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'photo',name,dataUrl:p.data,job:p.job||'',phase:p.phase||'',webappUrl:cfg.url,token:cfg.token})});
         const jp=await rp.json(); if(jp.ok) pOk++; else pFail++; }catch(e){ pFail++; }
     }
     const rec=Object.keys(j1.files||{}).map(k=>k+' '+(j1.files[k].rows!=null?j1.files[k].rows:'')).join(' · ');

@@ -5,15 +5,19 @@
 // (Replaces an earlier version that required the `googleapis` npm package — this app
 // installs no npm deps, so that version could never run. This one uses global fetch only.)
 //
-// DORMANT until GDRIVE_WEBAPP_URL is set (the app just shows "not connected"). To switch on:
-//   1. script.google.com -> New project -> paste the Klyfton Drive Backup Code.gs.
-//   2. Deploy -> New deployment -> Web app -> Execute as: Me -> Who has access: Anyone.
-//   3. Copy the /exec URL -> Vercel env GDRIVE_WEBAPP_URL (optionally GDRIVE_TOKEN to match
-//      the token in the script) -> redeploy.
+// Two ways to configure the Apps Script /exec URL:
+//   A) Vercel env GDRIVE_WEBAPP_URL (+ optional GDRIVE_TOKEN), OR
+//   B) paste the /exec URL right in the app (Photos -> Drive card). The client then sends
+//      it as `webappUrl` on each request — no Vercel env var needed.
+// Only Apps Script exec URLs are accepted (so this proxy can't be used as an open relay).
 
-const WEBAPP_URL = process.env.GDRIVE_WEBAPP_URL || process.env.GOOGLE_APPS_SCRIPT_URL || "";
-const TOKEN = process.env.GDRIVE_TOKEN || ""; // optional shared secret checked by the script
-const CONFIGURED = !!WEBAPP_URL;
+const ENV_URL = process.env.GDRIVE_WEBAPP_URL || process.env.GOOGLE_APPS_SCRIPT_URL || "";
+const ENV_TOKEN = process.env.GDRIVE_TOKEN || ""; // optional shared secret checked by the script
+
+// Accept only Google Apps Script web-app exec endpoints.
+function validScriptUrl(u) {
+  return typeof u === "string" && /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(\?|#|$)/.test(u);
+}
 
 async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
@@ -26,18 +30,26 @@ async function readBody(req) {
 }
 
 module.exports = async (req, res) => {
-  if (req.method === "GET") { res.status(200).json({ configured: CONFIGURED }); return; }
+  // configured=true only when a server-side URL exists; clientConfigurable tells the app it
+  // may instead supply its own (validated) webappUrl per request.
+  if (req.method === "GET") { res.status(200).json({ configured: !!ENV_URL, clientConfigurable: true }); return; }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
-  if (!CONFIGURED) { res.status(200).json({ configured: false }); return; }
 
   const body = await readBody(req);
-  if (TOKEN) body.token = TOKEN; // pass the shared secret through to the script
+  const url = ENV_URL || (validScriptUrl(body.webappUrl) ? body.webappUrl : "");
+  if (!url) { res.status(200).json({ configured: false, error: body.webappUrl ? "invalid_webapp_url" : undefined }); return; }
+
+  // Build the payload the script expects; never forward our routing field.
+  const payload = Object.assign({}, body);
+  delete payload.webappUrl;
+  const token = ENV_TOKEN || (typeof body.token === "string" ? body.token : "");
+  if (token) payload.token = token; else delete payload.token;
 
   try {
-    const r = await fetch(WEBAPP_URL, {
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
       redirect: "follow", // Apps Script /exec 302-redirects to googleusercontent — follow it
     });
     const text = await r.text();
