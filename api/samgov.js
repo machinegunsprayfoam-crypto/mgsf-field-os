@@ -8,7 +8,12 @@
 //      on-device only. We never log the key.
 // No npm deps — global fetch only.
 
-const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || "";
+// Baked-in default key so every device can search SAM.gov with no per-device pasting. Server-side
+// only (this file runs as a Vercel function, never shipped to the browser). A SAM.gov public API key
+// is low-risk — it only authenticates calls to public opportunity data and is regenerable for free at
+// sam.gov. Leave "" to require the env var or an in-app key; fill it to bake it in. Env var overrides.
+const DEFAULT_KEY = "";
+const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || DEFAULT_KEY;
 
 // Documented endpoint, with the /prod variant as a fallback (both are served).
 const SAM_HOSTS = [
