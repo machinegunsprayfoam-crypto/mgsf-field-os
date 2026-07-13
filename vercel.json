@@ -6,6 +6,6 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "functions": {
-    "api/*.js": { "maxDuration": 60 }
+    "api/*.js": { "maxDuration": 300 }
   }
 }
