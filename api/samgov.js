@@ -104,19 +104,36 @@ module.exports = async (req, res) => {
     limit: String(perState),
     offset: "0",
     ptype,
-    ncode: naics.join(","),
   };
   if (title) base.title = title;
   if (setAside) base.typeOfSetAside = setAside;
 
+  // SAM's `ncode` and `state` filters are single-value in practice — query each
+  // NAICS × state combo (single values, guaranteed to filter) and merge. Cap the
+  // combo count so a big NAICS list can't fan out into hundreds of calls.
+  const COMBO_CAP = 40;
+  const combos = [];
+  let capped = false;
+  for (const nc of naics) {
+    for (const st of states) {
+      if (combos.length >= COMBO_CAP) { capped = true; break; }
+      combos.push({ ncode: nc, state: st });
+    }
+    if (capped) break;
+  }
+  if (!combos.length) { // no state given → query by NAICS nationwide
+    for (const nc of naics.slice(0, COMBO_CAP)) combos.push({ ncode: nc });
+  }
+
   try {
-    // SAM's `state` filter is single-value in practice — query each state and merge.
+    const results = await Promise.all(
+      combos.map((c) => samQuery(Object.assign({}, base, c)).catch((e) => ({ ok: false, error: String((e && e.message) || e) })))
+    );
     const seen = {};
     const merged = [];
     let firstErr = null;
-    for (const st of states) {
-      const r = await samQuery(Object.assign({}, base, { state: st }));
-      if (!r.ok) { if (!firstErr) firstErr = r; continue; }
+    for (const r of results) {
+      if (!r || !r.ok) { if (r && !firstErr) firstErr = r; continue; }
       const rows = (r.data && r.data.opportunitiesData) || [];
       for (const o of rows) {
         const n = normalize(o);
@@ -130,9 +147,9 @@ module.exports = async (req, res) => {
     }
     merged.sort((a, b) => String(b.posted).localeCompare(String(a.posted)));
     res.status(200).json({
-      configured: true, ok: true, count: merged.length,
+      configured: true, ok: true, count: merged.length, capped,
       query: { naics, states, ptype, days, title: title || undefined, setAside: setAside || undefined },
-      opportunities: merged.slice(0, 60),
+      opportunities: merged.slice(0, 80),
     });
   } catch (e) {
     res.status(200).json({ configured: true, ok: false, error: String((e && e.message) || e).slice(0, 200) });
