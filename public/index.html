@@ -7701,7 +7701,7 @@ function renderGrow(){
   const body=document.getElementById('grow_body'); if(!body) return;
   const hook=(localStorage.getItem('klyfton_social_webhook')||'').trim();
   if(growTab==='content'){
-    const types=[['Educational tip','tip'],['Before / After','before-and-after'],['Seasonal hook','cold-climate seasonal'],['Myth-buster','myth-buster'],['Special offer','soft offer'],['Job spotlight','job spotlight']];
+    const types=[['Educational tip','tip'],['Before / After','before-and-after'],['Seasonal hook','cold-climate seasonal'],['Myth-buster','myth-buster'],['Special offer','soft offer'],['Job spotlight','job spotlight'],['⭐ Ask for review','Google review request — thank the customer and ask for an honest review, warm and short'],['📍 In-your-area','local job-site announcement — we are working in the area this week, book a free quote while the rig is close']];
     body.innerHTML=`<div class="jsa-card">
       <h4 style="margin:0 0 6px">Make a spray foam post</h4>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${types.map(function(t){return `<button class="btn btn-ghost" style="font-size:12px" onclick="growContent('${t[1]}','${t[1]}')">${t[0]}</button>`;}).join('')}</div>
