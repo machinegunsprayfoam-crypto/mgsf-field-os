@@ -1025,10 +1025,13 @@ canvas.chart{width:100%;height:100%}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <div class="form-group" style="flex:1;min-width:160px"><label class="form-label">States (comma-sep)</label><input class="admin-inp" id="gov_states" value="MT,ND,SD,WY"></div>
-            <div class="form-group" style="flex:1;min-width:160px"><label class="form-label">NAICS (comma-sep)</label><input class="admin-inp" id="gov_naics" value="238310,238160"></div>
+            <div class="form-group" style="flex:1;min-width:160px"><label class="form-label">NAICS (comma-sep)</label><input class="admin-inp" id="gov_naics" value="238310,238160,238190,238390,238990"></div>
             <div class="form-group" style="flex:1;min-width:150px"><label class="form-label">Set-aside</label>
               <select class="admin-inp" id="gov_setaside"><option value="">Any</option><option value="VSA">Veteran-Owned (VOSB)</option><option value="SDVOSBC">Service-Disabled Vet (SDVOSB)</option><option value="SBA">Total Small Business</option></select></div>
           </div>
+          <div style="font-size:10px;color:var(--t2);margin:2px 0 4px">Your NAICS profile — tap to add/remove. <b>Core 5</b> are your bread-and-butter.
+            <span style="float:right"><a href="#" onclick="govNaicsSet('core');return false" style="color:var(--cy)">Core 5</a> · <a href="#" onclick="govNaicsSet('all');return false" style="color:var(--cy)">All</a> · <a href="#" onclick="govNaicsSet('clear');return false" style="color:var(--cy)">Clear</a></span></div>
+          <div id="gov_naics_chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
           <button class="btn btn-orange" style="width:100%;margin-top:4px" id="govSearchBtn" onclick="govSearch()">🔍 Search SAM.gov</button>
         </div>
 
@@ -5606,7 +5609,50 @@ async function govStatus(){
                               : '<span style="color:var(--yw)">Not connected — paste your free SAM.gov API key below.</span>';
   }catch(e){ s.innerHTML='<span style="color:var(--yw)">Not connected — paste your free SAM.gov API key below.</span>'; }
 }
-function renderGov(){ govStatus(); }
+// MGSF's real, verified federal NAICS profile (from the MOGS NaicsIntelligence profile).
+const MGSF_NAICS = [
+  {c:'238310', t:'Drywall & Insulation', tier:'Primary'},
+  {c:'238160', t:'Roofing', tier:'Core'},
+  {c:'238190', t:'Foundation/Structure/Exterior', tier:'Core'},
+  {c:'238390', t:'Other Building Finishing', tier:'Core'},
+  {c:'238990', t:'All Other Specialty Trade', tier:'Core'},
+  {c:'238170', t:'Siding', tier:'Secondary'},
+  {c:'238110', t:'Poured Concrete Foundation', tier:'Extra'},
+  {c:'238290', t:'Other Building Equipment', tier:'Extra'},
+  {c:'236220', t:'Commercial/Institutional Bldg', tier:'Extra'},
+  {c:'237990', t:'Heavy & Civil Engineering', tier:'Extra'},
+  {c:'237310', t:'Highway/Street/Bridge', tier:'Extra'},
+  {c:'561210', t:'Facilities Support Services', tier:'Extra'},
+  {c:'561790', t:'Other Services to Buildings', tier:'Extra'},
+  {c:'562998', t:'Misc Waste Mgmt (removal)', tier:'Extra'},
+  {c:'541620', t:'Environmental Consulting', tier:'Extra'},
+  {c:'541690', t:'Sci/Tech Consulting (BPI)', tier:'Extra'},
+];
+const MGSF_NAICS_CORE = ['238310','238160','238190','238390','238990'];
+function govNaicsCurrent(){ const e=document.getElementById('gov_naics'); return e? e.value.split(',').map(s=>s.trim()).filter(Boolean):[]; }
+function govNaicsWrite(arr){ const e=document.getElementById('gov_naics'); if(e) e.value=arr.join(','); govRenderNaicsChips(); }
+function govNaicsSet(mode){
+  if(mode==='core') govNaicsWrite(MGSF_NAICS_CORE.slice());
+  else if(mode==='all') govNaicsWrite(MGSF_NAICS.map(n=>n.c));
+  else if(mode==='clear') govNaicsWrite([]);
+}
+function govNaicsToggle(code){
+  const cur=govNaicsCurrent(); const i=cur.indexOf(code);
+  if(i>=0) cur.splice(i,1); else cur.push(code);
+  govNaicsWrite(cur);
+}
+function govRenderNaicsChips(){
+  const box=document.getElementById('gov_naics_chips'); if(!box) return;
+  const cur=govNaicsCurrent();
+  box.innerHTML=MGSF_NAICS.map(n=>{
+    const on=cur.indexOf(n.c)>=0;
+    const core=n.tier==='Primary'||n.tier==='Core';
+    return '<button class="btn '+(on?'btn-cyan':'btn-ghost')+'" style="font-size:10px;padding:4px 8px" '
+      +'onclick="govNaicsToggle(\''+n.c+'\')" title="'+esc(n.t)+'">'
+      +(core?'★ ':'')+n.c+' · '+esc(n.t)+'</button>';
+  }).join('');
+}
+function renderGov(){ govStatus(); govRenderNaicsChips(); }
 window.__govOpps = window.__govOpps || [];
 async function govSearch(){
   const out=document.getElementById('govResults'), btn=document.getElementById('govSearchBtn'); if(!out) return;

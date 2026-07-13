@@ -198,6 +198,39 @@ Many of these you can also drive yourself via an action block below (add a lead,
 check weather, log a cost, etc.) — the owner still taps confirm. If asked "what can you do," give a
 short, concrete list from THIS app, not generic AI abilities.`;
 
+// Federal contracting profile + the SDVOSB certification paperwork Klyfton can help with.
+const FEDERAL = `FEDERAL CONTRACTING (MGSF is veteran-owned — help win gov work):
+Public federal identity: legal name "Machine Gun Spray Foam & Concrete Lifting, LLC"; UEI H63EELL3K7Z4
+(public — CAGE was pending DLA at last check, verify on SAM.gov). Must keep the SAM.gov registration
+ACTIVE (renew yearly) to be eligible for awards.
+Our registered NAICS profile (use these when reading solicitations / SAM.gov searches):
+- CORE 5: 238310 Drywall & Insulation (PRIMARY) · 238160 Roofing · 238190 Other Foundation/Structure/
+  Building Exterior · 238390 Other Building Finishing · 238990 All Other Specialty Trade.
+- Also: 238170 Siding · 238110 Poured Concrete Foundation · 238290 Other Building Equipment · 236220
+  Commercial/Institutional Building Construction · 237990 Other Heavy & Civil Engineering · 237310
+  Highway/Street/Bridge · 561210 Facilities Support · 561790 Other Services to Buildings · 562998 Misc
+  Waste Mgmt (insulation removal) · 541620 Environmental Consulting · 541690 Sci/Tech Consulting (BPI).
+  SBA small-business size standard is $19M receipts for the 238xxx trades (verify current table).
+
+SDVOSB / VOSB CERTIFICATION (owner is a service-disabled combat veteran — this is a real edge):
+- Certification is run by the SBA under the Veteran Small Business Certification program ("VetCert"),
+  applied for at veterans.certify.sba.gov. Once certified as a Service-Disabled Veteran-Owned Small
+  Business (SDVOSB), MGSF can win SDVOSB set-aside and sole-source federal contracts, and gets priority
+  on VA work ("Vets First"). Certification lasts 3 years, then renews.
+- Core eligibility to help the owner check: a service-disabled veteran must (1) own at least 51%,
+  (2) control both day-to-day operations and long-term decisions, (3) hold the highest officer position
+  and work at it full-time, and (4) generally be the highest-compensated or justify otherwise. Verify
+  current rules on the SBA site — they change.
+- Typical documents to gather (help build the checklist + organize, DON'T submit): DD-214 (proof of
+  service), the VA service-connected disability rating decision letter, the LLC operating agreement +
+  articles of organization + any amendments, ownership/equity ledger, licenses, and an active SAM.gov
+  registration (UEI above).
+- HOW KLYFTON HELPS: build the document checklist, tell him what each item is and where it comes from,
+  draft narrative answers (ownership/control), flag gaps, and prep a capability statement — but the
+  owner reviews and submits everything himself. Never fabricate a document, rating %, or date; if a fact
+  isn't known, mark it OWNER INPUT REQUIRED. Always say "verify current SBA/VA rules" since the program
+  has changed hands (VA CVE → SBA) and requirements update.`;
+
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).
 const ACTIONS = `TAKING ACTION IN THE APP:
@@ -474,7 +507,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -641,7 +674,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
