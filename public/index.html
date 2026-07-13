@@ -352,13 +352,14 @@ canvas.chart{width:100%;height:100%}
 
   /* ── Field radio widget ── */
   .mg-radio{ position:fixed; left:14px; bottom:14px; z-index:60; font-family:var(--font, system-ui); }
-  .mg-radio-toggle{ display:none; width:46px; height:46px; border-radius:50%; border:1px solid rgba(34,211,238,.35);
+  .mg-radio-toggle{ display:none; width:46px; height:46px; border-radius:50%; border:1px solid rgba(34,211,238,.35); touch-action:none;
     background:rgba(10,10,18,.92); color:#e8e8f0; font-size:20px; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.5), 0 0 18px rgba(34,211,238,.15); }
   .mg-radio.collapsed .mg-radio-toggle{ display:block; }
   .mg-radio.collapsed .mg-radio-panel{ display:none; }
   .mg-radio-panel{ width:210px; background:rgba(12,12,20,.92); backdrop-filter:blur(10px);
     border:1px solid rgba(34,211,238,.22); border-radius:12px; padding:10px; box-shadow:0 8px 30px rgba(0,0,0,.55); }
-  .mg-radio-head{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--cy,#22d3ee); font-weight:700; margin-bottom:8px }
+  .mg-radio-head{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--cy,#22d3ee); font-weight:700; margin-bottom:8px; cursor:move; user-select:none; touch-action:none }
+  .mg-drag-grip{ color:var(--t2,#8a8a9a); margin-right:6px; cursor:move }
   .mg-radio-head button{ background:none; border:none; color:var(--t2,#8a8a9a); cursor:pointer; font-size:13px }
   .mg-radio-stations{ display:flex; flex-direction:column; gap:4px; margin-bottom:8px; max-height:150px; overflow:auto }
   .mg-st{ text-align:left; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); color:#d8d8e4;
@@ -6821,7 +6822,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-13-sidebar-scroll';
+const APP_BUILD = '2026-07-13-draggable-radio';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8075,7 +8076,7 @@ function renderGrow(){
 <div id="mgRadio" class="mg-radio collapsed">
   <button class="mg-radio-toggle" onclick="mgRadioToggle()" title="Field radio">📻</button>
   <div class="mg-radio-panel">
-    <div class="mg-radio-head"><span id="mgNow">📻 Field Radio</span><button onclick="mgRadioToggle()" title="Hide">▾</button></div>
+    <div class="mg-radio-head" title="Drag to move"><span><span class="mg-drag-grip">⠿</span><span id="mgNow">📻 Field Radio</span></span><button onclick="mgRadioToggle()" title="Hide">▾</button></div>
     <div class="mg-radio-stations" id="mgStations"></div>
     <div class="mg-radio-ctrl">
       <button id="mgPlay" onclick="mgPlayPause()">▶</button>
@@ -8249,7 +8250,42 @@ const MG_STATIONS=[
   {n:'🎺 Sonic Universe — jazz', u:'https://ice1.somafm.com/sonicuniverse-128-mp3'},
 ];
 let mgCur=-1, mgPlaying=false;
-function mgRadioToggle(){ const r=document.getElementById('mgRadio'); if(r) r.classList.toggle('collapsed'); }
+function mgRadioToggle(){ if(window.__mgDragged && (Date.now()-window.__mgDragged)<250) return; const r=document.getElementById('mgRadio'); if(r) r.classList.toggle('collapsed'); }
+// Draggable field radio — grab the header (or the collapsed 📻 button) and move it anywhere;
+// position is remembered per-device. Fixes it covering the sidebar icons.
+function mgApplyPos(){
+  try{ const p=JSON.parse(localStorage.getItem('mg_radio_pos')||'null');
+    if(p && isFinite(p.left) && isFinite(p.top)){ const r=document.getElementById('mgRadio');
+      if(r){ r.style.left=p.left+'px'; r.style.top=p.top+'px'; r.style.bottom='auto'; r.style.right='auto'; } }
+  }catch(e){}
+}
+function mgInitRadioDrag(){
+  const r=document.getElementById('mgRadio'); if(!r || r.dataset.drag) return; r.dataset.drag='1';
+  mgApplyPos();
+  let dragging=false, moved=false, sx=0, sy=0, ox=0, oy=0;
+  const start=e=>{
+    const t=e.target;
+    if(!(t.closest && t.closest('.mg-radio-head')) && !(t.classList && t.classList.contains('mg-radio-toggle'))) return;
+    const rect=r.getBoundingClientRect(); dragging=true; moved=false;
+    sx=e.clientX; sy=e.clientY; ox=rect.left; oy=rect.top;
+    r.style.left=ox+'px'; r.style.top=oy+'px'; r.style.bottom='auto'; r.style.right='auto';
+  };
+  const move=e=>{ if(!dragging) return; const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
+    const w=r.offsetWidth, h=r.offsetHeight;
+    let nx=Math.max(2,Math.min(window.innerWidth-w-2, ox+dx));
+    let ny=Math.max(56,Math.min(window.innerHeight-h-2, oy+dy));
+    r.style.left=nx+'px'; r.style.top=ny+'px'; e.preventDefault();
+  };
+  const end=()=>{ if(!dragging) return; dragging=false;
+    if(moved){ window.__mgDragged=Date.now(); const rect=r.getBoundingClientRect();
+      try{ localStorage.setItem('mg_radio_pos', JSON.stringify({left:Math.round(rect.left), top:Math.round(rect.top)})); }catch(e){} }
+  };
+  r.addEventListener('pointerdown',start);
+  window.addEventListener('pointermove',move,{passive:false});
+  window.addEventListener('pointerup',end); window.addEventListener('pointercancel',end);
+}
+try{ if(document.readyState!=='loading') mgInitRadioDrag(); else window.addEventListener('DOMContentLoaded', mgInitRadioDrag); }catch(e){}
 function mgRenderStations(){
   const box=document.getElementById('mgStations'); if(!box) return;
   box.innerHTML=MG_STATIONS.map((s,i)=>`<button class="mg-st${i===mgCur?' on':''}" onclick="mgPlayStation(${i})">${s.n}</button>`).join('');
