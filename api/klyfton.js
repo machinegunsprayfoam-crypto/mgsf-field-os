@@ -354,7 +354,7 @@ current info.`,
   },
 };
 
-const WEB_TOOL = { type: "web_search_20260209", name: "web_search", max_uses: 4 };
+const WEB_TOOL = { type: "web_search_20260209", name: "web_search", max_uses: 2 };
 
 function textFrom(content) {
   return (content || [])
@@ -532,10 +532,12 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter)
   messages.push({ role: "user", content: buildUserContent(userText, attachments) });
   const data = await callClaude(key, {
     model: WORKER_MODEL,
-    // Headroom so adaptive thinking can't eat the whole budget and truncate the
-    // answer — estimates reason through board-foot math and need room for BOTH
-    // the thinking and the final quote (Sonnet 5 adaptive thinking guidance).
-    max_tokens: 8000,
+    // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
+    // and fast (the synth writes the full final answer). Big worker budgets + adaptive
+    // thinking were pushing complex, multi-mind asks past the 60s function limit and
+    // making Klyfton time out ("ran long"). 4000 leaves room for thinking + a focused
+    // answer without the latency blow-up.
+    max_tokens: 4000,
     system,
     thinking: { type: "adaptive" },
     tools: [WEB_TOOL],
