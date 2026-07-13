@@ -12,7 +12,7 @@
 // only (this file runs as a Vercel function, never shipped to the browser). A SAM.gov public API key
 // is low-risk — it only authenticates calls to public opportunity data and is regenerable for free at
 // sam.gov. Leave "" to require the env var or an in-app key; fill it to bake it in. Env var overrides.
-const DEFAULT_KEY = "";
+const DEFAULT_KEY = "SAM-a61acfcd-4511-4a92-a775-8333eab001e1";
 const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || DEFAULT_KEY;
 
 // Documented endpoint, with the /prod variant as a fallback (both are served).
