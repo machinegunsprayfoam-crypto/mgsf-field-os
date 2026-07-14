@@ -1229,7 +1229,7 @@ canvas.chart{width:100%;height:100%}
         <div class="admin-section">
           <div class="admin-section-title">🧾 TIME CARDS — REVIEW · EDIT · APPROVE · SEND</div>
           <div style="font-size:10px;color:var(--t2);margin-bottom:8px">The crew clocks in/out on the Job with their PIN. Review their hours here, fix any entry, approve each card, then email it to Talia for payroll.</div>
-          <div class="jsa-actions" style="margin-bottom:10px">
+          <div class="jsa-actions" style="margin-bottom:8px">
             <select id="tc_period" class="admin-inp" style="max-width:150px" onchange="renderTimecards()">
               <option value="week">This week</option>
               <option value="last">Last week</option>
@@ -1237,6 +1237,11 @@ canvas.chart{width:100%;height:100%}
             </select>
             <button class="btn btn-ghost" onclick="exportTimesheet()">⬇ CSV</button>
             <button class="btn btn-cyan" onclick="sendTimecards()">📤 Send to Talia</button>
+          </div>
+          <div class="jsa-actions" style="margin-bottom:10px;font-size:12px;align-items:center">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="tc_round" onchange="tcToggleRound(this.checked)"> Round hours to nearest 15 min</label>
+            <button class="btn btn-ghost" style="font-size:11px" onclick="tcUnlockPeriod()" title="Unlock this period's cards to correct after sending">🔓 Unlock period</button>
+            <span style="color:var(--t2)">Over 40 h/wk flags as OT.</span>
           </div>
           <div id="tc_cards"></div>
         </div>
@@ -2100,7 +2105,7 @@ function switchModule(id){
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
-  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); }
+  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.tcReminderCheck) tcReminderCheck(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
@@ -7421,6 +7426,26 @@ document.addEventListener('click',()=>{
     return arr.some(j=>String(j.created||'').slice(0,10)===today && ((j.jobId&&String(j.jobId)===String(job.id))||(j.job||'').toLowerCase()===jn)); }catch(e){ return false; } }
   function tcLocal(iso){ try{ const d=new Date(iso), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); }catch(e){ return ''; } }
   function tcPromptPin(label){ return (typeof prompt==='function')?prompt(label):''; }
+  // Payroll settings
+  function tcRound15(){ return LS('tc_round15', false)===true || LS('tc_round15',false)==='true'; }
+  const OT_THRESHOLD = 40;
+  // Raw shift hours, then optionally rounded to the nearest quarter-hour for payroll.
+  function tcRawHours(p){ return p && p.out ? ((new Date(p.out)-new Date(p.in))/3.6e6) : 0; }
+  function tcHours(p){ let h=tcRawHours(p); if(tcRound15()) h=Math.round(h*4)/4; return h; }
+  function tcLocked(p){ return !!(p && p.locked); }
+  window.tcToggleRound=function(v){ SS('tc_round15', !!v); if(window.renderTimecards) renderTimecards(); if(window.renderClock) renderClock();
+    notify('Rounding to nearest 15 min '+(v?'ON':'OFF'),'info'); };
+  // Best-effort GPS stamp on clock-in (needs the phone to allow location; never blocks the punch).
+  function tcStampGeo(punchId){
+    try{ if(!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(function(pos){
+        try{ const arr=LS('tc_punches',[]); const p=arr.find(x=>x.id===punchId); if(!p) return;
+          p.geo={lat:+pos.coords.latitude.toFixed(5), lng:+pos.coords.longitude.toFixed(5), acc:Math.round(pos.coords.accuracy||0)};
+          SS('tc_punches',arr); if(window.renderTimecards) renderTimecards();
+        }catch(e){}
+      }, function(){}, {enableHighAccuracy:true, timeout:8000, maximumAge:60000});
+    }catch(e){}
+  }
 
   window.renderClock=function(){
     const punches=LS('tc_punches',[]);
@@ -7454,8 +7479,10 @@ document.addEventListener('click',()=>{
       if(open){ notify(who.name+' is already clocked in','info'); return false; }
       const job=((typeof appState!=='undefined'&&appState.jobs)||[]).find(j=>String(j.id)===String(jobId));
       if(job && !tcHasJSAToday(job)) notify('Reminder: no JSA signed today for '+jobName,'alert');
-      punches.unshift({id:'P'+Date.now(), name:who.name, job:jobName, jobId:jobId||'', in:nowISO(), out:null, approved:false});
+      const pid='P'+Date.now();
+      punches.unshift({id:pid, name:who.name, job:jobName, jobId:jobId||'', in:nowISO(), out:null, approved:false});
       notify(who.name+' clocked IN'+(jobName?(' on '+jobName):''),'success'); playSound&&playSound('success');
+      tcStampGeo(pid);   // best-effort location stamp
     } else {
       if(!open){ notify(who.name+' is not clocked in','info'); return false; }
       open.out=nowISO(); const hrs=((new Date(open.out)-new Date(open.in))/3.6e6).toFixed(2);
@@ -7501,53 +7528,89 @@ document.addEventListener('click',()=>{
   }
   window.renderTimecards=function(){
     const box=$('tc_cards'); if(!box) return;
+    // reflect the rounding toggle state
+    const rt=$('tc_round'); if(rt) rt.checked=tcRound15();
     const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode);
     const punches=LS('tc_punches',[]).filter(p=>{ const t=new Date(p.in); if(s&&t<s) return false; if(e&&t>=e) return false; return true; });
     if(!punches.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No time entries in this period.</p>'; return; }
     const byName={}; punches.forEach(p=>{ (byName[p.name]=byName[p.name]||[]).push(p); });
+    const weekly = (mode==='week'||mode==='last');
     box.innerHTML=Object.keys(byName).sort().map(name=>{
       const list=byName[name].sort((a,b)=>String(b.in).localeCompare(String(a.in)));
-      const tot=list.reduce((a,p)=>a+(p.out?((new Date(p.out)-new Date(p.in))/3.6e6):0),0);
+      const tot=list.reduce((a,p)=>a+tcHours(p),0);
+      const ot = weekly && tot>OT_THRESHOLD ? (tot-OT_THRESHOLD) : 0;
       const allApproved=list.every(p=>p.approved);
-      const rows=list.map(p=>{ const hrs=p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'—';
-        return `<div class="log-row" style="gap:6px;flex-wrap:wrap;align-items:center">
-          <span style="flex:1;min-width:150px"><span style="color:var(--t2);font-size:11px">${esc(p.job||'(no job)')}</span><br>
-            <input type="datetime-local" class="admin-inp" style="font-size:11px;padding:2px 4px;width:auto" value="${tcLocal(p.in)}" onchange="editPunch('${p.id}','in',this.value)">
-            <span style="color:var(--t2)">→</span>
-            <input type="datetime-local" class="admin-inp" style="font-size:11px;padding:2px 4px;width:auto" value="${p.out?tcLocal(p.out):''}" onchange="editPunch('${p.id}','out',this.value)"></span>
+      const anyLocked=list.some(tcLocked);
+      const rows=list.map(p=>{ const hrs=p.out?tcHours(p).toFixed(2):'—'; const lk=tcLocked(p);
+        const geo=p.geo?` <a href="https://maps.google.com/?q=${p.geo.lat},${p.geo.lng}" target="_blank" title="Clock-in location (±${p.geo.acc||'?'}m)" style="text-decoration:none">📍</a>`:'';
+        const inp=(field,val)=> lk
+          ? `<span style="font-size:11px;color:var(--t2)">${val?fmt(p[field]):'—'}</span>`
+          : `<input type="datetime-local" class="admin-inp" style="font-size:11px;padding:2px 4px;width:auto" value="${val?tcLocal(p[field]):''}" onchange="editPunch('${p.id}','${field}',this.value)">`;
+        return `<div class="log-row" style="gap:6px;flex-wrap:wrap;align-items:center${lk?';opacity:.85':''}">
+          <span style="flex:1;min-width:150px"><span style="color:var(--t2);font-size:11px">${esc(p.job||'(no job)')}${geo}${lk?' 🔒':''}</span><br>
+            ${inp('in',true)} <span style="color:var(--t2)">→</span> ${inp('out',!!p.out)}</span>
           <span style="min-width:56px;text-align:right;font-weight:700">${hrs} h ${p.approved?'✅':''}</span>
-          <button class="btn btn-ghost" style="font-size:10px;padding:2px 7px" onclick="delPunch('${p.id}')">🗑</button></div>`; }).join('');
-      return `<div class="jsa-card"><div class="row" style="justify-content:space-between;align-items:center;gap:8px">
-        <h4 style="margin:0">${esc(name)} — ${tot.toFixed(2)} h</h4>
+          ${lk?'':`<button class="btn btn-ghost" style="font-size:10px;padding:2px 7px" onclick="delPunch('${p.id}')">🗑</button>`}</div>`; }).join('');
+      const otBadge = ot>0 ? `<span class="badge" style="font-size:9px;background:rgba(200,16,46,.15);color:var(--red);border:1px solid var(--red);margin-left:6px">⚠ ${ot.toFixed(2)} h OT</span>` : '';
+      return `<div class="jsa-card"${ot>0?' style="border-color:var(--red)"':''}><div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+        <h4 style="margin:0">${esc(name)} — ${tot.toFixed(2)} h${otBadge}${anyLocked?' <span style="font-size:11px;color:var(--t2)">🔒 sent</span>':''}</h4>
         <button class="btn ${allApproved?'btn-ghost':'btn-primary'}" style="font-size:11px" onclick="approveCard('${esc(name)}')">${allApproved?'Approved ✓':'Approve'}</button>
       </div>${rows}</div>`;
     }).join('');
   };
   window.editPunch=function(id,field,val){ const punches=LS('tc_punches',[]); const p=punches.find(x=>x.id===id); if(!p) return;
+    if(tcLocked(p)){ notify('That card was sent to payroll and is locked. Unlock it in Time Cards to change it.','alert'); renderTimecards(); return; }
     if(!val){ if(field==='out') p.out=null; } else { try{ p[field]=new Date(val).toISOString(); }catch(e){ return; } }
     p.approved=false; SS('tc_punches',punches); renderTimecards(); notify('Time updated','success'); };
-  window.delPunch=function(id){ if(typeof confirm==='function' && !confirm('Delete this time entry?')) return; SS('tc_punches',LS('tc_punches',[]).filter(x=>x.id!==id)); renderTimecards(); if(window.renderClock) renderClock(); notify('Entry deleted','info'); };
+  window.delPunch=function(id){ const punches=LS('tc_punches',[]); const p=punches.find(x=>x.id===id);
+    if(p && tcLocked(p)){ notify('Locked (sent to payroll) — can\'t delete.','alert'); return; }
+    if(typeof confirm==='function' && !confirm('Delete this time entry?')) return; SS('tc_punches',punches.filter(x=>x.id!==id)); renderTimecards(); if(window.renderClock) renderClock(); notify('Entry deleted','info'); };
   window.approveCard=function(name){ const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode); const punches=LS('tc_punches',[]); let openWarn=false;
     punches.forEach(p=>{ if(p.name!==name) return; const t=new Date(p.in); if(s&&t<s) return; if(e&&t>=e) return; if(!p.out){ openWarn=true; return; } p.approved=true; p.approvedBy=(window._currentUser||'owner'); p.approvedAt=nowISO(); });
     SS('tc_punches',punches); renderTimecards();
     notify(openWarn?(name+' — approved the closed entries; one is still clocked in'):(name+'’s time card approved'), openWarn?'alert':'success'); };
+  // Unlock a whole period's cards (owner) if a correction is needed after send.
+  window.tcUnlockPeriod=function(){ const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode); const punches=LS('tc_punches',[]); let n=0;
+    punches.forEach(p=>{ const t=new Date(p.in); if(s&&t<s) return; if(e&&t>=e) return; if(p.locked){ p.locked=false; n++; } });
+    SS('tc_punches',punches); renderTimecards(); notify(n?('Unlocked '+n+' entries — edit, then re-send'):'Nothing locked in this period','info'); };
   window.sendTimecards=function(){
     const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode);
-    const punches=LS('tc_punches',[]).filter(p=>{ const t=new Date(p.in); if(s&&t<s) return false; if(e&&t>=e) return false; return true; });
-    if(!punches.length){ notify('No time entries to send','alert'); return; }
+    const punches=LS('tc_punches',[]);
+    const inPeriod=p=>{ const t=new Date(p.in); if(s&&t<s) return false; if(e&&t>=e) return false; return true; };
+    const rows=punches.filter(inPeriod);
+    if(!rows.length){ notify('No time entries to send','alert'); return; }
+    const notAppr=rows.filter(p=>p.out && !p.approved).length;
+    if(notAppr && typeof confirm==='function' && !confirm(notAppr+' entr'+(notAppr>1?'ies are':'y is')+' not approved yet. Send anyway?')) return;
     let office=LS('tc_office_email',''); if(!office){ office=((typeof prompt==='function'?prompt('Talia / office email for time cards:'):'')||'').trim(); if(office) SS('tc_office_email',office); }
     const label=mode==='week'?'this week':mode==='last'?'last week':'all time';
-    const byName={}; punches.forEach(p=>{ (byName[p.name]=byName[p.name]||[]).push(p); });
-    let body='MGSF TIME CARDS — '+label+'\nGenerated '+new Date().toLocaleString()+'\n\n';
-    Object.keys(byName).sort().forEach(name=>{ const list=byName[name]; const tot=list.reduce((a,p)=>a+(p.out?((new Date(p.out)-new Date(p.in))/3.6e6):0),0);
-      body+=name+' — '+tot.toFixed(2)+' h ('+(list.every(p=>p.approved)?'APPROVED':'NOT fully approved')+')\n';
-      list.sort((a,b)=>String(a.in).localeCompare(String(b.in))).forEach(p=>{ const hrs=p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'open'; body+='   '+fmt(p.in)+' → '+(p.out?fmt(p.out):'(open)')+'   '+hrs+' h   '+(p.job||'')+'\n'; });
+    const byName={}; rows.forEach(p=>{ (byName[p.name]=byName[p.name]||[]).push(p); });
+    let body='MGSF TIME CARDS — '+label+'\nGenerated '+new Date().toLocaleString()+(tcRound15()?'\n(hours rounded to nearest 15 min)':'')+'\n\n';
+    Object.keys(byName).sort().forEach(name=>{ const list=byName[name]; const tot=list.reduce((a,p)=>a+tcHours(p),0); const ot=(mode!=='all'&&tot>OT_THRESHOLD)?(tot-OT_THRESHOLD):0;
+      body+=name+' — '+tot.toFixed(2)+' h'+(ot>0?(' ('+ot.toFixed(2)+' h OT)'):'')+' ('+(list.every(p=>p.approved)?'APPROVED':'NOT fully approved')+')\n';
+      list.sort((a,b)=>String(a.in).localeCompare(String(b.in))).forEach(p=>{ const hrs=p.out?tcHours(p).toFixed(2):'open'; body+='   '+fmt(p.in)+' → '+(p.out?fmt(p.out):'(open)')+'   '+hrs+' h   '+(p.job||'')+(p.geo?('  [GPS '+p.geo.lat+','+p.geo.lng+']'):'')+'\n'; });
       body+='\n'; });
+    // LOCK the sent, closed entries so nothing changes after payroll.
+    let locked=0; punches.forEach(p=>{ if(inPeriod(p) && p.out){ p.locked=true; if(!p.approved){ p.approved=true; p.approvedBy=(window._currentUser||'owner'); p.approvedAt=nowISO(); } locked++; } });
+    SS('tc_punches',punches);
     const subj='MGSF Time Cards — '+label+' — '+new Date().toLocaleDateString();
     const mailto='mailto:'+encodeURIComponent(office||'')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
     if(window.showKlyftonDraft){ if(!appState.chatOpen && window.toggleChat) toggleChat(); showKlyftonDraft('TIME CARDS → '+(office||'office'), body, office?mailto:null); }
     else if(office){ window.open(mailto,'_blank'); }
-    notify('Time cards ready — review & send to Talia','success');
+    renderTimecards();
+    notify('Time cards sent + locked ('+locked+' entries) — review the email & hit send','success');
+  };
+  // Weekend nudge: Sun/Mon, remind the owner if last week has unapproved time (once per day).
+  // A reminder only — it never schedules work, so it respects the no-Sunday-work rule.
+  window.tcReminderCheck=function(){
+    try{
+      if(appRole!=='full') return;                 // owner only
+      const day=new Date().getDay(); if(day!==0 && day!==1) return;
+      const key='tc_reminded_'+new Date().toISOString().slice(0,10); if(LS(key,false)) return;
+      const [s,e]=tcPeriodRange('last'); const punches=LS('tc_punches',[]);
+      const pending=punches.filter(p=>{ const t=new Date(p.in); return (!s||t>=s)&&(!e||t<e)&&p.out&&!p.approved; });
+      if(pending.length){ SS(key,true);
+        notify('🧾 '+pending.length+' time entr'+(pending.length>1?'ies':'y')+' from last week need review → Admin → Time Cards','alert'); }
+    }catch(e){}
   };
   window.exportTimesheet=function(){
     const punches=LS('tc_punches',[]); if(!punches.length){ notify('No punches to export','alert'); return; }
@@ -7565,7 +7628,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-timeclock-timecards';
+const APP_BUILD = '2026-07-14-payroll-ready';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
