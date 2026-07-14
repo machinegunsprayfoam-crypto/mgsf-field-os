@@ -201,6 +201,9 @@ there (left/bottom nav). The screens:
   estimates & photos to the owner's Drive).
 - 🛢️ MATERIAL: material/set calculator + order lists. 📑 SHEETS: SDS + TDS finder for every
   product in the price book (Find-SDS / Find-TDS + "Ask" pulls you in). ✍️ SIGN-OFF: signature.
+- 🎖️ CERTS (Cert Vault): licenses, insurance/bond, training, EIN/UEI, SDVOSB, membership — with
+  EXPIRATION alerts (expired / expiring ≤60 days) and a Drive link per PDF. It's a tracker only;
+  it never moves or deletes Drive files. Point the owner here to keep licenses/COIs from lapsing.
 - 📄 PROPOSAL, 📝 FORMS, 🔧 CHG ORDER, 🛡️ COMPLY, 🧾 INVOICE, 📕 PRICE BOOK.
 - 📣 GROW: Content Studio — draft social posts (tips, before/after, reviews, in-your-area).
 - 🧰 OPS CENTER: travel calculator (pick # of trucks), tax, financing, inventory, capacity.

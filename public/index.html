@@ -507,6 +507,9 @@ canvas.chart{width:100%;height:100%}
       <div class="nav-item" onclick="switchModule('sheets');renderSheets()" id="nav-sheets">
         <div class="nav-icon">📑</div><div class="nav-label">SHEETS</div>
       </div>
+      <div class="nav-item" onclick="switchModule('certs');renderCerts()" id="nav-certs">
+        <div class="nav-icon">🎖️</div><div class="nav-label">CERTS</div>
+      </div>
       <div class="nav-item" onclick="switchModule('signoff');renderSignoff()" id="nav-signoff">
         <div class="nav-icon">✍️</div><div class="nav-label">SIGN-OFF</div>
       </div>
@@ -1008,6 +1011,20 @@ canvas.chart{width:100%;height:100%}
       </div>
 
       <!-- ADMIN MODULE -->
+      <div id="mod-certs" class="module">
+        <div class="row" style="justify-content:space-between;margin-bottom:4px">
+          <h2 style="font-size:16px;color:var(--or)">🎖️ CERT VAULT</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Your licenses, insurance, bonds & training in one place with <b>expiration alerts</b> — a lapsed license or COI kills a bid. Add a Drive link to each so the actual PDF is one tap away. Nothing here touches or moves your Drive files. Backs up with everything else.</div>
+        <div id="certSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn btn-orange" onclick="certOpenNew()">➕ Add certification</button>
+          <button class="btn btn-ghost" onclick="certSeedFromDrive()" id="certSeedBtn" title="Pre-load the certs found in your Drive">↧ Load my Drive certs</button>
+        </div>
+        <div id="certList" style="font-size:12px;color:var(--t2)">Loading…</div>
+      </div>
+
       <div id="mod-sheets" class="module">
         <div class="row" style="justify-content:space-between;margin-bottom:4px">
           <h2 style="font-size:16px;color:var(--or)">📑 DATA SHEETS — SDS &amp; TDS</h2>
@@ -1594,6 +1611,7 @@ let appState = {
   estimates: lsArr('estimates'),
   memory: lsArr('memory'),
   crew: lsArr('crew'),
+  certs: lsArr('certs'),            // Cert Vault — licenses/insurance/training with expiry tracking
   chatHistory: lsArr('chatHistory'), // Klyfton's conversation — persisted so it survives reloads/sessions
 
   scopeItems: [],
@@ -2003,6 +2021,7 @@ function switchModule(id){
   if(id==='photos'){ if(window.driveStatus) driveStatus(); }
   if(id==='gov'){ if(window.renderGov) renderGov(); }
   if(id==='sheets'){ if(window.renderSheets) renderSheets(); }
+  if(id==='certs'){ if(window.renderCerts) renderCerts(); }
   if(id==='intel') setTimeout(()=>drawCharts(),100);
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
@@ -5714,6 +5733,106 @@ function sheetsAsk(i){
   if(window.sendChat) setTimeout(()=>sendChat(),150);
 }
 
+// ================= CERT VAULT (🎖️ CERTS tab) =================
+const CERT_TYPES = ['License','Insurance','Bond','Training','Registration','Tax/EIN','SDVOSB','Membership','Vendor','Other'];
+// Real certs found in the owner's Drive — offered as a one-tap seed (dates left blank for him to fill).
+const CERT_SEED = [
+  {name:'MT Contractor Registration/License', type:'License', issuer:'MT Dept of Labor & Industry', driveId:'19rHd6UOqOaEuHIQ_WcO5eiVqp5yFppXY'},
+  {name:'EIN / UEI Record', type:'Tax/EIN', issuer:'IRS / SAM.gov', driveId:'1nzkPThmdefbha5GntZiLtlp9Sopk5sj1'},
+  {name:'ProFoam Applicator Training', type:'Training', issuer:'ProFoam', issued:'2025-03-06', driveId:'1Qm6LQUYh3U4lhxWFrEUHJ9f_P3THubHH'},
+  {name:'BPI Building Science Principles', type:'Training', issuer:'BPI', driveId:'1qGFjyG6-iDsKVN68w1K0Cxyg-jBkVba_'},
+  {name:'Behner LLC Certificate of Membership 2025', type:'Membership', issuer:'MT SOS', driveId:'1_LVPYBcYn-sQ2KRPv14pI-jkDrCGBFLj'},
+  {name:'ProFoam & NCFI Customer Account (signed)', type:'Vendor', issuer:'ProFoam/NCFI', driveId:'1EqrQwgJdHPfwobtFYY9wZEV2xJUY-FXg'},
+];
+function certDriveLink(id){ return id ? ('https://drive.google.com/file/d/'+id+'/view') : ''; }
+function certDaysLeft(expires){ if(!expires) return null; const d=Math.ceil((new Date(expires+'T00:00:00')-new Date())/86400000); return isFinite(d)?d:null; }
+function certStatus(expires){
+  const d=certDaysLeft(expires);
+  if(d===null) return {label:'No date', color:'var(--t2)', rank:2};
+  if(d<0) return {label:'EXPIRED '+(-d)+'d ago', color:'var(--red,#ef4444)', rank:0};
+  if(d<=60) return {label:'Expires in '+d+'d', color:'var(--yw,#eab308)', rank:1};
+  return {label:'Valid · '+d+'d', color:'var(--gr,#22c55e)', rank:3};
+}
+function certSeedFromDrive(){
+  if(!appState.certs) appState.certs=[];
+  let added=0;
+  CERT_SEED.forEach(s=>{
+    if(appState.certs.some(c=>c.name===s.name)) return;
+    appState.certs.push({id:'c'+(Date.now()+added), name:s.name, type:s.type||'Other', issuer:s.issuer||'',
+      number:'', issued:s.issued||'', expires:'', link:certDriveLink(s.driveId), notes:''});
+    added++;
+  });
+  save('certs');
+  try{ notify(added?('Loaded '+added+' certs from Drive — add expiry dates'):'Already loaded','success'); }catch(e){}
+  renderCerts();
+}
+function certOpenNew(){ certEdit(null); }
+function certEdit(id){
+  const c=(appState.certs||[]).find(x=>x.id===id) || {id:'', name:'', type:'License', issuer:'', number:'', issued:'', expires:'', link:'', notes:''};
+  const opt=CERT_TYPES.map(t=>`<option value="${t}"${t===c.type?' selected':''}>${t}</option>`).join('');
+  showModal(`<h3 style="color:var(--or);margin-bottom:10px">${id?'Edit':'Add'} certification</h3>
+    <div class="form-group"><label class="form-label">Name *</label><input class="admin-inp" id="cf_name" value="${esc(c.name)}" placeholder="MT Contractor License"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Type</label><select class="admin-inp" id="cf_type">${opt}</select></div>
+      <div class="form-group" style="flex:1;min-width:130px"><label class="form-label">Issuer</label><input class="admin-inp" id="cf_issuer" value="${esc(c.issuer)}"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Number</label><input class="admin-inp" id="cf_number" value="${esc(c.number)}"></div>
+      <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Issued</label><input class="admin-inp" id="cf_issued" type="date" value="${esc(c.issued)}"></div>
+      <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Expires</label><input class="admin-inp" id="cf_expires" type="date" value="${esc(c.expires)}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Drive link (PDF)</label><input class="admin-inp" id="cf_link" value="${esc(c.link)}" placeholder="https://drive.google.com/file/d/…/view"></div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="admin-inp" id="cf_notes" value="${esc(c.notes)}"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-orange" onclick="certSave('${id||''}')">Save</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      ${id?`<button class="btn btn-ghost" style="color:#ef4444;margin-left:auto" onclick="certDelete('${id}')">Delete</button>`:''}
+    </div>`);
+}
+function certSave(id){
+  const v=k=>((document.getElementById(k)||{}).value||'').trim();
+  const name=v('cf_name'); if(!name){ try{notify('Name required','alert');}catch(e){} return; }
+  if(!appState.certs) appState.certs=[];
+  const rec={ name, type:v('cf_type')||'Other', issuer:v('cf_issuer'), number:v('cf_number'),
+    issued:v('cf_issued'), expires:v('cf_expires'), link:v('cf_link'), notes:v('cf_notes') };
+  if(id){ const c=appState.certs.find(x=>x.id===id); if(c) Object.assign(c,rec); }
+  else { rec.id='c'+Date.now(); appState.certs.push(rec); }
+  save('certs'); closeModal(); renderCerts();
+  try{ notify('Saved: '+name,'success'); }catch(e){}
+}
+function certDelete(id){
+  const c=(appState.certs||[]).find(x=>x.id===id);
+  if(!confirm('Remove "'+((c&&c.name)||'this')+'" from the Cert Vault?\n\nThis only removes the tracker entry — your Drive file is NOT touched.')) return;
+  appState.certs=(appState.certs||[]).filter(x=>x.id!==id); save('certs'); closeModal(); renderCerts();
+}
+function renderCerts(){
+  const list=document.getElementById('certList'), sum=document.getElementById('certSummary'); if(!list) return;
+  const certs=(appState.certs||[]).slice().sort((a,b)=>certStatus(a.expires).rank-certStatus(b.expires).rank);
+  if(sum){
+    const exp=certs.filter(c=>{const d=certDaysLeft(c.expires);return d!==null&&d<0;}).length;
+    const soon=certs.filter(c=>{const d=certDaysLeft(c.expires);return d!==null&&d>=0&&d<=60;}).length;
+    const nod=certs.filter(c=>!c.expires).length;
+    sum.innerHTML=[
+      certs.length?`<span class="badge" style="background:rgba(34,197,94,.15);color:var(--gr)">${certs.length} on file</span>`:'',
+      exp?`<span class="badge" style="background:rgba(239,68,68,.18);color:#ef4444">${exp} EXPIRED</span>`:'',
+      soon?`<span class="badge" style="background:rgba(234,179,8,.18);color:#eab308">${soon} expiring ≤60d</span>`:'',
+      nod?`<span class="badge" style="background:rgba(138,138,154,.15);color:var(--t2)">${nod} need a date</span>`:'',
+    ].filter(Boolean).join('');
+  }
+  if(!certs.length){ list.innerHTML='<div style="color:var(--t2)">No certs yet. Tap <b>↧ Load my Drive certs</b> to pull in the ones found in your Drive, or <b>➕ Add certification</b>.</div>'; return; }
+  list.innerHTML=certs.map(c=>{
+    const s=certStatus(c.expires);
+    return '<div class="log-row" style="align-items:center">'
+      +'<div style="min-width:0"><div style="color:var(--t1);font-size:12px;overflow-wrap:anywhere">'+esc(c.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--t2)">'+esc(c.type)+(c.issuer?(' · '+esc(c.issuer)):'')+(c.number?(' · #'+esc(c.number)):'')+'</div>'
+      +'<div style="font-size:11px;color:'+s.color+';font-weight:600;margin-top:2px">'+s.label+'</div></div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
+      +(c.link?('<a class="btn btn-ghost" style="font-size:11px;padding:5px 8px" target="_blank" rel="noopener" href="'+esc(c.link)+'">📄 PDF</a>'):'')
+      +'<button class="btn btn-ghost" style="font-size:11px;padding:5px 8px" onclick="certEdit(\''+c.id+'\')">✎ Edit</button>'
+      +'</div></div>';
+  }).join('');
+}
+
 // ================= Sidebar resize (tap & drag) =================
 function initNavResize(){
   const sb=document.getElementById('sidebar'), h=document.getElementById('navResize'); if(!sb||!h) return;
@@ -6822,7 +6941,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-13-draggable-radio';
+const APP_BUILD = '2026-07-13-cert-vault';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8111,7 +8230,7 @@ async function driveBackup(){
   const done=()=>{ if(btn) btn.disabled=false; };
   try{
     const la=k=>{ try{return Array.isArray(appState[k])?appState[k]:[];}catch(e){return [];} };
-    const collections={ leads:la('leads'), jobs:la('jobs'), estimates:la('estimates') };
+    const collections={ leads:la('leads'), jobs:la('jobs'), estimates:la('estimates'), certs:la('certs') };
     const r1=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'backup',collections,webappUrl:cfg.url,token:cfg.token})});
     const j1=await r1.json();
     if(!j1.configured){ out.innerHTML='<span style="color:var(--yw)">Not connected — paste your Apps Script /exec URL above, tap Save URL, then try again.</span>'; return done(); }
