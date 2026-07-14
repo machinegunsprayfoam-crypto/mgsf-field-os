@@ -177,6 +177,39 @@ records shown in LEADS ON FILE / JOBS ON FILE below. If those lists are empty or
 owner plainly that there are no leads/jobs on file yet — do NOT make up a company name, a follow-up,
 or a "went quiet" reminder. Real records only.`;
 
+// Real TDS specs for the products MGSF runs — sourced from the owner's own MGSF_Foam_Spec_Sheet.csv
+// (Drive). Yields are BF/set. Always tell the crew to confirm processing temps/pressures/cure against
+// the PRINTED TDS on the rig; the full master sheet + per-product TDS PDFs live in the owner's Drive
+// ("NCFI Technical Data Sheets" folder + Product Data Sheets + MGSF_Foam_Spec_Sheet.csv).
+const FOAM_SPECS = `FOAM SPECS WE RUN (from our MGSF_Foam_Spec_Sheet — verify against the printed TDS on the rig):
+CLOSED-CELL:
+- NCFI InsulStar 11-036 (2.0#): ~4,000 BF/set · R-7.1/in · HFO
+- NCFI InsulStar 1.7 (1.7#): ~9,000 BF/set · HFO · high-yield
+- NCFI InsulBloc 11-037 (2.0#): HFO · code ER-0340 (commercial)
+- NCFI AgriThane (2.0#): HFO · ag buildings (natural/black)
+- ProFoam ProSeal 2.0 HFO (2.0#): GWP 1 · code ER-1017 · summer/winter blends
+- ProFoam ProSeal Plus 1.7 HFO (1.7#): high-yield
+- JM Corbond IV (2.0#): ~5,000 BF/set · HFO · code UES ER-980
+- Accufoam CC-HFO (2.0#): ~4,000 BF/set · R-7.5/in · up to 3.5" lift · HFO
+- IDI/Natural Polymers Natural-Therm 2.0 HFO (2.0#): ~4,000 BF/set · R-7.2/in
+OPEN-CELL:
+- NCFI InsulStar Light 12-008 (0.4-0.5#): ~14,000 BF/set · R-3.7/in · water-blown
+- ProFoam ProFill (0.5#): water-blown · no-mix · code ER-1016
+- ProFoam Hybrid Pro (1.0#): water-blown · higher-density OC
+- Accufoam AF1 (0.5#): water-blown · no-mix · highest-yield
+- JM Corbond OC (0.5#): R-3.8/in · code CCRR-1079
+ROOFING:
+- NCFI EnduraTech 10-016 (2.8#): ~2,700 BF/set · R-6.7/in · HFO · ASTM D7425
+- NCFI EnduraTech 10-016 (3.0#): ~2,700 BF/set · R-6.7/in · ~64 psi · HFO
+- UPC Ultra-Thane 230 HFO (2.5-3.0#): HFO roofing/tank · ASTM D7425 (the IDI ~$2,875/set roofing foam)
+GEOTECH / LIFTING (set = 2 barrels ~550 lb = ~1,100 lb):
+- NCFI TerraThane 24-003 / 24-010 / 24-011: dual-component slab lifting/leveling
+- NCFI Strata-Fill 24-023 / 24-039 / 24-070: low-exotherm pour (void fill)
+General run windows (starting points — TDS + our PH-2 placard are final): substrate must be ≥5°F above
+dew point; substrate 50-120°F; MAX fluid temp 190°F (never exceed); CC ~110-130°F / 1,000-1,500 psi;
+roofing warmer + higher psi for atomization, thin passes ~0.5-1.5". If a product isn't listed, web-search
+its manufacturer TDS and cite it — never guess a yield, density, or temp.`;
+
 // What app Klyfton lives in, so it can answer "what can you do?" and point the crew to the
 // right screen instead of guessing. Tabs mirror the real nav in public/index.html.
 const PLATFORM = `THE APP YOU LIVE IN (know it so you can guide the crew):
@@ -537,7 +570,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -706,7 +739,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
