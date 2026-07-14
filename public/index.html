@@ -1801,26 +1801,39 @@ function speak(text){
   try{
     const synth = window.speechSynthesis;
     synth.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
+    // Naturalize the text so TTS doesn't read markdown/emoji aloud ("asterisk", "hash").
+    let _t = String(text||'').replace(/[*_`#>]/g,'').replace(/https?:\/\/\S+/g,'')
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'').replace(/\s{2,}/g,' ').trim();
+    if(!_t) return;
+    const utt = new SpeechSynthesisUtterance(_t);
     // Klyfton's voice: a MALE, BRITISH (English) accent. Pick the best available:
     // 1) a known male UK voice by name, 2) any en-GB voice that isn't obviously female,
     // 3) any en-GB voice, 4) any male-sounding English voice. Falls back to default.
     const voices = synth.getVoices() || [];
+    // Prefer a NATURAL / neural engine first — that's what kills the "robotic" sound.
+    // Then male UK accent, avoiding the low-quality eSpeak/compact and female voices.
+    const NATURAL = /(Natural|Neural|Enhanced|Premium|Siri|Google UK English Male|Daniel|Arthur|Oliver|George|Ryan|Nathan|Aaron)/i;
     const MALE_UK = /(Daniel|Arthur|Oliver|George|Ryan|Google UK English Male|Microsoft (George|Ryan)|Male)/i;
     const FEMALE = /(female|Samantha|Karen|Victoria|Serena|Kate|Stephanie|Hazel|Susan|Fiona|Moira|Tessa|Zira|Google UK English Female)/i;
-    const gb = voices.filter(v=>/en[-_]GB/i.test(v.lang));
+    const POOR = /(eSpeak|espeak|compact|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Zarvox|Trinoids|Whisper)/i;
+    const gb = voices.filter(v=>/en[-_]GB/i.test(v.lang) && !POOR.test(v.name));
+    const en = voices.filter(v=>/^en/i.test(v.lang) && !POOR.test(v.name));
     const preferred =
-      voices.find(v=>/en[-_]GB/i.test(v.lang) && MALE_UK.test(v.name)) ||
-      voices.find(v=>MALE_UK.test(v.name)) ||
-      gb.find(v=>!FEMALE.test(v.name)) ||
-      gb[0] ||
-      voices.find(v=>/^en/i.test(v.lang) && MALE_UK.test(v.name));
+      gb.find(v=>NATURAL.test(v.name) && !FEMALE.test(v.name)) ||        // natural UK male (best)
+      en.find(v=>NATURAL.test(v.name) && MALE_UK.test(v.name)) ||        // natural English male
+      gb.find(v=>MALE_UK.test(v.name)) ||                               // any UK male
+      voices.find(v=>MALE_UK.test(v.name) && !POOR.test(v.name)) ||      // any male
+      gb.find(v=>!FEMALE.test(v.name)) || gb[0] ||                      // any UK
+      en.find(v=>NATURAL.test(v.name) && !FEMALE.test(v.name));          // any natural English
     if(preferred) utt.voice = preferred;
     utt.lang = (preferred && preferred.lang) || 'en-GB';
-    utt.rate = 1.0;
-    // Slightly lower pitch reads more masculine when only a generic voice is available.
-    utt.pitch = 0.9;
-    utt.volume = 0.9;
+    // Human cadence: real neural voices sound best at true speed & neutral pitch.
+    // The old pitch 0.9 is exactly what made a generic voice sound robotic; only
+    // nudge pitch down when we're stuck with a plain fallback voice.
+    const isNatural = preferred && NATURAL.test(preferred.name);
+    utt.rate  = isNatural ? 1.0  : 1.03;   // a touch quicker on plain voices = less droning
+    utt.pitch = isNatural ? 1.0  : 0.96;
+    utt.volume = 1.0;
     synth.speak(utt);
   }catch(e){}
 }
@@ -2036,6 +2049,7 @@ function switchModule(id){
   document.getElementById('nav-'+id).classList.add('active');
   
   if(id==='estimate'){ const f=document.getElementById('estFrame'); if(f && !f.src && f.dataset.src){ f.src=f.dataset.src; } }
+  if(id==='jobs'||id==='crm'||id==='dashboard'){ try{ importEstimatorData(); }catch(e){} }
   if(id==='spray'||id==='jsa'){ if(window.renderSpray) renderSpray(); }
   if(id==='photos'){ if(window.driveStatus) driveStatus(); }
   if(id==='gov'){ if(window.renderGov) renderGov(); }
@@ -4312,6 +4326,7 @@ function onPinSuccess(role, name){
     if(estMod) estMod.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=true; el.style.opacity='.6'; });
   }
   initDashboard();
+  try{ importEstimatorData(); }catch(e){}   // pull any Estimator bids/jobs into Jobs+CRM on login
   const who = name || (role==='full'?'Clifton':role==='admin'?'Talia':role==='field'?'crew':'crew');
   speak('Access granted. Good '+getTimeOfDay()+', '+who+'. Welcome to Klyfton AI.');
 }
@@ -6447,9 +6462,123 @@ function gatherBizContext(){
     }catch(e){}
     // Ops Center intel — travel policy, state tax, low stock, reputation, margins.
     try{ if(window.opsContext) Object.assign(ctx, window.opsContext()); }catch(e){}
+    // Estimator awareness — high-level read of the embedded Ultimate Estimator so Klyfton
+    // can answer "how's the bid pipeline?" (individual bids also flow in as leadRecords/
+    // jobRecords via the mirror below).
+    try{
+      const eb=_estRead(EST_KEYS.bids), ej=_estRead(EST_KEYS.jobs);
+      if(eb.length||ej.length){
+        const low=s=>String(s||'').toLowerCase();
+        ctx.estimator={
+          totalBids:eb.length, jobs:ej.length,
+          won:eb.filter(b=>low(b.status)==='won').length,
+          approvedOrSent:eb.filter(b=>['approved','sent','proposal'].includes(low(b.status))).length,
+          draft:eb.filter(b=>['draft',''].includes(low(b.status))).length,
+          openPipeline:eb.filter(b=>!['won','lost'].includes(low(b.status))).reduce((a,b)=>a+_estBidTotal(b),0)
+        };
+      }
+    }catch(e){}
     return ctx;
   }catch(e){ return {company:'Machine Gun Spray Foam & Concrete Lifting, LLC'}; }
 }
+
+// ============================================================
+// ESTIMATOR ⇄ APP BRIDGE
+// The Estimate tab hosts the MGSF Ultimate Estimator in an iframe. Being same-origin it
+// SHARES this app's localStorage and publishes its bids/jobs (INTEROP contract). We mirror
+// those into the app's Jobs kanban + CRM pipeline (so a saved bid "drops into" the app) and,
+// because they land in appState.leads/jobs, Klyfton sees them through its normal context.
+// One-way: the Estimator is the source of truth; mirrors are tagged {estSource:true}.
+// ============================================================
+const EST_KEYS = { bids:'mg-fieldos-v1-bids', jobs:'mg-fieldos-v1-jobs', interop:'mgsf_interop_v1' };
+function _estRead(k){ try{ const v=JSON.parse(localStorage.getItem(k)||'[]'); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
+// Stable positive integer id from the estimator's string id (kept well above Date.now()
+// ids so it never collides with real records, and numeric so unquoted onclick handlers work).
+function _estHashId(s){ s='e'+String(s); let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return 900000000 + (h%99000000); }
+function _estBidTotal(b){ return Number((b&&(b.sellPrice||b.bidTotal||b.total||b.totalCost))||0)||0; }
+function _estBidName(b){ return (b&&b.customer&&b.customer.name)||(b&&b.name)||'Bid'; }
+function _estBidService(b){ try{ if(b&&Array.isArray(b.cart)&&b.cart.length) return [...new Set(b.cart.map(s=>s.service).filter(Boolean))].join(', '); }catch(e){} return (b&&b.service)||''; }
+function _estStateOf(addr){ const m=/,\s*([A-Za-z]{2})\s*$/.exec(String(addr||'')); return m?m[1].toUpperCase():''; }
+function _mapJobStatus(s){ s=String(s||'').toLowerCase();
+  if(s.indexOf('progress')>=0||s==='active'||s==='started') return 'In Progress';
+  if(s.indexOf('invoice')>=0) return 'Invoiced';
+  if(s.indexOf('paid')>=0||s==='complete'||s==='completed'||s==='collected') return 'Paid';
+  if(s.indexOf('cancel')>=0) return 'Cancelled';
+  return 'Scheduled';
+}
+function _mapBidStage(s){ s=String(s||'').toLowerCase();
+  if(s==='won') return 'Won';
+  if(s==='lost') return 'Lost';
+  if(s==='approved'||s==='sent'||s==='proposal') return 'Estimate Sent';
+  if(s==='qualified') return 'Qualified';
+  return 'New';
+}
+function importEstimatorData(opts){
+  try{
+    if(!appState) return false;
+    const bids=_estRead(EST_KEYS.bids), ejobs=_estRead(EST_KEYS.jobs);
+    if(!Array.isArray(appState.jobs)) appState.jobs=[];
+    if(!Array.isArray(appState.leads)) appState.leads=[];
+    let changed=false, added=0;
+
+    // --- Estimator JOBS → app Jobs kanban ---
+    const liveJobIds=new Set();
+    ejobs.forEach(j=>{
+      const id=_estHashId('job'+(j.id||j.bidId||JSON.stringify(j).length)); liveJobIds.add(id);
+      const cust=(j.customer&&j.customer.name)||'';
+      const svc=(Array.isArray(j.scopeLines)&&j.scopeLines[0]&&j.scopeLines[0].service)||j.service||'';
+      const rec={ id, estSource:true, estRef:(j.id||j.bidId||''),
+        jobNum:(j.bidId?('BID-'+String(j.bidId).slice(-5)):'MGSF-EST'),
+        name:cust||svc||'Estimator job', customer:cust, value:Number(j.sell||j.estCost||0)||0,
+        status:_mapJobStatus(j.status), service:svc, state:_estStateOf(j.customer&&j.customer.address),
+        address:(j.customer&&j.customer.address)||'', date:j.date||'',
+        crew:Array.isArray(j.crew)?j.crew.join(', '):(j.crew||''),
+        notes:'Synced from Estimator', source:'Estimator' };
+      const i=appState.jobs.findIndex(x=>x.id===id);
+      if(i<0){ appState.jobs.push(rec); changed=true; added++; }
+      else { const merged=Object.assign({},appState.jobs[i],rec);
+        if(JSON.stringify(appState.jobs[i])!==JSON.stringify(merged)){ appState.jobs[i]=merged; changed=true; } }
+    });
+    const nJ=appState.jobs.length;
+    appState.jobs=appState.jobs.filter(j=>!j.estSource||liveJobIds.has(j.id));
+    if(appState.jobs.length!==nJ) changed=true;
+
+    // --- Estimator BIDS not yet won → CRM pipeline leads ---
+    const liveLeadIds=new Set();
+    bids.forEach(b=>{
+      if(String(b.status||'').toLowerCase()==='won') return; // shows as a job instead
+      const id=_estHashId('bid'+(b.id||'')); liveLeadIds.add(id);
+      const rec={ id, estSource:true, estRef:(b.id||''), name:_estBidName(b),
+        value:_estBidTotal(b), status:_mapBidStage(b.status), service:_estBidService(b),
+        state:b.state||_estStateOf(b.customer&&b.customer.address),
+        phone:(b.customer&&b.customer.phone)||'', email:(b.customer&&b.customer.email)||'',
+        address:(b.customer&&b.customer.address)||'', source:'Estimator',
+        date:String(b.createdAt||'').slice(0,10), notes:'Bid ('+(b.status||'draft')+') — from Estimator' };
+      const i=appState.leads.findIndex(x=>x.id===id);
+      if(i<0){ appState.leads.push(rec); changed=true; added++; }
+      else { const merged=Object.assign({},appState.leads[i],rec);
+        if(JSON.stringify(appState.leads[i])!==JSON.stringify(merged)){ appState.leads[i]=merged; changed=true; } }
+    });
+    const nL=appState.leads.length;
+    appState.leads=appState.leads.filter(l=>!l.estSource||liveLeadIds.has(l.id));
+    if(appState.leads.length!==nL) changed=true;
+
+    if(changed){
+      save('jobs'); save('leads');
+      try{ if(document.getElementById('mod-jobs').classList.contains('active')) renderJobs(); }catch(e){}
+      try{ if(document.getElementById('mod-crm').classList.contains('active')) renderPipeline(); }catch(e){}
+      try{ if(window.renderDashMetrics) renderDashMetrics(); }catch(e){}
+      if(opts&&opts.toast&&added>0){ try{ notify('Estimator synced — '+added+' bid'+(added>1?'s':'')+' in Jobs & Pipeline','success'); }catch(e){} }
+    }
+    return changed;
+  }catch(e){ return false; }
+}
+// The iframe writes localStorage on save → this parent window receives a 'storage' event.
+try{ window.addEventListener('storage', function(e){
+  if(e && e.key && (e.key===EST_KEYS.bids||e.key===EST_KEYS.jobs||e.key===EST_KEYS.interop)){
+    importEstimatorData({toast:true});
+  }
+}); }catch(e){}
 
 function chatKeydown(e){
   if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
@@ -6992,7 +7121,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-ultimate-estimator';
+const APP_BUILD = '2026-07-14-estimator-bridge-voice';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}

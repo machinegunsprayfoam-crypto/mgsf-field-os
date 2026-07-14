@@ -492,6 +492,18 @@ function contextBlock(context, memory) {
     if (context.activeJobs != null) c.push("Active jobs: " + context.activeJobs);
     if (context.openLeads != null) c.push("Open leads: " + context.openLeads);
     if (context.lastEstimate) c.push("Most recent estimate: " + context.lastEstimate);
+    if (context.estimator && typeof context.estimator === "object") {
+      const e = context.estimator;
+      const parts = [
+        e.totalBids != null ? e.totalBids + " bids" : null,
+        e.jobs != null ? e.jobs + " jobs" : null,
+        e.won != null ? e.won + " won" : null,
+        e.approvedOrSent != null ? e.approvedOrSent + " approved/sent" : null,
+        e.draft != null ? e.draft + " draft" : null,
+        e.openPipeline ? "$" + Number(e.openPipeline).toLocaleString() + " open pipeline" : null,
+      ].filter(Boolean);
+      if (parts.length) c.push("ESTIMATOR (in-app bid builder — individual bids appear in LEADS/JOBS below with src: Estimator): " + parts.join(", "));
+    }
     if (Array.isArray(context.products) && context.products.length)
       c.push("Priced products (name=cost): " + context.products.slice(0, 40).join(", "));
     if (Array.isArray(context.materials) && context.materials.length)
