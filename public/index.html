@@ -5108,9 +5108,30 @@ function openLeadDetail(id){
   <div class="form-group"><label class="form-label">Notes</label><textarea class="inp" id="eld_notes" style="height:60px">${l.notes||''}</textarea></div>
   <div class="modal-actions">
     <button class="btn btn-danger" onclick="deleteLead(${id})">DELETE</button>
+    <button class="btn btn-cyan" onclick="estimateFromLead(${id})" title="Open the estimator prefilled with this lead">🧾 CREATE BID</button>
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="updateLead(${id})">SAVE CHANGES</button>
   </div>`);
+}
+
+// One-click: open the Estimate tab (Ultimate Estimator) prefilled with this lead's info.
+// Uses the same shared-origin channel — we write a short-lived prefill payload that the
+// embedded estimator reads on load (or via its 'storage' listener if already open).
+function estimateFromLead(id){
+  try{
+    const l=(appState.leads||[]).find(x=>x.id===id);
+    if(!l){ notify('Lead not found','alert'); return; }
+    const payload={ name:l.name||'', phone:l.phone||'', email:l.email||'',
+      addr:l.address||l.town||'', state:l.state||'', service:l.service||'',
+      source:l.source?('CRM: '+l.source):'CRM Lead', ts:Date.now() };
+    try{ localStorage.setItem('mgsf_prefill_v1', JSON.stringify(payload)); }catch(e){}
+    try{ closeModal(); }catch(e){}
+    switchModule('estimate');
+    const f=document.getElementById('estFrame');
+    if(f && !f.src && f.dataset.src){ f.src=f.dataset.src; }  // first open → estimator reads prefill on load
+    notify('Estimator opened for '+(l.name||'lead')+' — info prefilled','success');
+    playSound('click');
+  }catch(e){ try{ notify('Could not open estimator','alert'); }catch(_){} }
 }
 
 function updateLead(id){
@@ -7121,7 +7142,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-estimator-bridge-voice';
+const APP_BUILD = '2026-07-14-lead-to-bid-v2';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}

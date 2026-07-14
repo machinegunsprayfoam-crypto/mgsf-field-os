@@ -1356,5 +1356,43 @@ fillProducts();fillCons();renderUsers();renderZone();renderRoof();renderPen();dr
 role='estimator';try{document.getElementById('pin').style.display='none';}catch(e){}try{var _a=document.getElementById('app');if(_a)_a.style.display='flex';}catch(e){}try{var _ul=document.getElementById('ulabel');if(_ul)_ul.textContent='MGSF';var _rc=document.getElementById('rolechip');if(_rc){_rc.textContent='crew';_rc.className='chip';}}catch(e){}window.__adminUnlocked=false;try{applyRole();}catch(e){}try{setMode('field');}catch(e){}try{var _jd=document.getElementById('job-date');if(_jd&&!_jd.value)_jd.value=new Date().toISOString().split('T')[0];}catch(e){}try{restoreDraft();}catch(e){}
 if('serviceWorker' in navigator && location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(function(){});}
 </script>
+<script>
+/* CRM → Estimator prefill bridge (host app writes mgsf_prefill_v1 in shared localStorage).
+   Self-contained + global so it never depends on the main app script's scope. Populates the
+   customer fields and selects the service by clicking the matching .svc button. */
+(function(){
+  function applyPrefill(){
+    try{
+      var raw=localStorage.getItem('mgsf_prefill_v1'); if(!raw) return;
+      var p=null; try{ p=JSON.parse(raw); }catch(e){ return; }
+      if(!p||!p.ts) return;
+      if(Date.now()-p.ts>120000){ try{localStorage.removeItem('mgsf_prefill_v1');}catch(e){} return; } // stale
+      var set=function(id,v){ var el=document.getElementById(id); if(el&&v!=null&&v!==''){ el.value=v; try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){} } };
+      set('cust-name',p.name); set('cust-phone',p.phone); set('cust-email',p.email);
+      set('cust-addr',p.addr); set('cust-source',p.source||'CRM Lead');
+      if(p.state){ var st=document.getElementById('cust-state'); if(st){ for(var i=0;i<st.options.length;i++){ if(st.options[i].value===p.state||st.options[i].text===p.state){ st.selectedIndex=i; break; } } } }
+      if(p.service){
+        var map={roof:'roof',roofing:'roof',coat:'coatings',coating:'coatings',coatings:'coatings',seal:'coatings',lift:'concrete',lifting:'concrete',concrete:'concrete',level:'concrete',slab:'concrete',mudjack:'concrete',removal:'removal',remove:'removal',demo:'removal',tear:'removal',bpi:'bpi',audit:'bpi',energy:'bpi',blower:'bpi',polyurea:'polyurea',soil:'soil',geo:'soil',stab:'soil'};
+        var key=String(p.service).toLowerCase(), svcKey=null, k;
+        for(k in map){ if(key.indexOf(k)>=0){ svcKey=map[k]; break; } }
+        if(!svcKey) svcKey='foam';
+        var btns=document.querySelectorAll('.svc'), b, hit=null;
+        for(var j=0;j<btns.length;j++){ b=btns[j]; if((b.getAttribute('onclick')||'').indexOf("setSvc('"+svcKey+"'")>=0){ hit=b; break; } }
+        if(hit) hit.click();
+      }
+      try{ localStorage.removeItem('mgsf_prefill_v1'); }catch(e){}
+      try{ if(typeof recalc==='function') recalc(); }catch(e){}
+      try{ if(typeof toast==='function') toast('Loaded '+(p.name||'lead')+' — build the bid'); }catch(e){}
+      try{ var nm=document.getElementById('cust-name'); if(nm) nm.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+    }catch(e){}
+  }
+  window._mgApplyPrefill = applyPrefill;
+  // Run shortly after load (let the main script finish its own init/restoreDraft first).
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyPrefill,250); });
+  else setTimeout(applyPrefill,250);
+  // If the host writes a prefill while we're already open, this fires in our window.
+  window.addEventListener('storage',function(e){ if(e && e.key==='mgsf_prefill_v1') applyPrefill(); });
+})();
+</script>
 </body>
 </html>
