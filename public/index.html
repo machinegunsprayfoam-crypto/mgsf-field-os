@@ -5283,6 +5283,7 @@ function renderJobs(){
         <div class="job-actions">
           <button class="btn btn-ghost" onclick="event.stopPropagation();openJobDetail(${j.id})" style="font-size:10px;padding:4px 8px">EDIT</button>
           <button class="btn btn-cyan" onclick="event.stopPropagation();openJobLog(${j.id})" style="font-size:10px;padding:4px 8px">LOG</button>
+          <button class="btn btn-ghost" onclick="event.stopPropagation();jsaFromJob(${j.id})" style="font-size:10px;padding:4px 8px" title="Open a JSA prefilled for this job">${j.jsaDone?'🦺 JSA ✓':'🦺 JSA'}</button>
           ${st.id!=='Paid'&&st.id!=='Cancelled'?`<button class="btn btn-orange" onclick="event.stopPropagation();advanceJobStatus(${j.id})" style="font-size:10px;padding:4px 8px">→ ${nextSt.id==='Cancelled'?'PAID':nextSt.id.toUpperCase()}</button>`:''}
         </div>`;
       col.appendChild(card);
@@ -7138,18 +7139,153 @@ document.addEventListener('click',()=>{
     {id:'fire', n:'Fire / Ignition', c:['No hot work / open flame near foam','Extinguisher staged at work area','Heat sources (cans, flues) protected','Thermal/ignition barrier plan confirmed']},
     {id:'space',n:'Attic / Crawl / Confined', c:['Entry & exit path clear; comms plan','Lighting adequate; walk boards','Heat stress: hydration + work/rest']},
     {id:'elev', n:'Heights / Ladders / Roof', c:['Fall protection where required','Ladders secured & rated','Roof edge / skylight awareness']},
-    {id:'elec', n:'Electrical', c:['Circuits de-energized where needed','GFCI on all cords','Wet-area equipment guarded']}
+    {id:'elec', n:'Electrical', c:['Circuits de-energized where needed','GFCI on all cords','Wet-area equipment guarded']},
+    {id:'dust', n:'Dust — trimming / cutting / scraping cured foam', c:['N95 or better when sanding/cutting cured foam','Isolate + ventilate; others clear or in PPE','Clean up shavings — don\'t track foam dust to other areas']}
   ];
   const PPE = ['Supplied-air / full-face respirator','Chemical-resistant suit','Nitrile gloves','Eye protection','Hearing protection','Hard hat / boots'];
 
+  // Everyday jobsite hazards — the ones on nearly every job. The crew just taps the ones
+  // present; each carries its standard control so the JSA is complete with one touch.
+  const JOB_HAZARDS = [
+    {id:'drive',   n:'🚚 Driving / transit to site',              c:'Seatbelts, no phone, load secured, speed for conditions'},
+    {id:'equip',   n:'⚙️ Equipment on location (rig, compressor, gen)', c:'Guards on, staged clear of walk path, hot surfaces flagged'},
+    {id:'pinch',   n:'🤏 Pinch points / moving parts',            c:'Hands clear, shut down before clearing jams, gloves'},
+    {id:'heights', n:'🪜 Working at heights / ladders / roof',    c:'Fall protection, ladders tied off & rated, edge awareness'},
+    {id:'stf',     n:'🧊 Slips, trips, falls',                    c:'Hoses/cords routed, spills cleaned, paths clear, footing checked'},
+    {id:'lift',    n:'🏋️ Manual lifting / awkward loads',         c:'Team-lift >50 lb, lift with legs, dolly for foam sets'},
+    {id:'overhead',n:'🪨 Overhead / falling objects',            c:'Hard hats, keep clear below, tools tethered'},
+    {id:'noise',   n:'🔊 Noise (compressor, gen, tools)',        c:'Hearing protection in the work zone'},
+    {id:'weather', n:'🌤️ Weather — heat / cold / sun / wind',     c:'Hydration + work/rest, layers, secure loose material'},
+    {id:'utility', n:'⚡ Utilities — power lines, gas, buried',   c:'Locate before dig, stay clear of lines, de-energize as needed'},
+    {id:'public',  n:'🚸 Bystanders / pets / traffic',           c:'Cones & signage, area secured, customer + animals kept clear'}
+  ];
+  // Sensible starting set per scope (used until the crew's own history teaches better).
+  const SCOPE_DEFAULT_HAZ = {
+    walls:['drive','equip','pinch','stf','lift','weather'],
+    gable:['drive','equip','heights','stf','lift','weather'],
+    rimjoist:['drive','equip','pinch','stf','lift'],
+    roofing:['drive','equip','heights','stf','overhead','weather','utility'],
+    coating:['drive','equip','heights','stf','weather'],
+    lifting:['drive','equip','pinch','stf','utility','public'],
+    crawlspace:['drive','equip','pinch','stf','lift'],
+    removal:['drive','equip','pinch','stf','lift','overhead'],
+    bpi:['drive','stf'],
+    fireproofing:['drive','equip','heights','stf','overhead'],
+    other:['drive','equip','stf']
+  };
+  const SCOPE_LABELS = {walls:'Walls',gable:'Gable ends',rimjoist:'Rim joists',roofing:'SPF roofing',coating:'Coating',lifting:'Concrete lifting',crawlspace:'Crawlspace / sub',removal:'Insulation removal',bpi:'BPI / audit',fireproofing:'Fireproofing',other:'Other'};
+  let _jsaJobId=null;  // the job this JSA is linked to (set when loaded from a job)
+  // Learned memory: how often each hazard gets checked per scope. { scope: { hazId: count, __n: totalJSAs } }
+  const jsaMem = ()=>{ try{ return JSON.parse(localStorage.getItem('jsa_haz_memory')||'{}'); }catch(e){ return {}; } };
+  // Which common hazards to PRE-CHECK for a scope: learned (checked in ≥40% of past JSAs for that
+  // scope) if we have history, else the sensible default set.
+  window.jsaSuggestHaz = function(scope){
+    const mem=jsaMem()[scope];
+    if(mem && mem.__n>=2){
+      const n=mem.__n, picks=JOB_HAZARDS.filter(h=>(mem[h.id]||0)/n>=0.4).map(h=>h.id);
+      if(picks.length) return picks;
+    }
+    return SCOPE_DEFAULT_HAZ[scope] || SCOPE_DEFAULT_HAZ.other;
+  };
+  // Tick the suggested common hazards for the chosen scope (crew can still add/remove any).
+  window.jsaApplyScope = function(){
+    const scope=(($('j_scopetype')||{}).value||'').trim(); if(!scope) return;
+    const picks=jsaSuggestHaz(scope);
+    JOB_HAZARDS.forEach(h=>{ const cb=$('jh_'+h.id); if(cb) cb.checked=picks.includes(h.id); });
+    const learned = (jsaMem()[scope]||{}).__n>=2;
+    notify((learned?'Loaded your usual hazards for ':'Loaded standard hazards for ')+(SCOPE_LABELS[scope]||scope),'success');
+  };
+  // Map a job's free-text service to a scope key so hazards auto-load.
+  function jsaScopeFromService(svc){
+    svc=String(svc||'').toLowerCase();
+    const map=[['roof','roofing'],['coat','coating'],['gable','gable'],['rim','rimjoist'],['lift','lifting'],['level','lifting'],['slab','lifting'],['concrete','lifting'],['crawl','crawlspace'],['remov','removal'],['tear','removal'],['bpi','bpi'],['audit','bpi'],['fire','fireproofing'],['wall','walls'],['foam','walls'],['insul','walls']];
+    for(const [k,v] of map){ if(svc.indexOf(k)>=0) return v; }
+    return '';
+  }
+  // Auto-fill the whole JSA from a scheduled job, then load hazards + live weather.
+  window.jsaLoadJob = function(){
+    const idx=(($('j_fromjob')||{}).value); if(idx==='') return;
+    const jobs=(appState.jobs||[]).filter(j=>!['Paid','Cancelled','Completed'].includes(j.status));
+    const j=jobs[Number(idx)]; if(!j) return;
+    _jsaJobId=j.id;
+    const setv=(id,v)=>{ const el=$(id); if(el && v!=null && v!=='') el.value=v; };
+    setv('j_job', j.customer||j.name);
+    setv('j_addr', j.address);
+    setv('j_crew', j.crew);
+    setv('j_scope', j.service||j.name);
+    if(j.foreman) setv('j_foreman', j.foreman);
+    // scope → auto-load hazards
+    const scope=jsaScopeFromService(j.service||j.name);
+    if(scope){ const s=$('j_scopetype'); if(s){ s.value=scope; jsaApplyScope(); } }
+    notify('Loaded '+(j.customer||j.name||'job')+' — review, then sign','success');
+    // Live weather for the address → fills temp/humidity/wind + dew-point go/no-go.
+    if(j.address){ jsaPullWeather(j.address); }
+  };
+  // Pull current conditions from the app's weather API and drop them into the JSA.
+  window.jsaPullWeather = function(addr){
+    try{
+      fetch('/api/weather',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({address:addr||''})})
+        .then(r=>r.json()).then(d=>{
+          const now=(d&&d.days&&d.days[0])||null; if(!now) return;
+          const setn=(id,v)=>{ const el=$(id); if(el && v!=null){ el.value=v; } };
+          if(now.tempHi!=null) setn('j_temp', now.tempHi);
+          if(now.humidity!=null) setn('j_hum', now.humidity);
+          if(now.maxWind!=null) setn('j_wind', now.maxWind);
+          if(window.jsaDew) jsaDew();
+        }).catch(()=>{});
+    }catch(e){}
+  };
+  // One-click from a Job card / detail → open the JSA fully linked to that job.
+  // Capture the job ref up front and fill the form directly (no reliance on the picker
+  // index or appState staying identical across the module switch).
+  window.jsaFromJob = function(id){
+    try{
+      const jobs=(typeof appState!=='undefined' && appState.jobs)||[];
+      const j=jobs.find(x=>String(x.id)===String(id));
+      if(!j){ notify('Job not found','alert'); return; }
+      switchModule('jsa');
+      renderJSA();                       // build the form
+      _jsaJobId=j.id;
+      const setv=(k,v)=>{ const el=$(k); if(el && v!=null && v!=='') el.value=v; };
+      setv('j_job', j.customer||j.name);
+      setv('j_addr', j.address);
+      setv('j_crew', j.crew);
+      setv('j_scope', j.service||j.name);
+      if(j.foreman) setv('j_foreman', j.foreman);
+      // reflect in the picker if it lists this job
+      const sel=$('j_fromjob');
+      if(sel){ const act=jobs.filter(x=>!['Paid','Cancelled','Completed'].includes(x.status));
+        const ix=act.findIndex(x=>String(x.id)===String(id)); if(ix>=0) sel.value=String(ix); }
+      // scope → auto-load the everyday hazards; live weather for conditions
+      const sc=jsaScopeFromService(j.service||j.name);
+      if(sc){ const s=$('j_scopetype'); if(s){ s.value=sc; jsaApplyScope(); } }
+      if(j.address) jsaPullWeather(j.address);
+      notify('Loaded '+(j.customer||j.name||'job')+' — review, then sign','success');
+    }catch(e){}
+  };
+
   window.renderJSA = function(){
     const box=$('jsaForm'); if(!box) return;
+    const _jobs=(appState.jobs||[]).filter(j=>!['Paid','Cancelled','Completed'].includes(j.status));
+    const _lastHosp=(()=>{ try{ return localStorage.getItem('jsa_last_hosp')||''; }catch(e){ return ''; } })();
     box.innerHTML = `
+      <div class="jsa-card" style="border-color:var(--or)"><h4>⚡ Quick start — load a job</h4>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Pick a job and Klyfton fills the name, address, crew, scope, hazards, and pulls the weather. Then just review + sign.</div>
+        <select id="j_fromjob" class="admin-inp" onchange="jsaLoadJob()">
+          <option value="">— pick a scheduled job —</option>
+          ${_jobs.map((j,i)=>`<option value="${i}">${esc((j.customer||j.name||'Job')+(j.address?(' — '+j.address):''))}</option>`).join('')}
+        </select>
+      </div>
       <div class="jsa-card"><h4>Job</h4>
         <label class="fl">Job name / customer *</label><input id="j_job" class="admin-inp" placeholder="e.g. Smith barn CC">
         <label class="fl">Address</label><input id="j_addr" class="admin-inp" placeholder="Site address">
         <label class="fl">Foreman *</label><input id="j_foreman" class="admin-inp" placeholder="Lead on site">
         <label class="fl">Crew</label><input id="j_crew" class="admin-inp" placeholder="Names on crew">
+        <label class="fl">Job scope</label>
+        <select id="j_scopetype" class="admin-inp" onchange="jsaApplyScope()">
+          <option value="">— pick scope to auto-load hazards —</option>
+          ${Object.keys(SCOPE_LABELS).map(k=>`<option value="${k}">${esc(SCOPE_LABELS[k])}</option>`).join('')}
+        </select>
         <label class="fl">Scope / notes</label><input id="j_scope" class="admin-inp" placeholder="What we're doing">
       </div>
       <div class="jsa-card"><h4>Conditions</h4>
@@ -7160,7 +7296,12 @@ document.addEventListener('click',()=>{
         </div>
         <div id="j_dew" style="margin-top:8px;font-size:12px;color:var(--t2)"></div>
       </div>
-      <div class="jsa-card"><h4>Hazards &amp; Controls</h4>
+      <div class="jsa-card"><h4>Everyday jobsite hazards — tap the ones on this job</h4>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Pick a Job scope above and these auto-load. Tap any row to add/remove. Each one already carries its control.</div>
+        ${JOB_HAZARDS.map(h=>`<label class="chk" style="align-items:flex-start;padding:7px 0"><input type="checkbox" id="jh_${h.id}">
+          <span><b style="color:var(--tx)">${esc(h.n)}</b><br><span style="font-size:11px;color:var(--t2)">Control: ${esc(h.c)}</span></span></label>`).join('')}
+      </div>
+      <div class="jsa-card"><h4>Spray-specific hazards &amp; controls</h4>
         ${HAZARDS.map(h=>`<div style="margin-bottom:8px"><b style="font-size:12px;color:var(--tx)">${esc(h.n)}</b>
           ${h.c.map((c,i)=>`<label class="chk"><input type="checkbox" id="hz_${h.id}_${i}"><span>${esc(c)}</span></label>`).join('')}</div>`).join('')}
       </div>
@@ -7168,8 +7309,8 @@ document.addEventListener('click',()=>{
         ${PPE.map((p,i)=>`<label class="chk"><input type="checkbox" id="ppe_${i}"><span>${esc(p)}</span></label>`).join('')}
       </div>
       <div class="jsa-card"><h4>Emergency Plan</h4>
-        <label class="fl">Nearest hospital / urgent care</label><input id="j_hosp" class="admin-inp" placeholder="Name & address">
-        <label class="fl">First-aid kit location</label><input id="j_aid" class="admin-inp" placeholder="Rig / truck">
+        <label class="fl">Nearest hospital / urgent care</label><input id="j_hosp" class="admin-inp" placeholder="Name & address" value="${esc(_lastHosp)}">
+        <label class="fl">First-aid kit location</label><input id="j_aid" class="admin-inp" placeholder="Rig / truck" value="On the rig">
       </div>
       <div class="jsa-card"><h4>Crew Sign-off</h4>
         <label class="chk"><input type="checkbox" id="j_ack"><span>Crew reviewed this JSA and understands the hazards & controls. *</span></label>
@@ -7208,13 +7349,24 @@ document.addEventListener('click',()=>{
     if(!g('j_foreman')){ notify('Foreman required','alert'); return; }
     if(!($('j_ack')||{}).checked){ notify('Crew sign-off box required','alert'); return; }
     const haz={}; HAZARDS.forEach(h=>haz[h.id]=h.c.map((_,i)=>!!($('hz_'+h.id+'_'+i)||{}).checked));
+    const jobHaz=JOB_HAZARDS.filter(h=>($('jh_'+h.id)||{}).checked).map(h=>h.id);
     const ppe=PPE.map((_,i)=>!!($('ppe_'+i)||{}).checked);
-    const rec={ id:'JSA-'+Date.now(), created:nowISO(),
-      job:g('j_job'),addr:g('j_addr'),foreman:g('j_foreman'),crew:g('j_crew'),scope:g('j_scope'),
+    const scope=g('j_scopetype');
+    const rec={ id:'JSA-'+Date.now(), created:nowISO(), jobId:_jsaJobId||null,
+      job:g('j_job'),addr:g('j_addr'),foreman:g('j_foreman'),crew:g('j_crew'),scope:g('j_scope'),scopeType:scope,
       temp:g('j_temp'),hum:g('j_hum'),wind:g('j_wind'),hosp:g('j_hosp'),aid:g('j_aid'),
-      haz,ppe,sig:sigData() };
+      haz,jobHaz,ppe,sig:sigData() };
     const arr=LS('jsas',[]); arr.unshift(rec); SS('jsas',arr);
-    notify('JSA submitted ✓ saved','success');
+    // LEARN: remember which everyday hazards get checked for this scope, so next time they pre-load.
+    if(scope){ try{ const mem=jsaMem(); const m=mem[scope]||{__n:0}; m.__n=(m.__n||0)+1;
+      jobHaz.forEach(id=>{ m[id]=(m[id]||0)+1; }); mem[scope]=m; localStorage.setItem('jsa_haz_memory', JSON.stringify(mem)); }catch(e){} }
+    // Remember the hospital so the next JSA in the area pre-fills it.
+    if(g('j_hosp')){ try{ localStorage.setItem('jsa_last_hosp', g('j_hosp')); }catch(e){} }
+    // LINK to the job: mark it so the board shows the JSA is done.
+    if(_jsaJobId && appState.jobs){ const jb=appState.jobs.find(x=>String(x.id)===String(_jsaJobId));
+      if(jb){ jb.jsaId=rec.id; jb.jsaDone=true; save('jobs'); if(window.renderJobs) renderJobs(); } }
+    _jsaJobId=null;
+    notify('JSA submitted ✓ saved'+(rec.jobId?' & linked to the job':''),'success');
     renderJSA();
     switchModule('dashboard');
   };
@@ -7263,7 +7415,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-twoway-thicken';
+const APP_BUILD = '2026-07-14-jsa-autofill';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
