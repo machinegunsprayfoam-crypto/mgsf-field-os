@@ -456,6 +456,7 @@ canvas.chart{width:100%;height:100%}
     <button class="top-btn active" id="soundBtn" onclick="toggleSound()">🔊 SOUND</button>
     <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()">🎙️ VOICE</button>
     <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version">⟳ UPDATE</button>
+    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on">💡 HELP</button>
     <button class="top-btn" onclick="toggleChat()">💬 KLYFTON</button>
   </div>
 
@@ -5117,20 +5118,28 @@ function openLeadDetail(id){
 // One-click: open the Estimate tab (Ultimate Estimator) prefilled with this lead's info.
 // Uses the same shared-origin channel — we write a short-lived prefill payload that the
 // embedded estimator reads on load (or via its 'storage' listener if already open).
-function estimateFromLead(id){
+// Shared: open the Estimate tab with the Ultimate Estimator prefilled. Used by the CRM
+// "Create Bid" button AND Klyfton's create_bid action.
+function openEstimatorPrefilled(payload){
   try{
-    const l=(appState.leads||[]).find(x=>x.id===id);
-    if(!l){ notify('Lead not found','alert'); return; }
-    const payload={ name:l.name||'', phone:l.phone||'', email:l.email||'',
-      addr:l.address||l.town||'', state:l.state||'', service:l.service||'',
-      source:l.source?('CRM: '+l.source):'CRM Lead', ts:Date.now() };
+    payload = payload || {};
+    payload.ts = payload.ts || Date.now();
     try{ localStorage.setItem('mgsf_prefill_v1', JSON.stringify(payload)); }catch(e){}
     try{ closeModal(); }catch(e){}
     switchModule('estimate');
     const f=document.getElementById('estFrame');
     if(f && !f.src && f.dataset.src){ f.src=f.dataset.src; }  // first open → estimator reads prefill on load
-    notify('Estimator opened for '+(l.name||'lead')+' — info prefilled','success');
     playSound('click');
+  }catch(e){}
+}
+function estimateFromLead(id){
+  try{
+    const l=(appState.leads||[]).find(x=>x.id===id);
+    if(!l){ notify('Lead not found','alert'); return; }
+    openEstimatorPrefilled({ name:l.name||'', phone:l.phone||'', email:l.email||'',
+      addr:l.address||l.town||'', state:l.state||'', service:l.service||'',
+      source:l.source?('CRM: '+l.source):'CRM Lead' });
+    notify('Estimator opened for '+(l.name||'lead')+' — info prefilled','success');
   }catch(e){ try{ notify('Could not open estimator','alert'); }catch(_){} }
 }
 
@@ -6277,6 +6286,7 @@ function klyftonActionDesc(a){
     case 'delete_lead': return `Delete lead <b>${a.name||'?'}</b>`;
     case 'update_job': return `Update job <b>${a.customer||'?'}</b>${a.status?(' → '+a.status):''}${a.value?(' · $'+Number(a.value).toLocaleString()):''}`;
     case 'delete_job': return `Delete job <b>${a.customer||'?'}</b>`;
+    case 'create_bid': return `Start a bid in the estimator for <b>${a.name||a.customer||'new customer'}</b>${a.service?(' · '+a.service):''}${a.state?(' · '+a.state):''}`;
     default: return (window.opsActionDesc?window.opsActionDesc(a):'')||'';
   }
 }
@@ -6432,6 +6442,25 @@ function doPendingKlyftonAction(){
         save('jobs'); if(window.renderJobs) renderJobs(); if(window.renderDashMetrics) renderDashMetrics();
         notify('Deleted job '+job.customer,'success');
       } else { notify('No matching job to delete','info'); }
+    } else if(a.type==='create_bid'){
+      // Klyfton starts a prefilled bid in the estimator. If it names an existing lead, pull
+      // that record; explicit action fields override.
+      let base={};
+      try{
+        const nm=(a.name||a.customer||'').toLowerCase();
+        const lead=(appState.leads||[]).find(l=>(l.name||'').toLowerCase()===nm) ||
+                   (appState.leads||[]).find(l=>nm && (l.name||'').toLowerCase().includes(nm));
+        if(lead) base={ name:lead.name, phone:lead.phone, email:lead.email,
+          addr:lead.address||lead.town, state:lead.state, service:lead.service,
+          source:lead.source?('CRM: '+lead.source):'CRM Lead' };
+      }catch(e){}
+      openEstimatorPrefilled({
+        name:a.name||a.customer||base.name||'',
+        phone:a.phone||base.phone||'', email:a.email||base.email||'',
+        addr:a.address||a.addr||base.addr||'', state:a.state||base.state||'',
+        service:a.service||base.service||'', source:base.source||'Klyfton AI' });
+      notify('Bid started for '+(a.name||a.customer||base.name||'new customer'),'success');
+      return;
     } else if(window.opsHandleAction && window.opsHandleAction(a)){
       /* handled by Ops Center (log_cost / log_contact / log_review / set_inventory / draft_sms …) */
     }
@@ -6611,6 +6640,45 @@ function insertPrompt(text){
   if(!appState.chatOpen) toggleChat();
   input.focus();
   playSound('click');
+}
+
+// Per-module Klyfton helper: the 💡 HELP button opens the chat with a starter prompt
+// tailored to whatever module you're on — so every screen has a built-in assistant.
+const KLY_HELP = {
+  dashboard:"Give me today's game plan — what needs attention across bids, jobs, and leads right now. TL;DR first.",
+  estimate:"I'm building a bid in the estimator. Ask me for the measurements, then help me price it with our real foam numbers and margins.",
+  jobs:"Look at my job board and tell me what needs attention — anything behind schedule, unscheduled, or ready to invoice.",
+  crm:"Which leads should I follow up with first, and what should I say to each? Rank them.",
+  photos:"How should I document this job with photos for the file and the warranty?",
+  spray:"Help me dial in spray settings for today's product and check the go/no-go for the conditions.",
+  jsa:"Walk me through the JSA/JHA for today's spray foam job — top hazards and the controls.",
+  clock:"Summarize the crew hours logged and flag anything that looks off.",
+  calendar:"Help me plan this week's schedule around the weather and crew availability.",
+  gov:"Find the best federal / SAM.gov opportunities in our lane and how to bid them as an SDVOSB.",
+  sheets:"Pull the SDS/TDS facts I need for the product I'm running and explain them in plain terms.",
+  certs:"Which of my certifications or insurance docs are expiring soon, and what do I renew first?",
+  intel:"Read my numbers and tell me where the money is and where the leaks are. Show the data, then the call.",
+  docs:"Help me find or draft the document I need.",
+  materials:"Check my material stock and tell me what to reorder, how much, and from which supplier.",
+  pricebook:"Quote me our real price for a material or line item — no made-up numbers.",
+  invoice:"Help me build and send an invoice for a completed job.",
+  proposal:"Turn my last estimate into a clean, professional proposal ready to send.",
+  changeorder:"Help me write a change order for added scope on a job, with the price delta.",
+  compliance:"What compliance items — OSHA, warranties, training — am I missing or that are coming due?",
+  signoff:"Help me capture the customer sign-off and the next steps.",
+  forms:"Which form do I need, and help me fill it out correctly.",
+  ops:"Give me the ops read — travel policy, state tax, capacity, and current margins.",
+  grow:"Where's the best growth move for the shop right now? Give me 3 options with cost, time, and ROI, then your pick.",
+  weather:"Give me the spray go/no-go for my next job's location.",
+  skills:"What can you and the connected tools actually do for me? Give me the useful ones.",
+  admin:"Help me set up pricing, crew, or settings correctly.",
+  chat:"What should I focus on right now?"
+};
+function klyHelp(){
+  let id='dashboard';
+  try{ const el=document.querySelector('.module.active'); if(el&&el.id) id=el.id.replace('mod-',''); }catch(e){}
+  const p = KLY_HELP[id] || "What should I focus on right now?";
+  try{ insertPrompt(p); }catch(e){ try{ if(!appState.chatOpen) toggleChat(); }catch(_){} }
 }
 
 // ============================================================
@@ -7142,7 +7210,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-lead-to-bid-v2';
+const APP_BUILD = '2026-07-14-klyfton-actions-helper';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}

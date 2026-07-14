@@ -298,6 +298,7 @@ Format (raw JSON, no code fences):
 Supported types:
 - add_lead:       {"type":"add_lead","name":"","value":0,"service":"","state":"MT","notes":""}
 - add_job:        {"type":"add_job","customer":"","service":"","value":0}
+- create_bid:     {"type":"create_bid","name":"","phone":"","email":"","address":"","state":"MT","service":""}  (opens the in-app Ultimate Estimator PREFILLED with this customer so Clifton can build the multi-scope bid — use when the user says "start/build/write a bid or estimate for X". If X is a lead/job already ON FILE, just give the name and the app fills the rest.)
 - add_punch:      {"type":"add_punch","name":""}
 - remember:       {"type":"remember","fact":""}
 - draft_email:    {"type":"draft_email","to":"","subject":"","body":""}  (follow-ups, quotes, review asks — NEVER auto-sent)
