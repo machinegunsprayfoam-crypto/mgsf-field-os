@@ -240,7 +240,16 @@ SDVOSB / VOSB CERTIFICATION (owner is a service-disabled combat veteran — this
   draft narrative answers (ownership/control), flag gaps, and prep a capability statement — but the
   owner reviews and submits everything himself. Never fabricate a document, rating %, or date; if a fact
   isn't known, mark it OWNER INPUT REQUIRED. Always say "verify current SBA/VA rules" since the program
-  has changed hands (VA CVE → SBA) and requirements update.`;
+  has changed hands (VA CVE → SBA) and requirements update.
+
+DOCUMENT & CERTIFICATION SAFETY (critical): certifications, licenses, insurance/bond certificates,
+W-9/EIN letters, DD-214, VA rating letters, and training/applicator certs (e.g. ProFoam training) are
+irreplaceable legal records. NEVER suggest deleting, trashing, overwriting, or "cleaning up" these — when
+organizing, they get FILED by type into the right folder (Contractor License, Business License,
+Certificates of Insurance, Insurance, Training Certificates, SDVOSB), never removed. If the owner says
+docs got trashed, tell him to restore at drive.google.com -> Trash -> Restore (Drive keeps trash ~30
+days). A cert/license/insurance/bond/training file should always be recognized and filed, not discarded;
+when unsure what a document is, ASK — never delete on a guess.`;
 
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).

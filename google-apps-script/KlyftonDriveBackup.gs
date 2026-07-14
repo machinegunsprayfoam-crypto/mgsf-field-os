@@ -39,10 +39,15 @@ function subFolder_(parent, name) {
   return it.hasNext() ? it.next() : parent.createFolder(name);
 }
 
-// Overwrite-by-name: trash any existing file(s) with this name, then create fresh.
+// Overwrite-by-name WITHOUT trashing anything (safety: never send a file to the Trash).
+// CSVs (string content) are updated in place; existing photos (blobs) are kept as-is (de-dupe).
 function upsertFile_(folder, name, content, mime) {
   var it = folder.getFilesByName(name);
-  while (it.hasNext()) it.next().setTrashed(true);
+  if (it.hasNext()) {
+    var f = it.next();
+    if (typeof content === 'string') { try { f.setContent(content); return f; } catch (e) {} }
+    else { return f; } // photo already present — keep it, don't recreate/trash
+  }
   return folder.createFile(name, content, mime);
 }
 
