@@ -1224,6 +1224,23 @@ canvas.chart{width:100%;height:100%}
           </div>
           <button class="btn btn-cyan" style="width:100%" onclick="crewAdd()">➕ ADD / SAVE CREW MEMBER</button>
         </div>
+
+        <!-- TIME CARDS (owner only — Admin is gated to full access) -->
+        <div class="admin-section">
+          <div class="admin-section-title">🧾 TIME CARDS — REVIEW · EDIT · APPROVE · SEND</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:8px">The crew clocks in/out on the Job with their PIN. Review their hours here, fix any entry, approve each card, then email it to Talia for payroll.</div>
+          <div class="jsa-actions" style="margin-bottom:10px">
+            <select id="tc_period" class="admin-inp" style="max-width:150px" onchange="renderTimecards()">
+              <option value="week">This week</option>
+              <option value="last">Last week</option>
+              <option value="all">All</option>
+            </select>
+            <button class="btn btn-ghost" onclick="exportTimesheet()">⬇ CSV</button>
+            <button class="btn btn-cyan" onclick="sendTimecards()">📤 Send to Talia</button>
+          </div>
+          <div id="tc_cards"></div>
+        </div>
+
         <div class="admin-section">
           <div class="admin-section-title">🔔 NOTIFICATIONS — TEXT / EMAIL ME ON NEW LEADS</div>
           <div style="font-size:11px;color:var(--t2);line-height:1.6">
@@ -1313,12 +1330,20 @@ canvas.chart{width:100%;height:100%}
         <div class="mod-head"><h2>⏱️ Time Clock</h2>
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <label class="fl">Job for this shift</label>
-        <input id="tc_job" class="admin-inp" style="width:100%;max-width:340px" placeholder="Job name / address">
+        <select id="tc_job" class="admin-inp" style="width:100%;max-width:340px" onchange="tcJobPick()">
+          <option value="">— pick a job —</option>
+        </select>
+        <div id="tc_jsaWarn" style="font-size:12px;margin-top:6px"></div>
+        <div class="jsa-actions" style="margin-top:8px">
+          <button class="btn btn-primary" onclick="punchCrew(true)">⏱️ Clock WHOLE CREW IN</button>
+          <button class="btn btn-ghost" onclick="punchCrew(false)">Clock crew OUT</button>
+        </div>
         <div id="tc_crew" class="tc-grid" style="margin:12px 0"></div>
         <div class="jsa-actions">
           <button class="btn btn-ghost" onclick="addCrew()">+ Add crew member</button>
           <button class="btn btn-primary" onclick="exportTimesheet()">⬇ Timesheet CSV</button>
         </div>
+        <div id="tc_summary" style="margin-top:14px"></div>
         <h3 style="margin-top:18px">Punch log</h3>
         <div id="tc_log"></div>
       </div>
@@ -2081,6 +2106,7 @@ function switchModule(id){
     adminLoad();
     if(window.renderDataManager) renderDataManager();
     if(window.renderCrew) renderCrew();
+    if(window.renderTimecards) renderTimecards();
     if(window.klyMemRefresh) klyMemRefresh();
   }
 }
@@ -4628,15 +4654,19 @@ function renderCrew(){
   const el=document.getElementById('crewList'); if(!el) return;
   const c=appState.crew||[];
   const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
-  el.innerHTML = c.length ? c.map(m=>`
-    <div class="log-row" style="align-items:center;gap:8px">
+  // Flag PINs shared by more than one person — punch-by-PIN can't tell them apart.
+  const pinCount={}; c.forEach(m=>{ if(m&&m.pin) pinCount[m.pin]=(pinCount[m.pin]||0)+1; });
+  const dupPins=Object.keys(pinCount).filter(p=>pinCount[p]>1);
+  const warn = dupPins.length ? `<div style="font-size:11px;color:var(--yw);background:rgba(234,179,8,.1);border:1px solid var(--yw);border-radius:6px;padding:7px 9px;margin-bottom:8px">⚠️ ${dupPins.length===1?'Two or more crew share the same PIN':'Some crew share PINs'} — give each person a unique 4-digit PIN so the time clock can tell who punched. (Yours and Talia's can stay as they are.)</div>` : '';
+  el.innerHTML = warn + (c.length ? c.map(m=>`
+    <div class="log-row" style="align-items:center;gap:8px${(m.pin&&pinCount[m.pin]>1)?';border-color:var(--yw)':''}">
       <div style="flex:1">
-        <b>${E(m.name||'')}</b> <span class="badge badge-cy" style="font-size:9px">${crewRoleLabel(m.role)}</span>
+        <b>${E(m.name||'')}</b> <span class="badge badge-cy" style="font-size:9px">${crewRoleLabel(m.role)}</span>${(m.pin&&pinCount[m.pin]>1)?' <span class="badge" style="font-size:9px;background:rgba(234,179,8,.15);color:var(--yw);border:1px solid var(--yw)">DUP PIN</span>':''}
         <div style="font-size:11px;color:var(--t2)">${E(m.phone||'')}${m.phone&&m.email?' · ':''}${E(m.email||'')} · PIN ••••</div>
       </div>
       <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="crewEdit(${m.id})">✏️ Edit</button>
       <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="crewDelete(${m.id})">🗑</button>
-    </div>`).join('') : '<div style="color:var(--t2);font-size:12px;padding:6px">No crew yet. Add yourself as Owner first, then Talia (Admin) and Daniel (Field).</div>';
+    </div>`).join('') : '<div style="color:var(--t2);font-size:12px;padding:6px">No crew yet. Add yourself as Owner first, then Talia (Admin) and Daniel (Field).</div>');
 }
 function crewAdd(){
   // Wrapped so a bad state can never make the button silently do nothing — any failure
@@ -5284,6 +5314,8 @@ function renderJobs(){
           <button class="btn btn-ghost" onclick="event.stopPropagation();openJobDetail(${j.id})" style="font-size:10px;padding:4px 8px">EDIT</button>
           <button class="btn btn-cyan" onclick="event.stopPropagation();openJobLog(${j.id})" style="font-size:10px;padding:4px 8px">LOG</button>
           <button class="btn btn-ghost" onclick="event.stopPropagation();jsaFromJob(${j.id})" style="font-size:10px;padding:4px 8px" title="Open a JSA prefilled for this job">${j.jsaDone?'🦺 JSA ✓':'🦺 JSA'}</button>
+          <button class="btn btn-primary" onclick="event.stopPropagation();jobPunch(${j.id},'in')" style="font-size:10px;padding:4px 8px" title="Crew clocks IN with their PIN">🕐 IN</button>
+          <button class="btn btn-ghost" onclick="event.stopPropagation();jobPunch(${j.id},'out')" style="font-size:10px;padding:4px 8px" title="Crew clocks OUT with their PIN">🕐 OUT</button>
           ${st.id!=='Paid'&&st.id!=='Cancelled'?`<button class="btn btn-orange" onclick="event.stopPropagation();advanceJobStatus(${j.id})" style="font-size:10px;padding:4px 8px">→ ${nextSt.id==='Cancelled'?'PAID':nextSt.id.toUpperCase()}</button>`:''}
         </div>`;
       col.appendChild(card);
@@ -7378,27 +7410,145 @@ document.addEventListener('click',()=>{
   };
   window.delJSA=function(id){ SS('jsas', LS('jsas',[]).filter(j=>j.id!==id)); renderJSAList(); };
 
-  /* ---------- TIME CLOCK ---------- */
+  /* ---------- TIME CLOCK (job-aware, PIN punch, time cards) ---------- */
   const defCrew=['Clifton','Daniel','Talia'];
+  // Roster prefers Admin crew profiles (with PINs); falls back to the simple name list.
+  function tcRoster(){ const c=((typeof appState!=='undefined'&&appState.crew)||[]).map(m=>m&&m.name).filter(Boolean); return c.length?c:LS('tc_crew',defCrew.slice()); }
+  function tcCrewByPin(pin){ return ((typeof appState!=='undefined'&&appState.crew)||[]).find(m=>m && String(m.pin)===String(pin).trim()); }
+  function tcActiveJobs(){ return ((typeof appState!=='undefined'&&appState.jobs)||[]).filter(j=>!['Paid','Cancelled','Completed'].includes(j.status)); }
+  function tcJobName(id){ const j=((typeof appState!=='undefined'&&appState.jobs)||[]).find(x=>String(x.id)===String(id)); return j?(j.customer||j.name||'Job'):''; }
+  function tcHasJSAToday(job){ try{ const arr=LS('jsas',[]); const today=new Date().toISOString().slice(0,10); const jn=(job.customer||job.name||'').toLowerCase();
+    return arr.some(j=>String(j.created||'').slice(0,10)===today && ((j.jobId&&String(j.jobId)===String(job.id))||(j.job||'').toLowerCase()===jn)); }catch(e){ return false; } }
+  function tcLocal(iso){ try{ const d=new Date(iso), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); }catch(e){ return ''; } }
+  function tcPromptPin(label){ return (typeof prompt==='function')?prompt(label):''; }
+
   window.renderClock=function(){
-    const crew=LS('tc_crew', defCrew.slice()); const punches=LS('tc_punches',[]);
+    const punches=LS('tc_punches',[]);
     const active=n=>punches.find(p=>p.name===n && !p.out);
-    const grid=$('tc_crew'); if(grid) grid.innerHTML = crew.map(n=>{ const a=active(n);
+    const sel=$('tc_job');
+    if(sel){ const cur=sel.value; sel.innerHTML='<option value="">— pick a job —</option>'+tcActiveJobs().map(j=>`<option value="${j.id}">${esc((j.customer||j.name||'Job')+(j.address?(' — '+j.address):''))}</option>`).join(''); if(cur) sel.value=cur; }
+    if(window.tcJobPick) tcJobPick();
+    const grid=$('tc_crew'); if(grid) grid.innerHTML = tcRoster().map(n=>{ const a=active(n);
       return `<div class="tc-card ${a?'on':''}"><div class="tc-name">${esc(n)}</div>
-        <div class="tc-status">${a?('IN since '+fmt(a.in)):'Out'}</div>
-        <button class="btn ${a?'btn-ghost':'btn-primary'}" onclick="punch('${esc(n)}')">${a?'Punch OUT':'Punch IN'}</button></div>`;}).join('');
+        <div class="tc-status">${a?('IN since '+fmt(a.in)+(a.job?(' · '+esc(a.job)):'')):'Out'}</div>
+        <button class="btn ${a?'btn-ghost':'btn-primary'}" onclick="punchByName('${esc(n)}','${a?'out':'in'}')">${a?'Punch OUT':'Punch IN'}</button></div>`;}).join('');
+    const sum=$('tc_summary'); if(sum){ const today=new Date().toISOString().slice(0,10); const byJob={};
+      punches.forEach(p=>{ if(String(p.in||'').slice(0,10)!==today) return; const h=p.out?((new Date(p.out)-new Date(p.in))/3.6e6):0; const k=p.job||'(no job)'; byJob[k]=(byJob[k]||0)+h; });
+      const rows=Object.keys(byJob).map(k=>`<div class="log-row"><span>${esc(k)}</span><span>${byJob[k].toFixed(2)} h today</span></div>`).join('');
+      sum.innerHTML = rows?('<div style="font-size:11px;color:var(--t2);margin-bottom:4px">TODAY BY JOB</div>'+rows):''; }
     const log=$('tc_log'); if(log){ const rows=punches.slice(0,40).map(p=>{ const hrs=p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'—';
       return `<div class="log-row"><span><b>${esc(p.name)}</b> · ${esc(p.job||'')}<br><span style="color:var(--t2)">${fmt(p.in)} → ${p.out?fmt(p.out):'(in)'}</span></span><span>${hrs} h</span></div>`;}).join('');
       log.innerHTML = rows || '<p style="color:var(--t2);font-size:13px">No punches yet.</p>'; }
+    if(window.renderTimecards) renderTimecards();
   };
-  window.punch=function(name){
-    const job=(($('tc_job')||{}).value||'').trim(); const punches=LS('tc_punches',[]);
-    const a=punches.find(p=>p.name===name && !p.out);
-    if(a){ a.out=nowISO(); notify(name+' punched OUT','info'); }
-    else { punches.unshift({id:'P'+Date.now(),name,job,in:nowISO(),out:null}); notify(name+' punched IN','success'); }
-    SS('tc_punches',punches); renderClock();
+  window.tcJobPick=function(){ const sel=$('tc_job'), warn=$('tc_jsaWarn'); if(!warn) return; warn.innerHTML='';
+    const id=sel&&sel.value; if(!id) return; const job=((typeof appState!=='undefined'&&appState.jobs)||[]).find(j=>String(j.id)===String(id)); if(!job) return;
+    if(!tcHasJSAToday(job)){ warn.innerHTML='⚠️ No JSA signed today for this job — <a onclick="jsaFromJob('+JSON.stringify(job.id)+')" style="color:var(--cy);cursor:pointer;text-decoration:underline">start it</a>'; warn.style.color='var(--yw)'; }
+    else { warn.innerHTML='✅ JSA signed today'; warn.style.color='var(--gr)'; } };
+
+  // Core punch — person identified, attributed to the selected job.
+  function tcDoPunch(who, dir, jobId){
+    const punches=LS('tc_punches',[]); const jobName=jobId?tcJobName(jobId):'';
+    const open=punches.find(p=>p.name===who.name && !p.out);
+    if(dir==='in'){
+      if(open){ notify(who.name+' is already clocked in','info'); return false; }
+      const job=((typeof appState!=='undefined'&&appState.jobs)||[]).find(j=>String(j.id)===String(jobId));
+      if(job && !tcHasJSAToday(job)) notify('Reminder: no JSA signed today for '+jobName,'alert');
+      punches.unshift({id:'P'+Date.now(), name:who.name, job:jobName, jobId:jobId||'', in:nowISO(), out:null, approved:false});
+      notify(who.name+' clocked IN'+(jobName?(' on '+jobName):''),'success'); playSound&&playSound('success');
+    } else {
+      if(!open){ notify(who.name+' is not clocked in','info'); return false; }
+      open.out=nowISO(); const hrs=((new Date(open.out)-new Date(open.in))/3.6e6).toFixed(2);
+      notify(who.name+' clocked OUT — '+hrs+' h','success');
+    }
+    SS('tc_punches',punches); renderClock(); if(window.renderJobs) renderJobs(); return true;
+  }
+  // From a Job card / detail: guy taps Punch IN/OUT → enters PIN.
+  window.jobPunch=function(jobId, dir){
+    const pin=tcPromptPin((dir==='out'?'Punch OUT':'Punch IN')+' — '+tcJobName(jobId)+'\nEnter your PIN:'); if(pin===null||pin==='') return;
+    const who=tcCrewByPin(pin); if(!who){ notify('PIN not recognized — set crew PINs in Admin','alert'); return; }
+    tcDoPunch(who, dir, jobId);
   };
-  window.addCrew=function(){ const n=prompt('Crew member name:'); if(!n) return; const c=LS('tc_crew',defCrew.slice()); c.push(n.trim()); SS('tc_crew',c); renderClock(); };
+  // From the clock crew grid (confirm identity with that person's PIN).
+  window.punchByName=function(name, dir){
+    const jobId=($('tc_job')||{}).value||'';
+    const pin=tcPromptPin(name+' — enter PIN to punch '+dir.toUpperCase()+':'); if(pin===null||pin==='') return;
+    const who=tcCrewByPin(pin); if(!who || who.name!==name){ notify('PIN doesn\'t match '+name,'alert'); return; }
+    tcDoPunch(who, dir, jobId);
+  };
+  // Whole crew at once (supervisor PIN).
+  window.punchCrew=function(inMode){
+    const jobId=($('tc_job')||{}).value||''; if(!jobId){ notify('Pick a job first','alert'); return; }
+    const pin=tcPromptPin('Supervisor PIN to clock the WHOLE crew '+(inMode?'IN':'OUT')+' on '+tcJobName(jobId)+':'); if(pin===null||pin==='') return;
+    const sup=tcCrewByPin(pin); if(!sup || !['full','admin'].includes(sup.role||'')){ notify('Supervisor PIN required','alert'); return; }
+    const job=((typeof appState!=='undefined'&&appState.jobs)||[]).find(j=>String(j.id)===String(jobId));
+    let names=(job && job.crew)?String(job.crew).split(',').map(s=>s.trim()).filter(Boolean):[]; if(!names.length) names=tcRoster();
+    const punches=LS('tc_punches',[]); let n=0;
+    names.forEach((nm,i)=>{ const open=punches.find(p=>p.name===nm && !p.out);
+      if(inMode && !open){ punches.unshift({id:'P'+Date.now()+'_'+i, name:nm, job:tcJobName(jobId), jobId, in:nowISO(), out:null, approved:false}); n++; }
+      else if(!inMode && open){ open.out=nowISO(); n++; } });
+    SS('tc_punches',punches); renderClock(); notify((inMode?'Clocked in ':'Clocked out ')+n+' crew on '+tcJobName(jobId),'success');
+  };
+  window.addCrew=function(){ notify('Add crew + PINs in Admin → Crew','info'); if(window.switchModule) switchModule('admin'); };
+
+  /* ----- TIME CARDS: review, edit, approve, send to office ----- */
+  function tcPeriodRange(mode){
+    const now=new Date(), day=now.getDay();
+    const sow=new Date(now); sow.setHours(0,0,0,0); sow.setDate(now.getDate()-day); // Sunday 00:00
+    if(mode==='week') return [sow,null];
+    if(mode==='last'){ const s=new Date(sow); s.setDate(s.getDate()-7); return [s,new Date(sow)]; }
+    return [null,null];
+  }
+  window.renderTimecards=function(){
+    const box=$('tc_cards'); if(!box) return;
+    const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode);
+    const punches=LS('tc_punches',[]).filter(p=>{ const t=new Date(p.in); if(s&&t<s) return false; if(e&&t>=e) return false; return true; });
+    if(!punches.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No time entries in this period.</p>'; return; }
+    const byName={}; punches.forEach(p=>{ (byName[p.name]=byName[p.name]||[]).push(p); });
+    box.innerHTML=Object.keys(byName).sort().map(name=>{
+      const list=byName[name].sort((a,b)=>String(b.in).localeCompare(String(a.in)));
+      const tot=list.reduce((a,p)=>a+(p.out?((new Date(p.out)-new Date(p.in))/3.6e6):0),0);
+      const allApproved=list.every(p=>p.approved);
+      const rows=list.map(p=>{ const hrs=p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'—';
+        return `<div class="log-row" style="gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="flex:1;min-width:150px"><span style="color:var(--t2);font-size:11px">${esc(p.job||'(no job)')}</span><br>
+            <input type="datetime-local" class="admin-inp" style="font-size:11px;padding:2px 4px;width:auto" value="${tcLocal(p.in)}" onchange="editPunch('${p.id}','in',this.value)">
+            <span style="color:var(--t2)">→</span>
+            <input type="datetime-local" class="admin-inp" style="font-size:11px;padding:2px 4px;width:auto" value="${p.out?tcLocal(p.out):''}" onchange="editPunch('${p.id}','out',this.value)"></span>
+          <span style="min-width:56px;text-align:right;font-weight:700">${hrs} h ${p.approved?'✅':''}</span>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 7px" onclick="delPunch('${p.id}')">🗑</button></div>`; }).join('');
+      return `<div class="jsa-card"><div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+        <h4 style="margin:0">${esc(name)} — ${tot.toFixed(2)} h</h4>
+        <button class="btn ${allApproved?'btn-ghost':'btn-primary'}" style="font-size:11px" onclick="approveCard('${esc(name)}')">${allApproved?'Approved ✓':'Approve'}</button>
+      </div>${rows}</div>`;
+    }).join('');
+  };
+  window.editPunch=function(id,field,val){ const punches=LS('tc_punches',[]); const p=punches.find(x=>x.id===id); if(!p) return;
+    if(!val){ if(field==='out') p.out=null; } else { try{ p[field]=new Date(val).toISOString(); }catch(e){ return; } }
+    p.approved=false; SS('tc_punches',punches); renderTimecards(); notify('Time updated','success'); };
+  window.delPunch=function(id){ if(typeof confirm==='function' && !confirm('Delete this time entry?')) return; SS('tc_punches',LS('tc_punches',[]).filter(x=>x.id!==id)); renderTimecards(); if(window.renderClock) renderClock(); notify('Entry deleted','info'); };
+  window.approveCard=function(name){ const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode); const punches=LS('tc_punches',[]); let openWarn=false;
+    punches.forEach(p=>{ if(p.name!==name) return; const t=new Date(p.in); if(s&&t<s) return; if(e&&t>=e) return; if(!p.out){ openWarn=true; return; } p.approved=true; p.approvedBy=(window._currentUser||'owner'); p.approvedAt=nowISO(); });
+    SS('tc_punches',punches); renderTimecards();
+    notify(openWarn?(name+' — approved the closed entries; one is still clocked in'):(name+'’s time card approved'), openWarn?'alert':'success'); };
+  window.sendTimecards=function(){
+    const mode=($('tc_period')||{}).value||'week'; const [s,e]=tcPeriodRange(mode);
+    const punches=LS('tc_punches',[]).filter(p=>{ const t=new Date(p.in); if(s&&t<s) return false; if(e&&t>=e) return false; return true; });
+    if(!punches.length){ notify('No time entries to send','alert'); return; }
+    let office=LS('tc_office_email',''); if(!office){ office=((typeof prompt==='function'?prompt('Talia / office email for time cards:'):'')||'').trim(); if(office) SS('tc_office_email',office); }
+    const label=mode==='week'?'this week':mode==='last'?'last week':'all time';
+    const byName={}; punches.forEach(p=>{ (byName[p.name]=byName[p.name]||[]).push(p); });
+    let body='MGSF TIME CARDS — '+label+'\nGenerated '+new Date().toLocaleString()+'\n\n';
+    Object.keys(byName).sort().forEach(name=>{ const list=byName[name]; const tot=list.reduce((a,p)=>a+(p.out?((new Date(p.out)-new Date(p.in))/3.6e6):0),0);
+      body+=name+' — '+tot.toFixed(2)+' h ('+(list.every(p=>p.approved)?'APPROVED':'NOT fully approved')+')\n';
+      list.sort((a,b)=>String(a.in).localeCompare(String(b.in))).forEach(p=>{ const hrs=p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'open'; body+='   '+fmt(p.in)+' → '+(p.out?fmt(p.out):'(open)')+'   '+hrs+' h   '+(p.job||'')+'\n'; });
+      body+='\n'; });
+    const subj='MGSF Time Cards — '+label+' — '+new Date().toLocaleDateString();
+    const mailto='mailto:'+encodeURIComponent(office||'')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+    if(window.showKlyftonDraft){ if(!appState.chatOpen && window.toggleChat) toggleChat(); showKlyftonDraft('TIME CARDS → '+(office||'office'), body, office?mailto:null); }
+    else if(office){ window.open(mailto,'_blank'); }
+    notify('Time cards ready — review & send to Talia','success');
+  };
   window.exportTimesheet=function(){
     const punches=LS('tc_punches',[]); if(!punches.length){ notify('No punches to export','alert'); return; }
     const rows=[['Name','Job','In','Out','Hours']].concat(punches.map(p=>[p.name,p.job||'',p.in,p.out||'',p.out?((new Date(p.out)-new Date(p.in))/3.6e6).toFixed(2):'']));
@@ -7415,7 +7565,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-jsa-autofill';
+const APP_BUILD = '2026-07-14-timeclock-timecards';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
