@@ -2060,6 +2060,21 @@ function switchModule(id){
   if(id==='crm') renderPipeline();
   if(id==='jobs') renderJobs();
   if(id==='docs') renderDocLib();
+  // Modules whose render lives on the nav onclick — call it here too so they populate no
+  // matter how they're opened (nav, 💡 HELP button, Klyfton action, or programmatic).
+  if(id==='grow'){ if(window.renderGrow) renderGrow(); }
+  if(id==='ops'){ if(window.renderOps) renderOps(); }
+  if(id==='calendar'){ if(window.renderCalendar) renderCalendar(); }
+  if(id==='forms'){ if(window.renderForms) renderForms(); }
+  if(id==='weather'){ if(window.renderWeather) renderWeather(); }
+  if(id==='invoice'){ if(window.renderInvoice) renderInvoice(); }
+  if(id==='proposal'){ if(window.renderProposal) renderProposal(); }
+  if(id==='materials'){ if(window.renderMaterials) renderMaterials(); }
+  if(id==='pricebook'){ if(window.renderPriceBook) renderPriceBook(); }
+  if(id==='compliance'){ if(window.renderCompliance) renderCompliance(); }
+  if(id==='changeorder'){ if(window.renderCO) renderCO(); }
+  if(id==='clock'){ if(window.renderClock) renderClock(); }
+  if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
   if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
@@ -5160,6 +5175,7 @@ function updateLead(id){
   l.source  = (document.getElementById('eld_src')||{}).value;
   l.notes   = (document.getElementById('eld_notes')||{}).value;
   save('leads');
+  if(l.estSource){ estWriteback('bid', l.estRef, _estBidPatch(l)); }  // two-way sync → Estimator
   closeModal();
   renderPipeline();
   if(window.renderDashMetrics) renderDashMetrics();
@@ -5174,6 +5190,7 @@ function updateLeadStatus(id){
   if(!el) return;
   l.status = el.value;
   save('leads');
+  if(l.estSource){ estWriteback('bid', l.estRef, {status:_bidStageToEst(l.status)}); }  // two-way sync
   closeModal();
   renderPipeline();
   notify(`${l.name} → ${l.status}`);
@@ -5183,6 +5200,7 @@ function updateLeadStatus(id){
 function deleteLead(id){
   const l = appState.leads.find(x=>x.id===id);
   if(!confirm('Delete '+(l?('"'+l.name+'"'):'this lead')+'? This can\'t be undone.')) return;
+  if(l && l.estSource){ estWriteback('bid', l.estRef, {__delete:true}); }  // also remove from Estimator
   appState.leads = appState.leads.filter(x=>x.id!==id);
   save('leads');
   closeModal();
@@ -5413,6 +5431,7 @@ function updateJob(id){
   j.notes      = gv('ej_notes');
   j.updated    = new Date().toISOString();
   save('jobs');
+  if(j.estSource){ estWriteback('job', j.estRef, _estJobPatch(j)); }  // two-way sync → Estimator
   closeModal();
   renderJobs();
   notify(`${j.jobNum} updated`,'ok');
@@ -5423,6 +5442,7 @@ function deleteJob(id){
   const j=appState.jobs.find(x=>x.id===id);
   if(!j) return;
   if(!confirm(`Delete job "${j.name}"? This cannot be undone.`)) return;
+  if(j.estSource){ estWriteback('job', j.estRef, {__delete:true}); }  // also remove from Estimator
   appState.jobs = appState.jobs.filter(x=>x.id!==id);
   save('jobs');
   closeModal();
@@ -5439,6 +5459,7 @@ function advanceJobStatus(id){
   j.status=statuses[cur+1];
   j.updated=new Date().toISOString();
   save('jobs');
+  if(j.estSource){ estWriteback('job', j.estRef, {status:_jobStatusToEst(j.status)}); }  // two-way sync
   renderJobs();
   notify(`${j.jobNum} → ${j.status}`,'ok');
   playSound('success');
@@ -6630,6 +6651,38 @@ try{ window.addEventListener('storage', function(e){
   }
 }); }catch(e){}
 
+// ---- TWO-WAY SYNC: push a parent edit of an Estimator-sourced record BACK to the Estimator ----
+// Map app statuses back into the Estimator's vocabulary.
+function _jobStatusToEst(s){ const m={'Scheduled':'scheduled','In Progress':'in progress','Invoiced':'invoiced','Paid':'paid','Cancelled':'cancelled'}; return m[s]||String(s||'').toLowerCase(); }
+function _bidStageToEst(s){ const m={'New':'draft','Qualified':'qualified','Estimate Sent':'sent','Follow-Up':'sent','Won':'won','Lost':'lost'}; return m[s]||String(s||'').toLowerCase(); }
+// Write a patch into the Estimator's own store (shared localStorage) for the record matching
+// estRef. Deep-merges customer{} so we never drop fields we don't manage. The embedded
+// estimator picks it up via its storage listener; without this, the next import would just
+// overwrite the parent edit.
+function estWriteback(kind, estRef, patch){
+  try{
+    if(!estRef) return false;
+    const key = (kind==='job') ? EST_KEYS.jobs : EST_KEYS.bids;
+    const arr = _estRead(key);
+    const idx = arr.findIndex(r=> String(r.id)===String(estRef) || String(r.bidId)===String(estRef));
+    if(idx<0) return false;
+    if(patch && patch.__delete){ arr.splice(idx,1); }
+    else {
+      let p = patch||{};
+      if(p.customer && arr[idx] && arr[idx].customer) p = Object.assign({}, p, {customer:Object.assign({}, arr[idx].customer, p.customer)});
+      arr[idx] = Object.assign({}, arr[idx], p);
+    }
+    try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(e){}
+    try{ if(kind==='job'){ const env=JSON.parse(localStorage.getItem(EST_KEYS.interop)||'{}'); env.jobs=arr; env.updatedAt=new Date().toISOString(); localStorage.setItem(EST_KEYS.interop, JSON.stringify(env)); } }catch(e){}
+    return true;
+  }catch(e){ return false; }
+}
+function _estJobPatch(j){ return { status:_jobStatusToEst(j.status), sell:Number(j.value)||0, date:j.date||'',
+  crew:(j.crew? String(j.crew).split(',').map(s=>s.trim()).filter(Boolean):[]),
+  customer:{ name:j.customer||'', phone:j.phone||'', address:j.address||'' } }; }
+function _estBidPatch(l){ return { status:_bidStageToEst(l.status), sellPrice:Number(l.value)||0, state:l.state||'',
+  customer:{ name:l.name||'', phone:l.phone||'', email:l.email||'', address:l.address||'' } }; }
+
 function chatKeydown(e){
   if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
 }
@@ -7210,7 +7263,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-klyfton-actions-helper';
+const APP_BUILD = '2026-07-14-twoway-thicken';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
