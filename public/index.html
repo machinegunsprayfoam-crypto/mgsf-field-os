@@ -779,7 +779,7 @@ canvas.chart{width:100%;height:100%}
         </div>
 
         <!-- Row 2: Job Type Buttons -->
-        <div class="card" style="position:sticky;top:0;z-index:6">
+        <div class="card">
           <div class="card-title">Add Job Scope — tap to add each area (walls, lid, gables… all on one bid)</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             <button class="jtype-btn" onclick="addJobItem('walls')">🧱 WALLS</button>
@@ -2397,7 +2397,7 @@ function addJobItem(type, prefill={}){
   updateScopePreview(id);
   playSound('click');
   // Scroll the new scope into view so it's never hidden below the sticky button bar.
-  try{ div.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+  try{ div.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
   return id;
 }
 // Duplicate a scope with all its current values — "add another just like this" to speed up bids.
@@ -6977,7 +6977,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-13-bidbar-oneRow';
+const APP_BUILD = '2026-07-13-est-nosticky';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
