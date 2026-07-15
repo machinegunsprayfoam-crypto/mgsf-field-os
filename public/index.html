@@ -869,6 +869,28 @@ canvas.chart{width:100%;height:100%}
           </select>
         </div>
         <div class="pipeline" id="crmPipeline"></div>
+
+        <!-- HUBSPOT CRM LOOKUP — live read of any HubSpot object -->
+        <div class="card" style="border-color:rgba(0,212,255,.2);margin-top:16px">
+          <div class="card-title" style="color:var(--cy);display:flex;justify-content:space-between;align-items:center">
+            <span>🎯 HUBSPOT LOOKUP</span>
+            <span id="hsLookupStat" style="font-size:10px;color:var(--t2);font-weight:400"></span>
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Search your live HubSpot CRM. Needs a HubSpot token in <b>Admin → API Keys</b>.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <select class="inp" id="hsObject" style="width:130px">
+              <option value="contacts">Contacts</option>
+              <option value="deals">Deals</option>
+              <option value="companies">Companies</option>
+              <option value="tickets">Tickets</option>
+              <option value="quotes">Quotes</option>
+              <option value="products">Products</option>
+            </select>
+            <input class="inp" id="hsQuery" placeholder="Name, email, company… (blank = most recent)" style="flex:1;min-width:170px" onkeydown="if(event.key==='Enter')hubspotLookup()">
+            <button class="btn btn-cyan" onclick="hubspotLookup()">Search</button>
+          </div>
+          <div id="hsResults" style="margin-top:10px"></div>
+        </div>
       </div>
 
       <!-- INTEL MODULE -->
@@ -1887,6 +1909,60 @@ function _ttsKey(){ try{ return localStorage.getItem('klyfton_tts_key')||''; }ca
 // The owner's in-app Anthropic key (Admin → API Keys). Sent to /api/klyfton only as a
 // fallback — a Vercel ANTHROPIC_API_KEY env var always wins on the server.
 function _brainKey(){ try{ return (localStorage.getItem('klyfton_anthropic_key')||'').trim(); }catch(e){ return ''; } }
+function _hsToken(){ try{ return (localStorage.getItem('klyfton_hubspot_token')||'').trim(); }catch(e){ return ''; } }
+
+// Live, READ-ONLY HubSpot CRM lookup. Uses the token saved in Admin → API Keys
+// (or, more securely, HUBSPOT_TOKEN in Vercel). Never writes to the CRM.
+function _hsLabel(obj, p){
+  if(obj==='contacts') return ((p.firstname||'')+' '+(p.lastname||'')).trim() || p.email || 'Contact';
+  if(obj==='companies') return p.name || p.domain || 'Company';
+  if(obj==='deals') return p.dealname || 'Deal';
+  if(obj==='tickets') return p.subject || 'Ticket';
+  if(obj==='quotes') return p.hs_title || 'Quote';
+  if(obj==='products') return p.name || 'Product';
+  return p.name || 'Record';
+}
+function _hsSub(obj, p){
+  if(obj==='contacts') return [p.email, p.phone||p.mobilephone, [p.city,p.state].filter(Boolean).join(', '), p.hs_lead_status].filter(Boolean).join(' · ');
+  if(obj==='companies') return [p.phone, [p.city,p.state].filter(Boolean).join(', '), p.industry].filter(Boolean).join(' · ');
+  if(obj==='deals') return [p.amount?('$'+Number(p.amount).toLocaleString()):'', p.dealstage, p.closedate?('close '+String(p.closedate).slice(0,10)):''].filter(Boolean).join(' · ');
+  if(obj==='tickets') return [p.hs_pipeline_stage, p.hs_ticket_priority].filter(Boolean).join(' · ');
+  if(obj==='quotes') return [p.hs_status, p.hs_quote_amount?('$'+Number(p.hs_quote_amount).toLocaleString()):''].filter(Boolean).join(' · ');
+  if(obj==='products') return [p.price?('$'+Number(p.price).toLocaleString()):'', p.hs_sku].filter(Boolean).join(' · ');
+  return '';
+}
+function hubspotLookup(){
+  const obj=(document.getElementById('hsObject')||{}).value||'contacts';
+  const q=((document.getElementById('hsQuery')||{}).value||'').trim();
+  const out=document.getElementById('hsResults'); const stat=document.getElementById('hsLookupStat');
+  const token=_hsToken();
+  const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
+  if(!token){ if(out) out.innerHTML='<div style="font-size:12px;color:var(--yw)">No HubSpot token yet — add one in <b>Admin → API Keys</b>.</div>'; return; }
+  if(stat) stat.textContent='Searching…';
+  if(out) out.innerHTML='<div style="font-size:12px;color:var(--t2)">Pulling from HubSpot…</div>';
+  fetch('/api/hubspot',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({mode:'read', object:obj, search:q||undefined, token})})
+    .then(r=>r.json()).then(d=>{
+      if(stat) stat.textContent='';
+      if(!d||!d.ok){
+        const msg=(d&&d.error==='HUBSPOT_NOT_CONFIGURED')?'Token not accepted — check it in Admin → API Keys.':((d&&d.detail)||'HubSpot returned an error.');
+        if(out) out.innerHTML='<div style="font-size:12px;color:var(--or)">'+E(msg)+'</div>'; return;
+      }
+      const recs=d.records||[];
+      if(!recs.length){ if(out) out.innerHTML='<div style="font-size:12px;color:var(--t2)">No matching records.</div>'; return; }
+      if(out) out.innerHTML=recs.map(r=>{
+        const p=r.properties||{};
+        return `<div class="log-row" style="align-items:center;gap:8px">
+          <div style="flex:1;min-width:0">
+            <b style="font-size:13px">${E(_hsLabel(obj,p))}</b>
+            <div style="font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${E(_hsSub(obj,p))||'&nbsp;'}</div>
+          </div>
+          <a href="${r.url}" target="_blank" class="btn btn-ghost" style="font-size:10px;padding:3px 8px">Open ↗</a>
+        </div>`;
+      }).join('') + `<div style="font-size:10px;color:var(--t2);margin-top:6px">${recs.length} record${recs.length===1?'':'s'} · live from HubSpot</div>`;
+    })
+    .catch(()=>{ if(stat) stat.textContent=''; if(out) out.innerHTML='<div style="font-size:12px;color:var(--or)">Couldn’t reach HubSpot — check your connection.</div>'; });
+}
 function speakCloud(text){
   try{
     let pref=null; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'null'); }catch(e){}
