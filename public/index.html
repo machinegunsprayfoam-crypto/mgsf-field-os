@@ -975,6 +975,12 @@ canvas.chart{width:100%;height:100%}
             <span class="badge badge-cy">Google Drive</span>
           </div>
         </div>
+        <div class="row" style="flex-wrap:wrap;gap:10px;margin:10px 0 4px;font-size:11px;color:var(--t2)">
+          <span><span class="badge badge-gr">● LIVE</span> working now, no setup</span>
+          <span><span class="badge badge-cy">◐ 1 SWITCH AWAY</span> flip one env var in Vercel</span>
+          <span><span class="badge badge-yw">○ VIA WEBHOOK</span> route through Zapier/Make</span>
+        </div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Tap any tile for what it does and how to turn it on. Full setup steps live in <b>Admin → Integrations</b>.</div>
         <div class="skill-grid" id="skillsGrid"></div>
       </div>
 
@@ -1256,14 +1262,31 @@ canvas.chart{width:100%;height:100%}
           <div id="tc_cards"></div>
         </div>
 
-        <div class="admin-section">
-          <div class="admin-section-title">🔔 NOTIFICATIONS — TEXT / EMAIL ME ON NEW LEADS</div>
+        <div class="admin-section" id="adm-integrations">
+          <div class="admin-section-title">🔗 INTEGRATIONS — ONE WEBHOOK WIRES KLYFTON TO EVERYTHING</div>
           <div style="font-size:11px;color:var(--t2);line-height:1.6">
-            Get a text or email the second a customer submits the web quote form.<br>
-            <b>Setup (once):</b> make a free <b>Zapier</b> Zap → trigger <b>Webhooks by Zapier → Catch Hook</b> → it gives you a URL. Action: <b>SMS by Zapier</b> or <b>Gmail</b>. Then in <b>Vercel → mgsf-fieldos → Settings → Environment Variables</b>, add <b>ALERTS_WEBHOOK_URL</b> = that URL, and redeploy.<br>
-            Once set, every web lead pings your phone. Test it here:
+            Klyfton is a self-contained app, so it reaches the outside world through <b>one Event Webhook</b>.
+            Point that webhook at a free <b>Zapier</b> or <b>Make</b> "Catch Hook," and from there you can fan out to
+            <b>6,000+ apps</b> — text yourself, email the customer, drop jobs on Google Calendar, push deals to HubSpot,
+            create QuickBooks invoices, ask for reviews. Set it up <b>once</b>.
           </div>
-          <button class="btn btn-cyan" style="margin-top:8px" onclick="klyftonTestAlert()">📲 Send me a test alert</button>
+          <ol style="font-size:11px;color:var(--t2);line-height:1.7;margin:8px 0 8px 16px">
+            <li>In <b>Zapier</b>, create a Zap → trigger <b>Webhooks by Zapier → Catch Hook</b>. Copy the URL it gives you.</li>
+            <li>Add an action for what you want: <b>SMS by Zapier</b>, <b>Gmail</b>, <b>Google Calendar</b>, <b>HubSpot</b>, <b>QuickBooks</b>, etc.</li>
+            <li>In <b>Vercel → mgsf-fieldos → Settings → Environment Variables</b>, add <b>ALERTS_WEBHOOK_URL</b> = that URL, then Redeploy.</li>
+            <li>Filter each Zap by the <b>event</b> field so the right action fires for the right event (below).</li>
+          </ol>
+          <div style="font-size:11px;color:var(--t2);line-height:1.7;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:8px;padding:8px 10px">
+            <b style="color:var(--cy)">Events Klyfton fires (the <code>event</code> field):</b><br>
+            • <b>new_lead</b> — web quote submitted → text/email you, add to HubSpot/Sheets<br>
+            • <b>job_scheduled</b> — job created → add to Google Calendar, text the crew<br>
+            • <b>job_completed</b> — job marked Invoiced → notify office, start closeout<br>
+            • <b>invoice</b> — job Invoiced → create the QuickBooks/PayPal invoice<br>
+            • <b>review_ask</b> — job marked Paid → send the Google review request<br>
+            • <b>reorder</b> — inventory hit its reorder point → email the supplier<br>
+            <span style="color:var(--t2)">Each event also carries name, phone, email, service, address, value, customer, job_date &amp; a ready-to-send <b>message</b> string.</span>
+          </div>
+          <button class="btn btn-cyan" style="margin-top:10px" onclick="klyftonTestAlert()">📲 Send me a test alert</button>
           <span id="notifyStatus" style="font-size:11px;margin-left:8px"></span>
         </div>
         <div class="admin-section">
@@ -5593,6 +5616,7 @@ function saveJob(){
   closeModal();
   renderJobs();
   notify(`Job created: ${job.jobNum} — ${name}`,'ok');
+  if(window.klyftonNotify) klyftonNotify('job_scheduled',{job:{customer:job.customer,name:job.name,service:job.service,date:job.date,address:job.address,value:job.value,status:job.status}});
   playSound('success');
 }
 
@@ -5639,6 +5663,7 @@ function updateJob(id){
   if(!j) return;
   const gv = sel => (document.getElementById(sel)||{}).value||'';
   if(!sundayOkay(gv('ej_date'))) return;
+  const _oldStatus = j.status;
   j.name       = gv('ej_name') || j.name;
   j.customer   = gv('ej_cust');
   j.phone      = gv('ej_phone');
@@ -5659,6 +5684,7 @@ function updateJob(id){
   closeModal();
   renderJobs();
   notify(`${j.jobNum} updated`,'ok');
+  emitJobEvent(j, _oldStatus);
   playSound('click');
 }
 
@@ -5674,18 +5700,34 @@ function deleteJob(id){
   notify(`Job deleted: ${j.name}`,'alert');
 }
 
+// Fire the right Event Webhook event when a job crosses a lifecycle line.
+// Invoiced → the work is done + an invoice is due (QuickBooks/PayPal Zap).
+// Paid     → wrapped, so nudge a review request (Google My Business Zap).
+function emitJobEvent(j, oldStatus){
+  if(!window.klyftonNotify || !j || j.status===oldStatus) return;
+  const base={customer:j.customer,name:j.name,service:j.service,date:j.date,address:j.address,value:j.value,status:j.status};
+  if(j.status==='Invoiced'){
+    klyftonNotify('job_completed',{job:base});
+    klyftonNotify('invoice',{job:base, invoice:{customer:j.customer,amount:j.value,number:j.jobNum}});
+  } else if(j.status==='Paid'){
+    klyftonNotify('review_ask',{job:base});
+  }
+}
+
 function advanceJobStatus(id){
   const j=appState.jobs.find(x=>x.id===id);
   if(!j) return;
   const statuses=['Scheduled','In Progress','Invoiced','Paid'];
   const cur=statuses.indexOf(j.status);
   if(cur<0||cur>=statuses.length-1) return;
+  const old=j.status;
   j.status=statuses[cur+1];
   j.updated=new Date().toISOString();
   save('jobs');
   if(j.estSource){ estWriteback('job', j.estRef, {status:_jobStatusToEst(j.status)}); }  // two-way sync
   renderJobs();
   notify(`${j.jobNum} → ${j.status}`,'ok');
+  emitJobEvent(j, old);
   playSound('success');
 }
 
@@ -5860,8 +5902,8 @@ function processChat(input){
   }
   // Integrations
   else if(/integrat|connect|skill|plugin|hubspot|quickbooks|github|zapier|google drive/i.test(low)){
-    response = `**Available Integrations** (Skills tab shows all):\n\n✅ **Google Drive** — Docs, pricing, SOPs\n✅ **Google Calendar** — Scheduling, follow-ups\n✅ **Gmail** — Email automation\n✅ **QuickBooks Online** — Invoicing, payments\n✅ **Zapier** — 3 active automations\n🔌 **HubSpot** — CRM sync available\n🔌 **GitHub** — Code repos\n🔌 **Airtable** — Database/tracking\n🔌 **DocuSign / SignNow** — E-signatures\n🔌 **GovTribe** — Federal opportunities\n\nCheck the Skills tab to connect any of these.`;
-    voiceText = 'Check the Skills tab to see and connect all available integrations.';
+    response = `**Klyfton's integrations — straight truth (see Skills tab):**\n\n**● LIVE now, no setup:**\n✅ AI brain (Claude), live web search, photo/plan reading, voice, your real records, Hearth financing link, offline mode.\n\n**◐ One switch away** (add an env var in Vercel → Admin → Integrations):\n🔔 Owner text/email alerts · ☁️ Multi-device sync (Vercel KV) · 🔗 the Event Webhook.\n\n**○ Via the Event Webhook → your Zapier/Make account (6,000+ apps):**\n📧 Gmail · 📅 Calendar · 📱 Twilio SMS · 🎯 HubSpot · 💰 QuickBooks · 📊 Sheets · 💬 Slack · ✍️ DocuSign · 💳 PayPal.\n\nTurn on the webhook once, and I automatically fire **new_lead, job_scheduled, job_completed, invoice, reorder, review_ask** — route each to whatever app you want. Full steps: **Admin → Integrations.**`;
+    voiceText = 'Some integrations are live now. The rest turn on with one webhook switch in the Admin Integrations tab, then route to any app through Zapier.';
   }
   // Proposal
   else if(/proposal|write.*proposal|draft.*proposal/i.test(low)){
@@ -6993,55 +7035,66 @@ function klyHelp(){
 // ============================================================
 // SKILLS / INTEGRATIONS PANEL
 // ============================================================
+// Honest status model — what the DEPLOYED app can actually reach:
+//   'live'    → works right now, no setup (built into Klyfton)
+//   'setup'   → one switch away (an env var in Vercel — see Admin → Integrations)
+//   'webhook' → routes through the Event Webhook + your Zapier/Make account to 6,000+ apps
 const SKILLS_DATA = [
-  // ── LIVE via Claude MCP ──────────────────────────────────────
-  {icon:'📂',name:'Google Drive',      desc:'Docs, pricing, SOPs, photos',           connected:true,  url:'https://drive.google.com'},
-  {icon:'📧',name:'Gmail',             desc:'Email automation, follow-ups',           connected:true,  url:'https://gmail.com'},
-  {icon:'📅',name:'Google Calendar',   desc:'Scheduling, reminders',                 connected:true,  url:'https://calendar.google.com'},
-  {icon:'💰',name:'QuickBooks Online', desc:'Invoicing, payments, P&L',              connected:true,  url:'https://quickbooks.intuit.com'},
-  {icon:'⚡',name:'Zapier',            desc:'Workflow automation, 9000+ apps',        connected:true,  url:'https://zapier.com'},
-  {icon:'🎯',name:'HubSpot',           desc:'CRM sync, pipeline, marketing',         connected:true,  url:'https://hubspot.com'},
-  {icon:'💬',name:'Slack',             desc:'Team comms, job alerts, approvals',     connected:true,  url:'https://slack.com'},
-  {icon:'📊',name:'Airtable',          desc:'Database, job tracking, field sheets',  connected:true,  url:'https://airtable.com'},
-  {icon:'✍️',name:'DocuSign',          desc:'E-signatures for proposals & contracts',connected:true,  url:'https://docusign.com'},
-  {icon:'🏛️',name:'GovTribe',          desc:'Federal opps, SAM.gov, contract awards',connected:true,  url:'https://govtribe.com'},
-  {icon:'🔍',name:'Ahrefs',            desc:'SEO rankings, keyword tracking',        connected:true,  url:'https://ahrefs.com'},
-  {icon:'📋',name:'Process Street',    desc:'SOPs, checklists, job workflows',       connected:true,  url:'https://process.st'},
-  {icon:'📱',name:'Twilio',            desc:'SMS alerts, customer text follow-ups',  connected:true,  url:'https://twilio.com'},
-  {icon:'🗺️',name:'Google My Business',desc:'Reviews, local SEO, map pack',         connected:true,  url:'https://business.google.com'},
-  {icon:'🎯',name:'ClickUp',           desc:'Project management, crew scheduling',   connected:true,  url:'https://clickup.com'},
-  {icon:'📑',name:'PandaDoc',          desc:'Proposal templates, e-sign',            connected:true,  url:'https://pandadoc.com'},
-  {icon:'🔎',name:'Vibe Prospecting',  desc:'Lead discovery, B2B contact data',      connected:true,  url:'https://vibe.co'},
-  {icon:'📰',name:'Semrush',           desc:'Competitor SEO, local search intel',    connected:true,  url:'https://semrush.com'},
-  {icon:'🧾',name:'Notion',            desc:'Internal docs, SOPs, team wiki',        connected:true,  url:'https://notion.so'},
-  {icon:'📆',name:'Todoist',           desc:'Tasks, reminders, daily checklist',     connected:true,  url:'https://todoist.com'},
-  {icon:'📁',name:'DocuSeal',          desc:'Document signing & management',         connected:true,  url:'https://docuseal.co'},
-  {icon:'💳',name:'PayPal',            desc:'Payment collection, invoicing',         connected:true,  url:'https://paypal.com'},
-  {icon:'🎤',name:'Fireflies',         desc:'Meeting transcripts, call notes',       connected:true,  url:'https://fireflies.ai'},
-  {icon:'📊',name:'Make (Integromat)', desc:'Advanced workflow automation',          connected:true,  url:'https://make.com'},
-  // ── Pending / Not yet connected ──────────────────────────────
-  {icon:'💻',name:'GitHub',            desc:'Code repos, version control',           connected:false, url:'https://github.com'},
-  {icon:'💳',name:'Hearth Financing',  desc:'Customer financing — apply at gethearth.com', connected:false, url:'https://gethearth.com'},
-  {icon:'⬛',name:'Square',            desc:'POS payments, card reader',             connected:false, url:'https://squareup.com'},
+  // ── LIVE right now (no setup) ────────────────────────────────
+  {icon:'🧠',name:'Klyfton AI Brain',  desc:'Claude (Anthropic) — estimates, proposals, strategy', status:'live', url:''},
+  {icon:'🔎',name:'Live Web Search',   desc:'Current prices, codes, weather, competitor intel',    status:'live', url:''},
+  {icon:'👁️',name:'Vision / Photo Read',desc:'Reads plans, specs, before/after job photos',        status:'live', url:''},
+  {icon:'🎤',name:'Voice In & Out',    desc:'Talk to Klyfton hands-free on the job',               status:'live', url:''},
+  {icon:'🧾',name:'Records Engine',    desc:'Reads & writes your real leads, jobs, estimates, ops', status:'live', url:''},
+  {icon:'💳',name:'Hearth Financing',  desc:'Customer financing — send the apply link',           status:'live', url:'https://gethearth.com'},
+  {icon:'📴',name:'Offline Mode',      desc:'Full toolkit works with zero signal on-site',        status:'live', url:''},
+  // ── One switch away (flip an env var in Vercel) ──────────────
+  {icon:'🔔',name:'Owner Alerts',      desc:'Text/email you the second a lead or reorder hits',   status:'setup', url:'', hint:'Set ALERTS_WEBHOOK_URL in Vercel (Admin → Integrations).'},
+  {icon:'☁️',name:'Multi-Device Sync', desc:'Every crew phone sees the same jobs & leads',        status:'setup', url:'', hint:'Attach Vercel KV storage, then redeploy.'},
+  {icon:'🔗',name:'Event Webhook',     desc:'The universal bridge that powers everything below',   status:'setup', url:'', hint:'Set ALERTS_WEBHOOK_URL to a Zapier/Make Catch Hook.'},
+  // ── Reachable through the Event Webhook → Zapier/Make ────────
+  {icon:'📧',name:'Gmail',             desc:'Auto follow-up emails on new leads & jobs',          status:'webhook', url:'https://gmail.com'},
+  {icon:'📅',name:'Google Calendar',   desc:'Drop scheduled jobs on the calendar',                status:'webhook', url:'https://calendar.google.com'},
+  {icon:'📱',name:'Twilio / SMS',      desc:'Text the customer or crew when a job moves',         status:'webhook', url:'https://twilio.com'},
+  {icon:'🎯',name:'HubSpot',           desc:'Push leads & deals into your CRM pipeline',          status:'webhook', url:'https://hubspot.com'},
+  {icon:'💰',name:'QuickBooks Online', desc:'Create the invoice when a job completes',            status:'webhook', url:'https://quickbooks.intuit.com'},
+  {icon:'📊',name:'Google Sheets',     desc:'Log every lead/job to a running spreadsheet',        status:'webhook', url:'https://sheets.google.com'},
+  {icon:'💬',name:'Slack',             desc:'Post job alerts & approvals to the team channel',    status:'webhook', url:'https://slack.com'},
+  {icon:'✍️',name:'DocuSign',          desc:'Send proposals & contracts for e-signature',         status:'webhook', url:'https://docusign.com'},
+  {icon:'📇',name:'Airtable',          desc:'Mirror jobs into a field-ops database',              status:'webhook', url:'https://airtable.com'},
+  {icon:'🗺️',name:'Google My Business',desc:'Trigger review requests after a completed job',      status:'webhook', url:'https://business.google.com'},
+  {icon:'💳',name:'PayPal / Square',   desc:'Send a payment link when the invoice goes out',      status:'webhook', url:'https://paypal.com'},
+  {icon:'⚡',name:'Zapier / Make',     desc:'Fan out to any of 6,000+ apps from one webhook',     status:'webhook', url:'https://zapier.com'},
 ];
+
+const SKILL_STATUS = {
+  live:    {cls:'badge-gr', label:'● LIVE'},
+  setup:   {cls:'badge-cy', label:'◐ 1 SWITCH AWAY'},
+  webhook: {cls:'badge-yw', label:'○ VIA WEBHOOK'},
+};
 
 function renderSkills(){
   const grid = document.getElementById('skillsGrid');
+  if(!grid) return;
   grid.innerHTML='';
   SKILLS_DATA.forEach(s=>{
+    const st = SKILL_STATUS[s.status] || SKILL_STATUS.webhook;
     const div=document.createElement('div');
-    div.className='skill-card'+(s.connected?' connected':'');
+    div.className='skill-card'+(s.status==='live'?' connected':'');
     div.innerHTML=`
     <div class="skill-icon">${s.icon}</div>
     <div class="skill-name">${s.name}</div>
     <div class="skill-desc">${s.desc}</div>
-    <span class="skill-badge ${s.connected?'badge-gr':'badge-cy'}">${s.connected?'● CONNECTED':'○ NOT CONNECTED'}</span>`;
+    <span class="skill-badge ${st.cls}">${st.label}</span>`;
     div.onclick=()=>{
-      if(s.connected){
-        window.open(s.url,'_blank');
+      playSound('click');
+      if(s.status==='live'){
+        if(s.url){ window.open(s.url,'_blank'); }
+        else { notify(`${s.name} is built into Klyfton and working right now — no setup needed.`,'ok'); }
+      } else if(s.status==='setup'){
+        notify(`${s.name}: ${s.hint||''} Open Admin → Integrations for step-by-step setup.`,'info');
       } else {
-        playSound('click');
-        notify(`${s.name} is not yet connected. To connect it, go to Claude Settings → Integrations and add the ${s.name} MCP connector. Then it will appear as CONNECTED here.`,'info');
+        notify(`${s.name} connects through Klyfton's Event Webhook. Turn on the webhook once (Admin → Integrations), then route the events to ${s.name} in your Zapier or Make account. Klyfton already fires: new_lead, job_scheduled, job_completed, invoice, reorder, review_ask.`,'info');
       }
     };
     grid.appendChild(div);
