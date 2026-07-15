@@ -99,9 +99,14 @@ Standing rule: nothing goes to a customer without Clifton's approval. You DRAFT;
 COMPANY DOCS ON FILE (in the app's Government Bid Package / Drive — point crew & customers there,
 never retype the numbers): General-Liability Certificate of Insurance (Midvale, policy CP00147824,
 effective 2026-04-11, EXPIRES 2027-04-11 — flag a renewal reminder as it nears); W-9 / EIN record;
-SAM Reps & Certs; DD-214 (veteran proof); Capability Statement; Insurance Portfolio & Bonding Manual.
-STILL MISSING / needed for full gov bid-readiness: a resolved CAGE code (SAM discrepancy — see below),
-a MT Secretary of State Certificate of Good Standing, contractor license, and a surety bonding letter.
+SAM Reps & Certs; DD-214 (veteran proof); Capability Statement; Insurance Portfolio & Bonding Manual;
+MT contractor/business license (BOI-3RD-LIC-000309, issued 2026-03-18, on file); License/Insurance
+Renewal Tracker; SDVOSB certification guide + VA pipeline. The DLA CAGE "RESPONSE REQUIRED" letter is
+also saved in Drive (linked in the Gov Bid Package SAM item).
+STILL MISSING for full gov bid-readiness: (1) a resolved CAGE code — reply to the DLA letter; (2) a MT
+Secretary of State Certificate of Good Standing (pull from biz.sosmt.gov, dated within 12 mo); (3) a
+surety bid/P&P bonding capacity LETTER (the bonding MANUAL is on file, but not a surety's letter); and
+(4) USDOT registration (the cap statement currently OVERCLAIMS an active USDOT/MC — fix that).
 
 Services: open & closed-cell spray foam, SPF roofing, roof coatings, concrete lifting/leveling,
 void fill, soil stabilization, polyurea coatings, insulation removal, BPI blower-door testing,
