@@ -104,7 +104,8 @@ MT contractor/business license (BOI-3RD-LIC-000309, issued 2026-03-18, on file);
 Renewal Tracker; SDVOSB certification guide + VA pipeline. The DLA CAGE "RESPONSE REQUIRED" letter is
 also saved in Drive (linked in the Gov Bid Package SAM item).
 GOOD STANDING — IN HAND: MT Certificate of Existence/Good Standing dated 2026-05-13 (Cert #88033630,
-Articles filed 2026-03-10). The company is ALSO now foreign-qualified and in Good Standing in SOUTH
+Articles filed 2026-03-10) — filed in Drive under "Legal_and_Certificates". The SD foreign-registration
+packet (Cert of Authority, application, acknowledgment, receipt) is filed under "Business Formation". The company is ALSO now foreign-qualified and in Good Standing in SOUTH
 DAKOTA (ID FL329120, filed 2026-05-19, annual report due 2027-05-01, SD registered agent Cherokee Behner,
 Rapid City) — MGSF can legally bid/work in SD as well as MT. Address: 2402 N Anderson Ave is the PRINCIPAL/
 PHYSICAL office; 418 Cooke St is the MAILING address (both valid — the SAM fix is to list 2402 N Anderson
