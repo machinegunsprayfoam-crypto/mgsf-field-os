@@ -1964,16 +1964,42 @@ function _renderCloudVoice(){
       <label class="fl" style="margin-top:6px">${esc(prov)} API key <span style="color:var(--t2)">— stays on THIS device, not in the app's code</span></label>
       <div class="row" style="gap:6px"><input id="vs_ttskey" type="password" class="admin-inp" placeholder="${storedKey?'•••••• saved — paste to replace':'Paste your API key here'}" style="flex:1" autocomplete="off">
         <button class="btn btn-cyan" style="font-size:11px" onclick="ttsKeySave()">Save key</button></div>`;
+    const statusLine = on
+      ? '<div style="font-size:12px;font-weight:700;color:var(--gr);margin-bottom:6px">✅ Klyfton is using the CLOUD voice ☁️</div>'
+      : '<div style="font-size:12px;color:var(--t2);margin-bottom:6px">Klyfton is currently using the <b>device voice</b>. Pick a cloud voice below and tap <b>Use this voice</b>.</div>';
     box.innerHTML=`<div class="jsa-card" style="border-left:3px solid ${ready?'var(--gr)':'var(--t2)'};margin:0">
-      <label class="chk" style="margin:0"><input type="checkbox" id="vs_cloud_on" ${on?'checked':''} onchange="voiceSave()"><span><b>☁️ Premium cloud voice</b> ${ready?('<span style="color:var(--gr)">('+esc(prov)+' ready)</span>'):'<span style="color:var(--yw)">— add your key below to turn on</span>'} — most human, needs a connection. Off = device voice.</span></label>
+      <div style="font-weight:700"><b>☁️ Premium cloud voice</b> ${ready?('<span style="color:var(--gr)">('+esc(prov)+' ready)</span>'):'<span style="color:var(--yw)">— add your key below</span>'}</div>
+      ${statusLine}
       ${keyField}
       <label class="fl" style="margin-top:6px">Cloud voice</label>
       <select id="vs_cloud_voice" class="admin-inp" onchange="cloudVoiceTest()">${opts}</select>
-      <div class="jsa-actions" style="margin-top:6px"><button class="btn btn-ghost" style="font-size:11px" onclick="cloudVoiceTest()">▶ Test cloud voice</button></div>
-      <div style="font-size:10px;color:var(--t2);margin-top:6px">For a shared setup across all devices, add the key in Vercel → Settings → Environment Variables instead (<code>ELEVENLABS_API_KEY</code> or <code>OPENAI_API_KEY</code>) and redeploy.</div>
+      <div class="jsa-actions" style="margin-top:8px">
+        <button class="btn btn-ghost" onclick="cloudVoiceTest()">▶ Test</button>
+        <button class="btn btn-primary" onclick="voiceUseCloud()">✅ Use this voice for Klyfton</button>
+        ${on?'<button class="btn btn-ghost" onclick="voiceUseDevice()">↩ Back to device voice</button>':''}
+      </div>
+      <input type="checkbox" id="vs_cloud_on" ${on?'checked':''} style="display:none">
+      <div style="font-size:10px;color:var(--t2);margin-top:6px">Tip: for the voice on every device at once, add the key in Vercel → Settings → Environment Variables (<code>ELEVENLABS_API_KEY</code>) — optional.</div>
     </div>`;
   }).catch(()=>{ box.innerHTML=''; });
 }
+// One-tap apply: turn the cloud voice ON with the selected voice, save, and confirm out loud.
+window.voiceUseCloud=function(){
+  const cv=(document.getElementById('vs_cloud_voice')||{}).value||'';
+  let pref={}; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'{}')||{}; }catch(e){}
+  pref.cloud=true; pref.cloudVoice=cv;
+  try{ localStorage.setItem('klyfton_voice', JSON.stringify(pref)); }catch(e){}
+  try{ notify('Applied ☁️ — Klyfton now talks in this voice','success'); }catch(e){}
+  const was=appState.soundOn; appState.soundOn=true; try{ speak('Voice applied. This is Klyfton, ready to work.'); }catch(e){} appState.soundOn=was;
+  if(window.renderVoiceSettings) renderVoiceSettings();
+};
+window.voiceUseDevice=function(){
+  let pref={}; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'{}')||{}; }catch(e){}
+  pref.cloud=false;
+  try{ localStorage.setItem('klyfton_voice', JSON.stringify(pref)); }catch(e){}
+  try{ notify('Back to the device voice','info'); }catch(e){}
+  if(window.renderVoiceSettings) renderVoiceSettings();
+};
 window.ttsKeySave=function(){ const el=document.getElementById('vs_ttskey'); const k=el?(el.value||'').trim():''; if(!k){ notify('Paste a key first','alert'); return; }
   try{ localStorage.setItem('klyfton_tts_key', k); }catch(e){}
   notify('Key saved on this device','success'); if(window.renderVoiceSettings) renderVoiceSettings(); };
@@ -7790,7 +7816,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-tts-diagnostics'
+const APP_BUILD = '2026-07-15-voice-apply-btn'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
