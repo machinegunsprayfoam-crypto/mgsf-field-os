@@ -1210,6 +1210,13 @@ canvas.chart{width:100%;height:100%}
           </div>
         </div>
 
+        <!-- KLYFTON VOICE -->
+        <div class="admin-section">
+          <div class="admin-section-title">🔊 KLYFTON VOICE</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:8px">Pick how Klyfton sounds on this device. Voices come from your phone/computer, so the list differs per device — the "Natural/Neural" ones sound the most human. Set it, tap Test, Save.</div>
+          <div id="voiceSettings"></div>
+        </div>
+
         <!-- DATA MANAGER (KLYFTON_WAVE6) -->
         <div class="admin-section">
           <div class="admin-section-title">👷 CREW / TEAM — PROFILES &amp; PINS</div>
@@ -1853,7 +1860,10 @@ function speak(text){
     const POOR = /(eSpeak|espeak|compact|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Zarvox|Trinoids|Whisper)/i;
     const gb = voices.filter(v=>/en[-_]GB/i.test(v.lang) && !POOR.test(v.name));
     const en = voices.filter(v=>/^en/i.test(v.lang) && !POOR.test(v.name));
-    const preferred =
+    // Owner's saved voice choice (Admin → Klyfton Voice) wins if the voice is still available.
+    let pref=null; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'null'); }catch(e){}
+    let preferred = (pref && pref.name) ? voices.find(v=>v.name===pref.name) : null;
+    if(!preferred) preferred =
       gb.find(v=>NATURAL.test(v.name) && !FEMALE.test(v.name)) ||        // natural UK male (best)
       en.find(v=>NATURAL.test(v.name) && MALE_UK.test(v.name)) ||        // natural English male
       gb.find(v=>MALE_UK.test(v.name)) ||                               // any UK male
@@ -1863,18 +1873,85 @@ function speak(text){
     if(preferred) utt.voice = preferred;
     utt.lang = (preferred && preferred.lang) || 'en-GB';
     // Human cadence: real neural voices sound best at true speed & neutral pitch.
-    // The old pitch 0.9 is exactly what made a generic voice sound robotic; only
-    // nudge pitch down when we're stuck with a plain fallback voice.
     const isNatural = preferred && NATURAL.test(preferred.name);
-    utt.rate  = isNatural ? 1.0  : 1.03;   // a touch quicker on plain voices = less droning
-    utt.pitch = isNatural ? 1.0  : 0.96;
+    utt.rate  = (pref && pref.rate!=null)  ? pref.rate  : (isNatural ? 1.0 : 1.03);
+    utt.pitch = (pref && pref.pitch!=null) ? pref.pitch : (isNatural ? 1.0 : 0.96);
     utt.volume = 1.0;
     synth.speak(utt);
   }catch(e){}
 }
 // Warm the voice list — some browsers populate getVoices() asynchronously, so the
 // first spoken line can miss the male UK voice unless we've triggered a load.
-try{ if(window.speechSynthesis){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ try{ window.speechSynthesis.getVoices(); }catch(e){} }; } }catch(e){}
+try{ if(window.speechSynthesis){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ try{ window.speechSynthesis.getVoices(); if(document.getElementById('voiceSettings')) renderVoiceSettings(); }catch(e){} }; } }catch(e){}
+
+// ---- Klyfton Voice picker (Admin → 🔊 Klyfton Voice) ----
+const _VOICE_NAT=/(Natural|Neural|Enhanced|Premium|Siri|Google)/i;
+const _VOICE_FEM=/(female|Samantha|Karen|Victoria|Serena|Kate|Hazel|Susan|Fiona|Moira|Tessa|Zira|Female)/i;
+function renderVoiceSettings(){
+  const box=document.getElementById('voiceSettings'); if(!box) return;
+  const synth=window.speechSynthesis; const voices=(synth&&synth.getVoices())||[];
+  const en=voices.filter(v=>/^en/i.test(v.lang)), others=voices.filter(v=>!/^en/i.test(v.lang));
+  const list=en.concat(others);
+  let pref=null; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'null'); }catch(e){}
+  const curName=(pref&&pref.name)||'', rate=(pref&&pref.rate!=null)?pref.rate:1.0, pitch=(pref&&pref.pitch!=null)?pref.pitch:1.0;
+  const opts='<option value="">Auto — best natural male (UK)</option>'+list.map(v=>{
+    const tag=(_VOICE_NAT.test(v.name)?'⭐ ':'')+(_VOICE_FEM.test(v.name)?'♀ ':'♂ ');
+    return `<option value="${esc(v.name)}"${v.name===curName?' selected':''}>${tag}${esc(v.name)} — ${esc(v.lang)}</option>`;
+  }).join('');
+  box.innerHTML=`
+    ${voices.length?'':'<div style="font-size:12px;color:var(--yw);margin-bottom:6px">No device voices loaded yet — tap ▶ Test once, then reopen Admin if the list is still empty.</div>'}
+    <div class="jsa-actions" style="margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="font-size:11px" onclick="voicePreset('ukmale')">🇬🇧 Male</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="voicePreset('usmale')">🇺🇸 Male</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="voicePreset('ukfemale')">🇬🇧 Female</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="voicePreset('usfemale')">🇺🇸 Female</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="voicePreset('auto')">↺ Auto</button>
+    </div>
+    <label class="fl">Voice <span style="color:var(--t2)">(⭐ = most natural · ♂/♀ = likely gender)</span></label>
+    <select id="vs_voice" class="admin-inp" onchange="voiceTest()">${opts}</select>
+    <label class="fl" style="margin-top:8px">Speed <span id="vs_rate_l" style="color:var(--or)">${rate.toFixed(2)}×</span></label>
+    <input id="vs_rate" type="range" min="0.6" max="1.4" step="0.05" value="${rate}" style="width:100%" oninput="var e=document.getElementById('vs_rate_l');if(e)e.textContent=(+this.value).toFixed(2)+'×'">
+    <label class="fl" style="margin-top:8px">Pitch <span id="vs_pitch_l" style="color:var(--or)">${pitch.toFixed(2)}</span></label>
+    <input id="vs_pitch" type="range" min="0.6" max="1.4" step="0.05" value="${pitch}" style="width:100%" oninput="var e=document.getElementById('vs_pitch_l');if(e)e.textContent=(+this.value).toFixed(2)">
+    <div class="jsa-actions" style="margin-top:10px">
+      <button class="btn btn-cyan" onclick="voiceTest()">▶ Test</button>
+      <button class="btn btn-primary" onclick="voiceSave()">💾 Save voice</button>
+    </div>`;
+}
+window.renderVoiceSettings=renderVoiceSettings;
+window.voicePreset=function(kind){
+  const voices=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
+  function best(langRe, wantFemale){
+    const pool=voices.filter(v=>langRe.test(v.lang) && (wantFemale?_VOICE_FEM.test(v.name):!_VOICE_FEM.test(v.name)));
+    const nat=pool.find(v=>_VOICE_NAT.test(v.name)); return ((nat||pool[0]||{}).name)||'';
+  }
+  let name='';
+  if(kind==='ukmale') name=best(/en[-_]GB/i,false);
+  else if(kind==='usmale') name=best(/en[-_]US/i,false);
+  else if(kind==='ukfemale') name=best(/en[-_]GB/i,true);
+  else if(kind==='usfemale') name=best(/en[-_]US/i,true);
+  const sel=document.getElementById('vs_voice'); if(sel) sel.value=name;
+  voiceTest();
+};
+window.voiceTest=function(){
+  try{
+    const name=(document.getElementById('vs_voice')||{}).value||'';
+    const rate=parseFloat((document.getElementById('vs_rate')||{}).value)||1.0;
+    const pitch=parseFloat((document.getElementById('vs_pitch')||{}).value)||1.0;
+    const synth=window.speechSynthesis; if(!synth) return; synth.cancel();
+    const u=new SpeechSynthesisUtterance("Klyfton online. Good to go, Clifton — this is how I'll sound on this device.");
+    const v=(synth.getVoices()||[]).find(x=>x.name===name); if(v){ u.voice=v; u.lang=v.lang; }
+    u.rate=rate; u.pitch=pitch; u.volume=1.0; synth.speak(u);
+  }catch(e){}
+};
+window.voiceSave=function(){
+  const name=(document.getElementById('vs_voice')||{}).value||'';
+  const rate=parseFloat((document.getElementById('vs_rate')||{}).value)||1.0;
+  const pitch=parseFloat((document.getElementById('vs_pitch')||{}).value)||1.0;
+  try{ localStorage.setItem('klyfton_voice', JSON.stringify({name,rate,pitch})); }catch(e){}
+  try{ notify('Voice saved'+(name?(' — '+name):' (auto)'),'success'); }catch(e){}
+  const was=appState.soundOn; appState.soundOn=true; try{ speak('Voice set. This is Klyfton, ready to work.'); }catch(e){} appState.soundOn=was;
+};
 
 // ============================================================
 // VOICE INPUT (Speech Recognition)
@@ -2116,6 +2193,7 @@ function switchModule(id){
     if(window.renderDataManager) renderDataManager();
     if(window.renderCrew) renderCrew();
     if(window.renderTimecards) renderTimecards();
+    if(window.renderVoiceSettings) renderVoiceSettings();
     if(window.klyMemRefresh) klyMemRefresh();
   }
 }
@@ -7634,7 +7712,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-gov-honest-status'
+const APP_BUILD = '2026-07-15-voice-picker'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
