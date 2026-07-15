@@ -597,7 +597,7 @@ textarea{resize:vertical;min-height:54px}
 const STATE_MULT={MT:1.00,ND:1.05,SD:1.00,WY:1.12};
 const ROOF_PITCH={1:1.003,2:1.014,3:1.031,4:1.054,5:1.083,6:1.118,8:1.202,10:1.302,12:1.414};
 // foam: costBF + yieldBF (corrected yields). roof foam included. cat for grouping.
-const FOAM_SEED=[{"k":"ncfiagrithane20hfoclosed","n":"NCFI AgriThane 2.0# HFO Closed Cell Regular Foam","cat":"Closed Cell","set":2842.0,"yieldBF":4000},{"k":"ncfienduratech28hforoofi","n":"NCFI Enduratech 2.8# HFO Roofing Foam","cat":"Roofing","set":2750.0,"yieldBF":2900},{"k":"ncfiinsulblocoptimaxx20h","n":"NCFI InsulBloc Optimaxx 2.0# HFO Closed Cell Foam","cat":"Closed Cell","set":2842.0,"yieldBF":4000},{"k":"ncfiinsulblocoptimaxx20h","n":"NCFI InsulBloc Optimaxx 2.0# HFO Fast/Winter Closed Cell Foam","cat":"Closed Cell","set":2842.0,"yieldBF":4000},{"k":"ncfiinsulstaroptimaxx17h","n":"NCFI InsulStar Optimaxx 1.7# HFO Closed Cell Foam","cat":"Closed Cell","set":2930.2,"yieldBF":4000},{"k":"ncfiinsulstaroptimaxx17h","n":"NCFI InsulStar Optimaxx 1.7# HFO Fast/Winter Closed Cell Foam","cat":"Closed Cell","set":2930.2,"yieldBF":4000},{"k":"ncfiinsulstaroptimaxx17h","n":"NCFI InsulStar Optimaxx 1.7# HFO Slow/Summer Closed Cell Foam","cat":"Closed Cell","set":2930.2,"yieldBF":4000},{"k":"accufoam20hfoclosedcellf","n":"Accufoam 2.0# HFO Closed Cell Foam","cat":"Closed Cell","set":2881.2,"yieldBF":4000},{"k":"accufoamaf1opencellfoam","n":"Accufoam AF1 Open Cell Foam","cat":"Open Cell","set":2140.8,"yieldBF":16000},{"k":"jmcorbond05opencellspray","n":"JM Corbond 0.5# Open Cell Spray Polyurethane Foam","cat":"Open Cell","set":2103.75,"yieldBF":16000},{"k":"jmcorbondiv2hfoclosedcel","n":"JM Corbond IV 2# HFO Closed Cell Spray Polyurethane Foam","cat":"Closed Cell","set":2905.5,"yieldBF":4000},{"k":"ncfiopencellfoam","n":"NCFI Open Cell Foam","cat":"Open Cell","set":1992.8,"yieldBF":14000},{"k":"profoamhybridpro1opencel","n":"Profoam Hybrid Pro 1# Open Cell Spray Foam Insulation","cat":"Open Cell","set":1954.15,"yieldBF":8000},{"k":"profoamprofillopencellfo","n":"Profoam ProFill Open Cell Foam","cat":"Open Cell","set":2075.7,"yieldBF":14000},{"k":"profoamprosealclosedcell","n":"Profoam ProSeal Closed Cell Foam","cat":"Closed Cell","set":2856.75,"yieldBF":4000},{"k":"geoncfi21070rigidpour","n":"NCFI 21-070 Rigid Pour Foam System","cat":"Geotech","set":3948.99,"yieldBF":0},{"k":"geoncfistratafill2402","n":"NCFI Strata-Fill 24-023 Low Exotherm Polyurethane System","cat":"Geotech","set":3314.5,"yieldBF":0},{"k":"geoncfistratafill2402","n":"NCFI Strata-Fill 24-028 Low Exotherm Polyurethane System","cat":"Geotech","set":3570.0,"yieldBF":0},{"k":"geoncfistratafill2403","n":"NCFI Strata-Fill 24-039 Low Exotherm Polyurethane System","cat":"Geotech","set":2867.5,"yieldBF":0},{"k":"geoncfistratafill2407","n":"NCFI Strata-Fill 24-070 Low Exotherm Polyurethane System","cat":"Geotech","set":3636.48,"yieldBF":0},{"k":"geoncfiterrathane2400","n":"NCFI Terrathane 24-003 Dual Component Polyurethane","cat":"Geotech","set":2898.5,"yieldBF":0},{"k":"geoncfiterrathane2401","n":"NCFI Terrathane 24-010 Dual Component Polyurethane","cat":"Geotech","set":2898.5,"yieldBF":0},{"k":"geoncfiterrathane2401","n":"NCFI Terrathane 24-011 Dual Component Polyurethane","cat":"Geotech","set":2883.0,"yieldBF":0},{"k":"geoncfiterrathane2403","n":"NCFI Terrathane 24-038 Geotechnical Foam System","cat":"Geotech","set":3083.48,"yieldBF":0},{"k":"geoncfiterrathane2404","n":"NCFI Terrathane 24-042 Dual Component Polyurethane","cat":"Geotech","set":2852.0,"yieldBF":0},{"k":"geoncfiterrathane2404","n":"NCFI Terrathane 24-044 Dual Component Polyurethane","cat":"Geotech","set":2852.0,"yieldBF":0},{"k":"geoncfiterrathane243f","n":"NCFI Terrathane 24-3F Geotechnical Foam System","cat":"Geotech","set":2883.0,"yieldBF":0},{"k":"geoncfiterrathanepoly","n":"NCFI Terrathane Polyurethane 24-035 Manhole Liner","cat":"Geotech","set":4430.75,"yieldBF":0}];
+const FOAM_SEED=[{"k":"ncfiagrithane20hfoclosed","n":"NCFI AgriThane 2.0# HFO Closed Cell Regular Foam","cat":"Closed Cell","set":2842.0,"yieldBF":4000},{"k":"ncfienduratech28hforoofi","n":"NCFI Enduratech 2.8# HFO Roofing Foam","cat":"Roofing","set":2750.0,"yieldBF":2900},{"k":"ncfiinsulblocoptimaxx20h","n":"NCFI InsulBloc Optimaxx 2.0# HFO Closed Cell Foam","cat":"Closed Cell","set":2842.0,"yieldBF":4000},{"k":"ncfiinsulblocoptimaxx20h","n":"NCFI InsulBloc Optimaxx 2.0# HFO Fast/Winter Closed Cell Foam","cat":"Closed Cell","set":2842.0,"yieldBF":4000},{"k":"ncfiinsulstaroptimaxx17h","n":"NCFI InsulStar Optimaxx 1.7# HFO Closed Cell Foam","cat":"Closed Cell","set":2930.2,"yieldBF":4700},{"k":"ncfiinsulstaroptimaxx17h","n":"NCFI InsulStar Optimaxx 1.7# HFO Fast/Winter Closed Cell Foam","cat":"Closed Cell","set":2930.2,"yieldBF":4700},{"k":"ncfiinsulstaroptimaxx17h","n":"NCFI InsulStar Optimaxx 1.7# HFO Slow/Summer Closed Cell Foam","cat":"Closed Cell","set":2930.2,"yieldBF":4700},{"k":"accufoam20hfoclosedcellf","n":"Accufoam 2.0# HFO Closed Cell Foam","cat":"Closed Cell","set":2881.2,"yieldBF":4000},{"k":"accufoamaf1opencellfoam","n":"Accufoam AF1 Open Cell Foam","cat":"Open Cell","set":2140.8,"yieldBF":14000},{"k":"jmcorbond05opencellspray","n":"JM Corbond 0.5# Open Cell Spray Polyurethane Foam","cat":"Open Cell","set":2103.75,"yieldBF":14000},{"k":"jmcorbondiv2hfoclosedcel","n":"JM Corbond IV 2# HFO Closed Cell Spray Polyurethane Foam","cat":"Closed Cell","set":2905.5,"yieldBF":4000},{"k":"ncfiopencellfoam","n":"NCFI Open Cell Foam","cat":"Open Cell","set":1992.8,"yieldBF":14000},{"k":"profoamhybridpro1opencel","n":"Profoam Hybrid Pro 1# Open Cell Spray Foam Insulation","cat":"Open Cell","set":1954.15,"yieldBF":8000},{"k":"profoamprofillopencellfo","n":"Profoam ProFill Open Cell Foam","cat":"Open Cell","set":2075.7,"yieldBF":14000},{"k":"profoamprosealclosedcell","n":"Profoam ProSeal Closed Cell Foam","cat":"Closed Cell","set":2856.75,"yieldBF":4000},{"k":"geoncfi21070rigidpour","n":"NCFI 21-070 Rigid Pour Foam System","cat":"Geotech","set":3948.99,"yieldBF":0},{"k":"geoncfistratafill2402","n":"NCFI Strata-Fill 24-023 Low Exotherm Polyurethane System","cat":"Geotech","set":3314.5,"yieldBF":0},{"k":"geoncfistratafill2402","n":"NCFI Strata-Fill 24-028 Low Exotherm Polyurethane System","cat":"Geotech","set":3570.0,"yieldBF":0},{"k":"geoncfistratafill2403","n":"NCFI Strata-Fill 24-039 Low Exotherm Polyurethane System","cat":"Geotech","set":2867.5,"yieldBF":0},{"k":"geoncfistratafill2407","n":"NCFI Strata-Fill 24-070 Low Exotherm Polyurethane System","cat":"Geotech","set":3636.48,"yieldBF":0},{"k":"geoncfiterrathane2400","n":"NCFI Terrathane 24-003 Dual Component Polyurethane","cat":"Geotech","set":2898.5,"yieldBF":0},{"k":"geoncfiterrathane2401","n":"NCFI Terrathane 24-010 Dual Component Polyurethane","cat":"Geotech","set":2898.5,"yieldBF":0},{"k":"geoncfiterrathane2401","n":"NCFI Terrathane 24-011 Dual Component Polyurethane","cat":"Geotech","set":2883.0,"yieldBF":0},{"k":"geoncfiterrathane2403","n":"NCFI Terrathane 24-038 Geotechnical Foam System","cat":"Geotech","set":3083.48,"yieldBF":0},{"k":"geoncfiterrathane2404","n":"NCFI Terrathane 24-042 Dual Component Polyurethane","cat":"Geotech","set":2852.0,"yieldBF":0},{"k":"geoncfiterrathane2404","n":"NCFI Terrathane 24-044 Dual Component Polyurethane","cat":"Geotech","set":2852.0,"yieldBF":0},{"k":"geoncfiterrathane243f","n":"NCFI Terrathane 24-3F Geotechnical Foam System","cat":"Geotech","set":2883.0,"yieldBF":0},{"k":"geoncfiterrathanepoly","n":"NCFI Terrathane Polyurethane 24-035 Manhole Liner","cat":"Geotech","set":4430.75,"yieldBF":0}];
 // geotech (per-set) for soil module
 const GEO_SEED=[{"k":"ncfi21070rigidpourfoamsy","n":"NCFI 21-070 Rigid Pour Foam System","set":3948.99},{"k":"ncfistratafill24023lowex","n":"NCFI Strata-Fill 24-023 Low Exotherm Polyurethane System","set":3314.5},{"k":"ncfistratafill24028lowex","n":"NCFI Strata-Fill 24-028 Low Exotherm Polyurethane System","set":3570.0},{"k":"ncfistratafill24039lowex","n":"NCFI Strata-Fill 24-039 Low Exotherm Polyurethane System","set":2867.5},{"k":"ncfistratafill24070lowex","n":"NCFI Strata-Fill 24-070 Low Exotherm Polyurethane System","set":3636.48},{"k":"ncfiterrathane24003dualc","n":"NCFI Terrathane 24-003 Dual Component Polyurethane","set":2898.5},{"k":"ncfiterrathane24010dualc","n":"NCFI Terrathane 24-010 Dual Component Polyurethane","set":2898.5},{"k":"ncfiterrathane24011dualc","n":"NCFI Terrathane 24-011 Dual Component Polyurethane","set":2883.0},{"k":"ncfiterrathane24038geote","n":"NCFI Terrathane 24-038 Geotechnical Foam System","set":3083.48},{"k":"ncfiterrathane24042dualc","n":"NCFI Terrathane 24-042 Dual Component Polyurethane","set":2852.0},{"k":"ncfiterrathane24044dualc","n":"NCFI Terrathane 24-044 Dual Component Polyurethane","set":2852.0},{"k":"ncfiterrathane243fgeotec","n":"NCFI Terrathane 24-3F Geotechnical Foam System","set":2883.0},{"k":"ncfiterrathanepolyuretha","n":"NCFI Terrathane Polyurethane 24-035 Manhole Liner","set":4430.75}];
 // coatings/barriers: costPerGal + sfPerGal (per coat)
@@ -628,7 +628,7 @@ const CONS_SEED=[
  {n:'Ultra-Bond 10 primer (5 gal)',price:118.75,u:'pail'},
  {n:'Safety glasses',price:2.31,u:'ea'}
 ];
-const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.50,gmFoamCom:0.45,gmRoof:0.45,gmConc:0.50,gmCoat:0.48,gmOther:0.45,burden:0.35,ovhPerHr:12,minMargin:0.38};
+const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.50,gmFoamCom:0.45,gmRoof:0.45,gmRoofCom:0.40,gmConc:0.50,gmCoat:0.48,gmOther:0.45,burden:0.35,ovhPerHr:12,minMargin:0.40,wasteCoat:0.20};
 // guardrails $/BF installed (Montana base), $/SF roof
 const GUARD_BF={'Open Cell':[1.30,1.55],'Closed Cell':[2.00,2.75],'Roofing':[0,0]};
 const GUARD_ROOF={ug5700:[3.00,5.50],ug5500:[3.00,5.50],si92:[3.00,5.50],armor100:[2.00,3.25],uflex1000:[2.00,3.25],dc315:[1.00,2.25],none:[0,0]};
@@ -644,7 +644,10 @@ let SET=Object.assign({},DEF,JSON.parse(localStorage.getItem(KS)||'{}'));
 // One-time margin reset to industry-standard GM targets (foam ~45-50%, SPF roof 45%, concrete 50%,
 // coatings 48%) — the old 55-62% targets were above market and losing competitive bids. Only replaces
 // values still at the OLD defaults, so a shop that set its own margins keeps them. Editable in Admin.
-(function(){if(localStorage.getItem('mgsf_margin_fix_v1'))return;const map={gmFoamRes:[0.60,0.50],gmFoamCom:[0.55,0.45],gmRoof:[0.62,0.45],gmConc:[0.60,0.50],gmCoat:[0.62,0.48],gmOther:[0.55,0.45],minMargin:[0.40,0.38]};let ch=false;for(const k in map){if(Math.abs((SET[k]||0)-map[k][0])<0.0001){SET[k]=map[k][1];ch=true;}}try{localStorage.setItem('mgsf_margin_fix_v1','1');}catch(e){}if(ch){try{localStorage.setItem(KS,JSON.stringify(SET));}catch(e){}}})();
+(function(){if(localStorage.getItem('mgsf_margin_fix_v1'))return;const map={gmFoamRes:[0.60,0.50],gmFoamCom:[0.55,0.45],gmRoof:[0.62,0.45],gmConc:[0.60,0.50],gmCoat:[0.62,0.48],gmOther:[0.55,0.45],minMargin:[0.40,0.40]};let ch=false;for(const k in map){if(Math.abs((SET[k]||0)-map[k][0])<0.0001){SET[k]=map[k][1];ch=true;}}try{localStorage.setItem('mgsf_margin_fix_v1','1');}catch(e){}if(ch){try{localStorage.setItem(KS,JSON.stringify(SET));}catch(e){}}})();
+// Floor bump: an interim build set the min-margin to 0.38; industry research says 0.40 is the right
+// walk-away line for these trades given rural mobilization. Nudge only that auto-set value.
+(function(){if(SET.minMargin===0.38){SET.minMargin=0.40;try{localStorage.setItem(KS,JSON.stringify(SET));}catch(e){}}})();
 let FOAM=JSON.parse(localStorage.getItem(KF)||'null')||FOAM_SEED.map(f=>({...f,costBF:+(f.set/f.yieldBF).toFixed(4)}));
 // Same truncated-slug collision as the coatings: several foams (InsulBloc/InsulStar variants and
 // a few geotech systems with DIFFERENT set costs) shared one key, so picking one quoted another.
@@ -654,6 +657,10 @@ let FOAM=JSON.parse(localStorage.getItem(KF)||'null')||FOAM_SEED.map(f=>({...f,c
 // standard); roofing 2.8# 3,500 -> 2,900 (denser foam yields less, density-derived). Only touches
 // products still at the old defaults, so a shop that customized its yields is left alone. Recomputes cost/BF.
 (function(){if(localStorage.getItem('mgsf_yield_fix_v1'))return;let ch=false;FOAM.forEach(f=>{let u=false;if(f&&f.cat==='Closed Cell'&&f.yieldBF===4500){f.yieldBF=4000;u=true;}if(f&&f.cat==='Roofing'&&f.yieldBF===3500){f.yieldBF=2900;u=true;}if(u){f.costBF=f.yieldBF>0?+(f.set/f.yieldBF).toFixed(4):f.costBF;ch=true;}});try{localStorage.setItem('mgsf_yield_fix_v1','1');}catch(e){}if(ch){try{localStorage.setItem(KF,JSON.stringify(FOAM));}catch(e){}}})();
+// v2: 1.7# HFO closed cell is lower-density so it yields MORE than 2.0# — differentiate it to ~4,700
+// (v1 had flattened it to 4,000). Also tighten 0.5# open cell from the near-theoretical 16,000 to a
+// practical 14,000. Only touches products still at the intermediate values; recomputes cost/BF.
+(function(){if(localStorage.getItem('mgsf_yield_fix_v2'))return;let ch=false;FOAM.forEach(f=>{let u=false;if(f&&f.cat==='Closed Cell'&&Math.abs((f.set||0)-2930.2)<0.05&&f.yieldBF===4000){f.yieldBF=4700;u=true;}if(f&&f.cat==='Open Cell'&&f.yieldBF===16000){f.yieldBF=14000;u=true;}if(u){f.costBF=f.yieldBF>0?+(f.set/f.yieldBF).toFixed(4):f.costBF;ch=true;}});try{localStorage.setItem('mgsf_yield_fix_v2','1');}catch(e){}if(ch){try{localStorage.setItem(KF,JSON.stringify(FOAM));}catch(e){}}})();
 let CONS=JSON.parse(localStorage.getItem(KC)||'null')||CONS_SEED.slice();
 function invSeed(){return CATALOG.map((c,i)=>({k:'inv'+i,name:c.n,cat:c.c,unit:c.u||'ea',price:c.p||0,supplierName:c.s||'',role:c.r||'E',priority:c.pr||'N',onHand:0,reorderAt:({H:3,N:2,L:1}[c.pr]||2),supplier:''}));}
 let INV=JSON.parse(localStorage.getItem(KI)||'null')||invSeed();if(INV.length&&!('role' in INV[0])){INV=invSeed();}
@@ -777,7 +784,7 @@ function isTopcoat(c){return c&&c.k!=='none'&&!isPrimerCoat(c)&&!/putty|mastic|i
 // Dry film thickness math. A gallon covers 1604 ft² at 1 mil at 100% solids, so
 // dry mils/coat = 1604 × %solids ÷ (coverage SF/gal). %solids comes off the product's
 // data sheet; until it's entered we estimate by coating type (editable in the manager).
-function defaultSolids(c){const n=((c&&c.n)||'').toLowerCase();if(/high\s*solids/.test(n))return 0.95;if(/low\s*solids/.test(n))return 0.60;if(/silicone/.test(n))return 0.92;if(/polyure/.test(n))return 1.0;if(/acrylic/.test(n))return 0.52;if(/primer/.test(n))return 0.60;if(/putty|mastic/.test(n))return 0.85;if(/intumescent/.test(n))return 0.70;return 0.85;}
+function defaultSolids(c){const n=((c&&c.n)||'').toLowerCase();if(/high\s*solids/.test(n))return 0.95;if(/low\s*solids/.test(n))return 0.60;if(/silicone/.test(n))return 0.92;if(/polyure/.test(n))return 1.0;if(/acrylic/.test(n))return 0.55;if(/primer/.test(n))return 0.60;if(/putty|mastic/.test(n))return 0.85;if(/intumescent/.test(n))return 0.70;return 0.85;}
 function coatSolids(c){return (c&&c.solids!=null&&c.solids!=='')?Math.max(0,Math.min(100,parseFloat(c.solids)||0))/100:defaultSolids(c);}
 function coatDryMils(c,coats){if(!c||!c.sf)return 0;return (1604*coatSolids(c)/c.sf)*(coats||1);}
 function warrantyForMils(m){return m>=30?'20-yr NDL range':m>=25?'15-yr range':m>=20?'10-yr range':'below 10-yr minimum — add coats/mils';}
@@ -872,7 +879,7 @@ function consChg(i){consQty[CONS[i].n]=$('cq'+i).value;recalc();}
 // Rule-based "AI" suggester — estimates crew hours + a consumables checklist from the scope.
 // Works offline (no API key); everything it sets is editable. Grounded in set/coverage math.
 function suggestMaterials(){recalc();const W=window._calc;if(!W||!W.c){toast('Enter measurements first',true);return;}
- const c=W.c,sf=c.sf||0,bf=c.bf||0,gal=c.coatGal||0,sets=bf>0?Math.ceil(bf/4500):0;
+ const c=W.c,sf=c.sf||0,bf=c.bf||0,gal=c.coatGal||0,sets=bf>0?Math.ceil(bf/(c.setYield||(svc==='roof'?2900:4000))):0;
  let ih;
  if(svc==='foam'||svc==='roof')ih=Math.max(4,Math.ceil(sets*6)+2+(gal>0?Math.ceil(gal/40):0));
  else if(svc==='coatings')ih=Math.max(3,Math.ceil(gal/25)+2);
@@ -919,36 +926,36 @@ function beatCheck(){const out=$('beat-out');if(!out)return;const W=window._calc
 function beatMatch(){const W=window._calc;const cost=W&&W.totalCost||0;const price=val('beat-price');if(!(price>cost)){toast('Enter a price above cost',true);return;}gmOverride=(price-cost)/price;recalc();toast('Priced to match '+money(Math.round(price))+' ✓');}
 function getGM(){if(gmOverride!=null)return gmOverride;const m=str('market')||'commercial';
  if(svc==='foam')return m==='residential'?SET.gmFoamRes:SET.gmFoamCom;
- if(svc==='roof')return SET.gmRoof; if(svc==='concrete'||svc==='soil')return SET.gmConc;
+ if(svc==='roof')return m==='residential'?SET.gmRoof:(SET.gmRoofCom||0.40); if(svc==='concrete'||svc==='soil')return SET.gmConc;
  if(svc==='coatings')return SET.gmCoat; return SET.gmOther;}
 
 /* ============ CALC ============ */
 function foamCoatGal(){let t=0;for(const z in foamSec)foamSec[z].forEach(sc=>{const c=coatBy(sc.co||'none');if(c.k!=='none')t+=zoneSF(z,sc)/c.sf*(sc.cc||2);});return t;}
 function calc(){
- const mult=STATE_MULT[str('cust-state')]||1, waste=SET.waste;
- let mat=0,qty='',bf=0,sf=0,product='',guard='',coatGal=0;
+ const mult=STATE_MULT[str('cust-state')]||1, waste=SET.waste, wc=1+(SET.wasteCoat||0);
+ let mat=0,qty='',bf=0,sf=0,product='',guard='',coatGal=0,setYield=0;
  if(svc==='foam'){
-  const p=foamBy(str('foam-product')),thick=val('foam-thick')||2;
+  const p=foamBy(str('foam-product')),thick=val('foam-thick')||2;setYield=p.yieldBF||4000;
   sf=Math.max(0,foamTotalSF()); bf=sf*thick*(1+waste); mat=bf*p.costBF*mult; product=p.n+' @ '+thick+'"'; qty=Math.round(bf).toLocaleString()+' BF';
   if($('foam-tb').checked){mat+=sf*SET.tb*mult; product+=' + DC-315 barrier';}
-  const _fc=foamCoatCost(); if(_fc>0){mat+=_fc*mult; product+=' + section coatings'; coatGal+=foamCoatGal();}
+  const _fc=foamCoatCost(); if(_fc>0){mat+=_fc*wc*mult; product+=' + section coatings'; coatGal+=foamCoatGal()*wc;}
   const g=GUARD_BF[p.cat]; if(g&&g[1]>0)guard=`Guardrail ${p.cat}: $${g[0].toFixed(2)}–$${g[1].toFixed(2)}/BF installed (MT)`;
  } else if(svc==='roof'){
-  const p=foamBy(str('roof-product')),thick=val('roof-thick')||1.5;
+  const p=foamBy(str('roof-product')),thick=val('roof-thick')||1.5;setYield=p.yieldBF||2900;
   sf=Math.max(0,roofTotalSF()); bf=sf*thick*(1+waste);mat=bf*p.costBF*mult;product=p.n;
-  const c=coatBy(str('roof-coat'));const dftEl=$('roof-dft');if(c.k!=='none'){const coats=val('roof-coats')||2;const galExact=sf/c.sf*coats;mat+=galExact*c.gal*mult;product+=' + '+c.n+' ('+coats+'c)';coatGal+=galExact;
-   if(dftEl){const mils=coatDryMils(c,coats);dftEl.innerHTML='≈ <b>'+mils.toFixed(0)+' dry mils</b> · '+warrantyForMils(mils)+' · order ~<b>'+Math.ceil(galExact)+' gal</b>';}
+  const c=coatBy(str('roof-coat'));const dftEl=$('roof-dft');if(c.k!=='none'){const coats=val('roof-coats')||2;const galExact=sf/c.sf*coats;mat+=galExact*wc*c.gal*mult;product+=' + '+c.n+' ('+coats+'c)';coatGal+=galExact*wc;
+   if(dftEl){const mils=coatDryMils(c,coats);dftEl.innerHTML='≈ <b>'+mils.toFixed(0)+' dry mils</b> · '+warrantyForMils(mils)+' · order ~<b>'+Math.ceil(galExact*wc)+' gal</b>';}
   }else if(dftEl){dftEl.textContent='';}
   if($('roof-scarf').checked){const ssf=val('roof-scarf-sf')||sf;const srate=val('roof-scarf-rate')||SET.scarf;mat+=ssf*srate*mult;product+=' + scarf prep';}
   if($('roof-wash')&&$('roof-wash').checked){const wsf=val('roof-wash-sf')||sf;const wrate=val('roof-wash-rate')||SET.wash;mat+=wsf*wrate*mult;product+=' + power wash';}
-  const pc=coatBy(str('roof-primer-sel'));if(pc.k!=='none'){const pcoats=val('roof-primer-coats')||1;const psf=val('roof-primer-sf')||sf;const pgal=psf/pc.sf*pcoats;mat+=pgal*pc.gal*mult;product+=' + '+pc.n+' primer';coatGal+=pgal;}
+  const pc=coatBy(str('roof-primer-sel'));if(pc.k!=='none'){const pcoats=val('roof-primer-coats')||1;const psf=val('roof-primer-sf')||sf;const pgal=psf/pc.sf*pcoats;mat+=pgal*wc*pc.gal*mult;product+=' + '+pc.n+' primer';coatGal+=pgal*wc;}
   qty=Math.round(sf).toLocaleString()+' SF';
   const cc2=coatBy(str('roof-coat'));const gr=cc2.k==='none'?null:(cc2.sf>=100?[1.00,2.25]:cc2.sf<=50?[3.50,5.75]:cc2.sf<=70?[3.00,5.50]:[2.00,3.25]);if(gr)guard=`Guardrail: $${gr[0].toFixed(2)}–$${gr[1].toFixed(2)}/SF installed`;
  } else if(svc==='concrete'){
   sf=val('conc-sf');const cf=sf*val('conc-depth')/12;const adj=cf*(1+SET.wasteC);$('conc-cf').value=cf.toFixed(1)+' CF';
   mat=adj*(val('conc-cf-cost')||75)*mult;product=str('conc-app');qty=cf.toFixed(1)+' CF';
  } else if(svc==='coatings'){
-  const c=coatBy(str('coat-product'));sf=val('coat-sf');const coats=val('coat-coats')||2;const gal=sf/c.sf*coats;mat=gal*c.gal*mult;product=c.n+' ('+coats+' coats)';qty=Math.round(sf)+' SF';coatGal+=gal;
+  const c=coatBy(str('coat-product'));sf=val('coat-sf');const coats=val('coat-coats')||2;const gal=sf/c.sf*coats;mat=gal*wc*c.gal*mult;product=c.n+' ('+coats+' coats)';qty=Math.round(sf)+' SF';coatGal+=gal*wc;
  } else if(svc==='polyurea'){
   sf=val('poly-sf');const mil=val('poly-mil')||125;const prep=parseFloat(str('poly-prep'))||1;const gal=(sf*mil/1604)*(1+0.10);mat=gal*36*mult*prep;product='Polyurea '+str('poly-surf')+' @ '+mil+' mil';qty=Math.round(sf)+' SF';coatGal+=gal;
  } else if(svc==='removal'){
@@ -965,7 +972,7 @@ function calc(){
   const label=base===350?'Blower-Door Test':base===450?'Audit + Report':'Full BPI Energy Audit';
   return{bpi:base+travel,mat:0,sf:sfv,qty:'1 audit',product:'BPI '+label+(ach>0?' · '+ach.toFixed(1)+' ACH50':'')};
  }
- return{mat,bf,sf,qty,product,guard,coatGal};
+ return{mat,bf,sf,qty,product,guard,coatGal,setYield};
 }
 
 function recalc(){try{
@@ -1005,7 +1012,7 @@ const sell=W.sell;
  let bpi=null;if(svc==='bpi'){const vol=val('bpi-sf')*(val('bpi-ch')||8);const cfm=val('bpi-cfm50'),cfmO=val('bpi-cfm50-out');bpi={tier:str('bpi-type'),sf:val('bpi-sf'),ch:val('bpi-ch')||8,year:str('bpi-year'),fuel:str('bpi-fuel'),appl:val('bpi-appl'),stories:val('bpi-stories'),cfm50:cfm,ach50:vol>0?+(cfm*60/vol).toFixed(1):0,cfm50out:cfmO,ach50out:(vol>0&&cfmO)?+(cfmO*60/vol).toFixed(1):0,coAmb:val('bpi-co-amb'),coApp:val('bpi-co-app'),gas:str('bpi-gas'),spill:str('bpi-spill'),pa:val('bpi-pa'),notes:str('bpi-notes')};}
  let prod=c.product||scopeLabel(svc);if(svc==='roof'){const ex=str('roof-existing');if(ex&&ex.indexOf('None')<0)prod+=' over '+ex;}
  cart.push({id:'s'+Date.now(),service:svc,zone,substrate:str('substrate'),conditions:str('conditions'),existingRoof:str('roof-existing'),product:prod,qty:c.qty||'',sf:c.sf||0,bf:c.bf||0,
-  matCost:c.bpi||c.mat||0,laborCost:W.labor+W.travel,mob:W.mob,extra:W.extra,consCost:W.cons,cost:W.totalCost,gm:Math.round(W.gm*100),sell,bpi,coatGal:c.coatGal||0,snap:snapScope()});
+  matCost:c.bpi||c.mat||0,laborCost:W.labor+W.travel,mob:W.mob,extra:W.extra,consCost:W.cons,cost:W.totalCost,gm:Math.round(W.gm*100),sell,bpi,coatGal:c.coatGal||0,setYield:c.setYield||0,snap:snapScope()});
  renderCart();toast(scopeLabel(svc)+' added to bid ✓');clearScopeInputs();}
 function rmScope(i){cart.splice(i,1);renderCart();}
 function renderCart(){const card=$('cart-card');if(!cart.length){card.style.display='none';$('cart-count').textContent='';return;}
@@ -1013,8 +1020,8 @@ function renderCart(){const card=$('cart-card');if(!cart.length){card.style.disp
  $('cart-list').innerHTML=cart.map((s,i)=>{const gmv=s.sell>0?(s.sell-(s.cost||0))/s.sell:0;const tgt=(SET.minMargin||0.4);const gcol=s.service==='bpi'?'#4a5568':(gmv>=tgt?'#16a34a':(gmv>=tgt-0.1?'#b8860b':'#c0392b'));const chip=s.service==='bpi'?'':`<span style="font-size:.56rem;font-weight:800;color:#fff;background:${gcol};padding:1px 5px;border-radius:6px;margin-left:6px" title="Gross margin on this line (target ${Math.round(tgt*100)}%)">${Math.round(gmv*100)}% GM</span>`;
   return `<div class="li"><div>${scopeLabel(s.service)} — <span style="color:var(--mut)">${s.product}</span>${chip}<br><a href="javascript:void(0)" onclick="reloadScope(${i})" style="font-size:.62rem;color:var(--goldHi);font-weight:700">↺ re-measure</a></div><div style="color:var(--mut)">${s.qty}</div><div style="text-align:right;white-space:nowrap"><span style="color:var(--mut);font-size:.72rem">$</span><input type="number" step="0.01" value="${(s.sell||0).toFixed(2)}" onchange="scopePrice(${i},this.value)" style="width:82px;text-align:right;font-weight:700;padding:4px 6px" title="Line price — edit to override"><button class="x" style="padding:2px 7px;margin-left:4px" onclick="rmScope(${i})">✕</button></div></div>`;}).join('');
  $('cart-total').textContent=money(bidTotal());const cm=$('cart-mats');if(cm)cm.innerHTML=materialsHTML(cart);}
-function materialsSummary(scopes){let bf=0,gal=0;(scopes||[]).forEach(s=>{if(s.service==='foam'||s.service==='roof')bf+=s.bf||0;gal+=s.coatGal||0;});return{bf:Math.round(bf),sets:bf>0?Math.ceil(bf/4500):0,gal:Math.round(gal),drums:gal>0?Math.ceil(gal/55):0};}
-function materialsHTML(scopes){const m=materialsSummary(scopes);if(!m.sets&&!m.gal)return'';const parts=[];if(m.sets)parts.push('<b>'+m.sets+'</b> foam set'+(m.sets!=1?'s':'')+' <span style="color:var(--mut)">('+m.bf.toLocaleString()+' BF ÷ 4,500 — each set = 55-gal A + 55-gal B drum)</span>');if(m.gal)parts.push('<b>'+m.gal+' gal</b> coating <span style="color:var(--mut)">≈ '+m.drums+' × 55-gal drum'+(m.drums!=1?'s':'')+'</span>');return'<div style="border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;font-size:.76rem;line-height:1.7">📦 <b>Order:</b><br>'+parts.join('<br>')+'</div>';}
+function materialsSummary(scopes){let bf=0,gal=0,setsRaw=0;(scopes||[]).forEach(s=>{if(s.service==='foam'||s.service==='roof'){bf+=s.bf||0;setsRaw+=(s.bf||0)/(s.setYield||(s.service==='roof'?2900:4000));}gal+=s.coatGal||0;});return{bf:Math.round(bf),sets:setsRaw>0?Math.ceil(setsRaw):0,gal:Math.round(gal),drums:gal>0?Math.ceil(gal/55):0};}
+function materialsHTML(scopes){const m=materialsSummary(scopes);if(!m.sets&&!m.gal)return'';const parts=[];if(m.sets)parts.push('<b>'+m.sets+'</b> foam set'+(m.sets!=1?'s':'')+' <span style="color:var(--mut)">('+m.bf.toLocaleString()+' BF at product yield — each set = 55-gal A + 55-gal B drum)</span>');if(m.gal)parts.push('<b>'+m.gal+' gal</b> coating <span style="color:var(--mut)">≈ '+m.drums+' × 55-gal drum'+(m.drums!=1?'s':'')+'</span>');return'<div style="border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;font-size:.76rem;line-height:1.7">📦 <b>Order:</b><br>'+parts.join('<br>')+'</div>';}
 // Inline line-price override on a scope in the cart.
 function scopePrice(i,v){if(!cart[i])return;const n=parseFloat(v);if(isFinite(n)&&n>=0){cart[i].sell=n;cart[i].priceEdited=true;}renderCart();}
 // Snapshot the raw inputs behind the current scope so it can be reloaded to re-measure.
@@ -1055,7 +1062,7 @@ function saveBid(){
    ex.gmTarget=total>0?Math.round((1-cost/total)*100):0;
    ex.jobDate=str('job-date');ex.jobNotes=str('job-notes');ex.roi=roi;ex.photos=bidPhotos.slice();ex.leadSource=str('cust-source');ex.updatedAt=new Date().toISOString();
    lsSet(KB,JSON.stringify(bids));upsertEstimate(ex);
-   const wasId=editingBidId;editingBidId=null;cart=[];renderCart();bidPhotos=[];renderBidPhotos();clearDraft();updEditBanner();
+   const wasId=editingBidId;editingBidId=null;gmOverride=null;cart=[];renderCart();bidPhotos=[];renderBidPhotos();clearDraft();updEditBanner();
    toast(_discRatio<1?'Bid updated — kept your '+Math.round((1-_discRatio)*100)+'% discount ✓':'Bid updated ('+ex.scopes.length+' scope'+(ex.scopes.length!==1?'s':'')+') ✓');selId=wasId;setTimeout(()=>{setMode('console');openBid(wasId);},700);return;}
    editingBidId=null;updEditBanner();}
  bids.unshift(bid);lsSet(KB,JSON.stringify(bids));upsertEstimate(bid);
@@ -1065,7 +1072,7 @@ let editingBidId=null;
 function updEditBanner(){const el=$('edit-banner');if(el)el.style.display=editingBidId?'':'none';const sb=$('savebid-btn');if(sb)sb.textContent=editingBidId?'💾 Update Bid':'💾 Save Bid';}
 function cancelEdit(){editingBidId=null;updEditBanner();toast('Edit cancelled — Save now creates a new bid');}
 function editBid(){const b=bids.find(x=>x.id===selId);if(!b){toast('Open a bid first',true);return;}
- editingBidId=b.id;cart=JSON.parse(JSON.stringify(b.scopes||[]));
+ editingBidId=b.id;gmOverride=null;cart=JSON.parse(JSON.stringify(b.scopes||[]));
  const set=(id,v)=>{const e=$(id);if(e)e.value=(v==null?'':v);};
  set('cust-name',b.customer&&b.customer.name);set('cust-phone',b.customer&&b.customer.phone);set('cust-email',b.customer&&b.customer.email);set('cust-addr',b.customer&&b.customer.address);
  if(b.state)set('cust-state',b.state);if(b.market)set('market',b.market);set('job-date',b.jobDate);set('job-notes',b.jobNotes);if(b.leadSource)set('cust-source',b.leadSource);
@@ -1082,7 +1089,7 @@ function writeInterop(env){env.updatedAt=new Date().toISOString();try{lsSet(INTE
 function bidToEstimate(b){return{id:b.id,createdAt:b.createdAt,updatedAt:new Date().toISOString(),source:'estimator',
  customer:{name:b.customer?.name||'',phone:b.customer?.phone||'',email:b.customer?.email||'',address:(b.customer?.address||'')+(b.state?', '+b.state:'')},
  service:b.service,areas:(b.scopes||[]).map(s=>({service:s.service,zone:s.zone||'',substrate:s.substrate||'',sf:s.sf||0,bf:s.bf||0,product:s.product||'',sell:s.sell||0})),
- boardFeet:b.bf||0,setsNeeded:b.bf>0?+(b.bf/4500).toFixed(2):0,materialCost:b.matCost||0,bidTotal:b.sellPrice||0,
+ boardFeet:b.bf||0,setsNeeded:materialsSummary(b.scopes).sets,materialCost:b.matCost||0,bidTotal:b.sellPrice||0,
  sellRatePerBF:b.bf>0?+((b.sellPrice||0)/b.bf).toFixed(3):0,roi:b.roi||{},status:b.status||'draft'};}
 function upsertEstimate(b){const env=readInterop();const est=bidToEstimate(b);const i=(env.estimates||[]).findIndex(e=>e.id===est.id);
  if(i>=0)env.estimates[i]={...env.estimates[i],...est};else env.estimates=[...(env.estimates||[]),est];writeInterop(env);} // never touches jobs[]
@@ -1140,7 +1147,7 @@ function deleteBid(){if(!confirm('Delete this bid?'))return;bids=bids.filter(x=>
 
 /* ============ JOBS / SCHEDULE / TIME CLOCK ============ */
 function syncJobs(){lsSet(KJ,JSON.stringify(jobs));try{const env=readInterop();env.jobs=jobs;writeInterop(env);}catch(e){}}
-function setsFor(b){let bf=0;(b.scopes||[]).forEach(s=>{if(s.service==='foam'||s.service==='roof')bf+=s.bf||0;});return{bf:Math.round(bf),sets:bf>0?Math.ceil(bf/4500):0};}
+function setsFor(b){let bf=0,setsRaw=0;(b.scopes||[]).forEach(s=>{if(s.service==='foam'||s.service==='roof'){bf+=s.bf||0;setsRaw+=(s.bf||0)/(s.setYield||(s.service==='roof'?2900:4000));}});return{bf:Math.round(bf),sets:setsRaw>0?Math.ceil(setsRaw):0};}
 function jobScopeLines(b){return(b.scopes||[]).map(s=>scopeLabel(s.service)+' — '+s.product+(s.qty?' ('+s.qty+')':''));}
 function defaultPull(b){const sf=setsFor(b);const arr=[];
  if(sf.sets>0)arr.push({t:'Foam: ≈'+sf.sets+' set'+(sf.sets!==1?'s':'')+' ('+sf.bf.toLocaleString()+' BF)',k:'sets'});
@@ -1383,15 +1390,16 @@ function invAdj(k,d){const i=INV.find(x=>x.k===k);if(!i)return;i.onHand=Math.max
 function invSet(k,f,v){const i=INV.find(x=>x.k===k);if(!i)return;i[f]=(f==='supplier')?v:(parseFloat(v)||0);invSave();renderStock();}
 /* ============ PROPOSAL ============ */
 function propHTML(b){
+ const _esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
  const dt=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
- const L=(b.scopes||[]).map(s=>[scopeLabel(s.service)+' — '+s.product+(s.substrate?' · '+s.substrate:''),s.qty||'1',money(s.sell)]);
+ const L=(b.scopes||[]).map(s=>[_esc(scopeLabel(s.service)+' — '+s.product+(s.substrate?' · '+s.substrate:'')),s.qty||'1',money(s.sell)]);
  let roi='';const R=b.roi||{};if(R.annual>0){const pct=(R.savingsPct||30)/100,yrs=R.years||20,yr=R.annual*pct;const pay=yr>0?b.sellPrice/yr:0;let cum=0,a=yr;for(let i=0;i<yrs;i++){cum+=a;a*=1.04;}
   roi=`<div class="ps"><h3>Energy Savings &amp; ROI (estimate)</h3><table style="width:100%;font-size:.82rem"><tr><td>Estimated annual savings (${(pct*100).toFixed(0)}%)</td><td style="text-align:right;font-weight:700">${money(yr)}/yr</td></tr><tr><td>Simple payback</td><td style="text-align:right;font-weight:700">${pay.toFixed(1)} yrs</td></tr><tr><td>${yrs}-yr savings</td><td style="text-align:right;font-weight:700">${money(cum)}</td></tr></table><div style="font-size:.66rem;color:#888;margin-top:4px">Estimate; varies with climate, usage &amp; rates (DOE range 15–50%).</div></div>`;}
  const tiersBlk=(b.tiersOn&&Array.isArray(b.tiers)&&b.tiers.length)?`<div class="ps"><h3>Your Options — Choose Your Investment Level</h3><table style="width:100%;border-collapse:separate;border-spacing:6px 0"><tr>${b.tiers.map(t=>`<td style="vertical-align:top;padding:10px;border:${t.rec?'2px solid #C8102E':'1px solid #ddd'};border-radius:8px;width:${Math.floor(100/b.tiers.length)}%;background:${t.rec?'#fff5f5':'#fff'}">${t.rec?'<div style="color:#C8102E;font-weight:800;font-size:.62rem;letter-spacing:.04em">★ RECOMMENDED</div>':'<div style="height:.62rem"></div>'}<div style="font-weight:800;font-size:.95rem;margin-top:2px">${String(t.name||'').replace(/</g,'&lt;')}</div><div style="color:#C8102E;font-weight:900;font-size:1.15rem;margin:5px 0">${money(t.price)}</div><div style="font-size:.72rem;color:#555;line-height:1.5">${String(t.desc||'').replace(/</g,'&lt;')}</div></td>`).join('')}</tr></table><div style="font-size:.66rem;color:#888;margin-top:5px">Circle or initial your selected option below. Pricing valid 30 days.</div></div>`:'';
  const dpct=(b.depositPct!=null?b.depositPct:50);const pbase=(b.tiersOn&&Array.isArray(b.tiers)&&b.tiers.length)?(((b.tiers.find(t=>t.rec)||b.tiers[0]).price)||0):(b.sellPrice||0);const dep=Math.round(pbase*dpct/100);const bal=pbase-dep;
  const payBlk=pbase>0?`<div class="ps"><h3>Payment Schedule</h3><table style="width:100%;font-size:.82rem"><tr><td>Deposit to schedule (${dpct}%)</td><td style="text-align:right;font-weight:700">${money(dep)}</td></tr><tr><td>Balance due on completion</td><td style="text-align:right;font-weight:700">${money(bal)}</td></tr></table>${(b.tiersOn&&Array.isArray(b.tiers)&&b.tiers.length)?'<div style="font-size:.66rem;color:#888;margin-top:4px">Based on the recommended option; adjusts to your selected option.</div>':''}</div>`:'';
  return `<div style="border-bottom:3px solid #C8102E;padding-bottom:12px;margin-bottom:14px"><div style="font-size:1.2rem;font-weight:900">Machine Gun Spray Foam &amp; Concrete Lifting, LLC</div><div style="color:#666;font-size:.78rem">Veteran-Owned · Glendive, MT · 406-939-8301 · machinegunsprayfoam.info</div><div style="font-size:.72rem;color:#888;margin-top:3px">BPI Certified · Serving MT / ND / SD / WY</div></div>
- <div class="ps"><h3>Proposal</h3><table style="width:100%;font-size:.82rem"><tr><td style="color:#777;width:110px">Date</td><td><b>${dt}</b></td></tr><tr><td style="color:#777">Valid until</td><td><b>${new Date((b.expiresAt||(new Date(b.createdAt).getTime()+30*86400000))).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</b> (30 days)</td></tr><tr><td style="color:#777">Prepared for</td><td><b>${b.customer?.name||''}</b></td></tr><tr><td style="color:#777">Phone</td><td>${b.customer?.phone||'—'}</td></tr><tr><td style="color:#777">Location</td><td>${b.customer?.address||'—'}, ${b.state||''}</td></tr></table></div>
+ <div class="ps"><h3>Proposal</h3><table style="width:100%;font-size:.82rem"><tr><td style="color:#777;width:110px">Date</td><td><b>${dt}</b></td></tr><tr><td style="color:#777">Valid until</td><td><b>${new Date((b.expiresAt||(new Date(b.createdAt).getTime()+30*86400000))).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</b> (30 days)</td></tr><tr><td style="color:#777">Prepared for</td><td><b>${_esc(b.customer?.name)}</b></td></tr><tr><td style="color:#777">Phone</td><td>${_esc(b.customer?.phone||'—')}</td></tr><tr><td style="color:#777">Location</td><td>${_esc(b.customer?.address||'—')}, ${_esc(b.state)}</td></tr></table></div>
  ${tiersBlk}
  <div class="ps"><h3>Scope of Work</h3><table style="width:100%;border-collapse:collapse;font-size:.82rem"><thead><tr><th style="text-align:left;background:#f3f4f6;padding:7px">Description</th><th style="text-align:right;background:#f3f4f6;padding:7px">Qty</th><th style="text-align:right;background:#f3f4f6;padding:7px">Amount</th></tr></thead><tbody>${L.map(l=>`<tr><td style="padding:7px;border-bottom:1px solid #eee">${l[0]}</td><td style="padding:7px;border-bottom:1px solid #eee;text-align:right">${l[1]}</td><td style="padding:7px;border-bottom:1px solid #eee;text-align:right">${l[2]}</td></tr>`).join('')}</tbody><tfoot><tr style="background:#f9fafb"><td colspan="2" style="padding:10px;font-weight:800">TOTAL INVESTMENT</td><td style="text-align:right;padding:10px;color:#C8102E;font-size:1.05rem;font-weight:900">${money(b.sellPrice)}</td></tr></tfoot></table></div>
  ${b.consoleNotes?`<div class="ps"><h3>Notes</h3><div style="font-size:.82rem;color:#374151">${b.consoleNotes}</div></div>`:''}
@@ -1399,7 +1407,7 @@ function propHTML(b){
  ${payBlk}
  <div class="ps"><h3>Terms</h3><div style="font-size:.78rem;color:#666;line-height:1.7">• Payment per the schedule above.<br>• Valid 30 days. Material pricing subject to change thereafter.<br>• Manufacturer-backed materials. 1-year workmanship warranty.<br>• Excludes hidden/structural damage, electrical/plumbing/HVAC, abatement, and permits unless stated.</div></div>
  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:11px;margin-top:14px;font-size:.82rem">💳 <b>Financing Available — 0% options through Hearth.</b> <a href="https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton" style="color:#16a34a">Apply in minutes</a></div>
- ${b.signature?`<div class="ps" style="margin-top:16px"><h3>Accepted</h3><div style="font-size:.82rem">Accepted by <b>${b.signature.name}</b> on ${b.signature.date}</div><img src="${b.signature.img}" style="height:60px;margin-top:6px"></div>`:`<div class="ps" style="margin-top:22px"><h3>Acceptance</h3><div style="display:flex;gap:30px;margin-top:26px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Customer signature</div><div style="width:150px;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Date</div></div></div>`}
+ ${b.signature?`<div class="ps" style="margin-top:16px"><h3>Accepted</h3><div style="font-size:.82rem">Accepted by <b>${_esc(b.signature.name)}</b> on ${b.signature.date}</div><img src="${b.signature.img}" style="height:60px;margin-top:6px"></div>`:`<div class="ps" style="margin-top:22px"><h3>Acceptance</h3><div style="display:flex;gap:30px;margin-top:26px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Customer signature</div><div style="width:150px;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Date</div></div></div>`}
  <div style="margin-top:18px;font-size:.72rem;color:#999;text-align:center">Machine Gun Spray Foam &amp; Concrete Lifting, LLC · EIN 33-3866517 · UEI H63EELL3K7Z4 · SAM Active · VOSB</div>`;
 }
 function renderProposal(b){$('prop-prev').innerHTML='<style>.ps{margin-bottom:14px}.ps h3{font-size:.78rem;color:#C8102E;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}</style>'+propHTML(b);}
@@ -1454,7 +1462,7 @@ async function sprayWxCheck(){const out=$('wx-out');if(!out)return;
   if(gotHr&&spreadMin<5)bad('Only '+Math.round(spreadMin)+'°F above dew point — condensation risk (need 5°F+)');else if(gotHr&&spreadMin<8)warn('Tight '+Math.round(spreadMin)+'°F dew-point spread');
   if(wind>20)bad('Wind to '+Math.round(wind)+' mph — overspray & quality risk');else if(wind>12)warn('Wind to '+Math.round(wind)+' mph — watch overspray (limit ~12)');
   const col=level==='GO'?'#16a34a':(level==='CAUTION'?'#b8860b':'#c0392b'),emo=level==='GO'?'✅':(level==='CAUTION'?'⚠️':'⛔');
-  out.innerHTML='<div style="border:1px solid '+col+';border-radius:9px;padding:10px"><div style="font-weight:800;color:'+col+'">'+emo+' '+level+' — '+p.name+', '+(p.admin1||'')+' · '+date+'</div><div style="font-size:.74rem;color:var(--mut);margin-top:4px">High '+Math.round(tmax)+'°F · Low '+Math.round(tmin)+'°F · Precip '+pprob+'% · Humidity '+(gotHr?Math.round(hMax)+'%':'n/a')+' · Wind '+Math.round(wind)+' mph</div>'+(reasons.length?'<div style="font-size:.74rem;margin-top:6px;line-height:1.6">'+reasons.join('<br>')+'</div>':'<div style="font-size:.74rem;margin-top:6px;color:#16a34a">All conditions within spray limits.</div>')+'</div>';
+  out.innerHTML='<div style="border:1px solid '+col+';border-radius:9px;padding:10px"><div style="font-weight:800;color:'+col+'">'+emo+' '+level+' — '+p.name+', '+(p.admin1||'')+' · '+date+'</div><div style="font-size:.74rem;color:var(--mut);margin-top:4px">High '+Math.round(tmax)+'°F · Low '+Math.round(tmin)+'°F · Precip '+pprob+'% · Humidity '+(gotHr?Math.round(hMax)+'%':'n/a')+' · Wind '+Math.round(wind)+' mph</div>'+(reasons.length?'<div style="font-size:.74rem;margin-top:6px;line-height:1.6">'+reasons.join('<br>')+'</div>':'<div style="font-size:.74rem;margin-top:6px;color:#16a34a">All conditions within spray limits.</div>')+'<div style="font-size:.66rem;color:var(--mut);margin-top:6px;border-top:1px dashed var(--line);padding-top:5px">Field check: forecast is <b>air</b> temp — shoot the <b>substrate</b> with an IR gun (decks/studs run colder). No frost / dew / damp on the surface, ever. Closed-cell lifts ≤1½″, 10–15 min between.</div></div>';
  }catch(e){out.innerHTML='<div class="hint" style="color:var(--yellow)">Couldn’t reach the weather service (no signal?). Try again when online.</div>';}}
 function depositUpd(){const b=bids.find(x=>x.id===selId);if(!b)return;let p=parseFloat($('d-deposit').value);if(!isFinite(p))p=50;p=Math.max(0,Math.min(100,p));b.depositPct=p;
  const base=payBase(b);const dep=Math.round(base*p/100);const bal=Math.round(base-dep);const o=$('d-deposit-out');if(o)o.innerHTML=base>0?`Deposit <b>${money(dep)}</b> · Balance <b>${money(bal)}</b>`:'';
@@ -1522,8 +1530,8 @@ function resetSettings(){if(!confirm('Reset rates to Workbook defaults?'))return
 let fDraft=null,cDraft=null;
 function fEdit(i,k,v){FOAM[i][k]=(k==='set'||k==='yieldBF')?(parseFloat(v)||0):v;}
 function fRm(i){FOAM.splice(i,1);fillAdmin();}
-function addFoam(){FOAM.push({k:'p'+Date.now(),n:'New Product',cat:'Closed Cell',set:2800,yieldBF:4500,costBF:0.62});fillAdmin();}
-function saveFoam(){FOAM=FOAM.map(f=>({...f,set:parseFloat(f.set)||0,yieldBF:parseFloat(f.yieldBF)||4500,costBF:+((parseFloat(f.set)||0)/(parseFloat(f.yieldBF)||4500)).toFixed(4)}));lsSet(KF,JSON.stringify(FOAM));fillProducts();toast('Foam saved');}
+function addFoam(){FOAM.push({k:'p'+Date.now(),n:'New Product',cat:'Closed Cell',set:2800,yieldBF:4000,costBF:0.70});fillAdmin();}
+function saveFoam(){FOAM=FOAM.map(f=>({...f,set:parseFloat(f.set)||0,yieldBF:parseFloat(f.yieldBF)||4000,costBF:+((parseFloat(f.set)||0)/(parseFloat(f.yieldBF)||4000)).toFixed(4)}));lsSet(KF,JSON.stringify(FOAM));fillProducts();toast('Foam saved');}
 function _coatReal(){return COAT.filter(c=>c.k!=='none');}
 function coatEdit(i,k,v){const arr=_coatReal();arr[i][k]=(k==='gal'||k==='sf')?(parseFloat(v)||0):v;}
 function coatRm(i){const c=_coatReal()[i];COAT=COAT.filter(x=>x!==c);fillAdmin();}
