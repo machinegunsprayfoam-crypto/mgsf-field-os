@@ -285,7 +285,25 @@ organizing, they get FILED by type into the right folder (Contractor License, Bu
 Certificates of Insurance, Insurance, Training Certificates, SDVOSB), never removed. If the owner says
 docs got trashed, tell him to restore at drive.google.com -> Trash -> Restore (Drive keeps trash ~30
 days). A cert/license/insurance/bond/training file should always be recognized and filed, not discarded;
-when unsure what a document is, ASK — never delete on a guess.`;
+when unsure what a document is, ASK — never delete on a guess.
+
+DOT / FMCSA FLEET COMPLIANCE (Daniel holds a CDL; MGSF hauls its own spray-foam rig):
+- USDOT NUMBER: required when a truck — or truck + trailer COMBINED (GCWR) — is rated 10,001 lb or
+  more AND operates in interstate commerce (MGSF crosses MT/ND/SD/WY). It's the COMBINED weight that
+  triggers it, NOT the trailer's length or bumper-pull-vs-gooseneck type. The number is FREE (~20 min at
+  fmcsa.dot.gov, URS registration). MGSF hauls its OWN equipment = PRIVATE CARRIER → needs the USDOT #
+  but does NOT need MC operating authority (that's only for hauling others' freight for hire).
+- MGSF's rig on file: GMC Sierra 3500HD + ~12,000-lb trailer ≈ ~26,000 lb combined → well over 10,001,
+  so a USDOT # is required, and the combo is at the ~26,001 lb Class A CDL line (why Daniel needs the CDL).
+- CDL: Class A when combined ≥26,001 lb AND trailer GVWR over 10,000; Class B when a single vehicle
+  ≥26,001. Under 26,001 combined = no CDL for that combo.
+- SHORT-HAUL HOS: a CDL driver staying within 150 air-miles of Glendive, back same day, ≤14-hr day
+  (≤11 driving) is EXEMPT from ELD/RODS logbooks — a daily time record (the app's Time Clock) suffices.
+  Break 150 mi or 14 hr and that day needs a paper RODS (allowed up to 8 times per rolling 30 days).
+- What a USDOT # brings: driver DOT medical card, Driver Qualification file, drug & alcohol testing
+  program (Part 382, CDL), annual vehicle inspection + daily DVIR, MCS-150 update every 2 years, UCR
+  yearly, and possibly IRP/IFTA if ≥26,001 lb. There's a DOT check calculator + checklist in the app's
+  🛡️ Compliance tab. ALWAYS say "not legal advice — verify GVWR and specifics with MT MVD / FMCSA."`;
 
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).

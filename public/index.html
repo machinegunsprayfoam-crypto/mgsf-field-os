@@ -7628,7 +7628,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-payroll-ready';
+const APP_BUILD = '2026-07-14-dot-check';
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8432,6 +8432,15 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     const dot =LS('compliance_dot',  DOT.map(()=>false));
     const oshaDone=osha.filter(Boolean).length, dotDone=dot.filter(Boolean).length;
     box.innerHTML=`
+      <div class="jsa-card" style="border-left:3px solid var(--cy)"><h4>🧮 DOT check — do I need a USDOT # / CDL?</h4>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Enter the GVWR off each sticker (truck door jamb + trailer plate). It's the <b>combined</b> weight that counts — not the trailer's size or type.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px"><label class="fl">Truck GVWR (lb)</label><input id="dot_truck" type="number" class="admin-inp" value="${LS('dot_truck',14000)}" oninput="dotCheck()"></div>
+          <div style="flex:1;min-width:120px"><label class="fl">Trailer GVWR (lb)</label><input id="dot_trailer" type="number" class="admin-inp" value="${LS('dot_trailer',12000)}" oninput="dotCheck()"></div>
+        </div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="dot_interstate" ${LS('dot_interstate',true)?'checked':''} onchange="dotCheck()"><span>Crosses state lines (MT ↔ ND / SD / WY)</span></label>
+        <div id="dot_result" style="margin-top:10px"></div></div>
+
       <div class="jsa-card" style="border-left:3px solid var(--or)"><h4>🚛 Your DOT profile</h4>
         <div style="font-size:13px;line-height:1.6">Truck: <b>2025 GMC Sierra 3500HD Denali Ultimate</b> · Rig: <b>12,000-lb trailer</b> (towed).<br>
         Combination GCWR ≥26,001 lb + trailer over 10,000 lb → <b style="color:var(--yw)">Class A CDL required</b> to tow the rig across state lines, plus a DOT drug-&-alcohol testing program (Part 382).<br>
@@ -8457,6 +8466,27 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
         </div>
         <div style="font-size:11px;color:var(--t2);margin-top:8px">The SPF Daily Log, PPE Check, Incident Report, Respirator & Training logs live under 📝 Forms.</div>
       </div>`;
+    if(window.dotCheck) dotCheck();
+  };
+  // DOT check: combined GVWR decides the USDOT # (≥10,001 + interstate) and CDL class (≥26,001).
+  window.dotCheck = function(){
+    const el=$('dot_result'); if(!el) return;
+    const truck=parseInt(($('dot_truck')||{}).value,10)||0, trailer=parseInt(($('dot_trailer')||{}).value,10)||0;
+    const inter=!!(($('dot_interstate')||{}).checked);
+    SS('dot_truck',truck); SS('dot_trailer',trailer); SS('dot_interstate',inter);
+    const combo=truck+trailer;
+    const need = combo>=10001 || truck>=10001;
+    const cdlA = combo>=26001 && trailer>10000, cdlB = truck>=26001;
+    const row=(c,t)=>`<div style="padding:4px 0;color:${c};font-size:12.5px;line-height:1.5">${t}</div>`;
+    let html=`<div style="font-size:13px;font-weight:700;margin-bottom:2px">Combined GCWR: ${combo.toLocaleString()} lb</div>`;
+    if(need && inter) html+=row('var(--yw)','⚠ <b>USDOT number REQUIRED</b> — over 10,001 lb and you cross state lines. It\'s <b>FREE</b> (~20 min) at fmcsa.dot.gov. You haul your own rig = <b>private carrier</b> → USDOT yes, MC authority NOT needed.');
+    else if(need && !inter) html+=row('var(--cy)','Over 10,001 lb combined. Federal USDOT applies to <b>interstate</b> — you unchecked state lines, so check Montana intrastate rules (MT can still require a USDOT # for intrastate CMVs).');
+    else html+=row('var(--gr)','✅ Under 10,001 lb combined — no USDOT number needed for this combo.');
+    if(cdlA) html+=row('var(--yw)','<b>Class A CDL</b> required (combo ≥26,001 lb + trailer over 10,000). Daniel\'s CDL covers this.');
+    else if(cdlB) html+=row('var(--yw)','<b>Class B CDL</b> required (single vehicle ≥26,001 lb).');
+    else html+=row('var(--t2)','No CDL needed at this weight (combo under 26,001 lb).');
+    if(need && inter) html+='<div style="font-size:11px;color:var(--t2);margin-top:8px;line-height:1.6">Comes with it: driver DOT medical card · Driver Qualification file · drug &amp; alcohol testing program (CDL) · annual vehicle inspection + daily DVIR · MCS-150 update every 2 yrs · UCR yearly · possibly IRP/IFTA if ≥26,001. <b>Not legal advice</b> — verify with MT MVD / FMCSA.</div>';
+    el.innerHTML=html;
   };
   window.cmpToggle = function(group,i){
     const key='compliance_'+group; const base=(group==='osha'?OSHA:DOT).map(()=>false);
