@@ -188,6 +188,61 @@ module.exports = async (req, res) => {
       }
     }
 
+    // ── READ-ONLY generic CRM query — lets Klyfton pull any core object ──────────
+    // Safe by construction: only whitelisted objects, only GET-by-id / search / recent
+    // list. No create, update, or delete path is reachable through this mode.
+    if (mode === 'read') {
+      const OBJ = {
+        contacts:   { type: '0-1',  props: ['firstname','lastname','email','phone','mobilephone','company','lifecyclestage','hs_lead_status','city','state','lastmodifieddate','createdate'] },
+        companies:  { type: '0-2',  props: ['name','domain','phone','city','state','industry','lifecyclestage','numberofemployees','lastmodifieddate','createdate'] },
+        deals:      { type: '0-3',  props: ['dealname','amount','dealstage','pipeline','closedate','hs_lastmodifieddate','createdate'] },
+        tickets:    { type: '0-5',  props: ['subject','content','hs_pipeline_stage','hs_ticket_priority','createdate','hs_lastmodifieddate'] },
+        products:   { type: '0-7',  props: ['name','price','description','hs_sku','createdate','hs_lastmodifieddate'] },
+        line_items: { type: '0-8',  props: ['name','price','quantity','amount','createdate','hs_lastmodifieddate'] },
+        quotes:     { type: '0-14', props: ['hs_title','hs_status','hs_expiration_date','hs_quote_amount','createdate','hs_lastmodifieddate'] },
+        notes:      { type: '0-4',  props: ['hs_note_body','hs_createdate','hs_lastmodifieddate'] },
+        tasks:      { type: '0-27', props: ['hs_task_subject','hs_task_status','hs_task_body','hs_timestamp','createdate'] },
+        calls:      { type: '0-48', props: ['hs_call_title','hs_call_body','hs_call_direction','hs_call_status','hs_timestamp'] },
+        meetings:   { type: '0-47', props: ['hs_meeting_title','hs_meeting_body','hs_meeting_start_time','hs_timestamp'] },
+      };
+      const objName = String((body && body.object) || 'contacts').toLowerCase();
+      const spec = OBJ[objName];
+      if (!spec) { sendJson(res, 400, { ok: false, error: 'BAD_OBJECT', allowed: Object.keys(OBJ) }); return; }
+
+      // Caller may narrow the property set, but only to strings; else use safe defaults.
+      const props = Array.isArray(body.properties) && body.properties.length
+        ? body.properties.filter((s) => typeof s === 'string').slice(0, 40)
+        : spec.props;
+      const limit = Math.max(1, Math.min(parseInt(body.limit, 10) || 25, 100));
+
+      // 1) Fetch one record by id (GET — read-only).
+      const id = String((body && body.id) || '').trim();
+      if (id && /^[0-9]+$/.test(id)) {
+        const url = HUBSPOT_BASE + '/crm/v3/objects/' + encodeURIComponent(objName) +
+          '/' + encodeURIComponent(id) + '?properties=' + encodeURIComponent(props.join(','));
+        const r = await fetch(url, { headers: { authorization: 'Bearer ' + token } });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) { sendJson(res, 200, { ok: false, error: 'HUBSPOT_ERROR', detail: (data && data.category) || ('http_' + r.status) }); return; }
+        sendJson(res, 200, { ok: true, object: objName, record: { id: data.id, properties: data.properties || {}, url: 'https://app.hubspot.com/contacts/' + PORTAL_ID + '/record/' + spec.type + '/' + data.id } });
+        return;
+      }
+
+      // 2) Full-text search, or 3) most-recent list when no query is given. Both use the
+      //    search endpoint (a read), so nothing here can mutate the CRM.
+      const q = String((body && (body.search || body.query)) || '').trim().slice(0, 120);
+      const payload = { properties: props, limit, sorts: [{ propertyName: spec.props.indexOf('hs_lastmodifieddate') >= 0 ? 'hs_lastmodifieddate' : 'lastmodifieddate', direction: 'DESCENDING' }] };
+      if (q) payload.query = q;
+      const data = await callHubSpot(token, '/crm/v3/objects/' + encodeURIComponent(objName) + '/search', payload);
+      const results = Array.isArray(data && data.results) ? data.results : [];
+      const records = results.map((c) => ({
+        id: c.id,
+        properties: c.properties || {},
+        url: 'https://app.hubspot.com/contacts/' + PORTAL_ID + '/record/' + spec.type + '/' + c.id
+      }));
+      sendJson(res, 200, { ok: true, object: objName, count: records.length, records: records });
+      return;
+    }
+
     sendJson(res, 400, { ok: false, error: 'BAD_MODE' });
   } catch (e) {
     if (e && e.message === 'HUBSPOT_ERROR') {
