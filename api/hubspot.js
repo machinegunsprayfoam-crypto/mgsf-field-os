@@ -112,17 +112,21 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
   if (req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
 
-  const token = process.env.HUBSPOT_TOKEN;
-  if (!token || !String(token).trim()) {
-    sendJson(res, 200, { ok: false, error: 'HUBSPOT_NOT_CONFIGURED' });
-    return;
-  }
-
   let body;
   try { body = await readBody(req); }
   catch (e) {
     if (e.message === 'TOO_LARGE') { sendJson(res, 413, { ok: false, error: 'TOO_LARGE' }); return; }
     sendJson(res, 400, { ok: false, error: 'BAD_REQUEST' }); return;
+  }
+
+  // Env token is the secure path and always wins. If none is set, fall back to a HubSpot
+  // private-app token the owner pasted into the in-app vault (Admin → API Keys), sent as
+  // body.token. Validated to look like a HubSpot token so a stray value can't be forwarded.
+  const bodyToken = (body && typeof body.token === 'string' && /^(pat-|CJ|na)/.test(body.token.trim())) ? body.token.trim() : '';
+  const token = (process.env.HUBSPOT_TOKEN && String(process.env.HUBSPOT_TOKEN).trim()) || bodyToken;
+  if (!token || !String(token).trim()) {
+    sendJson(res, 200, { ok: false, error: 'HUBSPOT_NOT_CONFIGURED' });
+    return;
   }
 
   const mode = (body && body.mode) || 'leads';

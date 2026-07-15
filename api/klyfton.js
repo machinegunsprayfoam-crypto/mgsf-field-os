@@ -803,23 +803,29 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    res.status(200).json({
-      text:
-        "⚙️ Ask Klyfton AI isn't switched on yet. Owner: in Vercel → the mgsf-fieldos " +
-        "project → Settings → Environment Variables, add ANTHROPIC_API_KEY, then Redeploy. " +
-        "Until then the hive can't think — but the estimator, JSA, and time clock still work.",
-      configured: false,
-    });
-    return;
-  }
-
   let body = req.body;
   if (typeof body === "string") {
     try { body = JSON.parse(body); } catch { body = {}; }
   }
   body = body || {};
+
+  // Key resolution: a Vercel env var ALWAYS wins (the secure path). If none is set,
+  // fall back to a key the owner pasted into the app's in-app vault (Admin → API Keys),
+  // sent as body.apiKey. Validated to look like an Anthropic key so a stray value can't
+  // be forwarded. This lets the owner switch the brain on entirely from the app.
+  const bodyKey = (typeof body.apiKey === "string" && /^sk-ant-/.test(body.apiKey.trim())) ? body.apiKey.trim() : "";
+  const key = process.env.ANTHROPIC_API_KEY || bodyKey;
+  if (!key) {
+    res.status(200).json({
+      text:
+        "⚙️ Ask Klyfton AI isn't switched on yet. Owner: paste your Anthropic API key in " +
+        "Admin → API Keys (turns it on right here), or for the most secure setup add " +
+        "ANTHROPIC_API_KEY in Vercel → mgsf-fieldos → Settings → Environment Variables and Redeploy. " +
+        "Until then the hive can't think — but the estimator, JSA, and time clock still work.",
+      configured: false,
+    });
+    return;
+  }
 
   if (process.env.CREW_CODE && body.code !== process.env.CREW_CODE) {
     res.status(200).json({ text: "🔒 Crew code required to use Klyfton AI.", configured: true });
