@@ -1262,6 +1262,17 @@ canvas.chart{width:100%;height:100%}
           <div id="tc_cards"></div>
         </div>
 
+        <div class="admin-section" id="adm-apikeys">
+          <div class="admin-section-title">🔑 API KEYS — TURN ON KLYFTON'S POWERS RIGHT HERE</div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.6">
+            Paste a key, hit <b>Save</b>, and that feature switches on instantly — no redeploy.
+            Keys are stored <b>only on this device</b> and sent straight to Klyfton's own backend over HTTPS.
+            <br><b>Most secure:</b> instead add them as Environment Variables in Vercel — a Vercel key always
+            <b>overrides</b> the one saved here and never touches the browser. Either way, best kept on your own phone or laptop.
+          </div>
+          <div id="apiKeysList" style="margin-top:12px"></div>
+        </div>
+
         <div class="admin-section" id="adm-integrations">
           <div class="admin-section-title">🔗 INTEGRATIONS — ONE WEBHOOK WIRES KLYFTON TO EVERYTHING</div>
           <div style="font-size:11px;color:var(--t2);line-height:1.6">
@@ -1873,6 +1884,9 @@ function speak(text){
 // any hiccup (not configured, offline, error) so speech never just goes silent.
 let __klyAudio=null, __ttsOff=false;
 function _ttsKey(){ try{ return localStorage.getItem('klyfton_tts_key')||''; }catch(e){ return ''; } }
+// The owner's in-app Anthropic key (Admin → API Keys). Sent to /api/klyfton only as a
+// fallback — a Vercel ANTHROPIC_API_KEY env var always wins on the server.
+function _brainKey(){ try{ return (localStorage.getItem('klyfton_anthropic_key')||'').trim(); }catch(e){ return ''; } }
 function speakCloud(text){
   try{
     let pref=null; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'null'); }catch(e){}
@@ -2318,6 +2332,7 @@ function switchModule(id){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
     if(window.renderDataManager) renderDataManager();
+    if(window.renderApiKeys) renderApiKeys();
     if(window.renderCrew) renderCrew();
     if(window.renderTimecards) renderTimecards();
     if(window.renderVoiceSettings) renderVoiceSettings();
@@ -4861,6 +4876,94 @@ window.klyftonTestAlert = function(){
     .catch(()=>{ if(s){ s.textContent='Could not reach the notifier.'; s.style.color='var(--or)'; } });
 };
 
+// ── API KEYS VAULT (Admin) — paste a key, it switches the feature on ─────────
+// Each row reads/writes one localStorage key. Server endpoints treat a Vercel env
+// var as the source of truth and only fall back to these when the env var is unset,
+// so pasting here never overrides the more-secure server setup.
+const API_KEYS = [
+  {id:'anthropic', store:'klyfton_anthropic_key', icon:'🧠', name:'Klyfton AI Brain — Anthropic',
+   powers:'The whole brain: chat, estimates, proposals, research, photo reads', ph:'sk-ant-…',
+   get:'https://console.anthropic.com/settings/keys', test:'brain'},
+  {id:'voice', store:'klyfton_tts_key', icon:'🎤', name:'Premium Voice — ElevenLabs / OpenAI',
+   powers:'Natural spoken replies instead of the robotic browser voice', ph:'sk-… or el-…',
+   get:'https://elevenlabs.io/app/settings/api-keys', test:'voice'},
+  {id:'sam', store:'klyfton_sam_key', icon:'🏛️', name:'SAM.gov — federal opportunities',
+   powers:'Live federal contract opportunities in the GOV tab', ph:'your SAM.gov API key',
+   get:'https://sam.gov/content/api-keys', test:'sam'},
+  {id:'hubspot', store:'klyfton_hubspot_token', icon:'🎯', name:'HubSpot — CRM',
+   powers:'Pull your CRM call list and sync leads/deals', ph:'pat-…',
+   get:'https://app.hubspot.com/settings/246088810/integrations/private-apps', test:'hubspot'},
+];
+function _kGet(k){ try{ return (localStorage.getItem(k)||'').trim(); }catch(e){ return ''; } }
+function _kMask(v){ if(!v) return ''; return v.length<=8 ? '••••' : '••••••'+v.slice(-4); }
+function renderApiKeys(){
+  const el=document.getElementById('apiKeysList'); if(!el) return;
+  const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
+  el.innerHTML = API_KEYS.map(k=>{
+    const cur=_kGet(k.store); const on=!!cur;
+    return `<div class="log-row" style="display:block;padding:10px 0;border-bottom:1px solid var(--bd)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:18px">${k.icon}</span>
+        <b style="font-size:13px">${E(k.name)}</b>
+        <span class="badge ${on?'badge-gr':'badge-yw'}" style="font-size:9px">${on?'● ON · '+_kMask(cur):'○ off'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--t2);margin:0 0 6px 26px">${E(k.powers)} · <a href="${k.get}" target="_blank" style="color:var(--cy)">get a key ↗</a></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:26px">
+        <input class="admin-inp" id="ak_${k.id}" type="password" autocomplete="off" placeholder="${on?'saved — paste a new key to replace':E(k.ph)}" style="flex:2;min-width:180px">
+        <button class="btn btn-cyan" style="font-size:11px;padding:6px 12px" onclick="apiKeySave('${k.id}')">Save</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" onclick="apiKeyTest('${k.id}')">Test</button>
+        ${on?`<button class="btn btn-ghost" style="font-size:11px;padding:6px 10px;color:#ef4444;border-color:rgba(239,68,68,.35)" onclick="apiKeyClear('${k.id}')">Clear</button>`:''}
+        <span id="akst_${k.id}" style="font-size:11px;align-self:center"></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function apiKeySave(id){
+  const k=API_KEYS.find(x=>x.id===id); if(!k) return;
+  const inp=document.getElementById('ak_'+id); const v=(inp&&inp.value||'').trim();
+  if(!v){ const st=document.getElementById('akst_'+id); if(st){ st.textContent='Paste a key first.'; st.style.color='var(--yw)'; } return; }
+  try{ localStorage.setItem(k.store, v); }catch(e){}
+  if(typeof notify==='function') notify(k.name.split(' — ')[0]+' key saved','ok');
+  renderApiKeys();
+  // Auto-test so the owner gets instant confirmation it works.
+  setTimeout(()=>apiKeyTest(id), 60);
+}
+function apiKeyClear(id){
+  const k=API_KEYS.find(x=>x.id===id); if(!k) return;
+  try{ localStorage.removeItem(k.store); }catch(e){}
+  if(typeof notify==='function') notify(k.name.split(' — ')[0]+' key cleared','info');
+  renderApiKeys();
+}
+function apiKeyTest(id){
+  const k=API_KEYS.find(x=>x.id===id); if(!k) return;
+  const key=_kGet(k.store); const st=document.getElementById('akst_'+id);
+  const set=(msg,col)=>{ if(st){ st.textContent=msg; st.style.color=col; } };
+  if(!key){ set('No key saved yet.','var(--yw)'); return; }
+  set('Testing…','var(--t2)');
+  const ok=()=>set('✔ Working','var(--gr)');
+  const bad=(m)=>set('✕ '+(m||'Key rejected'),'var(--or)');
+  const netf=()=>set('Couldn’t reach the service.','var(--or)');
+  try{
+    if(k.test==='brain'){
+      fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({message:'ping — reply with the single word OK', apiKey:key, code:(typeof klyftonCode==='function'?klyftonCode():'')})})
+        .then(r=>r.json()).then(d=>{ if(d&&d.configured===false) bad('Not accepted'); else if(d&&(d.text||d.done!==undefined)) ok(); else bad(); }).catch(netf);
+    } else if(k.test==='voice'){
+      fetch('/api/tts',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({text:'test', key})})
+        .then(r=>{ if(r.ok) ok(); else r.json().then(d=>bad(d&&d.error)).catch(()=>bad()); }).catch(netf);
+    } else if(k.test==='sam'){
+      fetch('/api/samgov',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({apiKey:key})})
+        .then(r=>r.json()).then(d=>{ if(d&&(d.ok||Array.isArray(d.opportunities)||Array.isArray(d.results))) ok(); else if(d&&d.error&&/key/i.test(d.error)) bad('Bad key'); else ok(); }).catch(netf);
+    } else if(k.test==='hubspot'){
+      fetch('/api/hubspot',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({mode:'leads', token:key})})
+        .then(r=>r.json()).then(d=>{ if(d&&d.ok) ok(); else bad(d&&d.error==='HUBSPOT_NOT_CONFIGURED'?'Not accepted':(d&&d.error)); }).catch(netf);
+    } else { set('No test for this key.','var(--t2)'); }
+  }catch(e){ netf(); }
+}
+
 // ── CREW / TEAM profiles + PINs (Admin) ──────────────────────
 let _crewEditId = null;
 function crewRoleLabel(r){ return {full:'Owner',admin:'Admin',field:'Field',readonly:'View'}[r]||r; }
@@ -6415,6 +6518,7 @@ function klyftonPromptCode(){
 // resolve with the final {text, remember, minds, mode, configured}. If it returns JSON
 // (GROW tools, not-configured, crew-code), just parse and resolve. Rejects on network/abort.
 async function klyftonStream(payload, signal, onDelta){
+  const _bk=_brainKey(); if(_bk && payload && !payload.apiKey) payload.apiKey=_bk;
   const r = await fetch('/api/klyfton', {
     method:'POST',
     headers:{'content-type':'application/json','accept':'text/event-stream'},
@@ -9212,7 +9316,7 @@ function growGenerate(prompt){
   if(st) st.textContent='Klyfton is working…';
   if(out) out.innerHTML='';
   fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():'')})})
+    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined})})
   .then(function(r){return r.json();})
   .then(function(d){
     if(typeof klyftonLocked==='function' && klyftonLocked(d&&d.text)){ if(klyftonPromptCode()){ growGenerate(prompt); return; } }
