@@ -1298,6 +1298,23 @@ canvas.chart{width:100%;height:100%}
           <div id="apiKeysList" style="margin-top:12px"></div>
         </div>
 
+        <div class="admin-section" id="adm-pricing">
+          <div class="admin-section-title">💲 LIVE PRICING — ALWAYS USE YOUR NEWEST NUMBERS</div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.6">
+            Point Klyfton at your pricing sheet once and it auto-pulls the <b>latest</b> prices every time the app
+            opens — the estimator, ROI, and AI all quote your current numbers, no re-typing.
+            <br><b>Setup (once):</b> open your pricing Google Sheet → <b>File → Share → Publish to web</b> →
+            pick the pricing tab → <b>Comma-separated values (.csv)</b> → Publish → copy that link and paste it below.
+            Update the sheet anytime and the app pulls the new prices on next open.
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <input class="admin-inp" id="pricingUrl" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" style="flex:2;min-width:200px">
+            <button class="btn btn-cyan" onclick="pricingUrlSave()">Save</button>
+            <button class="btn btn-ghost" onclick="pricingRefresh(false)">↻ Pull now</button>
+          </div>
+          <div id="pricingStat" style="font-size:11px;color:var(--t2);margin-top:8px"></div>
+        </div>
+
         <div class="admin-section" id="adm-integrations">
           <div class="admin-section-title">🔗 INTEGRATIONS — ONE WEBHOOK WIRES KLYFTON TO EVERYTHING</div>
           <div style="font-size:11px;color:var(--t2);line-height:1.6">
@@ -1920,6 +1937,42 @@ function _ttsKey(){ try{ return localStorage.getItem('klyfton_tts_key')||''; }ca
 function _brainKey(){ try{ return (localStorage.getItem('klyfton_anthropic_key')||'').trim(); }catch(e){ return ''; } }
 function _hsToken(){ try{ return (localStorage.getItem('klyfton_hubspot_token')||'').trim(); }catch(e){ return ''; } }
 
+// ── LIVE PRICING — auto-pull the newest pricing from a published Google Sheet CSV ──
+function _pricingCsvUrl(){ try{ return (localStorage.getItem('klyfton_pricing_csv')||'').trim(); }catch(e){ return ''; } }
+function pricingUrlSave(){
+  const inp=document.getElementById('pricingUrl'); const u=(inp&&inp.value||'').trim();
+  try{ localStorage.setItem('klyfton_pricing_csv', u); }catch(e){}
+  if(typeof notify==='function') notify(u?'Pricing sheet URL saved':'Pricing URL cleared', u?'ok':'info');
+  pricingRefresh(false);
+}
+function _pricingStamp(){
+  try{ const lp=JSON.parse(localStorage.getItem('klyfton_pricing_rows')||'null');
+    if(lp&&lp.at) return 'Last pulled '+new Date(lp.at).toLocaleString()+' · '+(lp.rows?lp.rows.length:0)+' products'; }catch(e){}
+  return 'Not pulled yet.';
+}
+function pricingRefresh(silent){
+  const url=_pricingCsvUrl(); const st=document.getElementById('pricingStat');
+  const set=(m,c)=>{ if(st&&!silent){ st.textContent=m; st.style.color=c||'var(--t2)'; } };
+  if(!url){ set('Add your published pricing-sheet CSV link, then Save.','var(--yw)'); return; }
+  set('Pulling latest prices…','var(--cy)');
+  fetch('/api/pricing',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})})
+    .then(r=>r.json()).then(d=>{
+      if(d&&d.ok&&Array.isArray(d.rows)){
+        try{ localStorage.setItem('klyfton_pricing_rows', JSON.stringify({at:d.at, header:d.header, rows:d.rows})); }catch(e){}
+        set('✔ Pulled '+d.rows.length+' products just now. Klyfton + ROI now use these.','var(--gr)');
+        if(window.renderPricingPanel) renderPricingPanel();
+      } else if(d&&d.error==='url_not_allowed'){ set('That link isn’t a Google “Publish to web” CSV. '+(d.hint||''),'var(--or)'); }
+      else if(d&&d.configured===false){ set('No pricing URL set.','var(--yw)'); }
+      else { set('Couldn’t read that sheet (status '+((d&&d.status)||'?')+'). Make sure it’s Published to web as CSV.','var(--or)'); }
+    })
+    .catch(()=>set('Couldn’t reach the pricing service.','var(--or)'));
+}
+function renderPricingPanel(){
+  const el=document.getElementById('pricingStat'); if(el) el.textContent=_pricingStamp();
+}
+// On app load, if a pricing URL is set, quietly pull the newest prices.
+try{ if(_pricingCsvUrl()) setTimeout(()=>pricingRefresh(true), 1500); }catch(e){}
+
 // Live, READ-ONLY HubSpot CRM lookup. Uses the token saved in Admin → API Keys
 // (or, more securely, HUBSPOT_TOKEN in Vercel). Never writes to the CRM.
 function _hsLabel(obj, p){
@@ -2418,6 +2471,7 @@ function switchModule(id){
     adminLoad();
     if(window.renderDataManager) renderDataManager();
     if(window.renderApiKeys) renderApiKeys();
+    try{ const pu=document.getElementById('pricingUrl'); if(pu) pu.value=_pricingCsvUrl(); if(window.renderPricingPanel) renderPricingPanel(); }catch(e){}
     if(window.renderCrew) renderCrew();
     if(window.renderTimecards) renderTimecards();
     if(window.renderVoiceSettings) renderVoiceSettings();
@@ -6979,6 +7033,14 @@ function gatherBizContext(){
     try{ (EST_COAT||[]).forEach(p=>{ if(p&&p.n&&p.costGal) prods.push(p.n+'=$'+p.costGal+'/gal'); }); }catch(e){}
     try{ (EST_GEO ||[]).forEach(p=>{ if(p&&p.n&&p.priceLb) prods.push(p.n+'=$'+p.priceLb+'/lb'); }); }catch(e){}
     if(prods.length) ctx.products=prods;
+    // LIVE PRICING — auto-pulled from the owner's newest published pricing CSV (Admin → Live Pricing).
+    // Authoritative supplier prices; Klyfton/ROI/estimator use these over any hardcoded figure.
+    try{
+      const lp=JSON.parse(localStorage.getItem('klyfton_pricing_rows')||'null');
+      if(lp && Array.isArray(lp.rows) && lp.rows.length){
+        ctx.livePricing = { updated: lp.at||'', source:'newest published pricing CSV', rows: lp.rows.slice(0,120) };
+      }
+    }catch(e){}
     // Price Book — real consumable / coating / equipment prices so Klyfton quotes YOUR numbers.
     try{
       if(typeof PRICEBOOK!=='undefined'){
