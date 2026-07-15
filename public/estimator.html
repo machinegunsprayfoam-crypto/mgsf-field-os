@@ -933,14 +933,18 @@ function saveBid(){
   totalCost:cost,bidTotal:total,sellPrice:total,gmTarget:total>0?Math.round((1-cost/total)*100):0,
   jobDate:str('job-date'),jobNotes:str('job-notes'),consoleNotes:'',roi,photos:bidPhotos.slice(),leadSource:str('cust-source'),expiresAt:Date.now()+30*86400000};
  if(editingBidId){const ex=bids.find(x=>x.id===editingBidId);if(ex){
+   // Preserve any manual discount as a % of total, so re-pricing scopes keeps the deal you gave.
+   const _oldTot=ex.bidTotal||0,_oldSell=ex.sellPrice||0;const _discRatio=(_oldTot>0&&_oldSell>0&&_oldSell<_oldTot-0.005)?_oldSell/_oldTot:1;
    ex.customer={name,phone:str('cust-phone'),email:str('cust-email'),address:str('cust-addr')};ex.state=str('cust-state');ex.market=str('market');
    ex.scopes=cart.slice();ex.service=cart.length>1?'multiple':cart[0].service;
    ex.bf=cart.reduce((a,s)=>a+(s.bf||0),0);ex.sf=cart.reduce((a,s)=>a+(s.sf||0),0);ex.matCost=cart.reduce((a,s)=>a+(s.matCost||0),0);
-   ex.totalCost=cost;ex.bidTotal=total;ex.sellPrice=total;ex.gmTarget=total>0?Math.round((1-cost/total)*100):0;ex.discount=0;
+   ex.totalCost=cost;ex.bidTotal=total;
+   if(_discRatio<1){ex.sellPrice=+(total*_discRatio).toFixed(2);ex.discount=Math.round(total-ex.sellPrice);}else{ex.sellPrice=total;ex.discount=0;}
+   ex.gmTarget=total>0?Math.round((1-cost/total)*100):0;
    ex.jobDate=str('job-date');ex.jobNotes=str('job-notes');ex.roi=roi;ex.photos=bidPhotos.slice();ex.leadSource=str('cust-source');ex.updatedAt=new Date().toISOString();
    lsSet(KB,JSON.stringify(bids));upsertEstimate(ex);
    const wasId=editingBidId;editingBidId=null;cart=[];renderCart();bidPhotos=[];renderBidPhotos();clearDraft();updEditBanner();
-   toast('Bid updated ('+ex.scopes.length+' scope'+(ex.scopes.length!==1?'s':'')+') ✓');selId=wasId;setTimeout(()=>{setMode('console');openBid(wasId);},700);return;}
+   toast(_discRatio<1?'Bid updated — kept your '+Math.round((1-_discRatio)*100)+'% discount ✓':'Bid updated ('+ex.scopes.length+' scope'+(ex.scopes.length!==1?'s':'')+') ✓');selId=wasId;setTimeout(()=>{setMode('console');openBid(wasId);},700);return;}
    editingBidId=null;updEditBanner();}
  bids.unshift(bid);lsSet(KB,JSON.stringify(bids));upsertEstimate(bid);
  cart=[];renderCart();bidPhotos=[];renderBidPhotos();clearDraft();toast('Bid saved ('+bid.scopes.length+' scope'+(bid.scopes.length!==1?'s':'')+') ✓');setTimeout(()=>setMode('console'),700);
