@@ -340,6 +340,7 @@ textarea{resize:vertical;min-height:54px}
           <div class="price" id="p-sell">$0</div>
         </div>
         <div class="hint" id="p-guard" style="margin-top:6px"></div>
+        <div style="margin-top:8px"><div style="font-size:.62rem;color:var(--mut);text-transform:uppercase;font-weight:700;margin-bottom:4px">Price at margin — tap to set (profit shown)</div><div id="margin-ladder" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>
         <div class="hint" id="p-state"></div>
         <div class="hint" style="margin-top:6px">💳 0% &amp; low-rate financing available — <a href="https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton" target="_blank" rel="noopener" style="color:var(--goldHi);font-weight:700">Hearth pre-qualify (60 sec, no credit hit)</a></div>
         <div class="fld" style="margin-top:10px"><label>Job notes (internal)</label><textarea id="job-notes" placeholder="Access, prep, winter heat, masking, occupied..."></textarea></div>
@@ -626,7 +627,7 @@ const CONS_SEED=[
  {n:'Ultra-Bond 10 primer (5 gal)',price:118.75,u:'pail'},
  {n:'Safety glasses',price:2.31,u:'ea'}
 ];
-const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.60,gmFoamCom:0.55,gmRoof:0.62,gmConc:0.60,gmCoat:0.62,gmOther:0.55,burden:0.35,ovhPerHr:12,minMargin:0.40};
+const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.50,gmFoamCom:0.45,gmRoof:0.45,gmConc:0.50,gmCoat:0.48,gmOther:0.45,burden:0.35,ovhPerHr:12,minMargin:0.38};
 // guardrails $/BF installed (Montana base), $/SF roof
 const GUARD_BF={'Open Cell':[1.30,1.55],'Closed Cell':[2.00,2.75],'Roofing':[0,0]};
 const GUARD_ROOF={ug5700:[3.00,5.50],ug5500:[3.00,5.50],si92:[3.00,5.50],armor100:[2.00,3.25],uflex1000:[2.00,3.25],dc315:[1.00,2.25],none:[0,0]};
@@ -635,10 +636,14 @@ const GUARD_ROOF={ug5700:[3.00,5.50],ug5500:[3.00,5.50],si92:[3.00,5.50],armor10
 const KB='mg-fieldos-v1-bids', KS='mg-fieldos-v1-set', KF='mg-fieldos-v1-foam', KC='mg-fieldos-v1-cons', KT='mg-fieldos-v1-team', KJ='mg-fieldos-v1-jobs', KI='mg-fieldos-v1-inv', KTPL='mg-fieldos-v1-tpl', KSUG='mg-fieldos-v1-sug', KFUEL='mg-fieldos-v1-fuel', KCRM='mg-fieldos-v1-crm', KGOV='mg-fieldos-v1-gov', KCOAT='mg-fieldos-v1-coat', KCOMPLY='mg-fieldos-v1-comply', KREC='mg-fieldos-v1-rec', INTEROP='mgsf_interop_v1';
 const TEAM_SEED=[{id:'clifton',name:'Clifton Behner',pin:'0331',role:'owner'},{id:'talia',name:'Talia',pin:'1978',role:'owner'},{id:'daniel',name:'Daniel',pin:'1001',role:'estimator'},{id:'gino',name:'Gino',pin:'1002',role:'estimator'},{id:'eli',name:'Eli',pin:'1003',role:'estimator'},{id:'draven',name:'Draven',pin:'1004',role:'estimator'},{id:'liam',name:'Liam',pin:'1005',role:'estimator'}];
 let TEAM=JSON.parse(localStorage.getItem(KT)||'null')||TEAM_SEED.slice();
-let user='clifton',role='owner',pin='',svc='foam',zone='walls',roofShape='flat',mode='field',selId=null;
+let user='clifton',role='owner',pin='',svc='foam',zone='walls',roofShape='flat',mode='field',selId=null,gmOverride=null;
 let bids=JSON.parse(localStorage.getItem(KB)||'[]');
 let jobs=JSON.parse(localStorage.getItem(KJ)||'[]');let curJob=null;const FOLLOW_DAYS=5;
 let SET=Object.assign({},DEF,JSON.parse(localStorage.getItem(KS)||'{}'));
+// One-time margin reset to industry-standard GM targets (foam ~45-50%, SPF roof 45%, concrete 50%,
+// coatings 48%) — the old 55-62% targets were above market and losing competitive bids. Only replaces
+// values still at the OLD defaults, so a shop that set its own margins keeps them. Editable in Admin.
+(function(){if(localStorage.getItem('mgsf_margin_fix_v1'))return;const map={gmFoamRes:[0.60,0.50],gmFoamCom:[0.55,0.45],gmRoof:[0.62,0.45],gmConc:[0.60,0.50],gmCoat:[0.62,0.48],gmOther:[0.55,0.45],minMargin:[0.40,0.38]};let ch=false;for(const k in map){if(Math.abs((SET[k]||0)-map[k][0])<0.0001){SET[k]=map[k][1];ch=true;}}try{localStorage.setItem('mgsf_margin_fix_v1','1');}catch(e){}if(ch){try{localStorage.setItem(KS,JSON.stringify(SET));}catch(e){}}})();
 let FOAM=JSON.parse(localStorage.getItem(KF)||'null')||FOAM_SEED.map(f=>({...f,costBF:+(f.set/f.yieldBF).toFixed(4)}));
 // Same truncated-slug collision as the coatings: several foams (InsulBloc/InsulStar variants and
 // a few geotech systems with DIFFERENT set costs) shared one key, so picking one quoted another.
@@ -889,7 +894,17 @@ function suggestMaterials(){recalc();const W=window._calc;if(!W||!W.c){toast('En
 function consTotal(){return $('cons-on')&&$('cons-on').checked?CONS.reduce((a,c)=>a+(parseFloat(consQty[c.n])||0)*c.price,0):0;}
 
 /* ============ GM ============ */
-function getGM(){const m=str('market')||'commercial';
+// Margin ladder — see the sell price + profit at each GM level and tap to price this bid.
+// Lets you flex down to win a competitive job without losing track of the profit you keep.
+function renderMarginLadder(cost){const el=$('margin-ladder');if(!el)return;if(svc==='bpi'||!(cost>0)){el.innerHTML='';return;}
+ const cur=getGM();const minC=svc==='roof'?SET.minRoof:SET.min;const levels=[0.35,0.40,0.45,0.50,0.55,0.60];
+ let html=levels.map(g=>{const sell=Math.max(minC,cost/(1-g));const profit=sell-cost;const active=Math.abs(g-cur)<0.005;
+  return `<button type="button" onclick="setGmOverride(${g})" style="border:1px solid ${active?'var(--gold)':'var(--line)'};background:${active?'var(--card2)':'transparent'};color:var(--fg);border-radius:7px;padding:4px 7px;font-size:.66rem;cursor:pointer;line-height:1.3;text-align:center"><b>${Math.round(g*100)}%</b><br><span style="color:var(--goldHi);font-weight:700">${money(Math.round(sell))}</span><br><span style="color:var(--mut)">+${money(Math.round(profit))}</span></button>`;}).join('');
+ html+=`<button type="button" onclick="clearGmOverride()" title="Back to the market/service default margin" style="border:1px solid ${gmOverride==null?'var(--gold)':'var(--line)'};background:${gmOverride==null?'var(--card2)':'transparent'};color:var(--fg);border-radius:7px;padding:4px 9px;font-size:.66rem;cursor:pointer;line-height:1.3;text-align:center">↺<br>auto</button>`;
+ el.innerHTML=html;}
+function setGmOverride(g){gmOverride=g;recalc();}
+function clearGmOverride(){gmOverride=null;recalc();}
+function getGM(){if(gmOverride!=null)return gmOverride;const m=str('market')||'commercial';
  if(svc==='foam')return m==='residential'?SET.gmFoamRes:SET.gmFoamCom;
  if(svc==='roof')return SET.gmRoof; if(svc==='concrete'||svc==='soil')return SET.gmConc;
  if(svc==='coatings')return SET.gmCoat; return SET.gmOther;}
@@ -964,7 +979,7 @@ function recalc(){try{
  $('p-state').textContent=mult!==1?`State multiplier: ${str('cust-state')} ×${mult.toFixed(2)}`+(m==='government'?` · +${(SET.gov*100)}% gov contingency`:''):(m==='government'?`+${(SET.gov*100)}% gov contingency applied`:'');
  if($('cons-on').checked)CONS.forEach((cc,i)=>{const el=$('cl'+i);if(el)el.textContent=money((parseFloat(consQty[cc.n])||0)*cc.price);});
  const ct=$('cons-tot');if(ct)ct.textContent=money(cons);
- window._calc={c,labor,travel,mob,extra,cons,totalCost,gm,sell,actGM};saveDraftDebounced();
+ window._calc={c,labor,travel,mob,extra,cons,totalCost,gm,sell,actGM};try{renderMarginLadder(totalCost);}catch(e){}saveDraftDebounced();
 }catch(e){console.error(e);}}
 
 /* ============ SAVE ============ */
@@ -1031,7 +1046,7 @@ function saveBid(){
    toast(_discRatio<1?'Bid updated — kept your '+Math.round((1-_discRatio)*100)+'% discount ✓':'Bid updated ('+ex.scopes.length+' scope'+(ex.scopes.length!==1?'s':'')+') ✓');selId=wasId;setTimeout(()=>{setMode('console');openBid(wasId);},700);return;}
    editingBidId=null;updEditBanner();}
  bids.unshift(bid);lsSet(KB,JSON.stringify(bids));upsertEstimate(bid);
- cart=[];renderCart();bidPhotos=[];renderBidPhotos();clearDraft();toast('Bid saved ('+bid.scopes.length+' scope'+(bid.scopes.length!==1?'s':'')+') ✓');setTimeout(()=>setMode('console'),700);
+ cart=[];renderCart();bidPhotos=[];renderBidPhotos();clearDraft();gmOverride=null;toast('Bid saved ('+bid.scopes.length+' scope'+(bid.scopes.length!==1?'s':'')+') ✓');setTimeout(()=>setMode('console'),700);
 }
 let editingBidId=null;
 function updEditBanner(){const el=$('edit-banner');if(el)el.style.display=editingBidId?'':'none';const sb=$('savebid-btn');if(sb)sb.textContent=editingBidId?'💾 Update Bid':'💾 Save Bid';}
@@ -1044,7 +1059,7 @@ function editBid(){const b=bids.find(x=>x.id===selId);if(!b){toast('Open a bid f
  bidPhotos=Array.isArray(b.photos)?b.photos.slice():[];if(typeof renderBidPhotos==='function')try{renderBidPhotos();}catch(e){}
  if(b.roi&&(b.roi.annual||b.roi.savingsPct||b.roi.years)){if($('roi-on'))$('roi-on').checked=true;set('roi-annual',b.roi.annual);set('roi-pct',b.roi.savingsPct);set('roi-years',b.roi.years);}
  setMode('field');renderCart();recalc();updEditBanner();toast('Editing bid — change scopes/prices, then Save updates it');}
-function clearField(){if(!confirm('Clear field entries?'))return;clearDraft();editingBidId=null;if(typeof updEditBanner==='function')updEditBanner();
+function clearField(){if(!confirm('Clear field entries?'))return;clearDraft();editingBidId=null;gmOverride=null;if(typeof updEditBanner==='function')updEditBanner();
  ['cust-name','cust-phone','cust-email','cust-addr','wall-l','wall-w','wall-h','attic-l','attic-w','crawl-sf','crawl-wh','rim-p','other-sf','other-desc','roof-l','roof-w','roof-hvac','roof-sky','conc-sf','coat-sf','poly-sf','rm-sf','job-notes','roi-annual'].forEach(id=>{const e=$(id);if(e)e.value='';});
  $('mob').value='1500';$('labor-hrs').value='8';$('helper-hrs').value='8';$('travel-mi').value='0';$('extra-cost').value='0';consQty={};cart=[];renderCart();foamSec={walls:[{}],gable:[],attic:[],base:[],crawl:[],rim:[],other:[]};roofSec=[{shape:'Flat / Low-slope',q:1}];roofPen=[];renderZone();renderRoof();renderPen();if($('cons-on').checked)fillCons();recalc();}
 
