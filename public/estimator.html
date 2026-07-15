@@ -640,6 +640,10 @@ let bids=JSON.parse(localStorage.getItem(KB)||'[]');
 let jobs=JSON.parse(localStorage.getItem(KJ)||'[]');let curJob=null;const FOLLOW_DAYS=5;
 let SET=Object.assign({},DEF,JSON.parse(localStorage.getItem(KS)||'{}'));
 let FOAM=JSON.parse(localStorage.getItem(KF)||'null')||FOAM_SEED.map(f=>({...f,costBF:+(f.set/f.yieldBF).toFixed(4)}));
+// Same truncated-slug collision as the coatings: several foams (InsulBloc/InsulStar variants and
+// a few geotech systems with DIFFERENT set costs) shared one key, so picking one quoted another.
+// Make every key unique on load (and persist). Bids store product by name, so history is safe.
+(function(){const seen=Object.create(null);let ch=false;FOAM.forEach((f,i)=>{let k=(f&&f.k)||('p'+i);if(seen[k]){k=k+'_'+i;ch=true;}seen[k]=1;if(f)f.k=k;});if(ch){try{localStorage.setItem(KF,JSON.stringify(FOAM));}catch(e){}}})();
 let CONS=JSON.parse(localStorage.getItem(KC)||'null')||CONS_SEED.slice();
 function invSeed(){return CATALOG.map((c,i)=>({k:'inv'+i,name:c.n,cat:c.c,unit:c.u||'ea',price:c.p||0,supplierName:c.s||'',role:c.r||'E',priority:c.pr||'N',onHand:0,reorderAt:({H:3,N:2,L:1}[c.pr]||2),supplier:''}));}
 let INV=JSON.parse(localStorage.getItem(KI)||'null')||invSeed();if(INV.length&&!('role' in INV[0])){INV=invSeed();}
