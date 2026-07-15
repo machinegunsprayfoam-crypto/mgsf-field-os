@@ -147,10 +147,17 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
   loss; a "set" = two 55-gal drums): CC 2.0# ~4,000 BF/set · CC 1.7# HFO ~4,700 (lower density = higher
   yield) · OC 0.5# ~14,000 BF/set · roofing 2.8# ~2,900 BF/set (denser, yields less) · HybridPro 1.0#
   ~5,000. Cold MT/WY mornings + thin (~1") flash passes can cut real yield 15–25% — pad winter/thin work.
-- Current set costs (ProFoam catalog, 2026-07): NCFI OC $1,880 · NCFI CC AgriThane/InsulBloc
-  $2,763.60 · ProSeal $2,856.75 · InsulStar 1.7# $2,822.40 · Enduratech 2.8# roofing $2,500.
-  Resulting $/BF ≈ OC $0.134 · CC 2.0# $0.691 · ProSeal $0.714 · InsulStar 1.7# $0.601 · roofing $0.862.
-  The in-app estimator is authoritative — use the PRODUCT PRICES in context when present.
+- PRICING SOURCE RULE: always price from the NEWEST-dated pricing CSV in the owner's Drive
+  (MGSF - Business/Spreadsheets/foam_systems_prices_cost_per_board_foot.csv). If a newer-dated
+  pricing CSV exists, use it and treat older ones as stale. Current set costs below are from that
+  sheet dated 2026-06-27 (material cost per SET; sheet assumes 4,200 BF/set for its own $/BF column):
+  · Profoam ProFill OC $1,804.55 · Profoam Hybrid Pro 1.0# OC $1,954.15 · NCFI OC $1,776.60
+  · Profoam ProSeal CC $2,554.50 (Winter $2,583.75) · Victory Polymers 2.0# HFO CC $2,554.50
+  · NCFI AgriThane 2.0# HFO CC $2,538.20 · NCFI InsulStar Optimaxx 1.7# HFO CC $2,616.60
+  · JM Corbond IV 2.0# CC $2,554.50 · Accufoam 2.0# CC $2,554.50 · NCFI Enduratech 2.8# roofing $2,450.00
+  · Terrathane geotech (24-003/010/011) ~$2,083–2,094. The sheet's sell-price ladder runs $1.25–$2.00/BF.
+  The in-app estimator is authoritative for a live bid — use the PRODUCT PRICES in context when present;
+  otherwise use these newest-CSV set costs ÷ the product's practical yield for real $/BF.
 - MARKET REFERENCE (external 2026 consumer/national averages for the MT/ND/SD/WY area — NOT our
   cost, and NOT authoritative; verify against real local bids): open-cell installed ~$1.50–3.50/sq ft
   (MT ~$0.45–0.75/BF) · closed-cell ~$3.00–5.00/sq ft, ~$1.15–2.00/BF (MT ~$1.00–1.65/BF) · SPF
@@ -276,6 +283,27 @@ with 10-15 min between to shed exotherm (thick lifts crack/char). Interior high-
 respirator (SAR), NOT a cartridge mask (isocyanates); Tyvek + chem gloves. Re-occupancy ~24 hr after spraying
 (sooner with ≥20 ACH power ventilation). Cold-grade foam + a dark primer are the winter workaround below 50°F —
 only with a product rated for it.`;
+
+// ROI math — used by the app's ROI tool (customer energy-savings + business ROI).
+const ROI_GUIDE = `ROI CALCULATION (the app has an ROI tool — compute cleanly, numbers-first, ONE screen):
+
+CUSTOMER ENERGY-SAVINGS ROI (a sales estimate — NEVER a guarantee; brand rule = no guaranteed-savings claims):
+- Drivers: spray foam saves energy mainly by AIR-SEALING (stops infiltration) plus R-value. Heating+cooling
+  is ~45-55% of a typical home energy bill in our Climate Zone 6-7 (cold, long heating season).
+- Savings % of the WHOLE annual bill (conservative ranges — always give a range, label ESTIMATE):
+  from little/no insulation or leaky → ~20-40%; upgrading over poor batts → ~10-20%; already-decent → ~5-12%.
+  Ag/shop/metal buildings and unconditioned-to-conditioned conversions can run higher.
+- Math: annualSavings = customerAnnualEnergyCost × savings% (show low-high). Payback yrs = jobPrice ÷ annualSavings.
+  Also show 10-yr and 20-yr cumulative savings, and note energy prices usually RISE (upside not modeled).
+- Always add the non-dollar wins: comfort/even temps, moisture & mold control, quieter, no drafts, HVAC runs less
+  (longer equipment life), and it never settles like batts/blown. State 1-2 assumptions; don't over-caveat.
+
+BUSINESS ROI (owner-facing, use REAL logged numbers from context — never invent):
+- Marketing ROI% = (revenueFromWonJobs − marketingSpend) ÷ marketingSpend × 100. CAC = spend ÷ newCustomers.
+- Per-lead value = wonRevenue ÷ totalLeads; close rate = won ÷ (won+lost). Revenue per marketing $ = wonRev ÷ spend.
+- Equipment/rig payback (mo) = rigCost ÷ monthlyGrossProfit it enables. Use the estimator's margins + newest-CSV
+  set costs for job GP. If a number isn't in context, say what's missing and give the formula to fill in.
+Lead with the TL;DR number (payback or ROI%), then the 2-3 supporting figures, then the assumptions. One screen.`;
 
 // What app Klyfton lives in, so it can answer "what can you do?" and point the crew to the
 // right screen instead of guessing. Tabs mirror the real nav in public/index.html.
@@ -701,7 +729,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -876,7 +904,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
