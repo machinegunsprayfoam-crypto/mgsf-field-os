@@ -65,6 +65,9 @@ function normalize(o) {
   const pop = o.placeOfPerformance || {};
   const st = (pop.state && (pop.state.code || pop.state.name)) || "";
   const city = (pop.city && (pop.city.name || pop.city.code)) || "";
+  // Point of contact — SAM returns an array (primary/secondary). Prefer the primary.
+  const pocs = Array.isArray(o.pointOfContact) ? o.pointOfContact : [];
+  const poc = pocs.find((p) => p && /primary/i.test(p.type || "")) || pocs[0] || {};
   return {
     id: o.noticeId || o.solicitationNumber || "",
     title: o.title || "(untitled)",
@@ -78,6 +81,11 @@ function normalize(o) {
     place: [city, st].filter(Boolean).join(", "),
     state: st,
     link: o.uiLink || "",
+    // Contact so "Add as lead" pulls a real person/phone/email, not a blank card.
+    contactName: poc.fullName || "",
+    contactEmail: poc.email || "",
+    contactPhone: (poc.phone || "").toString().trim(),
+    contactTitle: poc.title || "",
   };
 }
 
