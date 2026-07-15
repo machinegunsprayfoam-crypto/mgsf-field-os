@@ -7628,7 +7628,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-14-dot-check';
+const APP_BUILD = '2026-07-15-dot-rating'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8433,7 +8433,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     const oshaDone=osha.filter(Boolean).length, dotDone=dot.filter(Boolean).length;
     box.innerHTML=`
       <div class="jsa-card" style="border-left:3px solid var(--cy)"><h4>🧮 DOT check — do I need a USDOT # / CDL?</h4>
-        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Enter the GVWR off each sticker (truck door jamb + trailer plate). It's the <b>combined</b> weight that counts — not the trailer's size or type.</div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Enter the <b>GVWR (the rating stamped on the sticker)</b> — truck door jamb + trailer plate. It's the <b>combined rating</b> that counts, <b>not the loaded weight</b>: an empty trailer rated 12,000 still counts as 12,000 (rule uses the greater of the rating or actual weight). Taking the foam out doesn't lower it.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div style="flex:1;min-width:120px"><label class="fl">Truck GVWR (lb)</label><input id="dot_truck" type="number" class="admin-inp" value="${LS('dot_truck',14000)}" oninput="dotCheck()"></div>
           <div style="flex:1;min-width:120px"><label class="fl">Trailer GVWR (lb)</label><input id="dot_trailer" type="number" class="admin-inp" value="${LS('dot_trailer',12000)}" oninput="dotCheck()"></div>

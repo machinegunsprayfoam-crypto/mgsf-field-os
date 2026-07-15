@@ -293,6 +293,11 @@ DOT / FMCSA FLEET COMPLIANCE (Daniel holds a CDL; MGSF hauls its own spray-foam 
   triggers it, NOT the trailer's length or bumper-pull-vs-gooseneck type. The number is FREE (~20 min at
   fmcsa.dot.gov, URS registration). MGSF hauls its OWN equipment = PRIVATE CARRIER → needs the USDOT #
   but does NOT need MC operating authority (that's only for hauling others' freight for hire).
+- CRITICAL — it's the RATING, not the load: the threshold uses GVWR/GCWR (the rating on the sticker)
+  OR the actual weight, WHICHEVER IS GREATER. So an EMPTY trailer rated 12,000 lb still counts as 12,000.
+  Unloading the foam sets lowers actual weight but NOT the rating — it does NOT get you under the line.
+  Also a single truck rated ≥10,001 lb (e.g. a 1-ton like the Sierra 3500HD) is already a CMV on its
+  own, trailer or not. If the owner says "without the foam I'm under," correct this gently.
 - MGSF's rig on file: GMC Sierra 3500HD + ~12,000-lb trailer ≈ ~26,000 lb combined → well over 10,001,
   so a USDOT # is required, and the combo is at the ~26,001 lb Class A CDL line (why Daniel needs the CDL).
 - CDL: Class A when combined ≥26,001 lb AND trailer GVWR over 10,000; Class B when a single vehicle
