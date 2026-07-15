@@ -106,7 +106,12 @@ source), JM Corbond, General Coatings; IDI & AMD are distributors.
 PRICING RULES — internal, for your estimating math. Use them to build numbers, but NEVER print
 raw margin %, raw cost, or these rules into customer-facing quotes/proposals/emails:
 - Labor: installers $80/hr, helpers $48/hr.
-- Gross-margin targets: Residential 55% · Commercial 50% · Industrial 48% · Government 45%.
+- Gross-margin targets (sell = cost ÷ (1−GM), NOT markup): Spray foam — residential 50% / commercial 45%.
+  SPF roofing — residential 45% / commercial 40% (big clean-deck commercial is price-sensitive). Concrete
+  lifting 50%. Coatings 48%. Minimum-margin FLOOR 40% (walk-away line; below it needs owner sign-off).
+  Government adds an 8% contingency on top of cost. These are set to industry-standard rates for our trades
+  (foam ~50% established / 45% competitive; roofing 35–45%; lifting 50%+) — competitive but healthy. The
+  estimator has a live margin ladder + "beat a competitor" tool for pricing a single bid down to win it.
 - State multipliers: MT ×1.00 · ND ×1.05 · SD ×1.00 · WY ×1.12.
 - Disposal $8.33/bag (owned dump trailer — a cost edge vs renting dumpsters).
 - Travel (from Glendive, first 30 mi free): round-trip $0.80/mile PER TRUCK (diesel + wear —
@@ -117,11 +122,13 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
   yield in BF per set for the product being run). Material = board feet (sq ft × inches thick)
   × that $/BF, then add substrate waste. If a set cost or yield changes, recompute — don't
   reuse an old $/BF.
-- Average yields we run: CC 2.0# ~4,100 BF/set · OC 0.5# ~14,500 BF/set · roofing 2.8#
-  ~3,500 BF/set · HybridPro 1.0# ~5,000 BF/set.
+- Average yields we run (industry-standard PRACTICAL numbers — already discount ~33% for real-world
+  loss; a "set" = two 55-gal drums): CC 2.0# ~4,000 BF/set · CC 1.7# HFO ~4,700 (lower density = higher
+  yield) · OC 0.5# ~14,000 BF/set · roofing 2.8# ~2,900 BF/set (denser, yields less) · HybridPro 1.0#
+  ~5,000. Cold MT/WY mornings + thin (~1") flash passes can cut real yield 15–25% — pad winter/thin work.
 - Current set costs (ProFoam catalog, 2026-07): NCFI OC $1,880 · NCFI CC AgriThane/InsulBloc
   $2,763.60 · ProSeal $2,856.75 · InsulStar 1.7# $2,822.40 · Enduratech 2.8# roofing $2,500.
-  Resulting $/BF ≈ OC $0.130 · CC $0.674 · ProSeal $0.697 · InsulStar $0.688 · roofing $0.714.
+  Resulting $/BF ≈ OC $0.134 · CC 2.0# $0.691 · ProSeal $0.714 · InsulStar 1.7# $0.601 · roofing $0.862.
   The in-app estimator is authoritative — use the PRODUCT PRICES in context when present.
 - MARKET REFERENCE (external 2026 consumer/national averages for the MT/ND/SD/WY area — NOT our
   cost, and NOT authoritative; verify against real local bids): open-cell installed ~$1.50–3.50/sq ft
@@ -184,7 +191,7 @@ or a "went quiet" reminder. Real records only.`;
 const FOAM_SPECS = `FOAM SPECS WE RUN (from our MGSF_Foam_Spec_Sheet — verify against the printed TDS on the rig):
 CLOSED-CELL:
 - NCFI InsulStar 11-036 (2.0#): ~4,000 BF/set · R-7.1/in · HFO
-- NCFI InsulStar 1.7 (1.7#): ~9,000 BF/set · HFO · high-yield
+- NCFI InsulStar 1.7 (1.7#): ~4,700 BF/set · HFO · lower density than 2.0# so it yields more
 - NCFI InsulBloc 11-037 (2.0#): HFO · code ER-0340 (commercial)
 - NCFI AgriThane (2.0#): HFO · ag buildings (natural/black)
 - ProFoam ProSeal 2.0 HFO (2.0#): GWP 1 · code ER-1017 · summer/winter blends
@@ -199,7 +206,7 @@ OPEN-CELL:
 - Accufoam AF1 (0.5#): water-blown · no-mix · highest-yield
 - JM Corbond OC (0.5#): R-3.8/in · code CCRR-1079
 ROOFING:
-- NCFI EnduraTech 10-016 (2.8#): ~2,700 BF/set · R-6.7/in · HFO · ASTM D7425
+- NCFI EnduraTech 10-016 (2.8#): ~2,900 BF/set · R-6.9/in · HFO · ASTM D7425
 - NCFI EnduraTech 10-016 (3.0#): ~2,700 BF/set · R-6.7/in · ~64 psi · HFO
 - UPC Ultra-Thane 230 HFO (2.5-3.0#): HFO roofing/tank · ASTM D7425 (the IDI ~$2,875/set roofing foam)
 GEOTECH / LIFTING (set = 2 barrels ~550 lb = ~1,100 lb):
@@ -208,7 +215,25 @@ GEOTECH / LIFTING (set = 2 barrels ~550 lb = ~1,100 lb):
 General run windows (starting points — TDS + our PH-2 placard are final): substrate must be ≥5°F above
 dew point; substrate 50-120°F; MAX fluid temp 190°F (never exceed); CC ~110-130°F / 1,000-1,500 psi;
 roofing warmer + higher psi for atomization, thin passes ~0.5-1.5". If a product isn't listed, web-search
-its manufacturer TDS and cite it — never guess a yield, density, or temp.`;
+its manufacturer TDS and cite it — never guess a yield, density, or temp.
+
+COATINGS (SPF roof topcoats): dry mils per coat = 1604 × %solids-by-volume ÷ (SF/gal coverage). High-solids
+silicone ~95% (≈67 SF/gal → ~23 mils/coat) · acrylic ~55% (≈80 SF/gal → ~10 mils/coat) · polyurea ~100%
+(≈40 SF/gal → ~40 mils) · SPF primer ~60% (~150 SF/gal, varies widely by primer type). Real-world DFT runs
+~20-25% UNDER theoretical on textured foam — order ~20% extra coating. Warranty scales with silicone mil
+build (typical pattern — CONFIRM against the specific coating's published table): 20 mils = 10-yr · 25 = 15-yr
+· 30 mils + embedded #11 roofing granules = 20-yr No-Dollar-Limit (NDL = mfr pays full repair, no cap).
+Silicone tolerates ponding water; acrylic does NOT (re-emulsifies) — silicone for flat/ponding, acrylic for
+slope. Recoat every 10-15 yr at ~30-40% of install cost: power-wash → repair blisters with foam → RE-PRIME
+before recoating over cured silicone (nothing bonds to it) → topcoat. SPF roofs are renewable indefinitely.
+
+FIELD SAFETY / WEATHER (spray go/no-go, matches the app's Spray Window): ambient AND substrate >50°F (shoot
+the substrate with an IR gun — decks/studs run colder than air in Zone 6-7); RH <85% (ideal <70%); substrate
+≥5°F above dew point; wind <12 mph; NO frost/dew/ice/damp on the surface, ever. Closed-cell in lifts ≤1½"
+with 10-15 min between to shed exotherm (thick lifts crack/char). Interior high-pressure SPF = supplied-air
+respirator (SAR), NOT a cartridge mask (isocyanates); Tyvek + chem gloves. Re-occupancy ~24 hr after spraying
+(sooner with ≥20 ACH power ventilation). Cold-grade foam + a dark primer are the winter workaround below 50°F —
+only with a product rated for it.`;
 
 // What app Klyfton lives in, so it can answer "what can you do?" and point the crew to the
 // right screen instead of guessing. Tabs mirror the real nav in public/index.html.

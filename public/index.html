@@ -876,24 +876,24 @@ canvas.chart{width:100%;height:100%}
         <h2 style="font-size:16px;color:var(--or);margin-bottom:4px">BUSINESS INTELLIGENCE</h2>
         <div class="metrics-row">
           <div class="metric-card">
-            <div class="metric-val">55%</div>
-            <div class="metric-lbl">Resi GM Target</div>
-            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:55%"></div></div>
-          </div>
-          <div class="metric-card">
             <div class="metric-val">50%</div>
-            <div class="metric-lbl">Comm GM Target</div>
+            <div class="metric-lbl">Foam Resi GM</div>
             <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:50%"></div></div>
           </div>
           <div class="metric-card">
-            <div class="metric-val">48%</div>
-            <div class="metric-lbl">Industrial GM</div>
-            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:48%"></div></div>
+            <div class="metric-val">45%</div>
+            <div class="metric-lbl">Foam Comm GM</div>
+            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:45%"></div></div>
           </div>
           <div class="metric-card">
             <div class="metric-val">45%</div>
-            <div class="metric-lbl">Gov GM (SDVOSB)</div>
+            <div class="metric-lbl">SPF Roof GM</div>
             <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:45%"></div></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">40%</div>
+            <div class="metric-lbl">Min-Margin Floor</div>
+            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:40%"></div></div>
           </div>
         </div>
 
@@ -913,12 +913,12 @@ canvas.chart{width:100%;height:100%}
           <table class="tbl">
             <thead><tr><th>Metric</th><th>Target</th><th>Current</th><th>Status</th></tr></thead>
             <tbody>
-              <tr><td>Avg Response Time</td><td>&lt; 1 hour</td><td>47 min</td><td><span class="badge badge-gr">ON TRACK</span></td></tr>
-              <tr><td>Estimate → Close Rate</td><td>35%</td><td>31%</td><td><span class="badge badge-yw">WATCH</span></td></tr>
-              <tr><td>Avg Job Value</td><td>$18K</td><td>$17.8K</td><td><span class="badge badge-gr">ON TRACK</span></td></tr>
-              <tr><td>Repeat Customer Rate</td><td>25%</td><td>22%</td><td><span class="badge badge-yw">WATCH</span></td></tr>
+              <tr><td>Avg Response Time</td><td>&lt; 1 hour</td><td id="kpiResp">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
+              <tr><td>Estimate → Close Rate</td><td>35%</td><td id="kpiClose">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
+              <tr><td>Avg Job Value</td><td>$18K</td><td id="kpiJobVal">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
+              <tr><td>Repeat Customer Rate</td><td>25%</td><td id="kpiRepeat">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Google Review Count</td><td>50</td><td id="reviewCount">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
-              <tr><td>Crew Utilization</td><td>85%</td><td>87%</td><td><span class="badge badge-gr">EXCELLENT</span></td></tr>
+              <tr><td>Crew Utilization</td><td>85%</td><td id="kpiCrew">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -2364,24 +2364,24 @@ function getTimeOfDay(){
 // ── Product Catalogs ─────────────────────────────────────────
 const EST_FOAM = [
   // CC 2.0# — General insulation
-  {k:'ncfi_agrithane',   n:'NCFI AgriThane 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4100},
-  {k:'ncfi_insulbloc',   n:'NCFI InsulBloc 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4100},
-  {k:'ncfi_insulstar17', n:'NCFI InsulStar 1.7# CC',              cat:'CC',   setCost:2822.4, yieldBF:4100},
-  {k:'accufoam_cc20',    n:'Accufoam CC 2.0#',                    cat:'CC',   setCost:2881.2, yieldBF:4100},
-  {k:'jm_corbond4',      n:'JM Corbond IV 2.0# CC',               cat:'CC',   setCost:2905.5, yieldBF:4100},
-  {k:'profoam_proseal',  n:'ProFoam ProSeal 2.0# CC',             cat:'CC',   setCost:2856.75, yieldBF:4100},
+  {k:'ncfi_agrithane',   n:'NCFI AgriThane 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4000},
+  {k:'ncfi_insulbloc',   n:'NCFI InsulBloc 2.0# CC',              cat:'CC',   setCost:2763.6, yieldBF:4000},
+  {k:'ncfi_insulstar17', n:'NCFI InsulStar 1.7# CC',              cat:'CC',   setCost:2822.4, yieldBF:4700},
+  {k:'accufoam_cc20',    n:'Accufoam CC 2.0#',                    cat:'CC',   setCost:2881.2, yieldBF:4000},
+  {k:'jm_corbond4',      n:'JM Corbond IV 2.0# CC',               cat:'CC',   setCost:2905.5, yieldBF:4000},
+  {k:'profoam_proseal',  n:'ProFoam ProSeal 2.0# CC',             cat:'CC',   setCost:2856.75, yieldBF:4000},
   // CC 2.8# Roofing
-  {k:'ncfi_enduratech',  n:'NCFI Enduratech HFO 2.8# (Roofing)',  cat:'Roof', setCost:2500, yieldBF:3500},
+  {k:'ncfi_enduratech',  n:'NCFI Enduratech HFO 2.8# (Roofing)',  cat:'Roof', setCost:2500, yieldBF:2900},
   // OC 0.5#
-  {k:'ncfi_oc',          n:'NCFI OC 0.5#',                        cat:'OC',   setCost:1880, yieldBF:14500},
-  {k:'accufoam_af1',     n:'Accufoam AF1 0.5#',                   cat:'OC',   setCost:2140.8, yieldBF:14500},
-  {k:'jm_corbond05',     n:'JM Corbond 0.5#',                     cat:'OC',   setCost:2103.75, yieldBF:14500},
-  {k:'profoam_profill',  n:'ProFoam ProFill 0.5#',                cat:'OC',   setCost:2075.7, yieldBF:14500},
+  {k:'ncfi_oc',          n:'NCFI OC 0.5#',                        cat:'OC',   setCost:1880, yieldBF:14000},
+  {k:'accufoam_af1',     n:'Accufoam AF1 0.5#',                   cat:'OC',   setCost:2140.8, yieldBF:14000},
+  {k:'jm_corbond05',     n:'JM Corbond 0.5#',                     cat:'OC',   setCost:2103.75, yieldBF:14000},
+  {k:'profoam_profill',  n:'ProFoam ProFill 0.5#',                cat:'OC',   setCost:2075.7, yieldBF:14000},
   {k:'profoam_hybridpro',n:'ProFoam HybridPro 1.0# ⚠️ Low Yield',cat:'OC',   setCost:1954.15, yieldBF:5000},
   // Seasonal blends (ProFoam catalog) — same class yields as their base products
-  {k:'ncfi_insulstar17_fw', n:'NCFI InsulStar 1.7# CC Fast/Winter',   cat:'CC', setCost:2822.4, yieldBF:4100},
-  {k:'ncfi_insulstar17_ss', n:'NCFI InsulStar 1.7# CC Slow/Summer',   cat:'CC', setCost:2822.4, yieldBF:4100},
-  {k:'ncfi_insulbloc_fw',   n:'NCFI InsulBloc 2.0# CC Fast/Winter',   cat:'CC', setCost:2763.6, yieldBF:4100},
+  {k:'ncfi_insulstar17_fw', n:'NCFI InsulStar 1.7# CC Fast/Winter',   cat:'CC', setCost:2822.4, yieldBF:4700},
+  {k:'ncfi_insulstar17_ss', n:'NCFI InsulStar 1.7# CC Slow/Summer',   cat:'CC', setCost:2822.4, yieldBF:4700},
+  {k:'ncfi_insulbloc_fw',   n:'NCFI InsulBloc 2.0# CC Fast/Winter',   cat:'CC', setCost:2763.6, yieldBF:4000},
 ];
 
 // Geo/lifting $/lb = current ProFoam catalog set price ÷ 1,100 lb/set
@@ -6789,6 +6789,16 @@ function gatherBizContext(){
 // ============================================================
 const EST_KEYS = { bids:'mg-fieldos-v1-bids', jobs:'mg-fieldos-v1-jobs', interop:'mgsf_interop_v1' };
 function _estRead(k){ try{ const v=JSON.parse(localStorage.getItem(k)||'[]'); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
+// Live estimator bids, normalized for the Proposal/Invoice pickers (the old appState.estimates
+// source was only written by the retired legacy estimator and is always empty).
+function estimatorBids(){ return _estRead(EST_KEYS.bids).map(function(b){ return {
+  id:b.id, customer:(b.customer&&b.customer.name)||'job',
+  value:(b.sellPrice||b.bidTotal||0),
+  date:(b.jobDate||(b.createdAt?String(b.createdAt).slice(0,10):'')),
+  address:((b.customer&&b.customer.address)||'')+(b.state?', '+b.state:''),
+  phone:(b.customer&&b.customer.phone)||'', email:(b.customer&&b.customer.email)||'',
+  scope:(Array.isArray(b.scopes)?b.scopes.map(function(s){return (s.product||s.service||'')+(s.qty?' — '+s.qty:'')+' — $'+Math.round(s.sell||0);}).join('\n'):'')
+};}).reverse(); }
 // Stable positive integer id from the estimator's string id (kept well above Date.now()
 // ids so it never collides with real records, and numeric so unquoted onclick handlers work).
 function _estHashId(s){ s='e'+String(s); let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return 900000000 + (h%99000000); }
@@ -7204,16 +7214,27 @@ function exportDocList(){
 // INTEL CHARTS
 // ============================================================
 function drawCharts(){
-  drawBarChart('revenueChart',
-    ['CC Foam','OC Foam','Roofing','Concrete','Geotech'],
-    [68000,21000,24000,8500,3300],
-    ['#f97316','#22c55e','#00d4ff','#fbbf24','#a78bfa']
-  );
-  drawBarChart('stateChart',
-    ['MT','WY','ND','SD'],
-    [72000,28000,18000,6800],
-    ['#f97316','#00d4ff','#22c55e','#fbbf24']
-  );
+  // Compute from REAL won jobs + won leads (no fabricated demo numbers). Empty = zeros, honestly.
+  const rows=(appState.jobs||[]).concat((appState.leads||[]).filter(l=>l.status==='Won'));
+  const svc={'CC Foam':0,'OC Foam':0,'Roofing':0,'Concrete':0,'Geotech':0};
+  const st={MT:0,WY:0,ND:0,SD:0};
+  rows.forEach(j=>{ const v=Number(j.value)||0; if(!v) return;
+    const s=(j.service||'').toLowerCase();
+    const bucket=/roof/.test(s)?'Roofing':/concrete|lift|slab|leveling/.test(s)?'Concrete':/geo|soil|void/.test(s)?'Geotech':/open|\boc\b/.test(s)?'OC Foam':'CC Foam';
+    svc[bucket]+=v;
+    const stt=(j.state||'').toUpperCase(); if(st.hasOwnProperty(stt)) st[stt]+=v;
+  });
+  const sl=['CC Foam','OC Foam','Roofing','Concrete','Geotech'];
+  drawBarChart('revenueChart', sl, sl.map(k=>Math.round(svc[k])), ['#f97316','#22c55e','#00d4ff','#fbbf24','#a78bfa']);
+  drawBarChart('stateChart', ['MT','WY','ND','SD'], [st.MT,st.WY,st.ND,st.SD], ['#f97316','#00d4ff','#22c55e','#fbbf24']);
+  // Real KPIs (blank when there's no data yet — never fabricated). Untracked ones stay "—".
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  const leads=appState.leads||[], won=leads.filter(l=>l.status==='Won'), lost=leads.filter(l=>l.status==='Lost');
+  const decided=won.length+lost.length;
+  set('kpiClose', decided?Math.round(won.length/decided*100)+'%':'—');
+  const wonVals=rows.map(j=>Number(j.value)||0).filter(v=>v>0);
+  set('kpiJobVal', wonVals.length?'$'+Math.round(wonVals.reduce((a,b)=>a+b,0)/wonVals.length/1000*10)/10+'K':'—');
+  set('reviewCount', (appState.reviews&&appState.reviews.length)?String(appState.reviews.length):'—');
 }
 
 // ============================================================
@@ -7816,7 +7837,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-audit-refinements'
+const APP_BUILD = '2026-07-15-modules-brain-sync'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8146,17 +8167,19 @@ async function hardRefresh(){
 
   window.renderProposal = function(){
     const sel=$('pr_est');
-    if(sel){ const ests=appState.estimates||[];
+    if(sel){ const ests=estimatorBids();
       sel.innerHTML='<option value="">— pick a saved estimate —</option>'+
-        ests.slice().reverse().map(e=>`<option value="${e.id}">${esc(e.customer||'job')} · ${money(e.value)} · ${esc(e.date||'')}</option>`).join(''); }
+        ests.map(e=>`<option value="${e.id}">${esc(e.customer||'job')} · ${money(e.value)} · ${esc(e.date||'')}</option>`).join(''); }
     renderProposalList();
     if(window.renderGovPkg) renderGovPkg();
   };
   window.proposalFromEstimate = function(){
     const id=($('pr_est')||{}).value; if(!id) return;
-    const e=(appState.estimates||[]).find(x=>String(x.id)===String(id)); if(!e) return;
+    const e=estimatorBids().find(x=>String(x.id)===String(id)); if(!e) return;
     if($('pr_cust') && !$('pr_cust').value) $('pr_cust').value=e.customer||'';
     if($('pr_price') && !$('pr_price').value) $('pr_price').value=e.value||'';
+    if($('pr_addr') && !$('pr_addr').value) $('pr_addr').value=e.address||'';
+    if($('pr_scope') && !$('pr_scope').value) $('pr_scope').value=e.scope||'';
   };
   function proposalDoc(p){
     const hearth = p.hearth ? `<div style="margin:14px 0;padding:12px;border:1px solid #f97316;border-radius:6px">
@@ -8866,15 +8889,17 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
 
   window.renderInvoice=function(){
     const sel=$('in_est');
-    if(sel){ const e=appState.estimates||[]; sel.innerHTML='<option value="">— pick a saved estimate —</option>'+
-      e.slice().reverse().map(x=>`<option value="${x.id}">${esc(x.customer||'job')} · $${(+x.value||0).toLocaleString()}</option>`).join(''); }
+    if(sel){ const e=estimatorBids(); sel.innerHTML='<option value="">— pick a saved estimate —</option>'+
+      e.map(x=>`<option value="${x.id}">${esc(x.customer||'job')} · $${(+x.value||0).toLocaleString()}</option>`).join(''); }
     renderInvoiceList();
   };
   window.invoiceFromEstimate=function(){
     const id=($('in_est')||{}).value; if(!id) return;
-    const e=(appState.estimates||[]).find(x=>String(x.id)===String(id)); if(!e) return;
+    const e=estimatorBids().find(x=>String(x.id)===String(id)); if(!e) return;
     if($('in_cust')&&!$('in_cust').value) $('in_cust').value=e.customer||'';
     if($('in_amt')&&!$('in_amt').value) $('in_amt').value=e.value||'';
+    if($('in_addr')&&!$('in_addr').value) $('in_addr').value=e.address||'';
+    if($('in_desc')&&!$('in_desc').value) $('in_desc').value=e.scope||'';
   };
   function gather(){ const g=id=>($(id)||{}).value||'';
     return { id:'INV'+Date.now(), num:$('in_num')?$('in_num').value:inNum(), date:new Date().toISOString().split('T')[0],
