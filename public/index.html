@@ -1849,13 +1849,14 @@ function speak(text){
 // Premium cloud TTS (api/tts.js — OpenAI or ElevenLabs). Falls back to the device voice on
 // any hiccup (not configured, offline, error) so speech never just goes silent.
 let __klyAudio=null, __ttsOff=false;
+function _ttsKey(){ try{ return localStorage.getItem('klyfton_tts_key')||''; }catch(e){ return ''; } }
 function speakCloud(text){
   try{
     let pref=null; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'null'); }catch(e){}
     const voice=(pref&&pref.cloudVoice)||'';
     const clean=String(text||'').replace(/[*_`#>]/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s{2,}/g,' ').trim();
     if(!clean) return;
-    fetch('/api/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:clean,voice})})
+    fetch('/api/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:clean,voice,key:_ttsKey()})})
       .then(r=>{ const ct=r.headers.get('content-type')||''; if(!r.ok||ct.indexOf('audio')<0){ throw new Error('nocfg'); } return r.blob(); })
       .then(blob=>{ const url=URL.createObjectURL(blob);
         if(__klyAudio){ try{ __klyAudio.pause(); }catch(e){} }
@@ -1947,30 +1948,39 @@ function renderVoiceSettings(){
   _renderCloudVoice();
 }
 window.renderVoiceSettings=renderVoiceSettings;
-// Premium cloud voice section — asks the server if a TTS provider is configured.
+// Premium cloud voice section — asks the server which provider is available; offers an
+// on-device key field when the server has none (key stays on THIS device, never in code).
 function _renderCloudVoice(){
   const box=document.getElementById('vs_cloud'); if(!box) return;
   let pref=null; try{ pref=JSON.parse(localStorage.getItem('klyfton_voice')||'null'); }catch(e){}
   const on=!!(pref&&pref.cloud), curCV=(pref&&pref.cloudVoice)||'';
+  const storedKey=_ttsKey();
   fetch('/api/tts').then(r=>r.json()).then(d=>{
-    if(d && d.configured){
-      const opts=(d.voices||[]).map(v=>`<option value="${esc(v.id)}"${v.id===curCV?' selected':''}>${esc(v.label)}</option>`).join('');
-      box.innerHTML=`<div class="jsa-card" style="border-left:3px solid var(--gr);margin:0">
-        <label class="chk" style="margin:0"><input type="checkbox" id="vs_cloud_on" ${on?'checked':''} onchange="voiceSave()"><span><b>☁️ Premium cloud voice</b> <span style="color:var(--gr)">(${esc(d.provider)} connected)</span> — most human, needs a connection. Off = device voice.</span></label>
-        <label class="fl" style="margin-top:6px">Cloud voice</label>
-        <select id="vs_cloud_voice" class="admin-inp" onchange="cloudVoiceTest()">${opts}</select>
-        <div class="jsa-actions" style="margin-top:6px"><button class="btn btn-ghost" style="font-size:11px" onclick="cloudVoiceTest()">▶ Test cloud voice</button></div>
-      </div>`;
-    } else {
-      box.innerHTML=`<div class="jsa-card" style="border-left:3px solid var(--t2);margin:0">
-        <div style="font-size:12px"><b>☁️ Premium cloud voice</b> — not set up yet. For one consistent, very-human voice on every device, add a key in Vercel → Settings → Environment Variables, then redeploy:</div>
-        <div style="font-size:11px;color:var(--t2);margin-top:6px;line-height:1.6">• <b>OpenAI</b> (simple, cheap): <code>OPENAI_API_KEY</code> — platform.openai.com/api-keys<br>• <b>ElevenLabs</b> (most lifelike): <code>ELEVENLABS_API_KEY</code> — elevenlabs.io → Profile → API Keys<br>Add one, redeploy, reopen this panel — the toggle appears.</div></div>`;
-    }
+    if(!d){ box.innerHTML=''; return; }
+    const prov=d.provider||'ElevenLabs';
+    const opts=(d.voices||[]).map(v=>`<option value="${esc(v.id)}"${v.id===curCV?' selected':''}>${esc(v.label)}</option>`).join('');
+    const envReady=!!d.configured, ready=envReady||!!storedKey;
+    const keyField = envReady ? '' : `
+      <label class="fl" style="margin-top:6px">${esc(prov)} API key <span style="color:var(--t2)">— stays on THIS device, not in the app's code</span></label>
+      <div class="row" style="gap:6px"><input id="vs_ttskey" type="password" class="admin-inp" placeholder="${storedKey?'•••••• saved — paste to replace':'Paste your API key here'}" style="flex:1" autocomplete="off">
+        <button class="btn btn-cyan" style="font-size:11px" onclick="ttsKeySave()">Save key</button></div>`;
+    box.innerHTML=`<div class="jsa-card" style="border-left:3px solid ${ready?'var(--gr)':'var(--t2)'};margin:0">
+      <label class="chk" style="margin:0"><input type="checkbox" id="vs_cloud_on" ${on?'checked':''} onchange="voiceSave()"><span><b>☁️ Premium cloud voice</b> ${ready?('<span style="color:var(--gr)">('+esc(prov)+' ready)</span>'):'<span style="color:var(--yw)">— add your key below to turn on</span>'} — most human, needs a connection. Off = device voice.</span></label>
+      ${keyField}
+      <label class="fl" style="margin-top:6px">Cloud voice</label>
+      <select id="vs_cloud_voice" class="admin-inp" onchange="cloudVoiceTest()">${opts}</select>
+      <div class="jsa-actions" style="margin-top:6px"><button class="btn btn-ghost" style="font-size:11px" onclick="cloudVoiceTest()">▶ Test cloud voice</button></div>
+      <div style="font-size:10px;color:var(--t2);margin-top:6px">For a shared setup across all devices, add the key in Vercel → Settings → Environment Variables instead (<code>ELEVENLABS_API_KEY</code> or <code>OPENAI_API_KEY</code>) and redeploy.</div>
+    </div>`;
   }).catch(()=>{ box.innerHTML=''; });
 }
+window.ttsKeySave=function(){ const el=document.getElementById('vs_ttskey'); const k=el?(el.value||'').trim():''; if(!k){ notify('Paste a key first','alert'); return; }
+  try{ localStorage.setItem('klyfton_tts_key', k); }catch(e){}
+  notify('Key saved on this device','success'); if(window.renderVoiceSettings) renderVoiceSettings(); };
 window.cloudVoiceTest=function(){
   const voice=(document.getElementById('vs_cloud_voice')||{}).value||'';
-  fetch('/api/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:"Klyfton online. Good to go, Clifton — this is the premium voice.",voice})})
+  const liveKey=((document.getElementById('vs_ttskey')||{}).value||'').trim();
+  fetch('/api/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:"Klyfton online. Good to go, Clifton — this is the premium voice.",voice,key:liveKey||_ttsKey()})})
     .then(r=>{ const ct=r.headers.get('content-type')||''; if(!r.ok||ct.indexOf('audio')<0) throw 0; return r.blob(); })
     .then(blob=>{ const u=URL.createObjectURL(blob); const a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play(); })
     .catch(()=>{ try{ notify('Cloud voice test failed — check the key/quota','alert'); }catch(e){} });
@@ -7770,7 +7780,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-cloud-voice'
+const APP_BUILD = '2026-07-15-tts-ondevice-key'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}

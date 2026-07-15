@@ -38,6 +38,8 @@ const ELEVEN_VOICES = [
 ];
 
 function provider() { if (ELEVEN_KEY) return "elevenlabs"; if (OPENAI_KEY) return "openai"; return ""; }
+// Detect provider from a client-supplied key: OpenAI keys start with "sk-", else ElevenLabs.
+function detectClientProvider(key) { return key ? (/^sk-/.test(key) ? "openai" : "elevenlabs") : ""; }
 
 async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
@@ -50,19 +52,27 @@ async function readBody(req) {
 }
 
 module.exports = async (req, res) => {
-  const prov = provider();
+  const envProv = provider();
   if (req.method === "GET") {
+    // clientConfigurable=true so the app can offer an on-device key field when no env key is set.
     res.status(200).json({
-      configured: !!prov,
-      provider: prov || null,
-      voices: prov === "elevenlabs" ? ELEVEN_VOICES : prov === "openai" ? OPENAI_VOICES : [],
+      configured: !!envProv,
+      clientConfigurable: true,
+      provider: envProv || "elevenlabs",
+      voices: envProv === "openai" ? OPENAI_VOICES : ELEVEN_VOICES,
     });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
-  if (!prov) { res.status(200).json({ configured: false }); return; }
 
   const body = await readBody(req);
+  // Key resolution: env var wins; else an on-device key the app sends (stored on the crew's
+  // device, PIN-gated, never in the repo). We never log the key.
+  const clientKey = (typeof body.key === "string" ? body.key.trim() : "");
+  let prov = envProv, elevenKey = ELEVEN_KEY, openaiKey = OPENAI_KEY;
+  if (!prov && clientKey) { prov = detectClientProvider(clientKey); if (prov === "openai") openaiKey = clientKey; else elevenKey = clientKey; }
+  if (!prov) { res.status(200).json({ configured: false }); return; }
+
   // Cap length so cost stays predictable (a long reply won't run up the bill).
   const text = (typeof body.text === "string" ? body.text : "").replace(/\s+/g, " ").trim().slice(0, 1000);
   if (!text) { res.status(200).json({ configured: true, error: "no_text" }); return; }
@@ -74,13 +84,13 @@ module.exports = async (req, res) => {
       const vid = voice || ELEVEN_VOICE_DEFAULT;
       r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(vid) + "?output_format=mp3_44100_128", {
         method: "POST",
-        headers: { "xi-api-key": ELEVEN_KEY, "content-type": "application/json", accept: "audio/mpeg" },
+        headers: { "xi-api-key": elevenKey, "content-type": "application/json", accept: "audio/mpeg" },
         body: JSON.stringify({ text, model_id: ELEVEN_MODEL, voice_settings: { stability: 0.45, similarity_boost: 0.75 } }),
       });
     } else {
       r = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
-        headers: { Authorization: "Bearer " + OPENAI_KEY, "content-type": "application/json" },
+        headers: { Authorization: "Bearer " + openaiKey, "content-type": "application/json" },
         body: JSON.stringify({ model: OPENAI_MODEL, voice: voice || "onyx", input: text, response_format: "mp3" }),
       });
     }
