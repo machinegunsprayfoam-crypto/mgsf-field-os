@@ -103,10 +103,16 @@ SAM Reps & Certs; DD-214 (veteran proof); Capability Statement; Insurance Portfo
 MT contractor/business license (BOI-3RD-LIC-000309, issued 2026-03-18, on file); License/Insurance
 Renewal Tracker; SDVOSB certification guide + VA pipeline. The DLA CAGE "RESPONSE REQUIRED" letter is
 also saved in Drive (linked in the Gov Bid Package SAM item).
-STILL MISSING for full gov bid-readiness: (1) a resolved CAGE code — reply to the DLA letter; (2) a MT
-Secretary of State Certificate of Good Standing (pull from biz.sosmt.gov, dated within 12 mo); (3) a
-surety bid/P&P bonding capacity LETTER (the bonding MANUAL is on file, but not a surety's letter); and
-(4) USDOT registration (the cap statement currently OVERCLAIMS an active USDOT/MC — fix that).
+GOOD STANDING — IN HAND: MT Certificate of Existence/Good Standing dated 2026-05-13 (Cert #88033630,
+Articles filed 2026-03-10). The company is ALSO now foreign-qualified and in Good Standing in SOUTH
+DAKOTA (ID FL329120, filed 2026-05-19, annual report due 2027-05-01, SD registered agent Cherokee Behner,
+Rapid City) — MGSF can legally bid/work in SD as well as MT. Address: 2402 N Anderson Ave is the PRINCIPAL/
+PHYSICAL office; 418 Cooke St is the MAILING address (both valid — the SAM fix is to list 2402 N Anderson
+as the physical office).
+STILL MISSING for full gov bid-readiness: (1) a resolved CAGE code — reply to the DLA letter NOW (you have
+the Good Standing cert to attach); (2) a surety bid/P&P bonding capacity LETTER (the bonding MANUAL is on
+file, not a surety's letter); (3) USDOT registration (the cap statement currently OVERCLAIMS an active
+USDOT/MC — register at fmcsa.dot.gov and fix that line). Never schedule any of this on a Sunday.
 
 Services: open & closed-cell spray foam, SPF roofing, roof coatings, concrete lifting/leveling,
 void fill, soil stabilization, polyurea coatings, insulation removal, BPI blower-door testing,

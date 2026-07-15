@@ -7857,7 +7857,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-more-docs'
+const APP_BUILD = '2026-07-15-good-standing'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8143,7 +8143,7 @@ async function hardRefresh(){
     {id:'sam',   name:'SAM.gov registration (UEI + CAGE)',have:false, url:'https://drive.google.com/file/d/1iZnQz2xPFvdGpVMyWvNkmCyCpcGNIgWO/view', note:'⚠ PENDING — the DLA CAGE "RESPONSE REQUIRED" letter is on Drive (linked here). Reply to CAGEReview@dla.mil with a MT Secretary of State Certificate of Good Standing + correct the address (SAM shows the WRONG 418 Cooke St — verified address is 2402 N Anderson Ave). No CAGE code / not bid-ready until resolved. UEI H63EELL3K7Z4.'},
     {id:'einuei',name:'EIN / UEI record + W-9',           have:true,  url:'https://drive.google.com/file/d/1nzkPThmdefbha5GntZiLtlp9Sopk5sj1/view', note:'EIN/UEI record PDF (Drive)'},
     {id:'reps',  name:'SAM Reps & Certs worksheet',       have:true,  url:'https://docs.google.com/spreadsheets/d/1zY679XTqMCaQt__vpMqqUAjFZ0S-nfrnwfXntMzwfS4/edit', note:'Section K reps & certs'},
-    {id:'sos',   name:'SOS Certificate of Good Standing',  have:false, url:'https://biz.sosmt.gov/', note:'⚠ REQUIRED to finish CAGE — pull from MT Secretary of State (biz.sosmt.gov), dated within 12 mo, then email to CAGEReview@dla.mil'},
+    {id:'sos',   name:'SOS Certificate of Good Standing',  have:true,  url:'https://biz.sosmt.gov/', note:'✅ IN HAND — MT Certificate of Existence/Good Standing dated 2026-05-13, Cert #88033630 (Articles filed 2026-03-10). Also foreign-qualified & in Good Standing in SD (ID FL329120). Attach the MT cert to the CAGEReview@dla.mil reply. Save this packet to Drive if not already.'},
     {id:'sdvosb',name:'SDVOSB certification (VetCert)',   have:false, url:'https://docs.google.com/document/d/1hATvhPS9Sja1mN5EXHSlqbSvcWJ9rBgHNNT03lb3ccQ/edit', note:'Step-by-step guide in Drive — confirm cert is APPROVED before claiming set-aside'},
     {id:'dd214', name:'DD-214 (veteran proof)',           have:true,  url:'https://drive.google.com/file/d/1mdGsoYlmoWieIn61f9K7sEoBZfcJzBMK/view', note:'Owner DD-214 (sensitive — keep in Drive)'},
     {id:'past',  name:'Past Performance / references',    have:false, url:'https://drive.google.com/drive/folders/1t3ZUv3Qyp_PRIfOoJC1MX1KhbMGB9AtU', note:'Add 3+ recent jobs w/ contact + $ value'},
