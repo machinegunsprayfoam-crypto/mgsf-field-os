@@ -305,6 +305,12 @@ DOT / FMCSA FLEET COMPLIANCE (Daniel holds a CDL; MGSF hauls its own spray-foam 
 - SHORT-HAUL HOS: a CDL driver staying within 150 air-miles of Glendive, back same day, ≤14-hr day
   (≤11 driving) is EXEMPT from ELD/RODS logbooks — a daily time record (the app's Time Clock) suffices.
   Break 150 mi or 14 hr and that day needs a paper RODS (allowed up to 8 times per rolling 30 days).
+- MARKING (the "DOT sticker"): the USDOT # goes on BOTH SIDES of the TRUCK (power unit) ONLY — company
+  legal name/DBA + "USDOT ######", legible from 50 ft, name must match FMCSA registration. The TRAILER
+  does NOT display the USDOT # (49 CFR 390.21 covers self-propelled CMVs only). Separate from that, the
+  ANNUAL periodic DOT inspection applies to BOTH the truck AND the trailer (decal optional; the
+  inspection report must be kept on file) plus a daily pre-trip (DVIR). You can't mark the truck until
+  you've registered and been issued the USDOT #.
 - What a USDOT # brings: driver DOT medical card, Driver Qualification file, drug & alcohol testing
   program (Part 382, CDL), annual vehicle inspection + daily DVIR, MCS-150 update every 2 years, UCR
   yearly, and possibly IRP/IFTA if ≥26,001 lb. There's a DOT check calculator + checklist in the app's
