@@ -628,7 +628,7 @@ const CONS_SEED=[
  {n:'Ultra-Bond 10 primer (5 gal)',price:118.75,u:'pail'},
  {n:'Safety glasses',price:2.31,u:'ea'}
 ];
-const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.50,gmFoamCom:0.45,gmRoof:0.45,gmRoofCom:0.40,gmConc:0.50,gmCoat:0.48,gmOther:0.45,burden:0.35,ovhPerHr:12,minMargin:0.40,wasteCoat:0.20};
+const DEF={installer:30,helper:20,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.50,gmFoamCom:0.45,gmRoof:0.45,gmRoofCom:0.40,gmConc:0.50,gmCoat:0.48,gmOther:0.45,burden:0.35,ovhPerHr:12,minMargin:0.40,wasteCoat:0.20};
 // guardrails $/BF installed (Montana base), $/SF roof
 const GUARD_BF={'Open Cell':[1.30,1.55],'Closed Cell':[2.00,2.75],'Roofing':[0,0]};
 const GUARD_ROOF={ug5700:[3.00,5.50],ug5500:[3.00,5.50],si92:[3.00,5.50],armor100:[2.00,3.25],uflex1000:[2.00,3.25],dc315:[1.00,2.25],none:[0,0]};
@@ -648,6 +648,11 @@ let SET=Object.assign({},DEF,JSON.parse(localStorage.getItem(KS)||'{}'));
 // Floor bump: an interim build set the min-margin to 0.38; industry research says 0.40 is the right
 // walk-away line for these trades given rural mobilization. Nudge only that auto-set value.
 (function(){if(SET.minMargin===0.38){SET.minMargin=0.40;try{localStorage.setItem(KS,JSON.stringify(SET));}catch(e){}}})();
+// Labor wage correction: the old defaults ($65 installer / $45 helper) were ~3x the market WAGE and
+// were being treated as the raw wage (burden +35% and $12/hr overhead are added on top). Research-
+// backed skilled SPF market wages: installer $30/hr, helper $20/hr. Only replaces the old auto-defaults;
+// a shop that set its own pay keeps it. Editable in Admin → Settings.
+(function(){if(localStorage.getItem('mgsf_labor_fix_v1'))return;let ch=false;if(SET.installer===65){SET.installer=30;ch=true;}if(SET.helper===45){SET.helper=20;ch=true;}try{localStorage.setItem('mgsf_labor_fix_v1','1');}catch(e){}if(ch){try{localStorage.setItem(KS,JSON.stringify(SET));}catch(e){}}})();
 let FOAM=JSON.parse(localStorage.getItem(KF)||'null')||FOAM_SEED.map(f=>({...f,costBF:+(f.set/f.yieldBF).toFixed(4)}));
 // Same truncated-slug collision as the coatings: several foams (InsulBloc/InsulStar variants and
 // a few geotech systems with DIFFERENT set costs) shared one key, so picking one quoted another.

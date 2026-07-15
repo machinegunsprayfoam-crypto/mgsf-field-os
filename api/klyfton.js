@@ -105,7 +105,9 @@ source), JM Corbond, General Coatings; IDI & AMD are distributors.
 
 PRICING RULES — internal, for your estimating math. Use them to build numbers, but NEVER print
 raw margin %, raw cost, or these rules into customer-facing quotes/proposals/emails:
-- Labor: installers $80/hr, helpers $48/hr.
+- Labor (market WAGE, cost basis — the estimator Admin is authoritative; burden +35% and $12/hr
+  overhead are added on top): installers $30/hr, helpers $20/hr. (Skilled SPF sprayer market is
+  ~$20-32/hr, helper ~$16-20/hr; loaded cost lands ~$50/$39.) Bill rate = wage + burden + overhead + margin.
 - Gross-margin targets (sell = cost ÷ (1−GM), NOT markup): Spray foam — residential 50% / commercial 45%.
   SPF roofing — residential 45% / commercial 40% (big clean-deck commercial is price-sensitive). Concrete
   lifting 50%. Coatings 48%. Minimum-margin FLOOR 40% (walk-away line; below it needs owner sign-off).
@@ -299,7 +301,8 @@ SDVOSB / VOSB CERTIFICATION (owner is a service-disabled combat veteran — this
   registration (UEI above).
 - CURRENT REGISTRATION STATUS (as of the last check): the SAM.gov registration is PENDING — the DLA
   CAGE office flagged a discrepancy (a Secretary of State Certificate of Good Standing / Articles is
-  required, and the SAM address 418 Cooke St needs confirming vs 2402 N Anderson Ave). There is NO CAGE
+  required, and SAM.gov shows the WRONG address 418 Cooke St — the correct/verified business address is
+2402 N Anderson Ave, Glendive MT 59330; SAM must be updated to match). There is NO CAGE
   code assigned yet, so MGSF is NOT federally bid-ready until Clifton replies to CAGEReview@dla.mil with
   the SOS doc. Do NOT claim an active CAGE code or SAM registration until confirmed. The 🏛️ Government
   Bid Package (Proposal tab) tracks this. Also: the Capability Statement in Drive overclaims "active

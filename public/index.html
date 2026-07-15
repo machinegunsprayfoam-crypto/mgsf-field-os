@@ -7837,7 +7837,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-modules-brain-sync'
+const APP_BUILD = '2026-07-15-labor-address'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -8120,7 +8120,7 @@ async function hardRefresh(){
   // Seeded with the real Drive links found in the owner's Drive. have: true=ready, false=need.
   const GOVPKG_SEED = [
     {id:'cap',   name:'Capability Statement',            have:true,  url:'https://docs.google.com/document/d/1etT13g3TTXb_022SSXYjXQ9NEsiQkkQFaNJhS0G_GJQ/edit', note:'Corporate cap statement (Drive)'},
-    {id:'sam',   name:'SAM.gov registration (UEI + CAGE)',have:false, url:'https://drive.google.com/drive/folders/15SMPaWTF8ImqUnzgH5h82WnsZdhB7tR1', note:'⚠ PENDING — DLA CAGE flagged a discrepancy (May 13): reply to CAGEReview@dla.mil with a Secretary of State Certificate of Good Standing / Articles + confirm address (SAM shows 418 Cooke St vs 2402 N Anderson). No CAGE code / not bid-ready until resolved. UEI H63EELL3K7Z4.'},
+    {id:'sam',   name:'SAM.gov registration (UEI + CAGE)',have:false, url:'https://drive.google.com/drive/folders/15SMPaWTF8ImqUnzgH5h82WnsZdhB7tR1', note:'⚠ PENDING — DLA CAGE flagged a discrepancy (May 13): reply to CAGEReview@dla.mil with a Secretary of State Certificate of Good Standing / Articles + correct the address (SAM shows the WRONG 418 Cooke St — verified address is 2402 N Anderson Ave). No CAGE code / not bid-ready until resolved. UEI H63EELL3K7Z4.'},
     {id:'einuei',name:'EIN / UEI record + W-9',           have:true,  url:'https://drive.google.com/file/d/1nzkPThmdefbha5GntZiLtlp9Sopk5sj1/view', note:'EIN/UEI record PDF (Drive)'},
     {id:'reps',  name:'SAM Reps & Certs worksheet',       have:true,  url:'https://docs.google.com/spreadsheets/d/1zY679XTqMCaQt__vpMqqUAjFZ0S-nfrnwfXntMzwfS4/edit', note:'Section K reps & certs'},
     {id:'sos',   name:'SOS Certificate of Good Standing',  have:false, url:'https://biz.sosmt.gov/', note:'⚠ REQUIRED to finish CAGE — pull from MT Secretary of State (biz.sosmt.gov), dated within 12 mo, then email to CAGEReview@dla.mil'},
