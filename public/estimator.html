@@ -211,10 +211,16 @@ textarea{resize:vertical;min-height:54px}
         <div id="roof-penlist"></div>
         <div class="btnrow" style="margin-top:6px"><button class="btn btn-s btn-sm" onclick="rpAdd()">+ Add curb / penetration</button></div>
         <div class="statrow" style="margin-top:8px"><span>Net roof area — field − deducts + curb detail</span><span class="v" id="roof-tot">0 SF</span></div>
-        <div class="row"><div><label>Coating</label><select id="roof-coat" onchange="recalc()"></select></div><div><label>Coats</label><input type="number" id="roof-coats" value="2" oninput="recalc()"></div></div>
-        <div class="fld" style="margin-top:8px"><label><input type="checkbox" id="roof-scarf" onchange="toggleScarf()" style="width:auto;margin-right:6px">Scarf existing SPF — grind degraded foam to sound closed-cell before recoat</label></div>
+        <div class="ct" style="margin-top:12px;font-size:.72rem;color:var(--mut)">① PREP — before foam / recoat</div>
+        <div class="fld"><label><input type="checkbox" id="roof-wash" onchange="toggleWash()" style="width:auto;margin-right:6px">Power wash / clean — for maintenance recoats, before re-coating</label></div>
+        <div class="row" id="roof-wash-row" style="display:none"><div><label>Wash area (SF)</label><input type="number" id="roof-wash-sf" placeholder="blank = full roof" oninput="recalc()"></div><div><label>Wash $/SF (cost)</label><input type="number" id="roof-wash-rate" step="0.05" oninput="recalc()"></div></div>
+        <div class="fld" style="margin-top:6px"><label><input type="checkbox" id="roof-scarf" onchange="toggleScarf()" style="width:auto;margin-right:6px">Scarf existing SPF — grind degraded foam to sound closed-cell before recoat</label></div>
         <div class="row" id="roof-scarf-row" style="display:none"><div><label>Scarf area (SF)</label><input type="number" id="roof-scarf-sf" placeholder="blank = full roof" oninput="recalc()"></div><div><label>Scarf $/SF (cost)</label><input type="number" id="roof-scarf-rate" step="0.05" oninput="recalc()"></div></div>
         <div class="hint" id="roof-scarf-hint"></div>
+        <div class="row" style="margin-top:6px"><div><label>Primer / base coat <span style="color:var(--mut);font-weight:600;text-transform:none">(adhesion — metal / aged membrane · not the topcoat)</span></label><select id="roof-primer-sel" onchange="recalc()"></select></div><div><label>Coats</label><input type="number" id="roof-primer-coats" value="1" oninput="recalc()"></div></div>
+        <div class="row"><div><label>Primer area (SF)</label><input type="number" id="roof-primer-sf" placeholder="blank = full roof" oninput="recalc()"></div><div></div></div>
+        <div class="ct" style="margin-top:12px;font-size:.72rem;color:var(--mut)">② PROTECTIVE COATING — topcoat over the foam</div>
+        <div class="row"><div><label>Protective coating (topcoat)</label><select id="roof-coat" onchange="recalc()"></select></div><div><label>Coats</label><input type="number" id="roof-coats" value="2" oninput="recalc()"></div></div>
       </div>
 
       <!-- CONCRETE -->
@@ -584,7 +590,7 @@ const CONS_SEED=[
  {n:'Ultra-Bond 10 primer (5 gal)',price:118.75,u:'pail'},
  {n:'Safety glasses',price:2.31,u:'ea'}
 ];
-const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,gmFoamRes:0.60,gmFoamCom:0.55,gmRoof:0.62,gmConc:0.60,gmCoat:0.62,gmOther:0.55,burden:0.35,ovhPerHr:12,minMargin:0.40};
+const DEF={installer:65,helper:45,travel:1.25,waste:0.10,wasteC:0.15,gov:0.08,min:1500,minRoof:4500,tb:1.75,scarf:0.35,wash:0.10,gmFoamRes:0.60,gmFoamCom:0.55,gmRoof:0.62,gmConc:0.60,gmCoat:0.62,gmOther:0.55,burden:0.35,ovhPerHr:12,minMargin:0.40};
 // guardrails $/BF installed (Montana base), $/SF roof
 const GUARD_BF={'Open Cell':[1.30,1.55],'Closed Cell':[2.00,2.75],'Roofing':[0,0]};
 const GUARD_ROOF={ug5700:[3.00,5.50],ug5500:[3.00,5.50],si92:[3.00,5.50],armor100:[2.00,3.25],uflex1000:[2.00,3.25],dc315:[1.00,2.25],none:[0,0]};
@@ -692,18 +698,32 @@ function setSvc(x,e){svc=x;document.querySelectorAll('.svc').forEach(t=>t.classL
 function setZone(z,e){zone=z;e.target.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');renderZone();recalc();}
 function setRoof(){}
 function toggleScarf(){const on=$('roof-scarf').checked;$('roof-scarf-row').style.display=on?'':'none';if(on&&!$('roof-scarf-rate').value)$('roof-scarf-rate').value=SET.scarf;$('roof-scarf-hint').textContent=on?'Restoration scarfing: grind degraded top foam to sound closed-cell, then re-foam/recoat. Market adds ~$0.40–0.65/SF (~20–30% of a recoat). Production is slow (~2,000–4,000 SF/day) — bump labor hrs. Bag & dump the ground foam.':'';recalc();}
+function toggleWash(){const on=$('roof-wash').checked;$('roof-wash-row').style.display=on?'':'none';if(on&&!$('roof-wash-rate').value)$('roof-wash-rate').value=SET.wash;recalc();}
 
 /* ============ PRODUCT DROPDOWNS ============ */
 function fillProducts(){
  const foamOpts=FOAM.filter(f=>f.cat==='Closed Cell'||f.cat==='Open Cell').map(f=>`<option value="${f.k}">${f.n}</option>`).join('');
  const roofOpts=FOAM.filter(f=>f.cat==='Roofing').map(f=>`<option value="${f.k}">${f.n}</option>`).join('');
  $('foam-product').innerHTML=foamOpts; $('roof-product').innerHTML=roofOpts;
- const coatOpts=COAT.map(c=>`<option value="${c.k}">${c.n}</option>`).join('');
- $('roof-coat').innerHTML=coatOpts; $('coat-product').innerHTML=COAT.filter(c=>c.k!=='none').map(c=>`<option value="${c.k}">${c.n}</option>`).join('');
+ // Roof workflow splits the coating list two ways: the PRIMER dropdown shows only primers,
+ // the PROTECTIVE COATING dropdown shows only real topcoats (no primers / putties / mastics /
+ // intumescent fire coatings). Standalone "Coatings" service keeps the full list.
+ const noneOpt=`<option value="none">None</option>`;
+ const primerOpts=noneOpt+COAT.filter(isPrimerCoat).map(c=>`<option value="${c.k}">${c.n}</option>`).join('');
+ const topcoatOpts=noneOpt+COAT.filter(isTopcoat).map(c=>`<option value="${c.k}">${c.n}</option>`).join('');
+ $('roof-coat').innerHTML=topcoatOpts;
+ const _ps=$('roof-primer-sel'); if(_ps)_ps.innerHTML=primerOpts;
+ $('coat-product').innerHTML=COAT.filter(c=>c.k!=='none').map(c=>`<option value="${c.k}">${c.n}</option>`).join('');
  $('soil-product').innerHTML=FOAM.filter(f=>f.cat==='Geotech').map(g=>`<option value="${g.k}">${g.n}</option>`).join('');
 }
 const foamBy=k=>FOAM.find(f=>f.k===k)||FOAM[0];
 const coatBy=k=>COAT.find(c=>c.k===k)||COAT[0];
+// Classify a coating by product name so the roof dropdowns stay honest:
+//   primer  = adhesion / base coat (goes UNDER the foam or on bare substrate)
+//   topcoat = the protective coating sprayed OVER the foam (acrylic / silicone / polyurea);
+//             excludes primers, putties/mastics (detail products) and intumescent fire coatings.
+function isPrimerCoat(c){return c&&c.k!=='none'&&/primer/i.test(c.n);}
+function isTopcoat(c){return c&&c.k!=='none'&&!isPrimerCoat(c)&&!/putty|mastic|intumescent|thermal barrier|flash/i.test(c.n);}
 const geoBy=k=>FOAM.find(f=>f.k===k&&f.cat==='Geotech')||FOAM.filter(f=>f.cat==='Geotech')[0]||GEO_SEED[0];
 /* ---- FOAM section lists (individual + multiples, incl. gable ends) ---- */
 const ZONE_DEF={
@@ -813,6 +833,8 @@ function calc(){
   sf=Math.max(0,roofTotalSF()); bf=sf*thick*(1+waste);mat=bf*p.costBF*mult;product=p.n;
   const c=coatBy(str('roof-coat'));if(c.k!=='none'){const coats=val('roof-coats')||2;const gal=sf/c.sf*coats;mat+=gal*c.gal*mult;product+=' + '+c.n+' ('+coats+'c)';}
   if($('roof-scarf').checked){const ssf=val('roof-scarf-sf')||sf;const srate=val('roof-scarf-rate')||SET.scarf;mat+=ssf*srate*mult;product+=' + scarf prep';}
+  if($('roof-wash')&&$('roof-wash').checked){const wsf=val('roof-wash-sf')||sf;const wrate=val('roof-wash-rate')||SET.wash;mat+=wsf*wrate*mult;product+=' + power wash';}
+  const pc=coatBy(str('roof-primer-sel'));if(pc.k!=='none'){const pcoats=val('roof-primer-coats')||1;const psf=val('roof-primer-sf')||sf;const pgal=psf/pc.sf*pcoats;mat+=pgal*pc.gal*mult;product+=' + '+pc.n+' primer';}
   qty=Math.round(sf).toLocaleString()+' SF';
   const cc2=coatBy(str('roof-coat'));const gr=cc2.k==='none'?null:(cc2.sf>=100?[1.00,2.25]:cc2.sf<=50?[3.50,5.75]:cc2.sf<=70?[3.00,5.50]:[2.00,3.25]);if(gr)guard=`Guardrail: $${gr[0].toFixed(2)}–$${gr[1].toFixed(2)}/SF installed`;
  } else if(svc==='concrete'){
