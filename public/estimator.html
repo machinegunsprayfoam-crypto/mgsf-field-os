@@ -340,6 +340,12 @@ textarea{resize:vertical;min-height:54px}
         <div class="hint" id="p-state"></div>
         <div class="hint" style="margin-top:6px">💳 0% &amp; low-rate financing available — <a href="https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton" target="_blank" rel="noopener" style="color:var(--goldHi);font-weight:700">Hearth pre-qualify (60 sec, no credit hit)</a></div>
         <div class="fld" style="margin-top:10px"><label>Job notes (internal)</label><textarea id="job-notes" placeholder="Access, prep, winter heat, masking, occupied..."></textarea></div>
+        <div class="card" id="spraywx-card" style="margin-top:10px">
+          <div class="ct">🌦️ Spray Window check</div>
+          <div class="hint">Checks the forecast for your job date against SPF/coating spray limits: 50–100°F, humidity under 85%, 5°F+ above dew point, wind under ~12 mph, dry surface.</div>
+          <div class="row" style="margin-top:6px"><div><label>Location (city, ST)</label><input id="wx-loc" placeholder="Glendive, MT"></div><div style="display:flex;align-items:end"><button class="btn btn-s btn-full" type="button" onclick="sprayWxCheck()">Check forecast</button></div></div>
+          <div id="wx-out" style="margin-top:8px"></div>
+        </div>
         <div id="edit-banner" style="display:none;margin-top:8px;padding:9px 11px;border:1px solid var(--gold);border-radius:9px;background:var(--card2);font-size:.78rem;font-weight:700">✏️ Editing existing bid — <b>Save</b> updates it in place. <a href="javascript:void(0)" onclick="cancelEdit()" style="color:var(--goldHi);font-weight:800">Cancel edit</a></div>
         <div class="btnrow"><button class="btn btn-p btn-full" onclick="addScope()">➕ Add Scope to Bid</button></div>
         <div class="btnrow" style="margin-top:8px"><button class="btn btn-g btn-full" id="savebid-btn" onclick="saveBid()">💾 Save Bid</button><button class="btn btn-s" onclick="clearField()">Clear</button></div>
@@ -1339,6 +1345,34 @@ function tiersSeed(){const b=bids.find(x=>x.id===selId);if(!b){toast('Open a bid
  b.tiersOn=true;lsSet(KB,JSON.stringify(bids));renderTiers();renderProposalIfOpen(b);toast(isRoof?'Warranty tiers filled (10/15/20-yr) ✓':'Good / Better / Best filled ✓');}
 // Amount the payment schedule is based on: the recommended tier when tiers are on, else the bid sell price.
 function payBase(b){if(b&&b.tiersOn&&Array.isArray(b.tiers)&&b.tiers.length){const r=b.tiers.find(t=>t.rec)||b.tiers[0];return r.price||0;}return (b&&(b.sellPrice||b.bidTotal))||0;}
+/* ---- Spray Window: live forecast vs SPF/coating application limits (Open-Meteo, no key) ---- */
+async function sprayWxCheck(){const out=$('wx-out');if(!out)return;
+ const loc=(str('wx-loc')||str('cust-state')||'').trim();const date=str('job-date');
+ if(!loc){out.innerHTML='<div class="hint" style="color:var(--yellow)">Enter a city, ST (e.g. Glendive, MT).</div>';return;}
+ if(!date){out.innerHTML='<div class="hint" style="color:var(--yellow)">Set the job date first.</div>';return;}
+ out.innerHTML='<div class="hint">Checking forecast…</div>';
+ try{
+  const g=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&country=US&name='+encodeURIComponent(loc)).then(r=>r.json());
+  if(!g||!g.results||!g.results.length){out.innerHTML='<div class="hint" style="color:var(--yellow)">Couldn’t find that location — try "City, ST".</div>';return;}
+  const p=g.results[0],lat=p.latitude,lon=p.longitude;
+  const url='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=16&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&hourly=temperature_2m,relative_humidity_2m,dew_point_2m';
+  const w=await fetch(url).then(r=>r.json());
+  const di=(w.daily&&w.daily.time?w.daily.time:[]).indexOf(date);
+  if(di<0){out.innerHTML='<div class="hint" style="color:var(--yellow)">Forecast only reaches ~16 days out ('+p.name+', '+(p.admin1||'')+'). Check closer to the date.</div>';return;}
+  const tmax=w.daily.temperature_2m_max[di],tmin=w.daily.temperature_2m_min[di],pprob=w.daily.precipitation_probability_max[di]||0,wind=w.daily.wind_speed_10m_max[di]||0;
+  let hMax=0,spreadMin=99,gotHr=false;const ht=(w.hourly&&w.hourly.time)?w.hourly.time:[];
+  for(let i=0;i<ht.length;i++){if(String(ht[i]).slice(0,10)!==date)continue;const hr=+String(ht[i]).slice(11,13);if(hr<8||hr>17)continue;gotHr=true;const rh=w.hourly.relative_humidity_2m[i],t=w.hourly.temperature_2m[i],dp=w.hourly.dew_point_2m[i];if(rh>hMax)hMax=rh;const sp=t-dp;if(sp<spreadMin)spreadMin=sp;}
+  const reasons=[];let level='GO';const bad=m=>{reasons.push('⛔ '+m);level='NO-GO';};const warn=m=>{reasons.push('⚠ '+m);if(level==='GO')level='CAUTION';};
+  if(tmax<50)bad('High only '+Math.round(tmax)+'°F — below the 50°F minimum');else if(tmax<55)warn('High '+Math.round(tmax)+'°F — near the 50°F floor');
+  if(tmin<40)warn('Low '+Math.round(tmin)+'°F overnight — cold substrate first thing');
+  if(tmax>100)warn('High '+Math.round(tmax)+'°F — near the 100°F ceiling');
+  if(pprob>=60)bad(pprob+'% chance of precip — surface must stay dry');else if(pprob>=30)warn(pprob+'% chance of precip');
+  if(gotHr&&hMax>85)bad('Humidity to '+Math.round(hMax)+'% — over the 85% limit');else if(gotHr&&hMax>70)warn('Humidity to '+Math.round(hMax)+'% — above the 70% comfort zone');
+  if(gotHr&&spreadMin<5)bad('Only '+Math.round(spreadMin)+'°F above dew point — condensation risk (need 5°F+)');else if(gotHr&&spreadMin<8)warn('Tight '+Math.round(spreadMin)+'°F dew-point spread');
+  if(wind>20)bad('Wind to '+Math.round(wind)+' mph — overspray & quality risk');else if(wind>12)warn('Wind to '+Math.round(wind)+' mph — watch overspray (limit ~12)');
+  const col=level==='GO'?'#16a34a':(level==='CAUTION'?'#b8860b':'#c0392b'),emo=level==='GO'?'✅':(level==='CAUTION'?'⚠️':'⛔');
+  out.innerHTML='<div style="border:1px solid '+col+';border-radius:9px;padding:10px"><div style="font-weight:800;color:'+col+'">'+emo+' '+level+' — '+p.name+', '+(p.admin1||'')+' · '+date+'</div><div style="font-size:.74rem;color:var(--mut);margin-top:4px">High '+Math.round(tmax)+'°F · Low '+Math.round(tmin)+'°F · Precip '+pprob+'% · Humidity '+(gotHr?Math.round(hMax)+'%':'n/a')+' · Wind '+Math.round(wind)+' mph</div>'+(reasons.length?'<div style="font-size:.74rem;margin-top:6px;line-height:1.6">'+reasons.join('<br>')+'</div>':'<div style="font-size:.74rem;margin-top:6px;color:#16a34a">All conditions within spray limits.</div>')+'</div>';
+ }catch(e){out.innerHTML='<div class="hint" style="color:var(--yellow)">Couldn’t reach the weather service (no signal?). Try again when online.</div>';}}
 function depositUpd(){const b=bids.find(x=>x.id===selId);if(!b)return;let p=parseFloat($('d-deposit').value);if(!isFinite(p))p=50;p=Math.max(0,Math.min(100,p));b.depositPct=p;
  const base=payBase(b);const dep=Math.round(base*p/100);const bal=Math.round(base-dep);const o=$('d-deposit-out');if(o)o.innerHTML=base>0?`Deposit <b>${money(dep)}</b> · Balance <b>${money(bal)}</b>`:'';
  lsSet(KB,JSON.stringify(bids));renderProposalIfOpen(b);}
