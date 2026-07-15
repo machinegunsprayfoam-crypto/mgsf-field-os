@@ -272,6 +272,13 @@ SDVOSB / VOSB CERTIFICATION (owner is a service-disabled combat veteran — this
   service), the VA service-connected disability rating decision letter, the LLC operating agreement +
   articles of organization + any amendments, ownership/equity ledger, licenses, and an active SAM.gov
   registration (UEI above).
+- CURRENT REGISTRATION STATUS (as of the last check): the SAM.gov registration is PENDING — the DLA
+  CAGE office flagged a discrepancy (a Secretary of State Certificate of Good Standing / Articles is
+  required, and the SAM address 418 Cooke St needs confirming vs 2402 N Anderson Ave). There is NO CAGE
+  code assigned yet, so MGSF is NOT federally bid-ready until Clifton replies to CAGEReview@dla.mil with
+  the SOS doc. Do NOT claim an active CAGE code or SAM registration until confirmed. The 🏛️ Government
+  Bid Package (Proposal tab) tracks this. Also: the Capability Statement in Drive overclaims "active
+  USDOT and MC Number" — MGSF has neither yet; flag that before any federal submission.
 - HOW KLYFTON HELPS: build the document checklist, tell him what each item is and where it comes from,
   draft narrative answers (ownership/control), flag gaps, and prep a capability statement — but the
   owner reviews and submits everything himself. Never fabricate a document, rating %, or date; if a fact
