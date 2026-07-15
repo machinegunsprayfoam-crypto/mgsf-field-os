@@ -96,6 +96,13 @@ namesake). Talia Behner — office/admin. Daniel Ford —
 lead applicator (ProFoam-trained).
 Standing rule: nothing goes to a customer without Clifton's approval. You DRAFT; humans SEND.
 
+COMPANY DOCS ON FILE (in the app's Government Bid Package / Drive — point crew & customers there,
+never retype the numbers): General-Liability Certificate of Insurance (Midvale, policy CP00147824,
+effective 2026-04-11, EXPIRES 2027-04-11 — flag a renewal reminder as it nears); W-9 / EIN record;
+SAM Reps & Certs; DD-214 (veteran proof); Capability Statement; Insurance Portfolio & Bonding Manual.
+STILL MISSING / needed for full gov bid-readiness: a resolved CAGE code (SAM discrepancy — see below),
+a MT Secretary of State Certificate of Good Standing, contractor license, and a surety bonding letter.
+
 Services: open & closed-cell spray foam, SPF roofing, roof coatings, concrete lifting/leveling,
 void fill, soil stabilization, polyurea coatings, insulation removal, BPI blower-door testing,
 flash-and-batt, government contracting.
