@@ -6757,6 +6757,26 @@ function gatherBizContext(){
         if(mats.length) ctx.materials=mats.slice(0,140);
       }
     }catch(e){}
+    // LIVE ESTIMATOR SETTINGS — margins/labor/yields straight from the estimator so Klyfton always
+    // quotes the CURRENT numbers and can never drift from a hardcoded copy (single source of truth).
+    try{
+      const S=JSON.parse(localStorage.getItem('mg-fieldos-v1-set')||'{}');
+      const F=_estRead('mg-fieldos-v1-foam');
+      const yld=(cat)=>{const f=(F||[]).find(x=>x&&x.cat===cat);return f?f.yieldBF:null;};
+      const pc=n=>Math.round((n||0)*100), s={};
+      if(S.gmFoamRes!=null) s.margins=`foam res ${pc(S.gmFoamRes)}% / com ${pc(S.gmFoamCom)}%, SPF roof res ${pc(S.gmRoof)}% / com ${pc(S.gmRoofCom||0.40)}%, concrete ${pc(S.gmConc)}%, coatings ${pc(S.gmCoat)}%, min floor ${pc(S.minMargin)}% (sell = cost ÷ (1−GM))`;
+      if(S.installer!=null) s.labor=`installer $${S.installer}/hr, helper $${S.helper}/hr wage + ${pc(S.burden)}% burden + $${S.ovhPerHr}/hr overhead`;
+      const cc=yld('Closed Cell'),rf=yld('Roofing'),oc=yld('Open Cell');
+      if(cc||rf||oc) s.yields=`CC ~${cc} · roofing ~${rf} · open cell ~${oc} BF per set`;
+      if(Object.keys(s).length) ctx.settings=s;
+    }catch(e){}
+    // Most recent bid — so "how's my last quote look / can I drop the price?" gets the real one.
+    try{
+      const _b=_estRead(EST_KEYS.bids)[0];
+      if(_b) ctx.lastBid={ customer:(_b.customer&&_b.customer.name)||'', total:_b.sellPrice||_b.bidTotal||0,
+        status:_b.status||'draft', gmTarget:_b.gmTarget||null,
+        scopes:(_b.scopes||[]).slice(0,6).map(s=>(s.product||s.service||'scope')+' — $'+Math.round(s.sell||0)) };
+    }catch(e){}
     // Ops Center intel — travel policy, state tax, low stock, reputation, margins.
     try{ if(window.opsContext) Object.assign(ctx, window.opsContext()); }catch(e){}
     // Estimator awareness — high-level read of the embedded Ultimate Estimator so Klyfton
@@ -7837,7 +7857,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-labor-address'
+const APP_BUILD = '2026-07-15-klyfton-context'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}

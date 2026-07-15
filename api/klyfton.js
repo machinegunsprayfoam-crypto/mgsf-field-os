@@ -557,6 +557,20 @@ function contextBlock(context, memory) {
     if (context.activeJobs != null) c.push("Active jobs: " + context.activeJobs);
     if (context.openLeads != null) c.push("Open leads: " + context.openLeads);
     if (context.lastEstimate) c.push("Most recent estimate: " + context.lastEstimate);
+    if (context.settings && typeof context.settings === "object") {
+      const s = context.settings, lines = [];
+      if (s.margins) lines.push("Margins: " + s.margins);
+      if (s.labor) lines.push("Labor: " + s.labor);
+      if (s.yields) lines.push("Foam yields: " + s.yields);
+      if (lines.length) c.push("LIVE ESTIMATOR SETTINGS — AUTHORITATIVE. These are the app's CURRENT numbers; " +
+        "use THESE, not any margin/labor/yield figures in the reference text above (which may be stale):\n" + lines.join("\n"));
+    }
+    if (context.lastBid && typeof context.lastBid === "object") {
+      const b = context.lastBid;
+      const sc = Array.isArray(b.scopes) && b.scopes.length ? " · scopes: " + b.scopes.join("; ") : "";
+      c.push("MOST RECENT BID: " + (b.customer || "unnamed") + " — $" + Number(b.total || 0).toLocaleString() +
+        " (" + (b.status || "draft") + (b.gmTarget ? ", ~" + b.gmTarget + "% GM" : "") + ")" + sc);
+    }
     if (context.estimator && typeof context.estimator === "object") {
       const e = context.estimator;
       const parts = [
