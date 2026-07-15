@@ -10,8 +10,10 @@
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY || "";
 const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY || "";
-const ELEVEN_VOICE_DEFAULT = process.env.ELEVENLABS_VOICE_ID || "pNInz6obpgDQGcFmaJgB"; // "Adam" (deep male)
+// Owner's chosen Voice Library voice is the default (env var still overrides).
+const ELEVEN_VOICE_DEFAULT = process.env.ELEVENLABS_VOICE_ID || "IRHApOXLvnW57QJPQH2P";
 const OPENAI_MODEL = process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts";
+const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || "eleven_turbo_v2_5"; // fast+cheap; set eleven_multilingual_v2 for max quality
 
 // OpenAI's built-in voices.
 const OPENAI_VOICES = [
@@ -26,7 +28,8 @@ const OPENAI_VOICES = [
 ];
 // ElevenLabs shared-library default voices (stable IDs).
 const ELEVEN_VOICES = [
-  { id: "pNInz6obpgDQGcFmaJgB", label: "Adam — deep male (default)" },
+  { id: "IRHApOXLvnW57QJPQH2P", label: "★ Klyfton — your Voice Library pick" },
+  { id: "pNInz6obpgDQGcFmaJgB", label: "Adam — deep male" },
   { id: "onwK4e9ZLuTAKqWW03F9", label: "Daniel — British male" },
   { id: "TxGEqnHWrfWFTfGW9XjX", label: "Josh — male" },
   { id: "VR6AewLTigWG4xSOukaG", label: "Arnold — strong male" },
@@ -69,10 +72,10 @@ module.exports = async (req, res) => {
     let r;
     if (prov === "elevenlabs") {
       const vid = voice || ELEVEN_VOICE_DEFAULT;
-      r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(vid), {
+      r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(vid) + "?output_format=mp3_44100_128", {
         method: "POST",
         headers: { "xi-api-key": ELEVEN_KEY, "content-type": "application/json", accept: "audio/mpeg" },
-        body: JSON.stringify({ text, model_id: "eleven_turbo_v2_5", voice_settings: { stability: 0.45, similarity_boost: 0.75 } }),
+        body: JSON.stringify({ text, model_id: ELEVEN_MODEL, voice_settings: { stability: 0.45, similarity_boost: 0.75 } }),
       });
     } else {
       r = await fetch("https://api.openai.com/v1/audio/speech", {
