@@ -1434,6 +1434,7 @@ canvas.chart{width:100%;height:100%}
       <div id="mod-proposal" class="module">
         <div class="mod-head"><h2>📄 Proposal Builder</h2>
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="pr_govpkg"></div>
         <div class="jsa-card"><h4>Start from an estimate (optional)</h4>
           <select id="pr_est" class="admin-inp" onchange="proposalFromEstimate()"><option value="">— pick a saved estimate —</option></select>
         </div>
@@ -7633,7 +7634,7 @@ document.addEventListener('click',()=>{
 /* Installed PWAs (esp. iOS) stay in memory and don't re-fetch on reopen, so new deploys
    never show. On launch we ask the live copy what build it is; if it's newer, we nuke the
    caches and reload once. The ⟳ UPDATE button does the same on demand. */
-const APP_BUILD = '2026-07-15-gov-contact'
+const APP_BUILD = '2026-07-15-gov-bid-package'
 async function hardRefresh(){
   try{ if(window.notify) notify('Loading newest version…','info'); }catch(e){}
   try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
@@ -7902,12 +7903,71 @@ async function hardRefresh(){
     hearth:'https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton' };
 
   /* ---------- PROPOSAL BUILDER ---------- */
+  // ---- Government Bid Package: identity facts + a checklist that LINKS to the Drive docs ----
+  // Docs stay in Google Drive (secure source of truth); the app tracks status + quick-opens them.
+  const GOV_IDENTITY = {
+    legal:'Machine Gun Spray Foam & Concrete Lifting, LLC',
+    uei:'H63EELL3K7Z4', cage:'(see CAGE record in Drive)',
+    naics:'238310 · 238160 · 238190',
+    sba:'SDVOSB / VOSB (service-disabled veteran-owned)',
+    footprint:'MT · ND · SD · WY',
+    insurance:'$1M/occ · $2M agg · $5M umbrella · CPL (overspray) rider',
+    bonding:'T-Listed surety — up to 100% P&P bonds'
+  };
+  // Seeded with the real Drive links found in the owner's Drive. have: true=ready, false=need.
+  const GOVPKG_SEED = [
+    {id:'cap',   name:'Capability Statement',            have:true,  url:'https://docs.google.com/document/d/1etT13g3TTXb_022SSXYjXQ9NEsiQkkQFaNJhS0G_GJQ/edit', note:'Corporate cap statement (Drive)'},
+    {id:'sam',   name:'SAM.gov registration (UEI + CAGE)',have:true,  url:'https://drive.google.com/drive/folders/15SMPaWTF8ImqUnzgH5h82WnsZdhB7tR1', note:'UEI H63EELL3K7Z4 — keep active/renewed'},
+    {id:'einuei',name:'EIN / UEI record + W-9',           have:true,  url:'https://drive.google.com/file/d/1nzkPThmdefbha5GntZiLtlp9Sopk5sj1/view', note:'EIN/UEI record PDF (Drive)'},
+    {id:'reps',  name:'SAM Reps & Certs worksheet',       have:true,  url:'https://docs.google.com/spreadsheets/d/1zY679XTqMCaQt__vpMqqUAjFZ0S-nfrnwfXntMzwfS4/edit', note:'Section K reps & certs'},
+    {id:'sdvosb',name:'SDVOSB certification (VetCert)',   have:false, url:'https://docs.google.com/document/d/1hATvhPS9Sja1mN5EXHSlqbSvcWJ9rBgHNNT03lb3ccQ/edit', note:'Step-by-step guide in Drive — confirm cert is APPROVED before claiming set-aside'},
+    {id:'dd214', name:'DD-214 (veteran proof)',           have:true,  url:'https://drive.google.com/file/d/1mdGsoYlmoWieIn61f9K7sEoBZfcJzBMK/view', note:'Owner DD-214 (sensitive — keep in Drive)'},
+    {id:'past',  name:'Past Performance / references',    have:false, url:'https://drive.google.com/drive/folders/1t3ZUv3Qyp_PRIfOoJC1MX1KhbMGB9AtU', note:'Add 3+ recent jobs w/ contact + $ value'},
+    {id:'coi',   name:'Certificate of Insurance (COI)',   have:false, url:'', note:'$1M/$2M + $5M umbrella + CPL — get current COI from agent'},
+    {id:'lic',   name:'Contractor / business license',    have:false, url:'', note:'State/registration for the job\'s state'},
+    {id:'bond',  name:'Bonding letter (T-listed surety)', have:false, url:'', note:'Bid/P&P bond capacity letter for public work'},
+    {id:'usdot', name:'USDOT # (fleet compliance)',       have:false, url:'', note:'⚠ NOT registered yet — cap statement overclaims "active USDOT/MC". Register free at fmcsa.dot.gov & fix the statement'},
+    {id:'price', name:'Pricing / rate sheet',             have:false, url:'', note:'Gov margin ~45% — attach the line-item pricing for this bid'}
+  ];
+  function govPkg(){ try{ const v=JSON.parse(localStorage.getItem('klyfton_govpkg')||'null'); return Array.isArray(v)?v:GOVPKG_SEED.slice(); }catch(e){ return GOVPKG_SEED.slice(); } }
+  function govPkgSave(a){ try{ localStorage.setItem('klyfton_govpkg', JSON.stringify(a)); }catch(e){} }
+  window.renderGovPkg = function(){
+    const box=$('pr_govpkg'); if(!box) return;
+    const items=govPkg(); const ready=items.filter(i=>i.have).length;
+    const idRows=Object.entries({UEI:GOV_IDENTITY.uei,CAGE:GOV_IDENTITY.cage,NAICS:GOV_IDENTITY.naics,SBA:GOV_IDENTITY.sba,Region:GOV_IDENTITY.footprint,Insurance:GOV_IDENTITY.insurance,Bonding:GOV_IDENTITY.bonding})
+      .map(([k,v])=>`<div style="display:flex;gap:8px;font-size:12px;padding:2px 0"><b style="min-width:74px;color:var(--t2)">${k}</b><span>${esc(v)}</span></div>`).join('');
+    const rows=items.map(it=>`<div class="log-row" style="align-items:flex-start;gap:8px${it.have?'':';border-color:var(--yw)'}">
+      <label class="chk" style="flex:1;margin:0;align-items:flex-start"><input type="checkbox" ${it.have?'checked':''} onchange="govPkgToggle('${it.id}')">
+        <span><b>${esc(it.name)}</b> ${it.have?'<span style="color:var(--gr)">✓ ready</span>':'<span style="color:var(--yw)">need</span>'}<br>
+        <span style="font-size:11px;color:var(--t2)">${esc(it.note||'')}</span></span></label>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        ${it.url?`<a class="btn btn-ghost" style="font-size:10px;padding:3px 7px" href="${esc(it.url)}" target="_blank">📂 Open</a>`:''}
+        <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="govPkgEdit('${it.id}')">🔗</button>
+        <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="govPkgRemove('${it.id}')">🗑</button>
+      </div></div>`).join('');
+    box.innerHTML=`<div class="jsa-card" style="border-left:3px solid var(--cy)">
+      <h4>🏛️ Government Bid Package <span style="color:var(--t2);font-weight:400;font-size:12px">(${ready}/${items.length} ready)</span></h4>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Your federal identity + the document checklist. Docs live in Google Drive — tap 📂 to open, 🔗 to set/replace a link, checkbox to mark ready for this bid.</div>
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;margin-bottom:10px">${idRows}</div>
+      ${rows}
+      <div class="jsa-actions" style="margin-top:8px">
+        <button class="btn btn-ghost" onclick="govPkgAdd()">+ Add document</button>
+        <button class="btn btn-ghost" onclick="govPkgReset()">↺ Reset to defaults</button>
+      </div></div>`;
+  };
+  window.govPkgToggle=function(id){ const a=govPkg(); const it=a.find(x=>x.id===id); if(it){ it.have=!it.have; govPkgSave(a); renderGovPkg(); } };
+  window.govPkgEdit=function(id){ const a=govPkg(); const it=a.find(x=>x.id===id); if(!it) return; const u=(typeof prompt==='function')?prompt('Google Drive link for "'+it.name+'":', it.url||''):null; if(u===null) return; it.url=u.trim(); govPkgSave(a); renderGovPkg(); };
+  window.govPkgRemove=function(id){ if(typeof confirm==='function' && !confirm('Remove this item from the package?')) return; govPkgSave(govPkg().filter(x=>x.id!==id)); renderGovPkg(); };
+  window.govPkgAdd=function(){ const n=(typeof prompt==='function')?prompt('Document name:'):''; if(!n) return; const u=(typeof prompt==='function')?prompt('Drive link (optional):',''):''; const a=govPkg(); a.push({id:'g'+Date.now(), name:n.trim(), have:false, url:(u||'').trim(), note:''}); govPkgSave(a); renderGovPkg(); };
+  window.govPkgReset=function(){ if(typeof confirm==='function' && !confirm('Reset the package back to the default checklist + Drive links?')) return; govPkgSave(GOVPKG_SEED.slice()); renderGovPkg(); };
+
   window.renderProposal = function(){
     const sel=$('pr_est');
     if(sel){ const ests=appState.estimates||[];
       sel.innerHTML='<option value="">— pick a saved estimate —</option>'+
         ests.slice().reverse().map(e=>`<option value="${e.id}">${esc(e.customer||'job')} · ${money(e.value)} · ${esc(e.date||'')}</option>`).join(''); }
     renderProposalList();
+    if(window.renderGovPkg) renderGovPkg();
   };
   window.proposalFromEstimate = function(){
     const id=($('pr_est')||{}).value; if(!id) return;
