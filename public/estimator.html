@@ -911,13 +911,28 @@ const sell=W.sell;
  let bpi=null;if(svc==='bpi'){const vol=val('bpi-sf')*(val('bpi-ch')||8);const cfm=val('bpi-cfm50'),cfmO=val('bpi-cfm50-out');bpi={tier:str('bpi-type'),sf:val('bpi-sf'),ch:val('bpi-ch')||8,year:str('bpi-year'),fuel:str('bpi-fuel'),appl:val('bpi-appl'),stories:val('bpi-stories'),cfm50:cfm,ach50:vol>0?+(cfm*60/vol).toFixed(1):0,cfm50out:cfmO,ach50out:(vol>0&&cfmO)?+(cfmO*60/vol).toFixed(1):0,coAmb:val('bpi-co-amb'),coApp:val('bpi-co-app'),gas:str('bpi-gas'),spill:str('bpi-spill'),pa:val('bpi-pa'),notes:str('bpi-notes')};}
  let prod=c.product||scopeLabel(svc);if(svc==='roof'){const ex=str('roof-existing');if(ex&&ex.indexOf('None')<0)prod+=' over '+ex;}
  cart.push({id:'s'+Date.now(),service:svc,zone,substrate:str('substrate'),conditions:str('conditions'),existingRoof:str('roof-existing'),product:prod,qty:c.qty||'',sf:c.sf||0,bf:c.bf||0,
-  matCost:c.bpi||c.mat||0,laborCost:W.labor+W.travel,mob:W.mob,extra:W.extra,consCost:W.cons,cost:W.totalCost,gm:Math.round(W.gm*100),sell,bpi});
+  matCost:c.bpi||c.mat||0,laborCost:W.labor+W.travel,mob:W.mob,extra:W.extra,consCost:W.cons,cost:W.totalCost,gm:Math.round(W.gm*100),sell,bpi,snap:snapScope()});
  renderCart();toast(scopeLabel(svc)+' added to bid ✓');clearScopeInputs();}
 function rmScope(i){cart.splice(i,1);renderCart();}
 function renderCart(){const card=$('cart-card');if(!cart.length){card.style.display='none';$('cart-count').textContent='';return;}
  card.style.display='';$('cart-count').textContent='('+cart.length+')';
- $('cart-list').innerHTML=cart.map((s,i)=>`<div class="li"><div>${scopeLabel(s.service)} — <span style="color:var(--mut)">${s.product}</span></div><div style="color:var(--mut)">${s.qty}</div><div style="text-align:right;font-weight:700;white-space:nowrap">${money(s.sell)} <button class="x" style="padding:2px 7px;margin-left:4px" onclick="rmScope(${i})">✕</button></div></div>`).join('');
+ $('cart-list').innerHTML=cart.map((s,i)=>`<div class="li"><div>${scopeLabel(s.service)} — <span style="color:var(--mut)">${s.product}</span><br><a href="javascript:void(0)" onclick="reloadScope(${i})" style="font-size:.62rem;color:var(--goldHi);font-weight:700">↺ re-measure</a></div><div style="color:var(--mut)">${s.qty}</div><div style="text-align:right;white-space:nowrap"><span style="color:var(--mut);font-size:.72rem">$</span><input type="number" step="0.01" value="${(s.sell||0).toFixed(2)}" onchange="scopePrice(${i},this.value)" style="width:82px;text-align:right;font-weight:700;padding:4px 6px" title="Line price — edit to override"><button class="x" style="padding:2px 7px;margin-left:4px" onclick="rmScope(${i})">✕</button></div></div>`).join('');
  $('cart-total').textContent=money(bidTotal());}
+// Inline line-price override on a scope in the cart.
+function scopePrice(i,v){if(!cart[i])return;const n=parseFloat(v);if(isFinite(n)&&n>=0){cart[i].sell=n;cart[i].priceEdited=true;}renderCart();}
+// Snapshot the raw inputs behind the current scope so it can be reloaded to re-measure.
+function snapScope(){const p=$('p-'+svc);const fields={};if(p)p.querySelectorAll('input,select,textarea').forEach(el=>{if(!el.id)return;fields[el.id]=(el.type==='checkbox')?el.checked:el.value;});
+ return{svc,zone,fields,foamSec:svc==='foam'?JSON.parse(JSON.stringify(foamSec)):null,roofSec:svc==='roof'?JSON.parse(JSON.stringify(roofSec)):null,roofPen:svc==='roof'?JSON.parse(JSON.stringify(roofPen)):null};}
+function restoreSnap(snap){if(!snap)return false;const tab=document.querySelector('.svc[data-s="'+snap.svc+'"]');if(tab)tab.click();
+ if(snap.svc==='foam'&&snap.foamSec){foamSec=JSON.parse(JSON.stringify(snap.foamSec));if(snap.zone)zone=snap.zone;try{renderZone();}catch(e){}}
+ if(snap.svc==='roof'){if(snap.roofSec){roofSec=JSON.parse(JSON.stringify(snap.roofSec));try{renderRoof();}catch(e){}}if(snap.roofPen){roofPen=JSON.parse(JSON.stringify(snap.roofPen));try{renderPen();}catch(e){}}}
+ const p=$('p-'+snap.svc);if(p&&snap.fields)Object.keys(snap.fields).forEach(id=>{const el=$(id);if(!el)return;const val=snap.fields[id];if(el.type==='checkbox')el.checked=!!val;else el.value=val;});
+ if(snap.svc==='roof'){try{toggleWash();}catch(e){}try{toggleScarf();}catch(e){}}
+ try{recalc();}catch(e){}return true;}
+// Pull a scope back into the builder (with its measurements when available) and drop it from the cart.
+function reloadScope(i){const s=cart[i];if(!s)return;let ok=false;if(s.snap){try{ok=restoreSnap(s.snap);}catch(e){}}
+ if(!ok){const tab=document.querySelector('.svc[data-s="'+s.service+'"]');if(tab)tab.click();}
+ cart.splice(i,1);renderCart();recalc();toast(ok?'Scope loaded — adjust, then Add Scope again':'Removed — re-enter measurements & Add Scope');}
 function clearScopeInputs(){bidPhotos=[];renderBidPhotos();foamSec={walls:[{}],gable:[],attic:[],base:[],crawl:[],rim:[],other:[]};roofSec=[{shape:'Flat / Low-slope',q:1}];roofPen=[];['conc-sf','coat-sf','poly-sf','rm-sf'].forEach(id=>{const e=$(id);if(e)e.value='';});consQty={};if($('cons-on').checked){$('cons-on').checked=false;$('cons-list').style.display='none';}renderZone();renderRoof();renderPen();recalc();}
 function saveBid(){
  const name=$('cust-name').value.trim();if(!name){toast('Enter customer name',true);return;}
@@ -999,10 +1014,16 @@ function showList(){$('c-list').style.display='';$('c-detail').style.display='no
 function openBid(id){selId=id;const b=bids.find(x=>x.id===id);if(!b)return;$('c-list').style.display='none';$('c-detail').style.display='';$('prop-sec').style.display='none';
  $('d-title').textContent=(b.customer?.name||'Bid').toUpperCase();
  $('d-cust').innerHTML=`<strong>${b.customer?.name||''}</strong><br>${b.customer?.phone||''} ${b.customer?.email?'· '+b.customer.email:''}<br>${b.customer?.address||''}, ${b.state||''}<br>Market: ${b.market} · Date: ${b.jobDate||'TBD'}`;
- const L=(b.scopes||[]).map(s=>[scopeLabel(s.service)+' — '+s.product+(s.substrate?' · '+s.substrate:''),s.qty||'',money(s.sell)]);
- $('d-lines').innerHTML=L.map(l=>`<div class="li"><div>${l[0]}</div><div style="color:var(--mut)">${l[1]}</div><div style="text-align:right;font-weight:700">${l[2]}</div></div>`).join('');
+ $('d-lines').innerHTML=(b.scopes||[]).map((s,i)=>`<div class="li"><div>${scopeLabel(s.service)+' — '+s.product+(s.substrate?' · '+s.substrate:'')}</div><div style="color:var(--mut)">${s.qty||''}</div><div style="text-align:right;white-space:nowrap"><span style="color:var(--mut);font-size:.72rem">$</span><input type="number" step="0.01" value="${(s.sell||0).toFixed(2)}" onchange="dLinePrice(${i},this.value)" style="width:82px;text-align:right;font-weight:700;padding:4px 6px" title="Line price — edit to override"></div></div>`).join('');
  $('d-cost').textContent=money(b.totalCost);$('ov-price').value=(b.sellPrice||0).toFixed(2);$('c-notes').value=b.consoleNotes||'';$('d-status').value=b.status||'draft';if($('d-reason'))$('d-reason').value=b.lossReason||b.winReason||'';if($('bpi-report-sec'))$('bpi-report-sec').style.display=(b.scopes||[]).some(x=>x.bpi)?'':'none';ovUpd();initSig();showSign(b);}
 function ovUpd(){const b=bids.find(x=>x.id===selId);if(!b)return;const p=val('ov-price');const gm=p>0?(p-b.totalCost)/p*100:0;const e=$('ov-gm');e.value=gm.toFixed(1)+'% GM';e.style.color=gm>=(b.gmTarget||50)?'var(--green)':'var(--yellow)';}
+// Edit a saved bid's line-item price directly in the Console. Keeps any manual discount %
+// and the roof/standard minimum charge, then re-renders and persists.
+function dLinePrice(i,v){const b=bids.find(x=>x.id===selId);if(!b||!b.scopes||!b.scopes[i])return;const n=parseFloat(v);if(!(isFinite(n)&&n>=0))return;
+ const oldRatio=(b.bidTotal>0&&b.sellPrice>0&&b.sellPrice<b.bidTotal-0.005)?b.sellPrice/b.bidTotal:1;
+ b.scopes[i].sell=n;const sum=b.scopes.reduce((a,s)=>a+(s.sell||0),0);const min=b.scopes.some(s=>s.service==='roof')?SET.minRoof:SET.min;
+ b.bidTotal=Math.max(min,sum);b.sellPrice=oldRatio<1?+(b.bidTotal*oldRatio).toFixed(2):b.bidTotal;b.discount=oldRatio<1?Math.round(b.bidTotal-b.sellPrice):0;b.updatedAt=new Date().toISOString();
+ lsSet(KB,JSON.stringify(bids));upsertEstimate(b);renderBidList();openBid(selId);toast('Line price updated ✓');}
 let sigCtx=null,sigDrawing=false,sigDirty=false,sigBound=false;
 function initSig(){const cv=$('sigpad');if(!cv)return;let ctx;try{ctx=cv.getContext('2d');}catch(_){return;}if(!ctx)return;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';sigCtx=ctx;if(sigBound)return;sigBound=true;
  const pos=e=>{const r=cv.getBoundingClientRect();const t=(e.touches&&e.touches[0])||e;return{x:(t.clientX-r.left)*cv.width/(r.width||1),y:(t.clientY-r.top)*cv.height/(r.height||1)};};
