@@ -1392,6 +1392,21 @@ if('serviceWorker' in navigator && location.protocol==='https:'){navigator.servi
   else setTimeout(applyPrefill,250);
   // If the host writes a prefill while we're already open, this fires in our window.
   window.addEventListener('storage',function(e){ if(e && e.key==='mgsf_prefill_v1') applyPrefill(); });
+
+  // When embedded inside Klyfton (iframe), this is ONLY the bid builder. Hide the standalone
+  // app's other modes (Jobs / Stock / Clients / Console / Admin) — Klyfton owns those screens,
+  // so showing them here just duplicates and confuses. Bids still save + sync to Klyfton.
+  // Uses a stylesheet !important rule so it wins over the app's role-based inline display.
+  try{
+    if(window.self!==window.top){
+      var st=document.createElement('style');
+      st.textContent='#m-jobs,#m-stock,#m-clients,#m-console,#m-admin{display:none!important}';
+      document.head.appendChild(st);
+      var forceField=function(){ try{ if(window.setMode) setMode('field'); }catch(e){} };
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(forceField,120); });
+      else setTimeout(forceField,120);
+    }
+  }catch(e){}
 })();
 </script>
 </body>
