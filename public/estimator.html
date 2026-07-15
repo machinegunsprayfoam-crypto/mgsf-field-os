@@ -341,6 +341,7 @@ textarea{resize:vertical;min-height:54px}
         </div>
         <div class="hint" id="p-guard" style="margin-top:6px"></div>
         <div style="margin-top:8px"><div style="font-size:.62rem;color:var(--mut);text-transform:uppercase;font-weight:700;margin-bottom:4px">Price at margin — tap to set (profit shown)</div><div id="margin-ladder" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>
+        <div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px"><div style="font-size:.62rem;color:var(--mut);text-transform:uppercase;font-weight:700;margin-bottom:4px">🥊 Beat a competitor</div><div class="row" style="grid-template-columns:1fr auto;gap:6px;align-items:end"><div><label style="font-size:.7rem">Their price $</label><input type="number" id="beat-price" oninput="beatCheck()" placeholder="e.g. 24000"></div><div style="display:flex;align-items:end"><button class="btn btn-s btn-sm" type="button" onclick="beatMatch()">Match it</button></div></div><div id="beat-out" style="margin-top:6px"></div></div>
         <div class="hint" id="p-state"></div>
         <div class="hint" style="margin-top:6px">💳 0% &amp; low-rate financing available — <a href="https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton" target="_blank" rel="noopener" style="color:var(--goldHi);font-weight:700">Hearth pre-qualify (60 sec, no credit hit)</a></div>
         <div class="fld" style="margin-top:10px"><label>Job notes (internal)</label><textarea id="job-notes" placeholder="Access, prep, winter heat, masking, occupied..."></textarea></div>
@@ -904,6 +905,18 @@ function renderMarginLadder(cost){const el=$('margin-ladder');if(!el)return;if(s
  el.innerHTML=html;}
 function setGmOverride(g){gmOverride=g;recalc();}
 function clearGmOverride(){gmOverride=null;recalc();}
+// Beat-a-competitor helper: enter their quote and see the margin/profit you'd be at if you matched it.
+function beatCheck(){const out=$('beat-out');if(!out)return;const W=window._calc;const cost=W&&W.totalCost||0;const price=val('beat-price');
+ if(!(price>0)){out.innerHTML='';return;}
+ if(!(cost>0)){out.innerHTML='<div class="hint">Enter the job measurements first.</div>';return;}
+ const gm=(price-cost)/price,profit=price-cost,tgt=getGM(),floor=SET.minMargin||0.38;
+ let col,verdict;
+ if(price<=cost){col='#c0392b';verdict='⛔ LOSS — below your '+money(Math.round(cost))+' cost. Walk away or re-scope.';}
+ else if(gm<floor){col='#c0392b';verdict='⛔ '+Math.round(gm*100)+'% GM — below your '+Math.round(floor*100)+'% floor. Too thin.';}
+ else if(gm<tgt){col='#b8860b';verdict='⚠ '+Math.round(gm*100)+'% GM — under your '+Math.round(tgt*100)+'% target but workable.';}
+ else{col='#16a34a';verdict='✅ '+Math.round(gm*100)+'% GM — at or above your '+Math.round(tgt*100)+'% target. Match it.';}
+ out.innerHTML='<div style="border:1px solid '+col+';border-radius:8px;padding:8px;font-size:.76rem"><div style="font-weight:800;color:'+col+'">'+verdict+'</div><div style="color:var(--mut);margin-top:3px">At '+money(Math.round(price))+' you keep <b style="color:var(--fg)">'+money(Math.round(profit))+'</b> profit on '+money(Math.round(cost))+' cost.</div></div>';}
+function beatMatch(){const W=window._calc;const cost=W&&W.totalCost||0;const price=val('beat-price');if(!(price>cost)){toast('Enter a price above cost',true);return;}gmOverride=(price-cost)/price;recalc();toast('Priced to match '+money(Math.round(price))+' ✓');}
 function getGM(){if(gmOverride!=null)return gmOverride;const m=str('market')||'commercial';
  if(svc==='foam')return m==='residential'?SET.gmFoamRes:SET.gmFoamCom;
  if(svc==='roof')return SET.gmRoof; if(svc==='concrete'||svc==='soil')return SET.gmConc;
