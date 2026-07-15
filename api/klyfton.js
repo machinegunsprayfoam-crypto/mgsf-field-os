@@ -232,7 +232,28 @@ ROOFING:
 - UPC Ultra-Thane 230 HFO (2.5-3.0#): HFO roofing/tank · ASTM D7425 (the IDI ~$2,875/set roofing foam)
 GEOTECH / LIFTING (set = 2 barrels ~550 lb = ~1,100 lb):
 - NCFI TerraThane 24-003 / 24-010 / 24-011: dual-component slab lifting/leveling
+  (TerraThane 24-010 = 2.8 lb, water-blown, MDI-based — TDS on file)
 - NCFI Strata-Fill 24-023 / 24-039 / 24-070: low-exotherm pour (void fill)
+
+PROFOAM CATALOG — VERIFIED from the printed TDS now filed in Drive (PERSONAL/ProFoam → 01 Safety
+Sheets, 02 Tech Data Sheets). These are the exact Profoam-brand systems MGSF buys; use THESE numbers:
+- ProFoam PF-CC-2000 (closed-cell, 2.0# free-rise): HFC-245fa blown, anti-microbial, 1:1 by volume.
+  R-6.8/in → R-13@2", R-19@3", R-22@3.5", R-51@8". Compressive 27 psi. Closed cell >90%. Class II
+  vapor retarder @1.3". Water-resistive barrier @1" (AC71). NFPA 285 passed. Max pass 2" + 10-min
+  cool between passes; max 8" walls / 12" roof-ceiling. Preheat/hose 130°F. Grades by SURFACE temp:
+  S-series ≥50°F, M-series ≥20°F, W-series ≥10°F. Shelf life 6 mo. (Note: 245fa, not HFO.)
+- ProFoam PROFILL OC-500 PLUS (open-cell, 0.4-0.45# core): WATER-blown, no CFC/HFC/formaldehyde,
+  A2-000 A-side, 1:1. R-4.2/in → R-15@3.5", R-23@5.5", R-42@10", R-58@14". Class A (E84 FS≤25
+  SD≤450). GreenGuard Gold. MIN pass 3". Attic/crawl: 8" walls / 14" ceilings when coated with DC315
+  (7 wet mils = ignition barrier, 14 wet mils = thermal barrier in lieu of gypsum). Preheat/hose
+  130-140°F, ~1200/1000 psi. Surface 50-120°F. Shelf life 6 mo.
+- ProFoam PF-ROOF (roofing, 2.8# core): HFC-245fa, all-PMDI, pairs with EnduraTech coatings.
+  R-6.3/in → R-9.8@1.5", R-13.4@2", R-27.4@4". Compressive 54 psi, tensile 60 psi. Closed cell >93%.
+  1:1, dispense 130°F. Speeds by AIR temp: F(Fast) 50-60°F, R(Regular) 60°F+, S(Slow) 75°F+. Exterior
+  roof membrane only — always topcoat (UV). Shelf life 6 mo.
+- Thermal/ignition barrier coating on file: DC315 intumescent (water-based) — the code-compliant
+  attic/crawlspace cover for open-cell. Roof topcoats on file: EnduraTech acrylic (70-012 R, 70-014 Q)
+  + rust-inhibiting primer 70-035; Armor Coat AC-100; GE Enduris 3500 silicone. SDS + TDS all filed.
 General run windows (starting points — TDS + our PH-2 placard are final): substrate must be ≥5°F above
 dew point; substrate 50-120°F; MAX fluid temp 190°F (never exceed); CC ~110-130°F / 1,000-1,500 psi;
 roofing warmer + higher psi for atomization, thin passes ~0.5-1.5". If a product isn't listed, web-search
