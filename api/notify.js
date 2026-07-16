@@ -11,6 +11,26 @@
 
 const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
 
+// Twilio owner-text alerts (optional). Credentials live ONLY in env, server-side — never in the
+// app or the repo. Dormant unless TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM are set.
+function tenv(re, excl) { for (const k of Object.keys(process.env)) { if (excl && excl.test(k)) continue; if (re.test(k) && process.env[k]) return process.env[k]; } }
+const TW_SID = process.env.TWILIO_ACCOUNT_SID || tenv(/TWILIO.*ACCOUNT.*SID$/i) || tenv(/TWILIO_SID$/i);
+const TW_TOKEN = process.env.TWILIO_AUTH_TOKEN || tenv(/TWILIO.*AUTH.*TOKEN$/i) || tenv(/TWILIO_TOKEN$/i);
+const TW_FROM = process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER || tenv(/TWILIO.*(FROM|PHONE|NUMBER)$/i);
+const TW_TO = process.env.ALERT_SMS_TO || process.env.OWNER_SMS || tenv(/ALERT_SMS_TO$/i);
+const SMS_ON = !!(TW_SID && TW_TOKEN && TW_FROM);
+
+async function sendSms(to, text) {
+  const form = new URLSearchParams({ To: to, From: TW_FROM, Body: String(text).slice(0, 1200) });
+  const r = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + encodeURIComponent(TW_SID) + "/Messages.json", {
+    method: "POST",
+    headers: { Authorization: "Basic " + Buffer.from(TW_SID + ":" + TW_TOKEN).toString("base64"), "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
+  });
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: j.status || r.status, error: r.ok ? null : ((j && j.message) || ("Twilio " + r.status)) };
+}
+
 // Turn any event into a clean, SMS/email-friendly one-liner most Zaps can drop straight in.
 function lineFor(event, body) {
   const lead = body.lead || {};
@@ -35,12 +55,25 @@ function lineFor(event, body) {
 }
 
 module.exports = async (req, res) => {
+  // Status probe (webhook + text alerts).
+  if (req.method === "GET") { res.status(200).json({ configured: !!WEBHOOK, sms: { configured: SMS_ON, hasDefaultTo: !!TW_TO } }); return; }
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-  if (!WEBHOOK) { res.status(200).json({ sent: false, configured: false }); return; }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body || {};
+
+  // Direct text send (Admin "Send test text").
+  if (body.testSms) {
+    if (!SMS_ON) { res.status(200).json({ sms: { configured: false } }); return; }
+    const to = String(body.smsTo || TW_TO || "").trim();
+    const text = String(body.smsText || body.message || "").slice(0, 1200);
+    if (!to) { res.status(400).json({ error: "No recipient — set ALERT_SMS_TO or pass smsTo." }); return; }
+    if (!text) { res.status(400).json({ error: "Empty message." }); return; }
+    try { const s = await sendSms(to, text); res.status(200).json({ sms: { configured: true, sent: s.ok, status: s.status, error: s.error } }); }
+    catch (e) { res.status(200).json({ sms: { configured: true, sent: false, error: String(e.message || e).slice(0, 160) } }); }
+    return;
+  }
 
   const event = body.event || "alert";
   const lead = body.lead || {};
@@ -70,14 +103,17 @@ module.exports = async (req, res) => {
     at: new Date().toISOString(),
   };
 
-  try {
-    const r = await fetch(WEBHOOK, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    res.status(200).json({ sent: r.ok, status: r.status, configured: true });
-  } catch (e) {
-    res.status(200).json({ sent: false, error: String(e).slice(0, 140), configured: true });
+  // Fire the webhook (if configured) and the owner SMS (if a text body was supplied) — independently.
+  let webhookSent = false, webhookStatus = 0, smsSent = false;
+  if (WEBHOOK) {
+    try {
+      const r = await fetch(WEBHOOK, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      webhookSent = r.ok; webhookStatus = r.status;
+    } catch (e) {}
   }
+  const smsText = body.smsText || "";
+  if (SMS_ON && smsText && TW_TO) {
+    try { const s = await sendSms(TW_TO, smsText); smsSent = s.ok; } catch (e) {}
+  }
+  res.status(200).json({ configured: !!WEBHOOK, sent: webhookSent, status: webhookStatus, sms: { configured: SMS_ON, sent: smsSent } });
 };

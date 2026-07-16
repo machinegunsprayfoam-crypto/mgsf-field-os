@@ -29,6 +29,52 @@ const TOMB = "_tomb"; // tombstones: [{c, id}] — so deletes propagate across d
 const MEM = "memory";  // Klyfton's durable facts — plain strings, set-union across devices
 const PREFIX = "mgsf:";
 
+// ---- Supabase mirror (optional) — a structured, queryable copy of the KV data for reporting.
+// Writes use the SERVICE ROLE key server-side (bypasses RLS); the browser never touches the DB.
+// Dormant unless SUPABASE_URL + SUPABASE_SECRET_KEY (or *SERVICE_ROLE_KEY) are set. Run
+// db/schema.sql once first. Triggered by POST {action:"mirror"}; status via GET ?db=1.
+const SB_URL = _kvEnv(/SUPABASE_URL$/i);
+const SB_KEY = _kvEnv(/SUPABASE_SERVICE_ROLE_KEY$/i) || _kvEnv(/SERVICE_ROLE_KEY$/i) || _kvEnv(/SUPABASE_SECRET/i);
+const SB_ON = !!(SB_URL && SB_KEY);
+const _num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+const _day = (v) => { const s = String(v || "").slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; };
+const _txt = (v) => (v == null ? null : String(v));
+function _hash(s) { let h = 5381; s = String(s); for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return "m" + (h >>> 0).toString(36); }
+const SB_MAP = {
+  leads: { table: "leads", row: (r) => ({ id: _txt(r.id), name: _txt(r.name), company: _txt(r.company), phone: _txt(r.phone), email: _txt(r.email), service: _txt(r.service), state: _txt(r.state), value: _num(r.value), source: _txt(r.source), status: _txt(r.status), date: _day(r.date), notes: _txt(r.notes) }) },
+  jobs: { table: "jobs", row: (r) => ({ id: _txt(r.id), customer: _txt(r.customer || r.name), service: _txt(r.service), state: _txt(r.state), status: _txt(r.status), value: _num(r.value), date: _day(r.date), crew: _txt(r.crew) }) },
+  estimates: { table: "estimates", row: (r) => ({ id: _txt(r.id), customer: _txt(r.customer || r.name), service: _txt(r.service), state: _txt(r.state), status: _txt(r.status), total: _num(r.total != null ? r.total : (r.value != null ? r.value : r.sell)), date: _day(r.date || r.at) }) },
+  matlogs: { table: "materials_log", row: (r) => ({ id: _txt(r.id), job: _txt(r.job), product: _txt(r.prod || r.product), unit: _txt(r.unit), est: _num(r.est), act: _num(r.act), cost: _num(r.cost), ts: r.ts || null }) },
+  invoices: { table: "invoices", row: (r) => ({ id: _txt(r.id), customer: _txt(r.customer || r.cust), amount: _num(r.amount != null ? r.amount : r.amt), deposit: _num(r.deposit || r.dep), due: _txt(r.due), date: _day(r.date) }) },
+  crew: { table: "crew", row: (r) => ({ id: _txt(r.id), name: _txt(r.name), role: _txt(r.role), phone: _txt(r.phone), email: _txt(r.email) }), strip: ["pin"] },
+};
+async function sbUpsert(table, rows) {
+  if (!rows.length) return 0;
+  const r = await fetch(SB_URL.replace(/\/$/, "") + "/rest/v1/" + table + "?on_conflict=id", {
+    method: "POST",
+    headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) throw new Error(table + ": " + r.status + " " + (await r.text()).slice(0, 140));
+  return rows.length;
+}
+async function sbMirror() {
+  const counts = {};
+  for (const col of Object.keys(SB_MAP)) {
+    const cfg = SB_MAP[col];
+    const rows = (await kvGet(col)).filter((r) => r && r.id != null).map((r) => {
+      const base = cfg.row(r); const raw = { ...r };
+      (cfg.strip || []).forEach((k) => { delete raw[k]; });   // never sync PINs/secrets
+      return { ...base, raw, synced_at: new Date().toISOString() };
+    });
+    counts[cfg.table] = await sbUpsert(cfg.table, rows);
+  }
+  const mem = await kvGet(MEM);
+  const memRows = mem.filter((s) => typeof s === "string" && s.trim()).map((s) => ({ id: _hash(s), note: s, synced_at: new Date().toISOString() }));
+  counts.memory = await sbUpsert("memory", memRows);
+  return counts;
+}
+
 function authHeaders() {
   return { Authorization: "Bearer " + KV_TOKEN };
 }
@@ -64,6 +110,11 @@ function mergeById(existing, incoming) {
 }
 
 module.exports = async (req, res) => {
+  // Supabase-mirror status probe (independent of KV).
+  if (req.method === "GET" && req.query && String(req.query.db) === "1") {
+    res.status(200).json({ supabase: SB_ON });
+    return;
+  }
   // Dormant when no storage attached — the app keeps working on-device.
   if (!KV_URL || !KV_TOKEN) {
     res.status(200).json({ configured: false });
@@ -88,6 +139,15 @@ module.exports = async (req, res) => {
       let body = req.body;
       if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
       body = body || {};
+
+      // Supabase reporting mirror: copy all KV collections into Postgres for querying.
+      if (body.action === "mirror") {
+        if (!SB_ON) { res.status(200).json({ configured: true, supabase: false, hint: "Set SUPABASE_URL + SUPABASE_SECRET_KEY in Vercel and run db/schema.sql." }); return; }
+        try { const counts = await sbMirror(); res.status(200).json({ configured: true, supabase: true, ok: true, mirrored: counts }); }
+        catch (e) { res.status(200).json({ configured: true, supabase: true, ok: false, error: String(e.message || e).slice(0, 240) }); }
+        return;
+      }
+
       const col = body.collection;
 
       // Memory is a flat set of unique strings — merge/delete without the id-based logic.
