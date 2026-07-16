@@ -1316,6 +1316,22 @@ canvas.chart{width:100%;height:100%}
           <div id="dbOut" style="font-size:12px;color:var(--t2);margin-top:8px"></div>
         </div>
 
+        <div class="admin-section" id="adm-sms">
+          <div class="admin-section-title">📱 TEXT ALERTS (Twilio)</div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.6">
+            Get a text when a bid is saved or a job is won. Add these in <b>Vercel → Environment Variables</b>,
+            then Redeploy: <b>TWILIO_ACCOUNT_SID</b>, <b>TWILIO_AUTH_TOKEN</b>, <b>TWILIO_FROM</b> (your Twilio number,
+            e.g. +14065551234), and <b>ALERT_SMS_TO</b> (your cell). Credentials stay server-side — never in the app,
+            the repo, or a chat. ⚠️ If you ever pasted your token anywhere, rotate it in the Twilio console first.
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input id="sms_to" class="admin-inp" style="max-width:180px" placeholder="Test to +1… (optional)">
+            <button class="btn btn-primary" onclick="smsTest()">Send test text</button>
+            <span id="smsStatus" style="font-size:12px;color:var(--t2)">Checking…</span>
+          </div>
+          <div id="smsOut" style="font-size:12px;color:var(--t2);margin-top:8px"></div>
+        </div>
+
         <div class="admin-section" id="adm-pricing">
           <div class="admin-section-title">💲 LIVE PRICING — ALWAYS USE YOUR NEWEST NUMBERS</div>
           <div style="font-size:11px;color:var(--t2);line-height:1.6">
@@ -9863,6 +9879,31 @@ async function dbMirror(){
 }
 if(document.readyState==='complete') setTimeout(dbStatus, 1200);
 else window.addEventListener('load', ()=> setTimeout(dbStatus, 1200));
+
+/* ===== Text Alerts (Twilio) — creds live in Vercel env only; /api/sms sends server-side ===== */
+async function smsStatus(){
+  const s=document.getElementById('smsStatus'); if(!s) return;
+  try{ const r=await fetch('/api/sms'); const j=await r.json();
+    if(j.configured) s.innerHTML='<span style="color:var(--gr)">Connected ✓'+(j.hasDefaultTo?' — alerts ready':' — add ALERT_SMS_TO for auto-alerts')+'</span>';
+    else s.innerHTML='<span style="color:var(--yw)">Not connected — add the Twilio env vars in Vercel + Redeploy.</span>';
+  }catch(e){ s.textContent='Status unavailable offline.'; }
+}
+async function smsTest(){
+  const out=document.getElementById('smsOut'); if(!out) return;
+  const E=(typeof esc==='function')?esc:(x=>String(x==null?'':x));
+  const to=((document.getElementById('sms_to')||{}).value||'').trim();
+  out.textContent='Sending test text…';
+  try{
+    const r=await fetch('/api/sms',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({to:to||undefined, body:'✅ Klyfton test — your Twilio text alerts are working.'})});
+    const j=await r.json();
+    if(!j.configured){ out.innerHTML='<span style="color:var(--yw)">Not connected — add TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM in Vercel, then Redeploy.</span>'; return; }
+    if(!j.ok){ out.innerHTML='<span style="color:var(--red)">Twilio error: '+E(j.error||'unknown')+'</span>'; return; }
+    out.innerHTML='<span style="color:var(--gr)">✅ Sent — check your phone (status: '+E(j.status||'queued')+')</span>';
+    if(typeof notify==='function') notify('Test text sent','success');
+  }catch(e){ out.innerHTML='<span style="color:var(--red)">Send failed: '+E(String(e.message||e))+'</span>'; }
+}
+if(document.readyState==='complete') setTimeout(smsStatus, 1400);
+else window.addEventListener('load', ()=> setTimeout(smsStatus, 1400));
 </script>
 
 <script>
