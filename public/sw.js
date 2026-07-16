@@ -4,7 +4,7 @@
    with no connection. Live-only features (AI chat, weather, sync) fail gracefully.
    Shell is network-FIRST so new deploys land immediately when there IS signal, with
    a cached fallback when there isn't. Bump CACHE to force old clients to refresh. */
-const CACHE = 'klyfton-v26';
+const CACHE = 'klyfton-v27';
 const CORE = ['./', 'index.html', 'estimator.html', 'lead.html', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {

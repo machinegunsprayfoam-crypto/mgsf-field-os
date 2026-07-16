@@ -8274,7 +8274,32 @@ async function hardRefresh(){
   };
 
   /* ---------- JOB PHOTOS (before / during / after) ---------- */
-  window.renderPhotos = function(){ renderPhotoGrid(); };
+  // Photos live in IndexedDB (hundreds of MB, browser-managed) so they can NEVER blow the
+  // ~5MB localStorage budget shared with bids/jobs/leads. localStorage keeps only a light
+  // index (id/job/phase/ts). Falls back to inline localStorage data if IDB is unavailable.
+  window.PhotoDB = (function(){
+    const OK = (typeof indexedDB!=='undefined');
+    let dbp=null;
+    function open(){ if(dbp) return dbp; dbp=new Promise((res,rej)=>{ try{ const rq=indexedDB.open('klyfton-photos',1);
+      rq.onupgradeneeded=()=>{ try{ rq.result.createObjectStore('p'); }catch(e){} };
+      rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error||new Error('idb')); }catch(e){ rej(e); } }); return dbp; }
+    async function put(id,data){ if(!OK) throw new Error('no-idb'); const d=await open(); return new Promise((res,rej)=>{ const t=d.transaction('p','readwrite'); t.objectStore('p').put(data,String(id)); t.oncomplete=()=>res(true); t.onerror=()=>rej(t.error); }); }
+    async function get(id){ if(!OK) return null; try{ const d=await open(); return await new Promise(res=>{ const t=d.transaction('p','readonly'); const rq=t.objectStore('p').get(String(id)); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); }); }catch(e){ return null; } }
+    async function del(id){ if(!OK) return; try{ const d=await open(); await new Promise(res=>{ const t=d.transaction('p','readwrite'); t.objectStore('p').delete(String(id)); t.oncomplete=()=>res(); t.onerror=()=>res(); }); }catch(e){} }
+    // One-time: pull any legacy base64 out of localStorage into IDB, freeing the budget.
+    async function migrate(){ if(!OK) return;
+      try{ if(localStorage.getItem('klyfton_photos_idb_v1')) return;
+        let arr; try{ arr=JSON.parse(localStorage.getItem('klyfton_photos')||'[]'); }catch(e){ arr=[]; }
+        let changed=false;
+        for(const p of (Array.isArray(arr)?arr:[])){ if(p && p.data){ try{ await put(p.id,p.data); delete p.data; changed=true; }catch(e){} } }
+        if(changed){ try{ localStorage.setItem('klyfton_photos', JSON.stringify(arr)); if(window.appState) appState.photos=arr; }catch(e){} }
+        localStorage.setItem('klyfton_photos_idb_v1','1');
+      }catch(e){}
+    }
+    return {ok:OK, put, get, del, migrate};
+  })();
+
+  window.renderPhotos = function(){ if(window.PhotoDB) PhotoDB.migrate().then(renderPhotoGrid); else renderPhotoGrid(); };
   window.addPhoto = function(input, phase){
     const file=input.files&&input.files[0]; if(!file){ return; }
     const job=(($('ph_job')||{}).value||'').trim(); if(!job){ notify('Enter a job first','alert'); input.value=''; return; }
@@ -8286,9 +8311,12 @@ async function hardRefresh(){
         const cv=document.createElement('canvas'); cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
         cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
         let data; try{ data=cv.toDataURL('image/jpeg',0.55); }catch(err){ notify('Could not process photo','alert'); return; }
-        const arr=LS('photos',[]);
-        arr.unshift({id:'PH'+Date.now(), job, phase, data, ts:nowISO()});
-        if(SS('photos',arr)){ notify(phase+' photo saved','success'); renderPhotoGrid(); }
+        const id='PH'+Date.now();
+        const saveMeta=(withData)=>{ const arr=LS('photos',[]); arr.unshift(withData?{id,job,phase,data,ts:nowISO()}:{id,job,phase,ts:nowISO()});
+          if(SS('photos',arr)){ notify(phase+' photo saved','success'); renderPhotoGrid(); }
+          else if(!withData){ notify('Photo saved to device','success'); renderPhotoGrid(); } };
+        if(window.PhotoDB && PhotoDB.ok){ PhotoDB.put(id,data).then(()=>saveMeta(false)).catch(()=>saveMeta(true)); }
+        else { saveMeta(true); }
       };
       img.onerror=()=>notify('Not a readable image','alert');
       img.src=e.target.result;
@@ -8301,15 +8329,21 @@ async function hardRefresh(){
     const arr=LS('photos',[]).filter(p=>!job || (p.job||'').toLowerCase().includes(job));
     if(!arr.length){ box.innerHTML='<p style="color:var(--t2);font-size:13px">No photos yet'+(job?' for this job':'')+'. Snap Before / During / After above.</p>'; return; }
     const tag={Before:'var(--cy)',During:'var(--or)',After:'var(--gr)'};
-    box.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px">'+
+    box.innerHTML='<div style="font-size:11px;color:var(--t2);margin-top:6px">📦 '+arr.length+' photo'+(arr.length===1?'':'s')+' stored off the localStorage budget (IndexedDB) — big jobs won’t hit the quota.</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px">'+
       arr.map(p=>`<div class="jsa-card" style="padding:8px">
         <div style="font-size:11px;font-weight:700;color:${tag[p.phase]||'var(--tx)'}">${esc(p.phase)} · <span style="color:var(--t2);font-weight:400">${esc(p.job)}</span></div>
-        <img src="${p.data}" style="width:100%;border-radius:6px;margin:6px 0;display:block" onclick="window.open('').document.write('<img src=\\'${p.data}\\' style=width:100%>')">
+        <img data-pid="${esc(p.id)}" ${p.data?`src="${p.data}"`:''} style="width:100%;border-radius:6px;margin:6px 0;display:block;min-height:60px;background:var(--s3,#1a2130)" alt="${esc(p.phase)} photo">
         <div style="font-size:10px;color:var(--t2)">${fmt(p.ts)}</div>
         <button class="btn btn-ghost" style="margin-top:4px;font-size:11px" onclick="delPhoto('${p.id}')">Delete</button>
       </div>`).join('')+'</div>';
+    const zoom=src=>{ const w=window.open(''); if(w){ w.document.write('<img src="'+src+'" style="width:100%">'); } };
+    box.querySelectorAll('img[data-pid]').forEach(im=>{
+      const cur=im.getAttribute('src');
+      if(cur){ im.onclick=()=>zoom(cur); return; }
+      if(window.PhotoDB && PhotoDB.ok){ PhotoDB.get(im.getAttribute('data-pid')).then(d=>{ if(d){ im.src=d; im.onclick=()=>zoom(d); } }); }
+    });
   };
-  window.delPhoto = function(id){ SS('photos', LS('photos',[]).filter(p=>p.id!==id)); renderPhotoGrid(); };
+  window.delPhoto = function(id){ if(window.PhotoDB) PhotoDB.del(id); SS('photos', LS('photos',[]).filter(p=>p.id!==id)); renderPhotoGrid(); };
 
   /* ---------- MATERIAL USED vs ESTIMATED ---------- */
   function matProducts(){
@@ -9196,7 +9230,12 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     for(const m of (d.index||[])){
       if(have.has(String(m.id))) continue;
       try{ const ir=await fetch('/api/photo?id='+encodeURIComponent(m.id)); const ij=await ir.json();
-        if(ij && ij.data){ local.unshift({id:m.id, job:m.job, phase:m.phase, ts:m.ts, data:ij.data}); added=true; } }catch(e){}
+        if(ij && ij.data){
+          // keep the blob in IndexedDB; only metadata goes in the localStorage index
+          if(window.PhotoDB && PhotoDB.ok){ try{ await PhotoDB.put(m.id, ij.data); local.unshift({id:m.id, job:m.job, phase:m.phase, ts:m.ts}); }
+            catch(e){ local.unshift({id:m.id, job:m.job, phase:m.phase, ts:m.ts, data:ij.data}); } }
+          else { local.unshift({id:m.id, job:m.job, phase:m.phase, ts:m.ts, data:ij.data}); }
+          added=true; } }catch(e){}
     }
     if(added){ store(local); if(window.renderPhotoGrid) renderPhotoGrid(); }
     return true;
@@ -9204,14 +9243,17 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
   async function pushNew(){
     if(!on) return; const done=doneSet(); let changed=false;
     for(const p of load()){
-      if(!p || !p.data || done.has(String(p.id))) continue;
+      if(!p || done.has(String(p.id))) continue;
+      const data = p.data || (window.PhotoDB ? await PhotoDB.get(p.id) : null);
+      if(!data) continue;
       try{ await fetch('/api/photo',{method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({id:p.id, data:p.data, meta:{job:p.job,phase:p.phase,ts:p.ts}})});
+        body:JSON.stringify({id:p.id, data, meta:{job:p.job,phase:p.phase,ts:p.ts}})});
         done.add(String(p.id)); changed=true; }catch(e){}
     }
     if(changed) markDone(done);
   }
   async function init(){
+    try{ if(window.PhotoDB) await PhotoDB.migrate(); }catch(e){}
     try{ on = await pull(); }catch(e){ on=false; }
     if(!on) return;
     await pushNew();
@@ -9236,22 +9278,29 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
   const $=id=>document.getElementById(id);
   const pad=n=>(n<10?'0':'')+n;
   function stamp(){ const d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate()); }
-  window.klyftonBackup = function(){
+  window.klyftonBackup = async function(){
     const data={};
     try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && (k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1')) data[k]=localStorage.getItem(k); } }catch(e){}
-    const blob=new Blob([JSON.stringify({app:'Klyfton', backupVersion:1, date:new Date().toISOString(), data},null,2)],{type:'application/json'});
+    // Photo images live in IndexedDB now — fold them back in so the backup is complete.
+    const photoBlobs={};
+    try{ if(window.PhotoDB){ await PhotoDB.migrate();
+      let idx=[]; try{ idx=JSON.parse(data['klyfton_photos']||'[]'); }catch(e){}
+      for(const p of (Array.isArray(idx)?idx:[])){ if(p&&p.id&&!p.data){ const d=await PhotoDB.get(p.id); if(d) photoBlobs[p.id]=d; } } } }catch(e){}
+    const blob=new Blob([JSON.stringify({app:'Klyfton', backupVersion:2, date:new Date().toISOString(), data, photoBlobs},null,2)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='MGSF_Klyfton_backup_'+stamp()+'.json'; a.click(); URL.revokeObjectURL(a.href);
     if($('bk_status')) $('bk_status').textContent='Backup downloaded ✓';
-    notify('Full backup downloaded','success');
+    notify('Full backup downloaded'+(Object.keys(photoBlobs).length?(' ('+Object.keys(photoBlobs).length+' photos)'):''),'success');
   };
   window.klyftonRestore = function(ev){
     const file=ev&&ev.target&&ev.target.files&&ev.target.files[0]; if(!file) return;
     const rd=new FileReader();
-    rd.onload=e=>{
+    rd.onload=async e=>{
       let obj; try{ obj=JSON.parse(e.target.result); }catch(err){ notify('That is not a valid backup file','alert'); return; }
       const data=obj&&obj.data; if(!data||typeof data!=='object'){ notify('Backup file has no data','alert'); return; }
       if(!confirm('Restore this backup? It replaces the data on THIS device with the backup.')) return;
       try{ Object.keys(data).forEach(k=>{ if(k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1') localStorage.setItem(k, data[k]); }); }catch(err){ notify('Restore failed (storage full?)','alert'); return; }
+      // Put photo images back into IndexedDB (v2 backups); v1 backups carry data inline and re-migrate on load.
+      try{ if(obj.photoBlobs && window.PhotoDB){ for(const id of Object.keys(obj.photoBlobs)){ try{ await PhotoDB.put(id, obj.photoBlobs[id]); }catch(e){} } localStorage.setItem('klyfton_photos_idb_v1','1'); } }catch(e){}
       notify('Restored ✓ reloading…','success');
       setTimeout(()=>location.reload(), 800);
     };
@@ -9699,11 +9748,14 @@ async function driveBackup(){
     const j1=await r1.json();
     if(!j1.configured){ out.innerHTML='<span style="color:var(--yw)">Not connected — paste your Apps Script /exec URL above, tap Save URL, then try again.</span>'; return done(); }
     if(!j1.ok){ out.innerHTML='<span style="color:var(--red)">Backup error: '+(j1.error||'unknown')+'</span>'; return done(); }
+    if(window.PhotoDB) { try{ await PhotoDB.migrate(); }catch(e){} }
     const photos=la('photos'); let pOk=0,pFail=0;
     for(const p of photos){
-      if(!p||!p.data) continue;
+      if(!p) continue;
+      const data = p.data || (window.PhotoDB ? await PhotoDB.get(p.id) : null);
+      if(!data) continue;
       const name=((p.job||'job')+'-'+(p.phase||'')+'-'+(p.id||pOk)+'.jpg').replace(/[^\w.\-]+/g,'_');
-      try{ const rp=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'photo',name,dataUrl:p.data,job:p.job||'',phase:p.phase||'',webappUrl:cfg.url,token:cfg.token})});
+      try{ const rp=await fetch('/api/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'photo',name,dataUrl:data,job:p.job||'',phase:p.phase||'',webappUrl:cfg.url,token:cfg.token})});
         const jp=await rp.json(); if(jp.ok) pOk++; else pFail++; }catch(e){ pFail++; }
     }
     const rec=Object.keys(j1.files||{}).map(k=>k+' '+(j1.files[k].rows!=null?j1.files[k].rows:'')).join(' · ');
