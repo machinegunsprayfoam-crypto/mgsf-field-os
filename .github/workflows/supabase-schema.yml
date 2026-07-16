@@ -31,8 +31,10 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::error::SUPABASE_DB_URL secret is not set. Add it in Settings -> Secrets and variables -> Actions."
-            exit 1
+            echo "::notice::SUPABASE_DB_URL secret is not set — skipping schema apply. \
+To activate: Settings → Secrets and variables → Actions → New repository secret → SUPABASE_DB_URL \
+(use the Supabase session-pooler connection string from Dashboard → Connect → port 5432)."
+            exit 0
           fi
           echo "Applying db/schema.sql to Supabase..."
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
@@ -42,4 +44,5 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then exit 0; fi
           psql "$SUPABASE_DB_URL" -c "\dt public.*"
