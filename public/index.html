@@ -569,6 +569,8 @@ canvas.chart{width:100%;height:100%}
         <div class="card" id="opsBriefCard" style="border-left:3px solid var(--or)">
           <div class="card-title">☀️ Today's Brief <button class="btn btn-ghost" style="float:right;font-size:11px;padding:3px 8px" onclick="renderOpsBrief()">↻ Refresh</button></div>
           <div id="opsBrief" style="font-size:13px;line-height:1.7">Loading today's brief…</div>
+          <div style="margin-top:8px"><button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="klyftonDayPlan(true)">🧠 Klyfton's plan for today</button></div>
+          <div id="dayPlan" style="margin-top:8px"></div>
         </div>
         <div class="metrics-row">
           <div class="metric-card" onclick="switchModule('intel')">
@@ -8737,8 +8739,40 @@ async function hardRefresh(){
     chg('mtcJobs', activeJobs.length>0?(activeJobs.length+' in progress'):'none scheduled');
     chg('mtcPipeline', pipe>0?(openLeads.length+' open leads'):'pipeline empty');
   };
+  // AI daily game plan — reasons over live data + federal to-dos. Cached once/day (spend-cap
+  // friendly), Sunday-guarded, tap to regenerate. Uses the same hive call as ROI/Grow.
+  window.klyftonDayPlan = function(force){
+    const box=$('dayPlan'); if(!box) return;
+    function planHTML(t){ return '<div class="jsa-card" style="border-left:3px solid var(--cy);white-space:pre-wrap;font-size:13px;line-height:1.55">🧠 <b>Klyfton’s plan</b>\n'+esc(t)+'<div style="margin-top:8px"><button class="btn btn-ghost" style="font-size:11px" onclick="klyftonDayPlan(true)">↻ Regenerate</button></div></div>'; }
+    const today=new Date().toISOString().slice(0,10), ckey='klyfton_dayplan_'+today;
+    if(!force){ try{ const c=localStorage.getItem(ckey); if(c){ box.innerHTML=planHTML(c); return; } }catch(e){} }
+    if(new Date().getDay()===0){ box.innerHTML='<div style="font-size:12px;color:var(--gr)">☀️ Sunday — no plan. Rest up, protect family time.</div>'; return; }
+    box.innerHTML='<div style="font-size:12px;color:var(--cy)">🧠 Klyfton is building your game plan…</div>';
+    const jobs=(appState.jobs||[]).filter(j=>j&&!['Completed','Cancelled','Paid'].includes(j.status));
+    const leads=(appState.leads||[]).filter(l=>l&&!['Won','Lost'].includes(l.status));
+    const stale=leads.filter(l=>l.date && daysSince(l.date)>=7);
+    const wx=(($('opsWx')||{}).textContent||'').replace(/\s+/g,' ').trim();
+    const prompt='Give Clifton his BLUNT daily game plan for today ('+today+'). Lead with the ONE thing that matters most, '
+      +'then 4-6 short bullets. Use the live business data and what you know about MGSF — active jobs, pipeline, spray weather, '
+      +'AND the open federal bid-readiness items (SAM + MT SOS address fix, USDOT registration, the bonding/insurance call to '
+      +'Stockman, financials + 8832 from ProTax, SBA VetCert). Numbers-first, decision-ready, one screen, no fluff. If a spray '
+      +'job is on deck, factor the weather GO/NO-GO. Never put work on a Sunday.\n\n'
+      +'TODAY: '+jobs.length+' active job(s), '+leads.length+' open lead(s), '+stale.length+' quiet 7+ days. Weather: '+(wx||'n/a');
+    fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:(typeof _brainKey==='function'?_brainKey():'')||undefined})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d.configured===false){ box.innerHTML='<div style="font-size:12px;color:var(--yw)">⚙️ Add your Anthropic key in Admin → API Keys to get AI daily plans.</div>'; return; }
+        if(d&&d.capped){ box.innerHTML='<div style="font-size:12px;color:var(--yw)">🧯 Month’s AI budget reached — plan paused. The brief above still works.</div>'; return; }
+        const text=(d&&d.text)||'';
+        if(!text){ box.innerHTML='<div style="font-size:12px;color:var(--red)">Klyfton didn’t return a plan — tap to retry.</div>'; return; }
+        try{ localStorage.setItem(ckey, text); }catch(e){}
+        box.innerHTML=planHTML(text);
+      })
+      .catch(function(){ box.innerHTML='<div style="font-size:12px;color:var(--red)">Couldn’t reach Klyfton — check your connection.</div>'; });
+  };
   // First paint after boot.
-  const _dashPaint=()=>{ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); };
+  const _dashPaint=()=>{ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.klyftonDayPlan) klyftonDayPlan(false); };
   if(document.readyState==='complete') setTimeout(_dashPaint, 900);
   else window.addEventListener('load', ()=> setTimeout(_dashPaint, 900));
 })();
