@@ -10863,6 +10863,14 @@ Verify current requirements with the local building department (AHJ) before fili
     return ev;
   }
 
+  // Month-grid view state. calYM = viewed {y,m}; null = current month. calSel = tapped ISO day.
+  let calYM=null, calSel=null;
+  function curYM(){ const n=new Date(today()+'T00:00:00'); return {y:n.getFullYear(), m:n.getMonth()}; }
+  function isoDay(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+  window.calNav = function(delta){ const c=calYM||curYM(); let y=c.y,m=c.m+delta; while(m<0){m+=12;y--;} while(m>11){m-=12;y++;} calYM={y,m}; calSel=null; renderCalendar(); };
+  window.calToday = function(){ calYM=null; calSel=today(); renderCalendar(); };
+  window.calPick = function(ds){ calSel=(calSel===ds?null:ds); renderCalendar(); };
+
   window.renderCalendar = function(){
     const body=$('cal_body'); if(!body) return;
     const evs=gatherEvents();
@@ -10887,6 +10895,55 @@ Verify current requirements with the local building department (AHJ) before fili
         </div></div>`;
     };
 
+    // ---- Month grid ----
+    const evByDay={}; evs.forEach(e=>{ (evByDay[e.date]=evByDay[e.date]||[]).push(e); });
+    const view=calYM||curYM();
+    const first=new Date(view.y,view.m,1);
+    const startDow=first.getDay();                       // 0=Sun
+    const dim=new Date(view.y,view.m+1,0).getDate();     // days in month
+    const monTitle=first.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+    const dow=['S','M','T','W','T','F','S'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--t3);padding:2px 0">${d}</div>`).join('');
+    let cells='';
+    for(let i=0;i<startDow;i++) cells+=`<div></div>`;
+    for(let d=1;d<=dim;d++){
+      const ds=isoDay(view.y,view.m,d);
+      const dayEvs=evByDay[ds]||[];
+      const isToday=ds===today();
+      const isSun=new Date(view.y,view.m,d).getDay()===0;
+      const sel=calSel===ds;
+      const activeJob=dayEvs.some(e=>e.kind==='job'&&!e.done);
+      const icons=[...new Set(dayEvs.map(e=>e.icon))].slice(0,3).join('');
+      const more=dayEvs.length>3?`<span style="font-size:8px;color:var(--t3)">+${dayEvs.length-3}</span>`:'';
+      const bg=sel?'var(--cy)':isToday?'rgba(0,212,255,.14)':isSun?'rgba(234,179,8,.05)':'transparent';
+      const numCol=sel?'#0a0e14':isToday?'var(--cy)':activeJob?'var(--or)':'var(--t1,#e6edf3)';
+      cells+=`<div onclick="calPick('${ds}')" title="${dayEvs.length} item${dayEvs.length===1?'':'s'}" style="cursor:pointer;min-height:46px;border:1px solid ${sel?'var(--cy)':'var(--bd,#232a36)'};border-radius:7px;padding:3px 4px;background:${bg};display:flex;flex-direction:column;gap:1px;overflow:hidden">
+        <div style="font-size:11px;font-weight:${isToday||activeJob?'800':'600'};color:${numCol};line-height:1.1">${d}${isSun?'<span style="font-size:8px"> ☀️</span>':''}</div>
+        <div style="font-size:11px;line-height:1.1">${icons}${more}</div>
+      </div>`;
+    }
+    const grid=`<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <button class="btn btn-ghost" style="padding:4px 12px" onclick="calNav(-1)">‹</button>
+        <div style="font-weight:700;font-size:14px">${monTitle}</div>
+        <button class="btn btn-ghost" style="padding:4px 12px" onclick="calNav(1)">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${dow}${cells}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px">
+        <div style="font-size:10px;color:var(--t3)">🔧 job · 🦺 cert · 🛡️ warranty/ins · 📞 lead · ☀️ Sunday (family)</div>
+        <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px" onclick="calToday()">Today</button>
+      </div>
+    </div>`;
+
+    // ---- Selected-day detail ----
+    let selHtml='';
+    if(calSel){
+      const dayEvs=(evByDay[calSel]||[]).slice().sort((a,b)=>(a.kind||'').localeCompare(b.kind||''));
+      const sun=isSunday(calSel);
+      selHtml=`<div class="card" style="margin-bottom:12px;border-color:var(--cy)">
+        <div class="card-title" style="color:var(--cy)">${fmtDate(calSel)}${sun?' · ☀️ Sunday — protect family time':''}</div>
+        ${dayEvs.length?dayEvs.map(row).join(''):'<div style="color:var(--t2);font-size:13px;padding:8px">Nothing scheduled this day. Add a job with this date in JOBS, or ask Klyfton to schedule it.</div>'}</div>`;
+    }
+
     // group upcoming by date bucket labels
     let listHtml='';
     if(overdue.length){ listHtml+=`<div class="card" style="margin-bottom:12px;border-color:var(--or)"><div class="card-title" style="color:var(--or)">⚠ OVERDUE / PAST DUE (${overdue.length})</div>${overdue.map(row).join('')}</div>`; }
@@ -10898,7 +10955,9 @@ Verify current requirements with the local building department (AHJ) before fili
         <div class="job-sum-chip"><div class="job-sum-val" style="color:${overdue.length?'var(--or)':'var(--gr)'}">${overdue.length}</div><div class="job-sum-lbl">OVERDUE</div></div>
         <div class="job-sum-chip"><div class="job-sum-val" style="color:var(--cy)">${nextJob?fmtDate(nextJob.date):'—'}</div><div class="job-sum-lbl">NEXT JOB</div></div>
       </div>
-      <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Pulls from jobs, equipment service, cert expirations, and warranty end dates. Set a job&#39;s date in JOBS to put it here. Klyfton can schedule too (it never books a Sunday).</div>
+      ${grid}
+      ${selHtml}
+      <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Tap any day for its detail. Pulls from jobs, equipment service, cert expirations, warranty &amp; insurance dates, and lead follow-ups. Set a job&#39;s date in JOBS to put it here. Klyfton can schedule too (it never books a Sunday).</div>
       ${listHtml}`;
   };
 
