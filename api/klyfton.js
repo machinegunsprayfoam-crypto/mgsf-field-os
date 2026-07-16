@@ -847,6 +847,18 @@ function makeEmitter(res) {
 }
 
 module.exports = async (req, res) => {
+  // Lightweight status read — current month's AI spend vs the cap. No AI work, no key needed.
+  if (req.method === "GET") {
+    const spent = KV_ON ? await kvSpentThisMonth() : 0;
+    res.status(200).json({
+      tracking: KV_ON,
+      budget: MONTHLY_BUDGET_USD,
+      spent: Math.round(spent * 100) / 100,
+      capped: KV_ON && MONTHLY_BUDGET_USD > 0 && spent >= MONTHLY_BUDGET_USD,
+      month: costKey().split(":").pop(),
+    });
+    return;
+  }
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;

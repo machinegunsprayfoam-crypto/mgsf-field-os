@@ -1296,6 +1296,7 @@ canvas.chart{width:100%;height:100%}
             <b>overrides</b> the one saved here and never touches the browser. Either way, best kept on your own phone or laptop.
           </div>
           <div id="apiKeysList" style="margin-top:12px"></div>
+          <div id="aiSpendMeter" style="margin-top:14px"></div>
         </div>
 
         <div class="admin-section" id="adm-pricing">
@@ -5057,6 +5058,29 @@ function renderApiKeys(){
       </div>
     </div>`;
   }).join('');
+  if(typeof renderAiSpend==='function') renderAiSpend();
+}
+// AI spend meter — shows this month's Klyfton AI spend vs the monthly cap (GET /api/klyfton).
+async function renderAiSpend(){
+  const el=document.getElementById('aiSpendMeter'); if(!el) return;
+  el.innerHTML='<div style="font-size:11px;color:var(--t2)">🧯 Checking this month’s AI spend…</div>';
+  try{
+    const r=await fetch('/api/klyfton'); const d=await r.json();
+    if(!d || !d.tracking){ el.innerHTML='<div style="font-size:11px;color:var(--t2)">🧯 <b>AI spend cap</b> — inactive until the KV store is attached (it is on production). Tracking begins automatically.</div>'; return; }
+    const budget=+d.budget||0, spent=+d.spent||0;
+    const pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
+    const col=budget<=0?'var(--cy)':(d.capped?'#ef4444':pct>=80?'var(--yw)':'var(--gr)');
+    const bar=budget>0?`<div style="height:8px;background:var(--bd,#232a36);border-radius:5px;overflow:hidden;margin:6px 0"><div style="height:100%;width:${pct}%;background:${col};transition:width .3s"></div></div>`:'';
+    el.innerHTML=`<div class="jsa-card" style="padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px">
+        <b style="font-size:13px">🧯 AI spend — ${esc(d.month||'this month')}</b>
+        <span style="font-size:13px;font-weight:800;color:${col}">$${spent.toFixed(2)}${budget>0?' <span style="font-weight:400;color:var(--t2)">/ $'+budget.toFixed(0)+'</span>':' <span style="font-weight:400;color:var(--t2)">(tracking only)</span>'}</span>
+      </div>
+      ${bar}
+      <div style="font-size:11px;color:var(--t2)">${d.capped?'⛔ Cap reached — new AI chat is paused until the 1st. Estimator, JSA & on-device tools still work.':(budget>0?('Klyfton pauses new AI chat at $'+budget.toFixed(0)+'. Rolls over on the 1st. On-device tools never stop.'):'Cap is off — spend is only being tracked. Set KLYFTON_MONTHLY_BUDGET_USD in Vercel to enforce a ceiling.')}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:4px">Change the ceiling in Vercel → mgsf-fieldos → Environment Variables → <code>KLYFTON_MONTHLY_BUDGET_USD</code> (0 = track only).</div>
+    </div>`;
+  }catch(e){ el.innerHTML='<div style="font-size:11px;color:var(--t2)">🧯 AI spend meter unavailable offline.</div>'; }
 }
 function apiKeySave(id){
   const k=API_KEYS.find(x=>x.id===id); if(!k) return;
