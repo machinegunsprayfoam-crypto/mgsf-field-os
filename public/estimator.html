@@ -1287,26 +1287,11 @@ function jobPhotoRm(k){const j=J();if(!j)return;(j.photos||[]).splice(k,1);syncJ
 function renderBidPhotos(){const l=$('bidphoto-list');if(!l)return;l.innerHTML=bidPhotos.map((src,k)=>`<div style="position:relative"><img src="${src}" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"><button class="x" style="position:absolute;top:-7px;right:-7px" onclick="bidPhotoRmF(${k})">✕</button></div>`).join('');}
 function bidPhotoRmF(k){bidPhotos.splice(k,1);renderBidPhotos();}
 function addBidPhoto(input){const files=[...(input.files||[])];files.forEach(f=>{const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const max=1100;let w=img.width,h=img.height;if(w>max||h>max){const sc=max/Math.max(w,h);w=Math.round(w*sc);h=Math.round(h*sc);}let url;try{const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);url=cv.toDataURL('image/jpeg',0.7);}catch(_){url=e.target.result;}bidPhotos.push(url);renderBidPhotos();};img.onerror=()=>{bidPhotos.push(e.target.result);renderBidPhotos();};img.src=e.target.result;};r.readAsDataURL(f);});input.value='';}
-async function openCompanyCam(btn){
-  // Pop a tab synchronously so it isn't blocked by the popup blocker, then redirect it once we have the project.
-  const tab=window.open('about:blank','_blank');
-  const orig=btn?btn.textContent:'';
-  if(btn){btn.disabled=true;btn.textContent='📸 Creating…';}
-  try{
-    const name=(document.getElementById('cust-name')?.value||'').trim();
-    const addr=(document.getElementById('cust-addr')?.value||'').trim();
-    const res=await fetch('/api/companycam',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,address:addr})});
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok){throw new Error(data&&data.error?data.error:('Error '+res.status));}
-    const url=data.url||'https://app.companycam.com/projects';
-    if(tab){tab.location.href=url;}else{window.open(url,'_blank','noopener');}
-  }catch(err){
-    if(tab){try{tab.close();}catch(_){}}
-    alert('Could not open CompanyCam: '+(err&&err.message?err.message:err)+'\nOpening your projects instead.');
-    window.open('https://app.companycam.com/projects','_blank','noopener');
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent=orig||'📸 CompanyCam';}
-  }
+function openCompanyCam(btn){
+  // No server-side CompanyCam integration is wired (there is no /api/companycam function),
+  // so open the owner's CompanyCam projects directly — no broken fetch, no 404 error popup.
+  // If CompanyCam's API is added later, restore the project-create call here.
+  window.open('https://app.companycam.com/projects','_blank','noopener');
 }
 function addJobPhoto(input){const f=input.files&&input.files[0];if(!f)return;const j=J();if(!j)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const max=1100;let w=img.width,h=img.height;if(w>max||h>max){const sc=max/Math.max(w,h);w=Math.round(w*sc);h=Math.round(h*sc);}let url;try{const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);url=cv.toDataURL('image/jpeg',0.7);}catch(_){url=e.target.result;}j.photos=j.photos||[];j.photos.push(url);syncJobs();openJob(curJob);toast('Photo added');};img.onerror=()=>{j.photos=j.photos||[];j.photos.push(e.target.result);syncJobs();openJob(curJob);};img.src=e.target.result;};r.readAsDataURL(f);input.value='';}
 function clockIn(){const j=J();if(!j)return;const me=curUser();j.timeLogs=j.timeLogs||[];if(j.timeLogs.some(l=>l.uid===me.id&&!l.end)){toast('Already clocked in',true);return;}j.timeLogs.push({id:'t'+Date.now(),uid:me.id,name:me.name,role:me.role,start:Date.now(),end:null});syncJobs();openJob(curJob);toast('Clocked in');}
