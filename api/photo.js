@@ -4,8 +4,18 @@
 // DORMANT until KV is attached: with no KV env vars it returns { configured:false } and the
 // app keeps photos on-device only. Images are compressed JPEGs (~100-300KB) from the client.
 
-const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+// Accept whichever names the storage integration injects — classic Vercel KV, Upstash
+// direct, or a prefixed marketplace store (e.g. Storage_KV_REST_API_URL). Scan env by
+// suffix, case-insensitively, exactly like sync.js so photos ride the SAME attached KV.
+function _kvEnv(suffixRe, excludeRe) {
+  for (const k of Object.keys(process.env)) {
+    if (excludeRe && excludeRe.test(k)) continue;
+    if (suffixRe.test(k) && process.env[k]) return process.env[k];
+  }
+  return undefined;
+}
+const KV_URL = _kvEnv(/KV_REST_API_URL$/i) || _kvEnv(/REST_API_URL$/i) || _kvEnv(/UPSTASH_REDIS_REST_URL$/i);
+const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i, /READ_ONLY/i) || _kvEnv(/REST_API_TOKEN$/i, /READ_ONLY/i);
 
 const PFX = "mgsf:ph:";     // one key per image
 const IDX = "mgsf:ph_index"; // array of {id, job, phase, ts}
