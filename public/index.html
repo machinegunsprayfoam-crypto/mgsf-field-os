@@ -5033,11 +5033,32 @@ function adminSave(){
 }
 // ── NOTIFICATIONS — fire an alerts webhook (text/email) on key events ──
 window.klyftonNotify = function(event, extra){
+  extra=extra||{};
   try{
     fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify(Object.assign({event:event||'alert'}, extra||{}))}).catch(()=>{});
+      body:JSON.stringify(Object.assign({event:event||'alert'}, extra))}).catch(()=>{});
+  }catch(e){}
+  // Also fire an owner TEXT for alert-worthy events (Twilio; server stays dormant unless configured).
+  try{
+    const sms=klyftonSmsBody(event, extra);
+    if(sms) fetch('/api/sms',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({body:sms})}).catch(()=>{});
   }catch(e){}
 };
+// Formats an owner text per event. Returns null for events that shouldn't text.
+function klyftonSmsBody(event, x){
+  x=x||{};
+  const m=v=>{ v=Number(v)||0; return v>=1000?('$'+(Math.round(v/100)/10)+'K'):('$'+Math.round(v)); };
+  const L=x.lead||{}, J=x.job||{}, B=x.bid||{};
+  switch(event){
+    case 'new_lead':      return '📞 New lead: '+(L.name||'?')+(L.phone?(' '+L.phone):'')+(L.service?(' · '+L.service):'')+(L.value?(' · '+m(L.value)):'')+(L.source?(' ('+L.source+')'):'');
+    case 'lead_won':      return '🏆 WON: '+(L.name||J.customer||'?')+(L.value?(' · '+m(L.value)):'');
+    case 'new_bid':       return '📝 New bid: '+(B.customer||'?')+(B.total?(' · '+m(B.total)):'')+(B.service?(' · '+B.service):'');
+    case 'job_scheduled': return '🔧 Job scheduled: '+(J.customer||J.name||'?')+(J.date?(' · '+J.date):'')+(J.service?(' · '+J.service):'');
+    case 'job_completed': return '✅ Job done: '+(J.customer||J.name||'?')+' — start closeout/invoice';
+    case 'reorder':       return x.message||null;
+    default: return null;
+  }
+}
 window.klyftonTestAlert = function(){
   const s=document.getElementById('notifyStatus'); if(s){ s.textContent='Sending…'; s.style.color='var(--t2)'; }
   fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
@@ -5732,8 +5753,10 @@ function updateLeadStatus(id){
   if(!l) return;
   const el = document.getElementById('ud_status');
   if(!el) return;
+  const _prevStatus = l.status;
   l.status = el.value;
   save('leads');
+  if(_prevStatus!=='Won' && l.status==='Won' && window.klyftonNotify){ klyftonNotify('lead_won',{lead:{name:l.name, value:l.value}}); }  // owner text
   if(l.estSource){ estWriteback('bid', l.estRef, {status:_bidStageToEst(l.status)}); }  // two-way sync
   closeModal();
   renderPipeline();
@@ -7251,10 +7274,25 @@ function importEstimatorData(opts){
     return changed;
   }catch(e){ return false; }
 }
+// Track which estimator bids we've already seen so a genuinely NEW bid fires one owner text.
+let _knownBidIds = null;
+function _seedKnownBids(){ try{ _knownBidIds = new Set((estimatorBids()||[]).map(function(b){return String(b.id);})); }catch(e){ _knownBidIds = new Set(); } }
+if(document.readyState==='complete') setTimeout(_seedKnownBids, 1500);
+else window.addEventListener('load', function(){ setTimeout(_seedKnownBids, 1500); });
 // The iframe writes localStorage on save → this parent window receives a 'storage' event.
 try{ window.addEventListener('storage', function(e){
   if(e && e.key && (e.key===EST_KEYS.bids||e.key===EST_KEYS.jobs||e.key===EST_KEYS.interop)){
     importEstimatorData({toast:true});
+    if(e.key===EST_KEYS.bids){
+      try{
+        if(_knownBidIds===null) _seedKnownBids();
+        (estimatorBids()||[]).forEach(function(b){ var id=String(b.id);
+          if(!_knownBidIds.has(id)){ _knownBidIds.add(id);
+            if(window.klyftonNotify) klyftonNotify('new_bid',{bid:{customer:(b.customer||b.name||''), total:(b.total!=null?b.total:b.value), service:b.service}});
+          }
+        });
+      }catch(_){}
+    }
   }
 }); }catch(e){}
 
