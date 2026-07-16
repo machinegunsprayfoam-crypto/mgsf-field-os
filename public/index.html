@@ -1497,6 +1497,7 @@ canvas.chart{width:100%;height:100%}
             <button class="btn btn-ghost" onclick="exportMaterials()">⬇ CSV</button>
           </div>
         </div>
+        <div id="mt_insights"></div>
         <div id="mt_list"></div>
       </div>
 
@@ -8320,7 +8321,7 @@ async function hardRefresh(){
   }
   window.renderMaterials = function(){
     const sel=$('mt_prod'); if(sel) sel.innerHTML=matProducts().map(p=>`<option value="${p.k}">${esc(p.n)} ($${p.cost}/${p.unit})</option>`).join('');
-    renderMatList();
+    renderMatInsights(); renderMatList();
   };
   window.addMaterialLog = function(){
     const job=(($('mt_job')||{}).value||'').trim();
@@ -8331,7 +8332,7 @@ async function hardRefresh(){
     const prod=matProducts().find(p=>p.k===k)||{n:k,unit:'unit',cost:0};
     const rec={id:'MT'+Date.now(), job, prod:prod.n, unit:prod.unit, cost:prod.cost, est, act, ts:nowISO()};
     const arr=LS('matlogs',[]); arr.unshift(rec);
-    if(SS('matlogs',arr)){ notify('Material logged','success'); ['mt_est','mt_act'].forEach(i=>{if($(i))$(i).value='';}); renderMatList(); }
+    if(SS('matlogs',arr)){ notify('Material logged','success'); ['mt_est','mt_act'].forEach(i=>{if($(i))$(i).value='';}); renderMatInsights(); renderMatList(); }
   };
   window.renderMatList = function(){
     const box=$('mt_list'); if(!box) return; const arr=LS('matlogs',[]);
@@ -8347,7 +8348,63 @@ async function hardRefresh(){
         <button class="btn btn-ghost" style="margin-left:6px;font-size:11px" onclick="delMat('${m.id}')">✕</button></span></div>`;
     }).join('');
   };
-  window.delMat = function(id){ SS('matlogs', LS('matlogs',[]).filter(m=>m.id!==id)); renderMatList(); };
+  window.delMat = function(id){ SS('matlogs', LS('matlogs',[]).filter(m=>m.id!==id)); renderMatInsights(); renderMatList(); };
+
+  /* ---- Estimate-accuracy feedback loop: real usage → tune the estimator's waste factors ---- */
+  // Each logged unit maps to the waste factor that governs it in the estimator (mg-fieldos-v1-set):
+  //   set → foam BF waste (SET.waste) · gal → coating waste (SET.wasteCoat) · lb → concrete/geo waste (SET.wasteC)
+  const MAT_WASTE_DEF = { waste:0.10, wasteCoat:0.20, wasteC:0.15 };
+  const MAT_BUCKETS = [
+    { unit:'set', key:'waste',     label:'Foam (sets)',        icon:'🛢️' },
+    { unit:'gal', key:'wasteCoat', label:'Coating (gallons)',  icon:'🎨' },
+    { unit:'lb',  key:'wasteC',    label:'Concrete / geo (lb)',icon:'🧱' },
+  ];
+  function estSet(){ try{ return Object.assign({}, MAT_WASTE_DEF, JSON.parse(localStorage.getItem('mg-fieldos-v1-set')||'{}')); }catch(e){ return Object.assign({}, MAT_WASTE_DEF); } }
+  window.matApplyWaste = function(key, newVal){
+    let s; try{ s=JSON.parse(localStorage.getItem('mg-fieldos-v1-set')||'{}'); }catch(e){ s={}; }
+    s[key]=newVal; try{ localStorage.setItem('mg-fieldos-v1-set', JSON.stringify(s)); }catch(e){ notify('Storage full','alert'); return; }
+    notify('Estimator waste factor updated → '+Math.round(newVal*100)+'%','success'); renderMatInsights();
+  };
+  window.renderMatInsights = function(){
+    const box=$('mt_insights'); if(!box) return;
+    const arr=LS('matlogs',[]); const S=estSet();
+    if(!arr.length){ box.innerHTML=''; return; }
+    const cards=MAT_BUCKETS.map(b=>{
+      const rows=arr.filter(m=>m.unit===b.unit && m.est>0 && isFinite(m.act));
+      const cur=(S[b.key]!=null?S[b.key]:MAT_WASTE_DEF[b.key]);
+      if(rows.length<3){
+        return `<div style="flex:1;min-width:200px;border:1px solid var(--bd,#2a3140);border-radius:10px;padding:10px 12px">
+          <div style="font-weight:700">${b.icon} ${b.label}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:4px">${rows.length}/3 logged — need ${3-rows.length} more to unlock a recommendation.</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:4px">Current waste factor: ${Math.round(cur*100)}%</div></div>`;
+      }
+      const avg=rows.reduce((a,m)=>a+((m.act-m.est)/m.est),0)/rows.length;
+      const dollars=rows.reduce((a,m)=>a+((m.act-m.est)*(m.cost||0)),0);
+      const over=avg>0;
+      const sugg=Math.min(0.40, Math.max(0.05, Math.round(((1+cur)*(1+avg)-1)*100)/100));
+      const diff=Math.abs(Math.round(sugg*100)-Math.round(cur*100));
+      const pctTxt=(avg>=0?'+':'')+Math.round(avg*100)+'%';
+      const col=over?'var(--or,#e0803a)':'var(--gr,#16a34a)';
+      let rec='';
+      if(diff>=1){
+        const effect=over
+          ? `Applying raises future ${b.label.toLowerCase()} bids ~${Math.abs(Math.round(sugg*100)-Math.round(cur*100))} pts so overages stop eating your margin.`
+          : `You're consistently over-ordering — a lower factor sharpens bids and frees up cash. Klyfton's #1 rule: don't lose bids on padding.`;
+        rec=`<div style="font-size:12px;margin-top:6px">Waste factor <b>${Math.round(cur*100)}%</b> → <b style="color:${col}">${Math.round(sugg*100)}%</b></div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px">${effect}</div>
+          <button class="btn btn-primary" style="font-size:12px;margin-top:8px;padding:6px 12px" onclick="matApplyWaste('${b.key}',${sugg})">Apply to estimator</button>`;
+      } else {
+        rec=`<div style="font-size:12px;color:var(--gr,#16a34a);margin-top:6px">✅ Dialed in — estimates match reality. No change needed.</div>`;
+      }
+      return `<div style="flex:1;min-width:200px;border:1px solid var(--bd,#2a3140);border-radius:10px;padding:10px 12px">
+        <div style="font-weight:700">${b.icon} ${b.label}</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:4px">${rows.length} jobs · running <b style="color:${col}">${pctTxt}</b> ${over?'over':'under'} estimate · ${dollars>=0?'+':'−'}$${Math.abs(Math.round(dollars))} net</div>
+        ${rec}</div>`;
+    }).join('');
+    box.innerHTML=`<div class="jsa-card" style="margin:12px 0"><h4 style="margin:0 0 4px">📊 Estimate accuracy — learns from your real usage</h4>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Klyfton compares what you actually used vs. what the estimator quoted, then tunes the waste factors so the next bid lands on reality. Takes effect next time you open the Estimator.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${cards}</div></div>`;
+  };
   window.exportMaterials = function(){
     const arr=LS('matlogs',[]); if(!arr.length){ notify('Nothing to export','alert'); return; }
     const rows=[['Job','Product','Unit','Estimated','Used','Variance','Variance$','When']].concat(
