@@ -9148,18 +9148,19 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
     const oshaDone=osha.filter(Boolean).length, dotDone=dot.filter(Boolean).length;
     box.innerHTML=`
       <div class="jsa-card" style="border-left:3px solid var(--cy)"><h4>🧮 DOT check — do I need a USDOT # / CDL?</h4>
-        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Enter the <b>GVWR (the rating stamped on the sticker)</b> — truck door jamb + trailer plate. It's the <b>combined rating</b> that counts, <b>not the loaded weight</b>: an empty trailer rated 12,000 still counts as 12,000 (rule uses the greater of the rating or actual weight). Taking the foam out doesn't lower it.</div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Enter the <b>GVWR (the rating stamped on the sticker)</b> — truck door jamb + trailer plate. It's the <b>combined rating</b> that counts, <b>not the loaded weight</b>: an empty trailer rated 14,000 still counts as 14,000 (rule uses the greater of the rating or actual weight). Taking the foam out doesn't lower it.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div style="flex:1;min-width:120px"><label class="fl">Truck GVWR (lb)</label><input id="dot_truck" type="number" class="admin-inp" value="${LS('dot_truck',14000)}" oninput="dotCheck()"></div>
-          <div style="flex:1;min-width:120px"><label class="fl">Trailer GVWR (lb)</label><input id="dot_trailer" type="number" class="admin-inp" value="${LS('dot_trailer',12000)}" oninput="dotCheck()"></div>
+          <div style="flex:1;min-width:120px"><label class="fl">Trailer GVWR (lb)</label><input id="dot_trailer" type="number" class="admin-inp" value="${LS('dot_trailer',14000)}" oninput="dotCheck()"></div>
         </div>
         <label class="chk" style="margin-top:6px"><input type="checkbox" id="dot_interstate" ${LS('dot_interstate',true)?'checked':''} onchange="dotCheck()"><span>Crosses state lines (MT ↔ ND / SD / WY)</span></label>
         <div id="dot_result" style="margin-top:10px"></div></div>
 
       <div class="jsa-card" style="border-left:3px solid var(--or)"><h4>🚛 Your DOT profile</h4>
-        <div style="font-size:13px;line-height:1.6">Truck: <b>2025 GMC Sierra 3500HD Denali Ultimate</b> · Rig: <b>12,000-lb trailer</b> (towed).<br>
+        <div style="font-size:13px;line-height:1.6">Truck: <b>2025 GMC Sierra 3500HD Denali Ultimate</b> · Rig: <b>2025 Spartan Cargo SP8X18TA, 14,000-lb declared GVW</b> (VIN …048173, titled to <b>Behner LLC</b>, financed Stearns Bank), towed.<br>
         Combination GCWR ≥26,001 lb + trailer over 10,000 lb → <b style="color:var(--yw)">Class A CDL required</b> to tow the rig across state lines, plus a DOT drug-&-alcohol testing program (Part 382).<br>
-        <span style="color:var(--t2);font-size:11px">Truck driven solo (under 26,001) doesn't need a CDL — but still needs a DOT medical card, USDOT #, and the safety paperwork. Verify all of this with Montana MVD / FMCSA.</span></div></div>
+        <span style="color:var(--yw);font-size:12px">⚠ Clifton holds a <b>Class D</b> license — <b>Daniel Ford (Class A CDL) must tow the loaded rig interstate.</b> Clifton can drive the truck solo (under 26,001) but not pull the rig across state lines.</span><br>
+        <span style="color:var(--t2);font-size:11px">Truck driven solo (under 26,001) doesn't need a CDL — but still needs a DOT medical card, USDOT #, and the safety paperwork. Rig is titled to Behner LLC and used by MGSF — note the lease/use on the MCS-150. Verify all with Montana MVD / FMCSA.</span></div></div>
 
       <div class="jsa-card"><h4>🚑 Severe-injury reporting — post this</h4>
         <div style="font-size:13px;line-height:1.6">Call OSHA <b>1-800-321-6742</b>:<br>
