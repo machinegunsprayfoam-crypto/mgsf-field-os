@@ -563,7 +563,7 @@ textarea{resize:vertical;min-height:54px}
         <div class="btnrow" style="margin-top:8px"><button class="btn btn-s btn-sm" onclick="addMember()">+ Add member</button><button class="btn btn-g btn-sm" onclick="saveTeam()">Save team</button></div>
         <div class="hint" style="margin-top:6px">Roles: <b>owner</b>=all incl Admin · <b>office</b>/<b>estimator</b>=Field+Console · <b>field</b>=Field only (build &amp; save). PIN = 4 digits.</div>
       </div>
-      <div class="card"><div class="ct">Company</div><div class="hint" style="line-height:1.8">Machine Gun Spray Foam &amp; Concrete Lifting LLC · 2402 N Anderson Ave, Glendive, MT 59330 · (406) 939-8301 · EIN 33-3866517 · UEI H63EELL3K7Z4 · VOSB</div></div>
+      <div class="card"><div class="ct">Company</div><div class="hint" style="line-height:1.8">Machine Gun Spray Foam &amp; Concrete Lifting LLC · 2402 N Anderson Ave, Glendive, MT 59330 · (406) 939-8301 · EIN 33-3866517 · UEI H63EELL3K7Z4 · SDVOSB</div></div>
       <div class="card">
         <div class="ct">↗ Exports / Bridges</div>
         <div class="hint">Hand your data to other tools (works offline).</div>
@@ -1413,7 +1413,7 @@ function propHTML(b){
  <div class="ps"><h3>Terms</h3><div style="font-size:.78rem;color:#666;line-height:1.7">• Payment per the schedule above.<br>• Valid 30 days. Material pricing subject to change thereafter.<br>• Manufacturer-backed materials. 1-year workmanship warranty.<br>• Excludes hidden/structural damage, electrical/plumbing/HVAC, abatement, and permits unless stated.</div></div>
  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:11px;margin-top:14px;font-size:.82rem">💳 <b>Financing Available — 0% options through Hearth.</b> <a href="https://app.gethearth.com/flyers/machine-gun-spray-foam-and-concrete-lifting/clifton" style="color:#16a34a">Apply in minutes</a></div>
  ${b.signature?`<div class="ps" style="margin-top:16px"><h3>Accepted</h3><div style="font-size:.82rem">Accepted by <b>${_esc(b.signature.name)}</b> on ${b.signature.date}</div><img src="${b.signature.img}" style="height:60px;margin-top:6px"></div>`:`<div class="ps" style="margin-top:22px"><h3>Acceptance</h3><div style="display:flex;gap:30px;margin-top:26px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Customer signature</div><div style="width:150px;border-top:1px solid #333;padding-top:4px;font-size:.72rem;color:#666">Date</div></div></div>`}
- <div style="margin-top:18px;font-size:.72rem;color:#999;text-align:center">Machine Gun Spray Foam &amp; Concrete Lifting, LLC · EIN 33-3866517 · UEI H63EELL3K7Z4 · SAM Active · VOSB</div>`;
+ <div style="margin-top:18px;font-size:.72rem;color:#999;text-align:center">Machine Gun Spray Foam &amp; Concrete Lifting, LLC · EIN 33-3866517 · UEI H63EELL3K7Z4 · SAM Active · SDVOSB</div>`;
 }
 function renderProposal(b){$('prop-prev').innerHTML='<style>.ps{margin-bottom:14px}.ps h3{font-size:.78rem;color:#C8102E;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}</style>'+propHTML(b);}
 function renderProposalIfOpen(b){if($('prop-sec')&&$('prop-sec').style.display!=='none')renderProposal(b);}
@@ -1505,7 +1505,7 @@ function bpiReportHTML(b){
  <h3 style="font-size:.78rem;color:#C8102E;text-transform:uppercase;margin-bottom:6px">Findings &amp; Recommendations</h3>
  <div style="font-size:.84rem;color:#374151;line-height:1.7;white-space:pre-wrap;margin-bottom:16px">${a.notes||'See attached scope of work and proposal for recommended air-sealing and insulation measures.'}</div>
  <div style="font-size:.7rem;color:#888;border-top:1px solid #ddd;padding-top:10px">Conducted per ANSI/BPI-1100 &amp; BPI-1200 standards · IECC 2021 Climate Zone 6 air-tightness target ≤3 ACH50 · ASHRAE 62.2 ventilation. Documents conditions at time of testing.</div>
- <div style="margin-top:14px;font-size:.72rem;color:#999;text-align:center">Machine Gun Spray Foam &amp; Concrete Lifting, LLC · EIN 33-3866517 · UEI H63EELL3K7Z4 · BPI Certified · VOSB</div>`;
+ <div style="margin-top:14px;font-size:.72rem;color:#999;text-align:center">Machine Gun Spray Foam &amp; Concrete Lifting, LLC · EIN 33-3866517 · UEI H63EELL3K7Z4 · BPI Certified · SDVOSB</div>`;
 }
 function printBpiReport(){const b=bids.find(x=>x.id===selId);if(!b)return;const w=window.open('','_blank');if(!w){toast('Allow pop-ups',true);return;}
  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BPI Audit Report — ${b.customer?.name||''}</title><style>body{font-family:-apple-system,Segoe UI,sans-serif;padding:36px;max-width:720px;margin:0 auto;color:#111}@media print{body{padding:18px}}</style></head><body>${bpiReportHTML(b)}</body></html>`);

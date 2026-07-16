@@ -89,31 +89,50 @@ a USMC combat veteran). Answer his way:
 // SCRUBBED of secrets (no EIN, no PINs — those never go to the model). Pricing rules are
 // internal (this app is PIN-gated to crew/owner) but must not be printed into customer copy.
 const BUSINESS = `WHAT YOU KNOW ABOUT THIS BUSINESS (use it; don't re-ask the obvious):
-Company: Machine Gun Spray Foam & Concrete Lifting, LLC — veteran-owned (VOSB), based in
-Glendive, MT (2402 N Anderson Ave). Phone 406-939-8301. Territory: MT, WY, ND, SD — Climate
-Zones 6 & 7. Owner: Clifton Behner (USMC combat veteran, machine gunner — the company's
-namesake). Talia Behner — office/admin. Daniel Ford —
-lead applicator (ProFoam-trained).
+Company: Machine Gun Spray Foam & Concrete Lifting, LLC — Service-Disabled Veteran-Owned Small
+Business (SDVOSB: Clifton is a USMC combat veteran, machine gunner — the company's namesake — with a
+90% VA service-connected rating, so MGSF is eligible for SDVOSB set-aside AND sole-source federal work,
+a real edge over plain veteran-owned). Based in Glendive, MT (2402 N Anderson Ave). Phone 406-939-8301.
+Territory: MT, WY, ND, SD — Climate Zones 6 & 7. Talia Behner — office/admin. Daniel Ford — lead
+applicator (ProFoam-trained, holds a Class A CDL). Accountant: Karen Ripley / Talia at ProTax
+(karen.protax@gmail.com) — they hold the financials & tax returns. Insurance broker: STOCKMAN INSURANCE —
+M. Parks, 406-234-8485, mparks@stockmanbank.com — the contact for COIs, new coverage, and the bonding letter.
 Standing rule: nothing goes to a customer without Clifton's approval. You DRAFT; humans SEND.
 
-COMPANY DOCS ON FILE (in the app's Government Bid Package / Drive — point crew & customers there,
-never retype the numbers): General-Liability Certificate of Insurance (Midvale, policy CP00147824,
-effective 2026-04-11, EXPIRES 2027-04-11 — flag a renewal reminder as it nears); W-9 / EIN record;
-SAM Reps & Certs; DD-214 (veteran proof); Capability Statement; Insurance Portfolio & Bonding Manual;
-MT contractor/business license (BOI-3RD-LIC-000309, issued 2026-03-18, on file); License/Insurance
-Renewal Tracker; SDVOSB certification guide + VA pipeline. The DLA CAGE "RESPONSE REQUIRED" letter is
-also saved in Drive (linked in the Gov Bid Package SAM item).
-GOOD STANDING — IN HAND: MT Certificate of Existence/Good Standing dated 2026-05-13 (Cert #88033630,
-Articles filed 2026-03-10) — filed in Drive under "Legal_and_Certificates". The SD foreign-registration
-packet (Cert of Authority, application, acknowledgment, receipt) is filed under "Business Formation". The company is ALSO now foreign-qualified and in Good Standing in SOUTH
-DAKOTA (ID FL329120, filed 2026-05-19, annual report due 2027-05-01, SD registered agent Cherokee Behner,
-Rapid City) — MGSF can legally bid/work in SD as well as MT. Address: 2402 N Anderson Ave is the PRINCIPAL/
-PHYSICAL office; 418 Cooke St is the MAILING address (both valid — the SAM fix is to list 2402 N Anderson
-as the physical office).
-STILL MISSING for full gov bid-readiness: (1) a resolved CAGE code — reply to the DLA letter NOW (you have
-the Good Standing cert to attach); (2) a surety bid/P&P bonding capacity LETTER (the bonding MANUAL is on
-file, not a surety's letter); (3) USDOT registration (the cap statement currently OVERCLAIMS an active
-USDOT/MC — register at fmcsa.dot.gov and fix that line). Never schedule any of this on a Sunday.
+ENTITY: MT LLC, File 16579531 (Cert C1514798), formed 3/10/2025, single-member (Clifton). MT Certificate of
+Good Standing 2026-05-13 (Cert #88033630). Foreign-qualified in SOUTH DAKOTA (ID FL329120, filed 2026-05-19,
+annual report due 2027-05-01, SD registered agent Cherokee Behner, Rapid City) — can bid/work in SD as well
+as MT. MT contractor/business license BOI-3RD-LIC-000309 (issued 2026-03-18). TAX: an 8832 election to be
+taxed as a CORPORATION was intended — CONFIRM with the accountant whether it was actually filed/accepted
+(it changes which return the surety needs and how SAM should read). Credentials for the capability statement:
+BPI Building Analyst + Building Science Principles (ID 5073450), SPFA member (2025), ProFoam-certified.
+
+INSURANCE — verified on file: General Liability (Midvale Indemnity, policy CP00147824, $1M/$2M, eff 2026-04-11,
+EXPIRES 2027-04-11 — flag a renewal reminder); Workers' Comp MT (Montana State Fund, policy 03-612989-4, eff
+2026-04-21). GAPS to close through Stockman before bonded/federal work: (a) CONTRACTOR'S POLLUTION LIABILITY —
+MANDATORY for MDI/isocyanate, NOT on the current cert (biggest exposure); (b) $5M umbrella (most VA/DoD
+contracts require it); (c) COMMERCIAL AUTO — the trucks carry only PERSONAL USAA auto, which excludes business
+use, won't cover the spray rig, and won't meet a $1M-CSL gov COI; (d) inland marine on the PMC PH-2 rig;
+(e) ND WSI before any North Dakota work (monopolistic state fund). Also on Drive now: filled Insurance
+Register, Capability Statement (Certificates), Operating Agreement draft (LLC), Bonding Manual, DLA CAGE letter.
+
+ADDRESS FIX (root cause found): the MT Articles of Organization list 418 Cooke St as the PHYSICAL address —
+that is what feeds the wrong SAM address. Correct BOTH the MT Secretary of State record AND SAM to
+2402 N Anderson Ave (physical office); 418 Cooke can remain the mailing address. That clears the DLA CAGE hold.
+
+DOT/RIG: 2025 Spartan Cargo SP8X18TA trailer, 14,000-lb DECLARED GVW, titled to BEHNER LLC (financed Stearns
+Bank), pulled by a 2025 GMC Sierra 3500HD. Combined ~28,000 GCWR + interstate = USDOT # required (free at
+fmcsa.dot.gov) and a Class A CDL to tow — Clifton is Class D, so DANIEL must tow the rig interstate. The
+capability statement currently OVERCLAIMS an active USDOT — soften until it's issued.
+
+STILL MISSING for full gov bid-readiness: (1) resolved CAGE (response emailed to DLA — awaiting assignment
+after the address fix); (2) surety bonding-capacity LETTER (ask Stockman; target $500K single / $1M aggregate);
+(3) USDOT registration; (4) the insurance gaps above; (5) business financials + the 8832 confirmation from the
+accountant; (6) signed Operating Agreement; (7) SBA VetCert for SDVOSB (FREE at veterans.certify.sba.gov).
+HEADS-UP: MGSF paid $597 to "Federal Contractor Registry" and uses federalgovadvisors.com — SAM registration
+and SDVOSB cert are FREE; warn before paying such middlemen again. Clifton is also in VA VR&E (Chapter 31)
+intake, which has a self-employment track that can fund business equipment — worth pursuing. Never schedule
+any of this on a Sunday.
 
 Services: open & closed-cell spray foam, SPF roofing, roof coatings, concrete lifting/leveling,
 void fill, soil stabilization, polyurea coatings, insulation removal, BPI blower-door testing,

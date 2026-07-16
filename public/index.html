@@ -967,7 +967,7 @@ canvas.chart{width:100%;height:100%}
               <div class="row" style="justify-content:space-between"><span>238310 — Drywall/Insulation</span><span class="badge badge-gr">PRIMARY</span></div>
               <div class="row" style="justify-content:space-between"><span>238160 — Roofing</span><span class="badge badge-cy">SECONDARY</span></div>
               <div class="row" style="justify-content:space-between"><span>238190 — Other Foundation</span><span class="badge badge-cy">SECONDARY</span></div>
-              <div class="row" style="justify-content:space-between"><span>SAM.gov VOSB</span><span class="badge badge-or">REGISTERED</span></div>
+              <div class="row" style="justify-content:space-between"><span>SAM.gov SDVOSB</span><span class="badge badge-or">REGISTERED</span></div>
               <div class="row" style="justify-content:space-between"><span>SDVOSB Status</span><span class="badge badge-yw">DD-214 PENDING</span></div>
               <div class="row" style="justify-content:space-between"><span>BPI Certified</span><span class="badge badge-gr">ACTIVE</span></div>
               <div style="margin-top:4px;padding-top:8px;border-top:1px solid var(--bd);font-size:11px;color:var(--t2)">
@@ -6038,7 +6038,7 @@ Team: Talia Behner (office/admin), Daniel Ford (lead applicator)
 UEI: H63EELL3K7Z4
 Service area: Montana, Wyoming, North Dakota, South Dakota
 Services: Closed-cell spray foam, Open-cell spray foam, SPF roofing, Concrete lifting, Geotech/pour systems, Armor 100 acrylic coating, Rugged Si92 silicone coating
-NAICS: 238310, 238160, 238190 | SAM.gov registered VOSB | BPI Certified | Veteran-owned
+NAICS: 238310, 238160, 238190 | SAM.gov registered SDVOSB | BPI Certified | Service-Disabled Veteran-Owned (90%)
 
 PRICING (material cost per BF):
 - Closed Cell HFO 2.8#: $0.982/BF | R-6.5/inch
@@ -6174,7 +6174,7 @@ function processChat(input){
   }
   // Proposal
   else if(/proposal|write.*proposal|draft.*proposal/i.test(low)){
-    response = `Proposal structure for MGSF:\n\n**1. THE PROBLEM** — What's wrong with their current situation (energy loss, moisture, failing roof, sunken concrete)\n**2. WHY IT MATTERS** — Cost impact, safety, code compliance\n**3. OUR SOLUTION** — Specific scope, product, specs\n**4. PROOF** — Reference similar job, BPI cert, VOSB status\n**5. INVESTMENT** — Price (DRAFT ONLY — Clifton approves all numbers)\n**6. NEXT STEP** — Clear CTA, timeline\n\nGive me the customer name and scope details and I'll draft it. Remember: education-first voice, no guaranteed savings claims.`;
+    response = `Proposal structure for MGSF:\n\n**1. THE PROBLEM** — What's wrong with their current situation (energy loss, moisture, failing roof, sunken concrete)\n**2. WHY IT MATTERS** — Cost impact, safety, code compliance\n**3. OUR SOLUTION** — Specific scope, product, specs\n**4. PROOF** — Reference similar job, BPI cert, SDVOSB status\n**5. INVESTMENT** — Price (DRAFT ONLY — Clifton approves all numbers)\n**6. NEXT STEP** — Clear CTA, timeline\n\nGive me the customer name and scope details and I'll draft it. Remember: education-first voice, no guaranteed savings claims.`;
     voiceText = 'Give me the customer name and scope and I\'ll draft a proposal. All pricing is draft only — you approve before sending.';
   }
   // Mobilization
@@ -8631,7 +8631,7 @@ async function hardRefresh(){
     return `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:24px">
       <div style="border-bottom:3px solid #f97316;padding-bottom:12px;margin-bottom:16px">
         <div style="font-size:22px;font-weight:800;letter-spacing:.5px">${esc(CO.name)}</div>
-        <div style="font-size:12px;color:#444">🇺🇸 Veteran-Owned (VOSB) · ${esc(CO.addr)} · ${esc(CO.phone)} · ${esc(CO.web)}</div>
+        <div style="font-size:12px;color:#444">🇺🇸 Service-Disabled Veteran-Owned (SDVOSB) · ${esc(CO.addr)} · ${esc(CO.phone)} · ${esc(CO.web)}</div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:14px">
         <div><b>PROPOSAL FOR</b><br>${esc(p.cust)}<br>${esc(p.addr||'')}</div>
