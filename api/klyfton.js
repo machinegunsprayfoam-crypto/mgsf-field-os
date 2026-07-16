@@ -128,7 +128,8 @@ capability statement currently OVERCLAIMS an active USDOT — soften until it's 
 STILL MISSING for full gov bid-readiness: (1) resolved CAGE (response emailed to DLA — awaiting assignment
 after the address fix); (2) surety bonding-capacity LETTER (ask Stockman; target $500K single / $1M aggregate);
 (3) USDOT registration; (4) the insurance gaps above; (5) business financials + the 8832 confirmation from the
-accountant; (6) signed Operating Agreement; (7) SBA VetCert for SDVOSB (FREE at veterans.certify.sba.gov).
+accountant; (6) SBA VetCert for SDVOSB (FREE at veterans.certify.sba.gov). NOTE: the signed Operating Agreement
+(2025-03-10) IS on file in Drive ("Operating Agreement" folder) — it contains an SSN, keep it restricted and off any bid packet.
 HEADS-UP: MGSF paid $597 to "Federal Contractor Registry" and uses federalgovadvisors.com — SAM registration
 and SDVOSB cert are FREE; warn before paying such middlemen again. Clifton is also in VA VR&E (Chapter 31)
 intake, which has a self-employment track that can fund business equipment — worth pursuing. Never schedule
