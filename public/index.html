@@ -1227,7 +1227,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
             <div style="font-size:32px;margin-bottom:8px">📂</div>
             <div style="font-size:13px;color:var(--cy);font-weight:700">Click to upload or drag & drop</div>
             <div style="font-size:11px;color:var(--t2);margin-top:6px">Plans, specs, RFPs, contracts, photos, estimates, invoices — any file type</div>
-            <div style="font-size:10px;color:var(--t2);margin-top:4px">Files stored locally in your browser · No size limit</div>
+            <div style="font-size:10px;color:var(--t2);margin-top:4px">Stored on this device · files over ~4MB keep details only (no in-app preview) · back up to Drive for big plans</div>
           </div>
           <input type="file" id="docFileInput" multiple accept="*/*" style="display:none" onchange="handleDocUpload(event)">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2719,7 +2719,7 @@ function switchModule(id){
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
-  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.renderPipelineHealth) renderPipelineHealth(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
+  if(id==='dashboard'){ if(window.initDashboard) try{ initDashboard(); }catch(e){} if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.renderPipelineHealth) renderPipelineHealth(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
@@ -4758,15 +4758,15 @@ function quickEstimate(){
   if(!sqft){ document.getElementById('qResult').innerHTML='<span style="color:var(--t2);font-size:12px">Enter square footage</span>'; return; }
   // Map old service IDs → product keys for quick estimate (uses default product per type)
   const prodMap  = {cc:'ncfi_agrithane',oc:'ncfi_oc',roof:'ncfi_enduratech'};
-  const svcNames = {cc:'CC 2.0# (NCFI AgriThane)',oc:'OC 0.5# (NCFI)',roof:'SPF Roofing 2.8#',lift:'Concrete Lift (med. severity)'};
+  const svcNames = {cc:'CC 2.0# (NCFI AgriThane)',oc:'OC 0.5# (NCFI)',roof:'SPF Roofing 2.8#',lift:'Concrete Lift (med. severity)',geo:'Geotech / Pour (rough)'};
   let r, sell, mat, lab, gp, actualGm, gonogo;
   if(prodMap[svc]){
     const sub = (svc==='roof') ? 'metal' : 'wood';
     r = calcBFCost({sqft,thick,productKey:prodMap[svc],substrate:sub,state,market});
     if(!r){ document.getElementById('qResult').innerHTML='<span style="color:var(--t2)">Error</span>'; return; }
     ({sell,totalMat:mat,laborCost:lab,gp,actualGm,gonogo} = r);
-  } else if(svc==='lift'){
-    const p = EST_GEO[1]; // terrathane_042 default
+  } else if(svc==='lift'||svc==='geo'){
+    const p = EST_GEO[1]; // terrathane_042 default (geotech/pour material — rough quick estimate)
     const lbsPerSF = 0.75;
     const rawMat = sqft*lbsPerSF*p.priceLb;
     mat = rawMat*1.15;
@@ -7983,7 +7983,7 @@ function initDashboard(){
 
   // Recent jobs
   const rj=document.getElementById('recentJobs');
-  if(rj) rj.innerHTML=appState.jobs.slice(0,4).map(j=>`
+  if(rj) rj.innerHTML=(appState.jobs||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,4).map(j=>`
   <tr>
     <td>${esc(j.customer||j.name||'')}</td>
     <td style="font-size:11px;color:var(--t2)">${esc((j.service||'').split(' ').slice(0,2).join(' '))}</td>
@@ -9786,7 +9786,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
   function stamp(){ const d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate()); }
   window.klyftonBackup = async function(){
     const data={};
-    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && (k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1')) data[k]=localStorage.getItem(k); } }catch(e){}
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && (k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1' || k==='mgsf_docs')) data[k]=localStorage.getItem(k); } }catch(e){}
     // Photo images live in IndexedDB now — fold them back in so the backup is complete.
     const photoBlobs={};
     try{ if(window.PhotoDB){ await PhotoDB.migrate();
@@ -9804,7 +9804,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
       let obj; try{ obj=JSON.parse(e.target.result); }catch(err){ notify('That is not a valid backup file','alert'); return; }
       const data=obj&&obj.data; if(!data||typeof data!=='object'){ notify('Backup file has no data','alert'); return; }
       if(!confirm('Restore this backup? It replaces the data on THIS device with the backup.')) return;
-      try{ Object.keys(data).forEach(k=>{ if(k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1') localStorage.setItem(k, data[k]); }); }catch(err){ notify('Restore failed (storage full?)','alert'); return; }
+      try{ Object.keys(data).forEach(k=>{ if(k.indexOf('klyfton_')===0 || k==='mgsf_admin_v1' || k==='mgsf_docs') localStorage.setItem(k, data[k]); }); }catch(err){ notify('Restore failed (storage full?)','alert'); return; }
       // Put photo images back into IndexedDB (v2 backups); v1 backups carry data inline and re-migrate on load.
       try{ if(obj.photoBlobs && window.PhotoDB){ for(const id of Object.keys(obj.photoBlobs)){ try{ await PhotoDB.put(id, obj.photoBlobs[id]); }catch(e){} } localStorage.setItem('klyfton_photos_idb_v1','1'); } }catch(e){}
       notify('Restored ✓ reloading…','success');
