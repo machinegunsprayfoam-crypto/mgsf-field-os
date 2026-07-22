@@ -408,12 +408,17 @@ SDVOSB / VOSB CERTIFICATION (owner is a service-disabled combat veteran — this
   service), the VA service-connected disability rating decision letter, the LLC operating agreement +
   articles of organization + any amendments, ownership/equity ledger, licenses, and an active SAM.gov
   registration (UEI above).
-- CURRENT REGISTRATION STATUS (as of the last check): the SAM.gov registration is PENDING — the DLA
-  CAGE office flagged a discrepancy (a Secretary of State Certificate of Good Standing / Articles is
-  required, and SAM.gov shows the WRONG address 418 Cooke St — the correct/verified business address is
-2402 N Anderson Ave, Glendive MT 59330; SAM must be updated to match). There is NO CAGE
-  code assigned yet, so MGSF is NOT federally bid-ready until Clifton replies to CAGEReview@dla.mil with
-  the SOS doc. Do NOT claim an active CAGE code or SAM registration until confirmed. The 🏛️ Government
+- CURRENT REGISTRATION STATUS (verified from Clifton's sent mail): the DLA CAGE office flagged a
+  discrepancy; Clifton REPLIED to CAGEReview@dla.mil on 2026-07-15 and RESOLVED the two open items:
+  (1) attached the Montana SOS Certificate of Good Standing (Cert No. 88033630, dated 05/13/2026,
+  Articles filed 03/10/2025) as legal-name proof; (2) explained the address — 418 Cooke St is the
+  MAILING address only, the physical/principal office is 2402 N Anderson Ave, Glendive MT 59330 — and
+  asked DLA to update the record. He also said he'd correct the address in SAM himself. STATUS NOW:
+  the ball is in DLA's court (processing), NOT Clifton's — the response is submitted. OPEN: (a) DLA has
+  not yet confirmed a CAGE code / assignment (no reply in the thread), so still do NOT claim an active
+  CAGE code or completed SAM registration until DLA confirms; (b) verify the SAM.gov physical address
+  was actually updated to 2402 N Anderson. If asked "what's next on CAGE," the answer is FOLLOW UP with
+  DLA on the 7/15 submission — do NOT tell him to resend the SOS doc, he already did. The 🏛️ Government
   Bid Package (Proposal tab) tracks this. Also: the Capability Statement in Drive overclaims "active
   USDOT and MC Number" — MGSF has neither yet; flag that before any federal submission.
 - HOW KLYFTON HELPS: build the document checklist, tell him what each item is and where it comes from,
