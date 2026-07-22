@@ -10,6 +10,14 @@
 // Dormant (returns {configured:false}) until it's set — the app behaves identically.
 
 const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
+// Optional shared secret — set WEBHOOK_SECRET in Vercel and filter on it in your Zap so only the
+// app can fire real events (blocks anyone who guesses the catch-hook URL). Dormant if unset.
+const SECRET = process.env.WEBHOOK_SECRET || process.env.ALERTS_WEBHOOK_SECRET || "";
+
+// Small stable hash → a content-based event id. Identical payloads yield the SAME id, so an
+// accidental double-fire (or a delivery retry) dedups downstream (HubSpot/Zapier) instead of
+// creating a duplicate lead/deal. Not crypto — just a fast idempotency key.
+function _hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
 
 // Twilio owner-text alerts (optional). Credentials live ONLY in env, server-side — never in the
 // app or the repo. Dormant unless TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM are set.
@@ -102,12 +110,18 @@ module.exports = async (req, res) => {
     lead, job, invoice: inv,
     at: new Date().toISOString(),
   };
+  // Idempotency key (content-based) + optional shared secret so the Zap can dedup and verify.
+  const _entity = String(lead.id || job.id || inv.number || payload.customer || payload.name || "").trim();
+  payload.id = body.id || (event + "_" + _hash([event, _entity, payload.service, payload.value, payload.job_status].join("|")));
+  if (SECRET) payload.token = SECRET;
 
   // Fire the webhook (if configured) and the owner SMS (if a text body was supplied) — independently.
   let webhookSent = false, webhookStatus = 0, smsSent = false;
   if (WEBHOOK) {
     try {
-      const r = await fetch(WEBHOOK, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const hdrs = { "content-type": "application/json", "x-klyfton-event": event, "x-klyfton-id": payload.id };
+      if (SECRET) hdrs["x-klyfton-token"] = SECRET;
+      const r = await fetch(WEBHOOK, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
       webhookSent = r.ok; webhookStatus = r.status;
     } catch (e) {}
   }
