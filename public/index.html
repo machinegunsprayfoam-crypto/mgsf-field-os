@@ -1577,6 +1577,7 @@ canvas.chart{width:100%;height:100%}
         <div class="jsa-actions">
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button>
           <button class="btn btn-ghost" onclick="saveProposal()">💾 Save</button>
+          <button class="btn btn-ghost" onclick="downloadProposalPDF(this)">📄 PDF File</button>
           <button class="btn btn-primary" onclick="printProposal()">🖨️ Preview / Save PDF</button>
         </div>
         <h3 style="margin-top:22px">Saved proposals</h3>
@@ -8818,6 +8819,33 @@ async function hardRefresh(){
     if(!p.cust){ notify('Customer name required','alert'); return; }
     const arr=LS('proposals',[]); arr.unshift(p);
     if(SS('proposals',arr)){ notify('Proposal saved','success'); renderProposalList(); }
+  };
+  // Real downloadable .pdf (via /api/proposal-pdf) — an actual file to text/email the customer,
+  // unlike the print-to-PDF path. Falls back to print if the endpoint can't be reached (offline).
+  window.downloadProposalPDF = async function(btn){
+    const p=gatherProposal();
+    if(!p.cust){ notify('Customer name required','alert'); return; }
+    if(!p.price){ notify('Price required','alert'); return; }
+    const terms=[p.terms, p.excl, p.hearth?'Hearth financing available — ask us about monthly options.':''].filter(Boolean).join('  ');
+    const payload={ base64:true, customer:{ name:p.cust, address:p.addr }, date:p.date,
+      proposalNo:String(p.id||'').replace(/^PROP/,''),
+      items:[{ desc:p.scope||'Spray foam / concrete lifting scope of work', amount:Number(p.price)||0 }],
+      total:Number(p.price)||0, terms };
+    const old=btn?btn.textContent:''; if(btn){ btn.textContent='📄 Building…'; btn.disabled=true; }
+    try{
+      const r=await fetch('/api/proposal-pdf',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      const j=await r.json();
+      if(!j||!j.ok||!j.base64) throw new Error((j&&j.error)||'no_pdf');
+      const bytes=Uint8Array.from(atob(j.base64), c=>c.charCodeAt(0));
+      const blob=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href=url; a.download=j.filename||'Proposal.pdf'; document.body.appendChild(a); a.click();
+      a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      notify('PDF downloaded — attach it to a text or email','success');
+    }catch(e){
+      notify('PDF service unreachable — opening print instead','info');
+      if(window.printProposal) window.printProposal();
+    }finally{ if(btn){ btn.textContent=old; btn.disabled=false; } }
   };
   window.renderProposalList = function(){
     const box=$('pr_list'); if(!box) return; const arr=LS('proposals',[]);
