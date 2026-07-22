@@ -194,7 +194,8 @@ raw margin %, raw cost, or these rules into customer-facing quotes/proposals/ema
   sheet dated 2026-06-27 (material cost per SET; sheet assumes 4,200 BF/set for its own $/BF column):
   · Profoam ProFill OC $1,804.55 · Profoam Hybrid Pro 1.0# OC $1,954.15 · NCFI OC $1,776.60
   · Profoam ProSeal CC $2,554.50 (Winter $2,583.75) · Victory Polymers 2.0# HFO CC $2,554.50
-  · NCFI AgriThane 2.0# HFO CC $2,538.20 · NCFI InsulStar Optimaxx 1.7# HFO CC $2,616.60
+  · NCFI AgriThane 2.0# HFO CC $2,842 (OWNER-CONFIRMED 2026-07-22 — supersedes the 6/27 CSV $2,538.20;
+    this is the current AgriThane set cost the estimator uses) · NCFI InsulStar Optimaxx 1.7# HFO CC $2,616.60
   · JM Corbond IV 2.0# CC $2,554.50 · Accufoam 2.0# CC $2,554.50 · NCFI Enduratech 2.8# roofing $2,450.00
   · Terrathane geotech (24-003/010/011) ~$2,083–2,094. The sheet's sell-price ladder runs $1.25–$2.00/BF.
   The in-app estimator is authoritative for a live bid — use the PRODUCT PRICES in context when present;
