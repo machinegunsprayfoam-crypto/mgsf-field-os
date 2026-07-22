@@ -501,6 +501,38 @@ the crew's real numbers/prices from context — never invent a price. For emails
 them in Clifton's voice, ready for him to review and send. Always give your short normal reply above
 the block. The user still taps a confirm button before anything is written or removed.`;
 
+// The MGSF Expert Library (owner-built in Drive: /MGSF/10_Knowledge/Experts/). This is the
+// SMART ROUTER — Klyfton uses it to point the crew to the right deep-dive doc. When a question
+// squarely matches an expert below, ANSWER from your own knowledge first, then cite the doc so
+// the crew can go deeper: "Full detail in the <Expert> doc: <link>". Don't invent doc contents.
+const EXPERT_LIBRARY = `MGSF EXPERT LIBRARY (Drive) — route deep questions to the right doc, then cite it.
+On a job site and need it fast? FIELD GUIDE (crew cheat sheet): https://docs.google.com/document/d/1H_cDxLtG6lnHDoGVLTO2Xi4L13umYduva81Jj01YDRY/edit
+Full router index: https://docs.google.com/document/d/1AkMjXBEgYIVytEOlcd8_pySMgGr42gsEul49BvZbwQs/edit
+TRADE / FIELD:
+- Spray Foam (foam chemistry, temps/ratio/lifts, defects, coatings science, SPF safety; our foam NCFI 11-035 AgriThane R-7.1/in): https://docs.google.com/document/d/1kR_D64dVe4lf49bCI3ojzHHnWheFGAeeMc0XDvHJJwo/edit
+- Roofing ("can I spray THIS roof?", substrate go/no-go, recover vs tear-off, coating pick, ponding): https://docs.google.com/document/d/13bnTOKAFw0J7qexGOllo8qsSbdaVCaowOb81Bn0rqqM/edit
+- Concrete Lifting (sunken flatwork, poly vs mud, settle vs frost heave, lift/replace/pier, void fill): https://docs.google.com/document/d/1vdqjk3ymM4x3kG1NDvQ8XlCzsA_B2QXWxGOfFvbd14A/edit
+- Equipment/Rig (PMC PH-2 settings/troubleshooting, off-ratio/crossover, heaters, cold-weather ops): https://docs.google.com/document/d/13pUQspLafbYoKhpvZJWLJpp745KDhKGGXgAGt80R1TY/edit
+CODE / SCIENCE / QA:
+- Codes & Permits (R-value minimums Zone 6/7, ACH50, thermal/ignition/vapor rules, AHJ, SPF roofing code): https://docs.google.com/document/d/1wDEyYhgmRSHk-oaZfykUHhPoSfgeYVBYYbpRDFJ2lwM/edit
+- BPI / Building Performance (blower door + ACH50 math, house-as-a-system, combustion safety/CAZ/CO, ASHRAE 62.2, duct testing, RED-FLAG stop-work list, audit pricing, 2026 rebates — 25C DEAD): https://docs.google.com/document/d/1uRtoIox2199aDf-oqLm3hI3lqptX4TI4mNAbs9xaB3Y/edit
+- Construction/Inspector (reading cracks/structure, what inspectors look for, moisture survey): https://docs.google.com/document/d/1VUGpc6a5DS8YuIDjV-vaSOzAWiIQEnTcZXtPXWeYd7w/edit
+SAFETY / RISK / PEOPLE:
+- SPF Safety/OSHA (isocyanate PPE, respirator program, re-occupancy times, roof/ladder safety, OSHA 300): https://docs.google.com/document/d/1Qh6JEZjdVqZPbDvCfmSD3HXO75FayMJHqOoO_vSwKHg/edit
+- Insurance & Bonding (GL/WC/auto/CPL pollution, COI, claims, SBA surety bonds): https://docs.google.com/document/d/1Cmn58oOgZS9JvKIXg-fcaduMllgtGaSOVsbopIaCTso/edit
+- Legal/Contracts/Risk (contracts, 3-day cancellation, liens MT/ND/SD/WY, warranty language, disputes): https://docs.google.com/document/d/1qaHj-QIJCkRCrq3TD9a1RpXKLaTPBRKD3ObO8N2U6W8/edit
+- HR/Hiring/Training (recruiting, onboarding, W-2 vs 1099, training plans, retention): https://docs.google.com/document/d/190jFfzBT4YHV5FplD5gZ4RS6h2OqyHfE80FEeHssaQs/edit
+MONEY / GROWTH / OFFICE:
+- Estimating-to-Win (scope/price a job, board-feet & coating gallons, bid structure, win rate): https://docs.google.com/document/d/1nfuGQWcPFURcvB4B-bdzOP9e_5rEPZWSucpbVkOMLr0/edit
+- Sales & Closing (discovery, objections, closing, Hearth financing, follow-up, diagnostics-led close): https://docs.google.com/document/d/1zrRDVpLHdNQN8XCrQhKMYAwFl3DHtm5r8XTMCbEnyb8/edit
+- Marketing & Lead Gen (more calls, ad/referral/online presence, partner program): https://docs.google.com/document/d/1gnntgHnVbMS7zWKVipol3L0-kh0ZrxBaRfipglx5cT8/edit
+- Customer Service & Warranty (claims, callbacks, complaints, expectations, re-occupancy story): https://docs.google.com/document/d/1wxKXyo_ktaJEQt9IoZTUPRwtdjT-2WTjChS_tYfu2gg/edit
+- Procurement (buying material, supplier terms, vendor COI, wear-part stocking, set pricing): https://docs.google.com/document/d/17wgjXn2wCuJIqHzL86wUWo75HKxHOQmOBgDNLRj3LpE/edit
+- CEO/Strategy (direction, KPIs, hire vs sub, buy vs rent, scaling, big decisions): https://docs.google.com/document/d/13FSFR0cZ8zop32tGR0d7LoUcxisn9qt8xpjcKnRQ-qM/edit
+- CFO/Financial (cash flow, margins/targets, job costing, pricing for profit, equipment ROI, AR): https://docs.google.com/document/d/1n5x2SfgaDZKMcEBCmtToi29AnYNCzeiuckvshdznpQQ/edit
+- Accounting/Bookkeeping (chart of accounts, QuickBooks, AR/AP, payroll, close — GUIDANCE ONLY, confirm w/ CPA): https://docs.google.com/document/d/1kbNZvHesb9ZzPSVkDjpaKLUGUUadopzIfOZed1k7BJU/edit
+- Tax (entity/S-corp, quarterlies, Section 179, 1099, MT/ND/SD/WY — GUIDANCE ONLY, confirm w/ CPA): https://docs.google.com/document/d/16Ereg8W4SHratn3QFN-xGQnXQYZ-AUQujfVNk0g3qsM/edit`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -770,7 +802,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -957,7 +989,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
