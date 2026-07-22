@@ -1143,6 +1143,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
               <tr><td>Repeat Customer Rate</td><td>25%</td><td id="kpiRepeat">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Google Review Count</td><td>50</td><td id="reviewCount">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Crew Hours (30d)</td><td>—</td><td id="kpiCrew">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
+              <tr><td>Avg Quoted GM <span style="color:var(--t3);font-size:10px">(saved bids)</span></td><td>≥50%</td><td id="kpiGM">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -4666,7 +4667,7 @@ function calculateBid(){
     ⚠️ DRAFT ONLY — Clifton approves all numbers before any bid is sent. Unsigned change orders are a hard closeout block.
   </div>
   <div style="margin-top:8px;display:flex;gap:8px">
-    <button class="btn btn-primary" onclick="saveEstimate(${Math.round(totalSell)},'${custName.replace(/'/g,"\\'")}')">💾 SAVE ESTIMATE</button>
+    <button class="btn btn-primary" onclick="saveEstimate(${Math.round(totalSell)},'${custName.replace(/'/g,"\\'")}',${(blendedGM||0).toFixed(4)})">💾 SAVE ESTIMATE</button>
     <button class="btn btn-ghost" onclick="createLeadFromEstimate('${custName.replace(/'/g,"\\'")}',${Math.round(totalSell)})">→ CREATE LEAD</button>
   </div>`;
 
@@ -4795,9 +4796,11 @@ function quickEstimate(){
   </div>`;
 }
 
-function saveEstimate(val, name){
+function saveEstimate(val, name, gm){
   const est={id:Date.now(),date:new Date().toISOString().split('T')[0],customer:name,value:val,
     state:document.getElementById('eState').value,market:document.getElementById('eMarket').value};
+  // Capture the achieved blended GM so INTEL can track quoted margin vs the doctrine target over time.
+  const g=parseFloat(gm); if(Number.isFinite(g)&&g>0) est.gm=Math.round(g*1000)/1000;
   appState.estimates.push(est);
   save('estimates');
   notify(`Estimate $${val.toLocaleString()} saved for ${name}`);
@@ -7977,6 +7980,15 @@ function drawCharts(){
     (Array.isArray(pr)?pr:[]).forEach(p=>{ const ti=Date.parse(p&&p.in), to=Date.parse(p&&p.out); if(Number.isFinite(ti)&&Number.isFinite(to)&&to>ti&&to>=cut) hrs+=(to-ti)/3600000; });
     set('kpiCrew', hrs>0?(Math.round(hrs*10)/10)+' h':'—');
   }catch(e){ set('kpiCrew','—'); }
+  // Avg quoted GM from saved estimates that recorded their achieved blended margin (never fabricated —
+  // only bids saved since GM capture shipped carry it; older bids are excluded, not guessed).
+  try{ const withGm=(appState.estimates||[]).map(e=>parseFloat(e&&e.gm)).filter(v=>Number.isFinite(v)&&v>0);
+    const el=$('kpiGM');
+    if(el){ if(withGm.length){ const avg=withGm.reduce((a,b)=>a+b,0)/withGm.length;
+        el.textContent=Math.round(avg*100)+'% ('+withGm.length+')';
+        el.style.color = avg>=0.50?'var(--gr)':(avg>=0.45?'var(--yw)':'var(--red)'); }
+      else { el.textContent='—'; el.style.color=''; } }
+  }catch(e){}
   // Bind GM target cards to the live Admin overrides (MGSF.gmTargets) so editing them updates here.
   try{ const gm=(window.MGSF&&MGSF.gmTargets)||{}; const gmset=(vid,bid,frac)=>{ const p=Math.round((Number(frac)||0)*100); const v=document.getElementById(vid),b=document.getElementById(bid); if(v)v.textContent=p+'%'; if(b)b.style.width=p+'%'; };
     gmset('gmResi','gmResiBar',gm.resi); gmset('gmComm','gmCommBar',gm.comm); gmset('gmRoof','gmRoofBar',gm.ind); gmset('gmFloor','gmFloorBar',gm.gov); }catch(e){}
