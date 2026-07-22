@@ -5565,6 +5565,34 @@ const PIPE_COLS = [
   {status:'Lost',       color:'var(--red)'},
 ];
 
+// ── Predictive lead scoring (deterministic, instant, offline, zero AI cost) ──
+// Ranks a lead 0-100 → 🔥 HOT (>=65) · 🟡 WARM (40-64) · 🔵 COLD (<40) with the top reasons.
+function scoreLead(l){
+  let s=0; const why=[];
+  const v=+l.value||0;
+  if(v>=50000){ s+=30; why.push('$'+Math.round(v/1000)+'K job'); }
+  else if(v>=20000){ s+=22; why.push('$'+Math.round(v/1000)+'K job'); }
+  else if(v>=5000){ s+=12; why.push('$'+Math.round(v/1000)+'K job'); }
+  else if(v>0){ s+=5; }
+  const svc=(l.service||'').toLowerCase();
+  if(/roof|foam|coat|lift|insul|spray|concrete|level/.test(svc)){ s+=15; why.push('core service'); }
+  else if(/gov/.test(svc)){ s+=12; why.push('federal · SDVOSB edge'); }
+  const st=(l.state||'').toUpperCase();
+  if(['MT','ND','SD','WY'].indexOf(st)>=0){ s+=10; why.push('in-territory'); }
+  if(l.phone){ s+=10; } if(l.email){ s+=5; }
+  if(!l.phone && !l.email){ why.push('no contact yet'); }
+  const src=(l.source||'').toLowerCase();
+  if(/refer/.test(src)){ s+=15; why.push('referral'); }
+  else if(/sam\.gov|gov/.test(src)){ s+=8; why.push('SAM.gov'); }
+  else if(src){ s+=4; }
+  const dt=Date.parse(l.date);
+  if(!isNaN(dt)){ const days=(Date.now()-dt)/86400000;
+    if(days<=3){ s+=15; why.push('fresh (<3d)'); }
+    else if(days<=14){ s+=8; }
+    else if(days>60){ s-=8; why.push('aging'); } }
+  s=Math.max(0,Math.min(100,Math.round(s)));
+  return { score:s, bucket:(s>=65?'HOT':s>=40?'WARM':'COLD'), emoji:(s>=65?'🔥':s>=40?'🟡':'🔵'), why:why.slice(0,3) };
+}
 function renderPipeline(){
   const container = document.getElementById('crmPipeline');
   container.innerHTML='';
@@ -5576,7 +5604,8 @@ function renderPipeline(){
     if(search) leads=leads.filter(l=>l.name.toLowerCase().includes(search.toLowerCase())||(l.company||'').toLowerCase().includes(search.toLowerCase()));
     if(filter && filter!==col.status) leads=[];
     if(filter && filter!==col.status && search==='') return;
-    
+    if(['Won','Lost'].indexOf(col.status)<0) leads=leads.slice().sort((a,b)=>scoreLead(b).score-scoreLead(a).score);
+
     const total = leads.reduce((s,l)=>s+(l.value||0),0);
     const div=document.createElement('div');
     div.className='pipe-col';
@@ -5585,11 +5614,15 @@ function renderPipeline(){
       <span style="color:var(--t2)">${leads.length} • $${(total/1000).toFixed(0)}K</span>
     </div>`;
     
+    const active=['Won','Lost'].indexOf(col.status)<0;
     leads.forEach(l=>{
       const c=document.createElement('div');
       c.className='pipe-card';
+      const sc=scoreLead(l);
+      const scCol=sc.bucket==='HOT'?'#ef4444':(sc.bucket==='WARM'?'var(--yw)':'var(--cy)');
+      const scChip=active?`<span title="${(sc.why.join(' · ')||'lead score').replace(/"/g,'')}" style="float:right;font-size:10px;font-weight:700;color:${scCol};border:1px solid ${scCol};border-radius:10px;padding:1px 7px">${sc.emoji} ${sc.score}</span>`:'';
       c.innerHTML=`
-      <div class="pipe-name">${l.name}${l.company?`<span style="font-size:10px;color:var(--t2);font-weight:400;margin-left:6px">${l.company}</span>`:''}</div>
+      <div class="pipe-name">${scChip}${l.name}${l.company?`<span style="font-size:10px;color:var(--t2);font-weight:400;margin-left:6px">${l.company}</span>`:''}</div>
       <div class="pipe-val">${l.value?'$'+(l.value/1000).toFixed(1)+'K':''}</div>
       <div class="pipe-meta">${l.service||''} • ${l.state||''}</div>
       ${l.phone?`<div class="pipe-meta" style="margin-top:3px"><a href="tel:${l.phone}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">📞 ${l.phone}</a></div>`:''}
