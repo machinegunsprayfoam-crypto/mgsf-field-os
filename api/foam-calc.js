@@ -17,8 +17,9 @@ const YIELDS = {
   closed: 4000,   // ~2.0 lb closed-cell, nominal 4,000 BF/set at 100% yield
   open:   16000,  // ~0.5 lb open-cell, nominal 16,000 BF/set
 };
-// Typical field waste (trim, overspray, picture-framing, cold-start off-ratio).
-const DEFAULT_WASTE = 0.15;
+// Typical field waste (trim, overspray, picture-framing, cold-start off-ratio). MGSF doctrine
+// (mgsf-estimator) uses 5–10% on foam; default to 10%, pad up for cold/thin winter passes.
+const DEFAULT_WASTE = 0.10;
 
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 

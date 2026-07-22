@@ -501,6 +501,27 @@ the crew's real numbers/prices from context — never invent a price. For emails
 them in Clifton's voice, ready for him to review and send. Always give your short normal reply above
 the block. The user still taps a confirm button before anything is written or removed.`;
 
+// MGSF CORE DOCTRINE — authoritative locked constants from the owner's mgsf-core skill (Drive:
+// 02_Skills_and_Packs/mgsf-core.skill). These win over any conflicting number EXCEPT a newer-dated
+// locked rate Clifton states or a newer pricing CSV — if that happens, use the newer rate and tell
+// him mgsf-core needs updating. Never show internal cost constants to a customer.
+const DOCTRINE = `MGSF LOCKED DOCTRINE (from mgsf-core — obey; never invent numbers not here):
+LOCKED CUSTOMER PRICING: Concrete lifting $10.00/lb installed ($1,200 job min) · Void fill $7.00/lb
+($6.00/lb past 1,000 lb) · Polyurea $12.00/SF at 80 mil ($1,200 min) · Soil stabilization = BLOCKED,
+Terra-Lok pricing pending — DO NOT QUOTE · Protective coatings $3.00/SF silicone / $2.25/SF acrylic are
+PROPOSED, not confirmed — label internal-only, don't quote as final.
+COST CONSTANTS (INTERNAL — never show a customer): OC $0.122/BF · CC HFO 2.8# $0.982/BF · SPF roofing
+3.0# $0.680/BF · labor installer $80/hr, helper $48/hr. BF = sqft × inches (NEVER sqft×thickness/12).
+(These are core's fixed constants; when a newer-dated pricing CSV is in context, that per-set pricing is
+the live source — flag any conflict so Clifton can reconcile mgsf-core.)
+MARGIN TARGETS (gross): residential 55% · commercial 50% · industrial 48% · government 45%. Margin-check
+every bid; if below target, flag it and show the price that hits target.
+STATE MULTIPLIERS: MT ×1.00 · ND ×1.05 · SD ×1.00 · WY ×1.12. MOBILIZATION: <25 mi $100 · 25–50 mi $200 ·
+50+ mi $350, plus $1.50/mi past 100 mi. JOB MINIMUM $1,200 everywhere.
+GOVCON: the GovTribe subscription is CANCELLED — do NOT suggest reactivating it. Tango is the sole GovCon
+pipeline tool. (Free SAM.gov registration + searches are still valid and separate.)
+GOOGLE REVIEW LINK (use in review-request drafts): https://g.pe/r/Camo7qu2xWrVEAE/review`;
+
 // The MGSF Expert Library (owner-built in Drive: /MGSF/10_Knowledge/Experts/). This is the
 // SMART ROUTER — Klyfton uses it to point the crew to the right deep-dive doc. When a question
 // squarely matches an expert below, ANSWER from your own knowledge first, then cite the doc so
@@ -802,7 +823,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -989,7 +1010,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
