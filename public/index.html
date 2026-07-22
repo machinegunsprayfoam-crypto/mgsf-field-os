@@ -9854,7 +9854,7 @@ function roiCalcBusiness(){
   roiRun(prompt);
 }
 function renderROI(){
-  const tabs=[['customer','🏠 Customer Energy ROI'],['business','📊 Business ROI']];
+  const tabs=[['customer','🏠 Customer Energy ROI'],['business','📊 Business ROI'],['blower','🌀 Blower Door']];
   const tb=document.getElementById('roi_tabs'); if(tb) tb.innerHTML=tabs.map(function(t){return '<button class="btn '+(roiTab===t[0]?'btn-primary':'btn-ghost')+'" style="font-size:12px" onclick="roiSelect(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
   const body=document.getElementById('roi_body'); if(!body) return;
   if(roiTab==='customer'){
@@ -9873,7 +9873,7 @@ function renderROI(){
       +'<div class="form-group"><label class="form-label">Notes (optional)</label><input class="admin-inp" id="roi_notes" placeholder="drafty, high winter bills, wants comfort…"></div>'
       +'<button class="btn btn-primary" style="width:100%" onclick="roiCalcCustomer()">📈 Calculate ROI with Klyfton</button>'
       +'<div id="roi_status" style="font-size:12px;color:var(--cy);margin-top:8px"></div><div id="roi_out" style="margin-top:8px"></div></div>';
-  } else {
+  } else if(roiTab==='business'){
     const jobs=(appState.jobs||[]), leads=(appState.leads||[]);
     const won=jobs.filter(function(j){return j&&(j.status==='Paid'||j.status==='Invoiced'||j.status==='Completed');});
     const wonRev=won.reduce(function(s,j){return s+(Number(j.value)||0);},0);
@@ -9886,7 +9886,44 @@ function renderROI(){
       +'</div>'
       +'<button class="btn btn-primary" style="width:100%" onclick="roiCalcBusiness()">📊 Analyze ROI with Klyfton</button>'
       +'<div id="roi_status" style="font-size:12px;color:var(--cy);margin-top:8px"></div><div id="roi_out" style="margin-top:8px"></div></div>';
+  } else if(roiTab==='blower'){
+    body.innerHTML='<div class="jsa-card"><h4 style="margin:0 0 6px">Blower Door — sell the air leak</h4>'
+      +'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">Turn a blower-door reading into the numbers that close: ACH50, the ASHRAE 62.2 fresh-air target, and the "your house is a ___ hole" visual. Works offline. <b>Estimate</b> — verify on the calibrated manometer.</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div class="form-group"><label class="form-label">Floor area (sq ft) *</label><input class="admin-inp" id="bd_area" type="number" inputmode="numeric" placeholder="2400"></div>'
+      +'<div class="form-group"><label class="form-label">Ceiling height (ft)</label><input class="admin-inp" id="bd_ht" type="number" inputmode="numeric" value="8"></div>'
+      +'<div class="form-group"><label class="form-label">Blower door CFM50 *</label><input class="admin-inp" id="bd_cfm" type="number" inputmode="numeric" placeholder="2400"></div>'
+      +'<div class="form-group"><label class="form-label">Bedrooms (for 62.2)</label><input class="admin-inp" id="bd_br" type="number" inputmode="numeric" placeholder="3"></div>'
+      +'</div>'
+      +'<button class="btn btn-primary" style="width:100%" onclick="bdCalc()">🌀 Run the numbers</button>'
+      +'<div id="bd_out" style="margin-top:8px"></div></div>';
   }
+}
+// Blower-door calculator — client-side (offline) ACH50 + ASHRAE 62.2 + the diagnostics-led
+// "equivalent hole" sales visual. Mirrors api/bpi-calc.js. Sharp-orifice model ~7.5 CFM50/in².
+function bdCalc(){
+  var area=parseFloat((document.getElementById('bd_area')||{}).value)||0;
+  var ht=parseFloat((document.getElementById('bd_ht')||{}).value)||8;
+  var cfm=parseFloat((document.getElementById('bd_cfm')||{}).value)||0;
+  var br=parseInt((document.getElementById('bd_br')||{}).value)||0;
+  var out=document.getElementById('bd_out'); if(!out) return;
+  if(!area||!cfm){ out.innerHTML='<div style="color:var(--yw);font-size:12px">Enter floor area and CFM50.</div>'; return; }
+  var vol=area*ht;
+  var ach50=vol>0?(cfm*60)/vol:0;
+  var natACH=ach50/18;
+  var vent=Math.round(0.03*area+7.5*(br+1));
+  var holeIn2=cfm/7.5, holeFt2=holeIn2/144;
+  var tight=ach50<=3?'Very tight — verify mechanical ventilation (62.2)':ach50<=5?'Tight (near new-construction)':ach50<=7?'Moderate — good air-sealing candidate':ach50<=10?'Leaky — strong air-sealing ROI':'Very leaky — big air-sealing win';
+  out.innerHTML='<div class="jsa-card" style="border-color:var(--cy)">'
+    +'<div style="font-size:22px;font-weight:800;color:var(--or)">ACH50 '+ach50.toFixed(1)+'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">'+tight+'</div>'
+    +'<div style="font-size:13px;line-height:1.7">'
+    +'🫧 Leaks like a <b>'+Math.round(holeIn2)+' in²</b> hole'+(holeIn2>=144?' (~'+holeFt2.toFixed(1)+' sq ft — a wide-open window)':'')+'<br>'
+    +'🌬️ Natural air change ≈ <b>'+natACH.toFixed(2)+'</b> ACH<br>'
+    +'💨 ASHRAE 62.2 fresh-air target: <b>'+vent+' CFM</b><br>'
+    +'📦 Volume '+Math.round(vol).toLocaleString()+' ft³'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-top:8px">Estimate — sharp-orifice hole model (~7.5 CFM50/in²). Verify on the calibrated manometer. Full protocol: BPI Expert V3.</div></div>';
 }
 
 function growResultBox(text){
