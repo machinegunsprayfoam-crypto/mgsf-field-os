@@ -135,6 +135,30 @@ module.exports = async (req, res) => {
       res.status(200).json({ ok: true });
       return;
     }
+    // Owner-only password reset for a crew member (no email/SMTP needed). The caller must be a
+    // logged-in owner (role=full); we verify their token server-side before touching anyone.
+    if (body.action === "admin_reset") {
+      const tok = String(body.access_token || "");
+      const email = String(body.email || "").trim().toLowerCase();
+      const np = String(body.temp_password || "");
+      if (!tok || !email || np.length < 6) { res.status(200).json({ ok: false, error: "need_email_and_6char_temp" }); return; }
+      const who = await fetch(SB_URL + "/auth/v1/user", { headers: { apikey: SB_KEY, Authorization: "Bearer " + tok } });
+      const wj = await who.json().catch(() => null);
+      if (!who.ok || roleOf(wj) !== "full") { res.status(200).json({ ok: false, error: "owner_only" }); return; }
+      const lr = await fetch(SB_URL + "/auth/v1/admin/users?per_page=200", { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
+      const lj = await lr.json().catch(() => ({}));
+      const target = ((lj && lj.users) || []).find((u) => String(u.email || "").toLowerCase() === email);
+      if (!target) { res.status(200).json({ ok: false, error: "no_such_user" }); return; }
+      const meta = Object.assign({}, target.app_metadata || {}, { must_change: true });
+      const ur = await fetch(SB_URL + "/auth/v1/admin/users/" + target.id, {
+        method: "PUT",
+        headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ password: np, app_metadata: meta }),
+      });
+      if (!ur.ok) { const ej = await ur.json().catch(() => ({})); res.status(200).json({ ok: false, error: String((ej && (ej.msg || ej.error)) || "reset_failed").slice(0, 140) }); return; }
+      res.status(200).json({ ok: true });
+      return;
+    }
     res.status(200).json({ ok: false, error: "unknown_action" });
   } catch (e) {
     res.status(200).json({ ok: false, error: String(e && e.message || e).slice(0, 160) });

@@ -624,7 +624,10 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
     <input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')emailLogin()" style="width:100%;padding:12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:16px;outline:none;box-sizing:border-box;font-family:var(--font)">
     <div id="loginError" style="color:var(--red);font-size:12px;min-height:16px;margin:8px 0;text-align:center"></div>
     <button id="loginBtn" onclick="emailLogin()" style="width:100%;padding:13px;background:var(--or);color:#000;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer;letter-spacing:2px;font-family:var(--font)">LOG IN</button>
-    <div style="margin-top:16px;text-align:center">
+    <div style="margin-top:10px;text-align:center">
+      <button onclick="forgotPassword()" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;font-family:var(--font)">Forgot password?</button>
+    </div>
+    <div style="margin-top:8px;text-align:center">
       <button onclick="showPinPad()" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--font)">← Use PIN instead</button>
     </div>
   </div>
@@ -1405,6 +1408,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <div class="admin-section-title">ACCESS CONTROL</div>
           <div class="admin-row"><span class="admin-lbl">Full Access PIN (Clifton)</span><input class="admin-inp" type="password" id="adm-pin-full" maxlength="4" placeholder="••••" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">4 digits</span></div>
           <div class="admin-row"><span class="admin-lbl">Read-Only PIN (Talia)</span><input class="admin-inp" type="password" id="adm-pin-read" maxlength="4" placeholder="••••" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">4 digits</span></div>
+          <div class="admin-row"><span class="admin-lbl">Reset a login password</span><button class="btn btn-ghost" style="font-size:12px" onclick="resetCrewPassword()">🔑 Reset someone's password</button><span style="font-size:11px;color:var(--t2)">owner only · no email needed</span></div>
           <div style="font-size:10px;color:var(--yw);margin-top:4px">⚠ PIN changes take effect on next login. Write them down before changing.</div>
         </div>
 
@@ -5117,6 +5121,23 @@ async function changePassword(forced){
     else { try{ notify('Couldn\'t update password: '+((d&&d.error)||'try again'),'alert'); }catch(_){} }
   }catch(e){ try{ notify('No connection — try again with signal','alert'); }catch(_){} }
 }
+// Owner-only: reset a crew member's password to a temp one (no email/SMTP needed). They're
+// prompted to set their own on next login.
+async function resetCrewPassword(){
+  let s={}; try{ s=JSON.parse(localStorage.getItem('klyfton_session')||'{}'); }catch(e){}
+  if(!s.access_token || appRole!=='full'){ try{ notify('Log in with your owner email first to reset a password','alert'); }catch(_){} return; }
+  const email=prompt('Reset which login? Enter their email:'); if(!email) return;
+  const temp=prompt("Set a TEMPORARY password for them (6+ characters). They'll set their own on next login:"); if(!temp) return;
+  if(String(temp).length<6){ try{ notify('Temp password must be at least 6 characters','alert'); }catch(_){} return; }
+  try{
+    const r=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'admin_reset',access_token:s.access_token,email:String(email).trim().toLowerCase(),temp_password:String(temp)})});
+    const d=await r.json();
+    if(d&&d.ok){ try{ notify('Reset ✓ — give them the temp password; they set a new one on login','success'); }catch(_){} }
+    else { const m={owner_only:'Owner login required',no_such_user:'No account with that email'}[(d&&d.error)]||((d&&d.error)||'try again'); try{ notify('Reset failed: '+m,'alert'); }catch(_){} }
+  }catch(e){ try{ notify('No connection — try again with signal','alert'); }catch(_){} }
+}
+// Login-screen "forgot password" — points to the owner reset (no self-service email in v1).
+function forgotPassword(){ const err=document.getElementById('loginError'); if(err){ err.style.color='var(--cy)'; err.textContent='Ask Clifton to reset it (Admin → Reset password), or use your PIN.'; } }
 function onPinSuccess(role, name){
   // Upgrade any legacy plaintext crew PINs to hashes now that we're in (purges plaintext at rest).
   try{ migrateCrewPins(); }catch(e){}
