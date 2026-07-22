@@ -2035,12 +2035,13 @@ function _hsLabel(obj, p){
   return p.name || 'Record';
 }
 function _hsSub(obj, p){
+  const _m=v=>{ const n=Number(v); return Number.isFinite(n)?('$'+n.toLocaleString()):''; }; // never render "$NaN"
   if(obj==='contacts') return [p.email, p.phone||p.mobilephone, [p.city,p.state].filter(Boolean).join(', '), p.hs_lead_status].filter(Boolean).join(' · ');
   if(obj==='companies') return [p.phone, [p.city,p.state].filter(Boolean).join(', '), p.industry].filter(Boolean).join(' · ');
-  if(obj==='deals') return [p.amount?('$'+Number(p.amount).toLocaleString()):'', p.dealstage, p.closedate?('close '+String(p.closedate).slice(0,10)):''].filter(Boolean).join(' · ');
+  if(obj==='deals') return [_m(p.amount), p.dealstage, p.closedate?('close '+String(p.closedate).slice(0,10)):''].filter(Boolean).join(' · ');
   if(obj==='tickets') return [p.hs_pipeline_stage, p.hs_ticket_priority].filter(Boolean).join(' · ');
-  if(obj==='quotes') return [p.hs_status, p.hs_quote_amount?('$'+Number(p.hs_quote_amount).toLocaleString()):''].filter(Boolean).join(' · ');
-  if(obj==='products') return [p.price?('$'+Number(p.price).toLocaleString()):'', p.hs_sku].filter(Boolean).join(' · ');
+  if(obj==='quotes') return [p.hs_status, _m(p.hs_quote_amount)].filter(Boolean).join(' · ');
+  if(obj==='products') return [_m(p.price), p.hs_sku].filter(Boolean).join(' · ');
   return '';
 }
 function hubspotLookup(){
@@ -4784,8 +4785,9 @@ function pinSubmit(){
     onPinSuccess(appRole, crewMatch.name);
     return;
   }
-  // Load any admin-overridden PINs (legacy owner/office PINs still work)
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  // Load any admin-overridden PINs (legacy owner/office PINs still work).
+  // Tolerant parse: a corrupted admin blob must NOT throw here or it locks the owner out of login.
+  let saved={}; try{ saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}')||{}; }catch(e){ saved={}; }
   const pinFull = saved.pinFull || PIN_FULL;
   const pinRead = saved.pinRead || PIN_READ;
   if(_pinBuffer===pinFull){
@@ -5646,7 +5648,7 @@ function renderPipeline(){
   
   PIPE_COLS.forEach(col=>{
     let leads = appState.leads.filter(l=>l.status===col.status);
-    if(search) leads=leads.filter(l=>l.name.toLowerCase().includes(search.toLowerCase())||(l.company||'').toLowerCase().includes(search.toLowerCase()));
+    if(search) leads=leads.filter(l=>(l.name||'').toLowerCase().includes(search.toLowerCase())||(l.company||'').toLowerCase().includes(search.toLowerCase()));
     if(filter && filter!==col.status) leads=[];
     if(filter && filter!==col.status && search==='') return;
     if(['Won','Lost'].indexOf(col.status)<0) leads=leads.slice().sort((a,b)=>scoreLead(b).score-scoreLead(a).score);
@@ -5667,12 +5669,12 @@ function renderPipeline(){
       const scCol=sc.bucket==='HOT'?'#ef4444':(sc.bucket==='WARM'?'var(--yw)':'var(--cy)');
       const scChip=active?`<span title="${(sc.why.join(' · ')||'lead score').replace(/"/g,'')}" style="float:right;font-size:10px;font-weight:700;color:${scCol};border:1px solid ${scCol};border-radius:10px;padding:1px 7px">${sc.emoji} ${sc.score}</span>`:'';
       c.innerHTML=`
-      <div class="pipe-name">${scChip}${l.name}${l.company?`<span style="font-size:10px;color:var(--t2);font-weight:400;margin-left:6px">${l.company}</span>`:''}</div>
+      <div class="pipe-name">${scChip}${esc(l.name||'')}${l.company?`<span style="font-size:10px;color:var(--t2);font-weight:400;margin-left:6px">${esc(l.company)}</span>`:''}</div>
       <div class="pipe-val">${l.value?'$'+(l.value/1000).toFixed(1)+'K':''}</div>
-      <div class="pipe-meta">${l.service||''} • ${l.state||''}</div>
-      ${l.phone?`<div class="pipe-meta" style="margin-top:3px"><a href="tel:${l.phone}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">📞 ${l.phone}</a></div>`:''}
-      ${l.email?`<div class="pipe-meta" style="margin-top:2px"><a href="mailto:${l.email}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">✉ ${l.email}</a></div>`:''}
-      <div class="pipe-meta" style="margin-top:4px;color:var(--t3)">${l.date||''} ${l.source?'• '+l.source:''}</div>
+      <div class="pipe-meta">${esc(l.service||'')} • ${esc(l.state||'')}</div>
+      ${l.phone?`<div class="pipe-meta" style="margin-top:3px"><a href="tel:${encodeURIComponent(l.phone)}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">📞 ${esc(l.phone)}</a></div>`:''}
+      ${l.email?`<div class="pipe-meta" style="margin-top:2px"><a href="mailto:${encodeURIComponent(l.email)}" onclick="event.stopPropagation()" style="color:var(--cy);text-decoration:none;font-size:11px">✉ ${esc(l.email)}</a></div>`:''}
+      <div class="pipe-meta" style="margin-top:4px;color:var(--t3)">${esc(l.date||'')} ${l.source?'• '+esc(l.source):''}</div>
       <div style="display:flex;gap:6px;margin-top:7px">
         <button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;flex:1" onclick="event.stopPropagation();openLeadDetail(${l.id})">✏️ Edit</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:var(--red)" title="Delete" onclick="event.stopPropagation();deleteLead(${l.id})">🗑</button>
@@ -5755,11 +5757,11 @@ function openLeadDetail(id){
   playSound('click');
   showModal(`
   <div class="modal-title">✏️ EDIT LEAD</div>
-  <div class="form-group"><label class="form-label">Name *</label><input class="inp" id="eld_name" value="${l.name||''}"></div>
-  <div class="form-group"><label class="form-label">Company</label><input class="inp" id="eld_company" value="${l.company||''}"></div>
+  <div class="form-group"><label class="form-label">Name *</label><input class="inp" id="eld_name" value="${esc(l.name||'')}"></div>
+  <div class="form-group"><label class="form-label">Company</label><input class="inp" id="eld_company" value="${esc(l.company||'')}"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-    <div class="form-group"><label class="form-label">Phone</label><input class="inp" id="eld_phone" value="${l.phone||''}" placeholder="406-555-0000"></div>
-    <div class="form-group"><label class="form-label">Email</label><input class="inp" id="eld_email" value="${l.email||''}" placeholder="email@example.com"></div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="inp" type="tel" id="eld_phone" value="${esc(l.phone||'')}" placeholder="406-555-0000"></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="inp" type="email" id="eld_email" value="${esc(l.email||'')}" placeholder="email@example.com"></div>
   </div>
   <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px">
     <div class="form-group"><label class="form-label">Service</label>
@@ -5791,7 +5793,7 @@ function openLeadDetail(id){
       </select>
     </div>
   </div>
-  <div class="form-group"><label class="form-label">Notes</label><textarea class="inp" id="eld_notes" style="height:60px">${l.notes||''}</textarea></div>
+  <div class="form-group"><label class="form-label">Notes</label><textarea class="inp" id="eld_notes" style="height:60px">${esc(l.notes||'')}</textarea></div>
   <div class="modal-actions">
     <button class="btn btn-danger" onclick="deleteLead(${id})">DELETE</button>
     <button class="btn btn-cyan" onclick="estimateFromLead(${id})" title="Open the estimator prefilled with this lead">🧾 CREATE BID</button>
@@ -5943,15 +5945,15 @@ function renderJobs(){
       card.className = 'job-card';
       const nextSt = JOB_STATUSES[(JOB_STATUSES.findIndex(s=>s.id===st.id)+1)%JOB_STATUSES.length];
       card.innerHTML = `
-        <div class="job-num">${j.jobNum||'MGSF-???'}</div>
-        <div class="job-name">${j.name}</div>
+        <div class="job-num">${esc(j.jobNum||'MGSF-???')}</div>
+        <div class="job-name">${esc(j.name||'')}</div>
         <div class="job-val">$${((j.value||0)/1000).toFixed(1)}K</div>
-        <div class="job-meta">${j.customer||''}${j.state?' · '+j.state:''}</div>
-        ${j.address?`<div class="job-meta" style="margin-top:2px">📍 ${j.address}</div>`:''}
-        ${j.service?`<div class="job-meta">🔧 ${j.service}</div>`:''}
-        ${j.date?`<div class="job-meta">📅 ${j.date}${j.crew?' · 👤 '+j.crew:''}</div>`:''}
-        ${j.nextAction?`<div style="margin-top:5px;padding:4px 7px;background:rgba(249,115,22,.08);border-radius:4px;font-size:10px;color:var(--or)">▶ ${j.nextAction}</div>`:''}
-        ${j.notes?`<div style="margin-top:4px;font-size:10px;color:var(--t3);font-style:italic;line-height:1.4">${j.notes.slice(0,80)}${j.notes.length>80?'…':''}</div>`:''}
+        <div class="job-meta">${esc(j.customer||'')}${j.state?' · '+esc(j.state):''}</div>
+        ${j.address?`<div class="job-meta" style="margin-top:2px">📍 ${esc(j.address)}</div>`:''}
+        ${j.service?`<div class="job-meta">🔧 ${esc(j.service)}</div>`:''}
+        ${j.date?`<div class="job-meta">📅 ${esc(j.date)}${j.crew?' · 👤 '+esc(j.crew):''}</div>`:''}
+        ${j.nextAction?`<div style="margin-top:5px;padding:4px 7px;background:rgba(249,115,22,.08);border-radius:4px;font-size:10px;color:var(--or)">▶ ${esc(j.nextAction)}</div>`:''}
+        ${j.notes?`<div style="margin-top:4px;font-size:10px;color:var(--t3);font-style:italic;line-height:1.4">${esc(String(j.notes).slice(0,80))}${String(j.notes).length>80?'…':''}</div>`:''}
         <div class="job-actions">
           <button class="btn btn-ghost" onclick="event.stopPropagation();openJobDetail(${j.id})" style="font-size:10px;padding:4px 8px">EDIT</button>
           <button class="btn btn-cyan" onclick="event.stopPropagation();openJobLog(${j.id})" style="font-size:10px;padding:4px 8px">LOG</button>
@@ -6053,14 +6055,14 @@ function openJobDetail(id){
   if(!j) return;
   showModal(`
   <div class="modal-title">EDIT JOB <span style="font-size:11px;color:var(--t2);font-weight:400">${j.jobNum||''}</span></div>
-  <div class="form-group"><label class="form-label">Job Name *</label><input class="inp" id="ej_name" value="${j.name||''}"></div>
+  <div class="form-group"><label class="form-label">Job Name *</label><input class="inp" id="ej_name" value="${esc(j.name||'')}"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-    <div class="form-group"><label class="form-label">Customer</label><input class="inp" id="ej_cust" value="${j.customer||''}"></div>
-    <div class="form-group"><label class="form-label">Phone</label><input class="inp" id="ej_phone" value="${j.phone||''}"></div>
+    <div class="form-group"><label class="form-label">Customer</label><input class="inp" id="ej_cust" value="${esc(j.customer||'')}"></div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="inp" type="tel" id="ej_phone" value="${esc(j.phone||'')}"></div>
   </div>
-  <div class="form-group"><label class="form-label">Address</label><input class="inp" id="ej_addr" value="${j.address||''}"></div>
+  <div class="form-group"><label class="form-label">Address</label><input class="inp" id="ej_addr" value="${esc(j.address||'')}"></div>
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
-    <div class="form-group"><label class="form-label">Service / Scope</label><input class="inp" id="ej_svc" value="${j.service||''}"></div>
+    <div class="form-group"><label class="form-label">Service / Scope</label><input class="inp" id="ej_svc" value="${esc(j.service||'')}"></div>
     <div class="form-group"><label class="form-label">Sq Ft</label><input class="inp" type="number" id="ej_sqft" value="${j.sqft||0}"></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
@@ -6072,11 +6074,11 @@ function openJobDetail(id){
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     <div class="form-group"><label class="form-label">Schedule Date</label><input class="inp" type="date" id="ej_date" value="${j.date||''}"></div>
-    <div class="form-group"><label class="form-label">Crew</label><input class="inp" id="ej_crew" value="${j.crew||''}"></div>
-    <div class="form-group"><label class="form-label">Rig</label><input class="inp" id="ej_rig" value="${j.rig||''}"></div>
+    <div class="form-group"><label class="form-label">Crew</label><input class="inp" id="ej_crew" value="${esc(j.crew||'')}"></div>
+    <div class="form-group"><label class="form-label">Rig</label><input class="inp" id="ej_rig" value="${esc(j.rig||'')}"></div>
   </div>
-  <div class="form-group"><label class="form-label">Next Action</label><input class="inp" id="ej_nxt" value="${j.nextAction||''}"></div>
-  <div class="form-group"><label class="form-label">Notes</label><textarea class="inp" id="ej_notes" style="height:56px">${j.notes||''}</textarea></div>
+  <div class="form-group"><label class="form-label">Next Action</label><input class="inp" id="ej_nxt" value="${esc(j.nextAction||'')}"></div>
+  <div class="form-group"><label class="form-label">Notes</label><textarea class="inp" id="ej_notes" style="height:56px">${esc(j.notes||'')}</textarea></div>
   <div class="modal-actions" style="justify-content:space-between">
     <button class="btn" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ef4444;font-size:11px;padding:6px 12px" onclick="deleteJob(${id})">🗑 DELETE</button>
     <div style="display:flex;gap:8px">
@@ -6397,7 +6399,8 @@ function addMessage(text, who, speak_text='', atts=null){
 }
 
 function markdownLite(text){
-  return text
+  // Escape HTML FIRST so model/data text can't inject markup, then apply our safe markdown.
+  return esc(String(text==null?'':text))
     .replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--or)">$1</strong>')
     .replace(/\*(.*?)\*/g,'<em>$1</em>')
     .replace(/\n/g,'<br>')
@@ -7308,6 +7311,7 @@ function _estStateOf(addr){ const m=/,\s*([A-Za-z]{2})\s*$/.exec(String(addr||''
 function _mapJobStatus(s){ s=String(s||'').toLowerCase();
   if(s.indexOf('progress')>=0||s==='active'||s==='started') return 'In Progress';
   if(s.indexOf('invoice')>=0) return 'Invoiced';
+  if(/un-?\s*paid|not\s*paid/.test(s)) return 'Invoiced';   // guard: "unpaid"/"not paid" must NOT read as Paid
   if(s.indexOf('paid')>=0||s==='complete'||s==='completed'||s==='collected') return 'Paid';
   if(s.indexOf('cancel')>=0) return 'Cancelled';
   return 'Scheduled';
@@ -7651,8 +7655,8 @@ function renderDocLib(){
       <div style="display:flex;align-items:flex-start;gap:8px">
         <span style="font-size:28px">${catIcon(d.cat)}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.name}">${d.name}</div>
-          <div style="font-size:10px;color:var(--t2);margin-top:2px">${fmtBytes(d.size)} · ${d.ext.toUpperCase()} · ${d.uploaded}</div>
+          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(d.name||'')}">${esc(d.name||'')}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">${fmtBytes(d.size)} · ${esc(String(d.ext||'').toUpperCase())} · ${esc(d.uploaded||'')}</div>
           <select class="inp" style="font-size:10px;padding:2px 4px;margin-top:6px;width:100%" onchange="setDocCat('${d.id}',this.value)">
             <option value="plans"   ${d.cat==='plans'  ?'selected':''}>📐 Plans / Blueprints</option>
             <option value="specs"   ${d.cat==='specs'  ?'selected':''}>📋 Specs / RFPs</option>
@@ -7662,7 +7666,7 @@ function renderDocLib(){
             <option value="sds"     ${d.cat==='sds'    ?'selected':''}>⚠️ SDS / Safety</option>
             <option value="other"   ${d.cat==='other'  ?'selected':''}>📄 Other</option>
           </select>
-          <input class="inp" style="font-size:10px;padding:2px 6px;margin-top:4px;width:100%" placeholder="Notes..." value="${d.notes||''}" onchange="setDocNote('${d.id}',this.value)">
+          <input class="inp" style="font-size:10px;padding:2px 6px;margin-top:4px;width:100%" placeholder="Notes..." value="${esc(d.notes||'')}" onchange="setDocNote('${d.id}',this.value)">
         </div>
       </div>
       <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
@@ -7794,18 +7798,18 @@ function initDashboard(){
   if(pl) pl.innerHTML=priorities.slice(0,7).map(p=>`
   <div onclick="${p.go||''}" style="display:flex;align-items:flex-start;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.04);${p.go?'cursor:pointer':''}" ${p.go?'onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'"':''}>
     <span class="badge ${p.urgency==='high'?'badge-red':p.urgency==='med'?'badge-or':'badge-cy'}" style="white-space:nowrap;flex-shrink:0">${p.urgency.toUpperCase()}</span>
-    <span style="font-size:12px;line-height:1.4;flex:1">${p.text}</span>
+    <span style="font-size:12px;line-height:1.4;flex:1">${esc(p.text)}</span>
     ${p.go?'<span style="color:var(--t3);font-size:12px">›</span>':''}
   </div>`).join('');
-  
+
   // Recent jobs
   const rj=document.getElementById('recentJobs');
   if(rj) rj.innerHTML=appState.jobs.slice(0,4).map(j=>`
   <tr>
-    <td>${j.customer||j.name}</td>
-    <td style="font-size:11px;color:var(--t2)">${(j.service||'').split(' ').slice(0,2).join(' ')}</td>
+    <td>${esc(j.customer||j.name||'')}</td>
+    <td style="font-size:11px;color:var(--t2)">${esc((j.service||'').split(' ').slice(0,2).join(' '))}</td>
     <td style="color:var(--or)">$${((j.value||0)/1000).toFixed(1)}K</td>
-    <td><span class="badge badge-${j.status==='Completed'?'gr':j.status==='In Progress'?'or':'yw'}" style="font-size:9px">${j.status}</span></td>
+    <td><span class="badge badge-${j.status==='Completed'?'gr':j.status==='In Progress'?'or':'yw'}" style="font-size:9px">${esc(j.status||'')}</span></td>
   </tr>`).join('');
   
   // GM tracker
