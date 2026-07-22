@@ -40,6 +40,10 @@ const _num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
 const _day = (v) => { const s = String(v || "").slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; };
 const _txt = (v) => (v == null ? null : String(v));
 function _hash(s) { let h = 5381; s = String(s); for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return "m" + (h >>> 0).toString(36); }
+// Security: a raw API key/token must never sit in a client-readable payload or the reporting DB,
+// even if one got saved into Klyfton's "memory" as a fact. Redact those notes on the way out.
+const _SECRET_RE = /sk-ant-[A-Za-z0-9_-]{8,}|\bSAM-[0-9a-f]{6,}(?:-[0-9a-f]{4,})+|\bAC[0-9a-f]{30,}\b|\b(?:api[_\s-]?key|secret[_\s-]?key|auth[_\s-]?token|access[_\s-]?token|bearer|password)\b\s*[:=]\s*\S{6,}/i;
+function _isSecret(s) { return typeof s === "string" && _SECRET_RE.test(s); }
 const SB_MAP = {
   leads: { table: "leads", row: (r) => ({ id: _txt(r.id), name: _txt(r.name), company: _txt(r.company), phone: _txt(r.phone), email: _txt(r.email), service: _txt(r.service), state: _txt(r.state), value: _num(r.value), source: _txt(r.source), status: _txt(r.status), date: _day(r.date), notes: _txt(r.notes) }) },
   jobs: { table: "jobs", row: (r) => ({ id: _txt(r.id), customer: _txt(r.customer || r.name), service: _txt(r.service), state: _txt(r.state), status: _txt(r.status), value: _num(r.value), date: _day(r.date), crew: _txt(r.crew) }) },
@@ -70,7 +74,7 @@ async function sbMirror() {
     counts[cfg.table] = await sbUpsert(cfg.table, rows);
   }
   const mem = await kvGet(MEM);
-  const memRows = mem.filter((s) => typeof s === "string" && s.trim()).map((s) => ({ id: _hash(s), note: s, synced_at: new Date().toISOString() }));
+  const memRows = mem.filter((s) => typeof s === "string" && s.trim() && !_isSecret(s)).map((s) => ({ id: _hash(s), note: s, synced_at: new Date().toISOString() }));
   counts.memory = await sbUpsert("memory", memRows);
   return counts;
 }
@@ -132,6 +136,16 @@ module.exports = async (req, res) => {
         catch (e) { res.status(200).json({ configured: true, supabase: true, ok: false, error: String(e.message || e).slice(0, 240) }); }
         return;
       }
+      // One-time cleanup: GET ?scrub=1 removes any secret-looking notes (raw API keys/tokens) from
+      // Klyfton's memory in storage, so an exposed key doesn't linger in KV. Idempotent.
+      if (req.query && String(req.query.scrub) === "1") {
+        const mem = await kvGet(MEM);
+        const clean = mem.filter((s) => !_isSecret(s));
+        const removed = mem.length - clean.length;
+        if (removed) await kvSet(MEM, clean);
+        res.status(200).json({ configured: true, scrubbed: removed });
+        return;
+      }
       const tomb = await kvGet(TOMB);
       const tset = new Set((tomb || []).map((t) => t.c + "|" + String(t.id)));
       const data = {};
@@ -139,7 +153,8 @@ module.exports = async (req, res) => {
         const rows = await kvGet(c);
         data[c] = rows.filter((r) => r && r.id != null && !tset.has(c + "|" + String(r.id)));
       }));
-      const memory = await kvGet(MEM);
+      // Redact any secret that was saved into memory before returning it to the (public) client.
+      const memory = (await kvGet(MEM)).filter((s) => !_isSecret(s));
       res.status(200).json({ configured: true, data, tomb, memory });
       return;
     }
