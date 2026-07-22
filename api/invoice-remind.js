@@ -25,6 +25,22 @@ async function kvGet(col) {
   } catch { return []; }
 }
 
+// Fire the app's event webhook so a daily cron sweep can auto-draft reminders through Zapier
+// (HubSpot/Gmail) with no manual step. Dormant unless ALERTS_WEBHOOK_URL is set. Mirrors notify.js.
+const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
+const SECRET = process.env.WEBHOOK_SECRET || process.env.ALERTS_WEBHOOK_SECRET || "";
+async function fireWebhook(event, message, extra) {
+  if (!WEBHOOK) return false;
+  try {
+    const payload = Object.assign({ event, message, at: new Date().toISOString() }, extra || {});
+    if (SECRET) payload.token = SECRET;
+    const hdrs = { "content-type": "application/json", "x-klyfton-event": event };
+    if (SECRET) hdrs["x-klyfton-token"] = SECRET;
+    const r = await fetch(WEBHOOK, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
+    return r.ok;
+  } catch { return false; }
+}
+
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 120); }
 function money(n) { return "$" + (Math.round(num(n, 0) * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -119,7 +135,12 @@ module.exports = async (req, res) => {
       try {
         const invoices = await kvGet("invoices");
         const drafts = sweep(invoices, asOf);
-        res.status(200).json({ ok: true, draftOnly: true, scanned: invoices.length, drafts: drafts.length, reminders: drafts });
+        let notified = false;
+        if (drafts.length) {
+          const top = drafts.slice(0, 5).map((d) => d.customer + " " + d.amountFmt + (d.daysLate != null ? " (" + d.daysLate + "d)" : "")).join("; ");
+          notified = await fireWebhook("invoice", drafts.length + " invoice reminder(s) ready: " + top, { count: drafts.length });
+        }
+        res.status(200).json({ ok: true, draftOnly: true, scanned: invoices.length, drafts: drafts.length, notified, reminders: drafts });
       } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
       return;
     }

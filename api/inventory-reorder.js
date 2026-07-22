@@ -24,6 +24,22 @@ async function kvGet(col) {
   } catch { return []; }
 }
 
+// Fire the app's event webhook so a daily cron sweep auto-drafts supplier orders via Zapier
+// (Gmail/Slack) with no manual step. Dormant unless ALERTS_WEBHOOK_URL is set. Mirrors notify.js.
+const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
+const SECRET = process.env.WEBHOOK_SECRET || process.env.ALERTS_WEBHOOK_SECRET || "";
+async function fireWebhook(event, message, extra) {
+  if (!WEBHOOK) return false;
+  try {
+    const payload = Object.assign({ event, message, at: new Date().toISOString() }, extra || {});
+    if (SECRET) payload.token = SECRET;
+    const hdrs = { "content-type": "application/json", "x-klyfton-event": event };
+    if (SECRET) hdrs["x-klyfton-token"] = SECRET;
+    const r = await fetch(WEBHOOK, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
+    return r.ok;
+  } catch { return false; }
+}
+
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 80); }
 
@@ -63,7 +79,13 @@ module.exports = async (req, res) => {
       if (!KV_ON) { res.status(200).json({ ok: false, error: "kv_not_attached" }); return; }
       try {
         const inventory = await kvGet("inventory");
-        res.status(200).json(Object.assign({ ok: true, draftOnly: true, scanned: inventory.length }, sweep(inventory)));
+        const result = sweep(inventory);
+        let notified = false;
+        if (result.flagged) {
+          const top = result.orders.map((o) => o.lines.length + " from " + o.supplier).join("; ");
+          notified = await fireWebhook("reorder", result.flagged + " item(s) at reorder point — " + top, { count: result.flagged });
+        }
+        res.status(200).json(Object.assign({ ok: true, draftOnly: true, scanned: inventory.length, notified }, result));
       } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
       return;
     }
