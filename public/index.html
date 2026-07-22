@@ -591,28 +591,43 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
     <div style="font-size:11px;letter-spacing:4px;color:var(--cy);margin-top:6px">MACHINE GUN SPRAY FOAM</div>
     <div style="font-size:11px;color:var(--t2);margin-top:12px;letter-spacing:2px">ENTER ACCESS PIN</div>
   </div>
-  <div id="pinDisplay" style="display:flex;gap:12px;margin-bottom:20px">
-    <div class="pin-dot" id="pd0"></div>
-    <div class="pin-dot" id="pd1"></div>
-    <div class="pin-dot" id="pd2"></div>
-    <div class="pin-dot" id="pd3"></div>
+  <div id="pinPad">
+    <div id="pinDisplay" style="display:flex;gap:12px;margin-bottom:20px;justify-content:center">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div id="pinError" style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:8px;letter-spacing:2px;text-align:center"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,68px);grid-template-rows:repeat(4,56px);gap:8px">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key pin-enter" onclick="pinSubmit()">✓</button>
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-top:20px;letter-spacing:1px;text-align:center">4-DIGIT PIN REQUIRED</div>
+    <div style="margin-top:16px;text-align:center">
+      <button onclick="showEmailLogin()" style="background:none;border:none;color:var(--cy);font-size:12px;cursor:pointer;letter-spacing:1px;text-decoration:underline;font-family:var(--font)">Log in with email →</button>
+    </div>
   </div>
-  <div id="pinError" style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:8px;letter-spacing:2px"></div>
-  <div style="display:grid;grid-template-columns:repeat(3,68px);grid-template-rows:repeat(4,56px);gap:8px">
-    <button class="pin-key" onclick="pinKey('1')">1</button>
-    <button class="pin-key" onclick="pinKey('2')">2</button>
-    <button class="pin-key" onclick="pinKey('3')">3</button>
-    <button class="pin-key" onclick="pinKey('4')">4</button>
-    <button class="pin-key" onclick="pinKey('5')">5</button>
-    <button class="pin-key" onclick="pinKey('6')">6</button>
-    <button class="pin-key" onclick="pinKey('7')">7</button>
-    <button class="pin-key" onclick="pinKey('8')">8</button>
-    <button class="pin-key" onclick="pinKey('9')">9</button>
-    <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
-    <button class="pin-key" onclick="pinKey('0')">0</button>
-    <button class="pin-key pin-enter" onclick="pinSubmit()">✓</button>
+  <div id="emailBox" style="display:none;width:100%;max-width:300px;padding:0 20px;box-sizing:border-box">
+    <div style="font-size:11px;color:var(--t2);margin-bottom:12px;letter-spacing:2px;text-align:center">SIGN IN</div>
+    <input id="loginEmail" type="email" autocomplete="username" inputmode="email" placeholder="Email" style="width:100%;padding:12px;margin-bottom:8px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:16px;outline:none;box-sizing:border-box;font-family:var(--font)">
+    <input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')emailLogin()" style="width:100%;padding:12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:16px;outline:none;box-sizing:border-box;font-family:var(--font)">
+    <div id="loginError" style="color:var(--red);font-size:12px;min-height:16px;margin:8px 0;text-align:center"></div>
+    <button id="loginBtn" onclick="emailLogin()" style="width:100%;padding:13px;background:var(--or);color:#000;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer;letter-spacing:2px;font-family:var(--font)">LOG IN</button>
+    <div style="margin-top:16px;text-align:center">
+      <button onclick="showPinPad()" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--font)">← Use PIN instead</button>
+    </div>
   </div>
-  <div style="font-size:10px;color:var(--t3);margin-top:24px;letter-spacing:1px">4-DIGIT PIN REQUIRED</div>
 </div>
 
 <!-- CANVAS BACKGROUND -->
@@ -5055,6 +5070,33 @@ async function pinSubmit(){
     _pinBuffer='';
     setTimeout(()=>{ updatePinDots(); if(errEl) errEl.textContent=''; },1200);
   }
+}
+// ---- Email login (real per-user auth via /api/auth). Additive: the PIN pad is untouched and
+// remains the offline path, so this can never lock anyone out. Enforcement comes later. ----
+function showEmailLogin(){ const p=document.getElementById('pinPad'), e=document.getElementById('emailBox');
+  if(p)p.style.display='none'; if(e)e.style.display='block'; const em=document.getElementById('loginEmail'); if(em)setTimeout(()=>em.focus(),50); }
+function showPinPad(){ const p=document.getElementById('pinPad'), e=document.getElementById('emailBox');
+  if(e)e.style.display='none'; if(p)p.style.display='block'; }
+async function emailLogin(){
+  const emEl=document.getElementById('loginEmail'), pwEl=document.getElementById('loginPass');
+  const err=document.getElementById('loginError'), btn=document.getElementById('loginBtn');
+  const em=((emEl&&emEl.value)||'').trim().toLowerCase(), pw=(pwEl&&pwEl.value)||'';
+  if(!em||!pw){ if(err)err.textContent='Enter your email and password'; return; }
+  if(err)err.textContent=''; if(btn){ btn.disabled=true; btn.textContent='…'; }
+  try{
+    const r=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'login',email:em,password:pw})});
+    const d=await r.json();
+    if(d&&d.ok&&d.session){
+      try{ localStorage.setItem('klyfton_session', JSON.stringify({access_token:d.session.access_token, refresh_token:d.session.refresh_token, user:d.session.user, at:Date.now()})); }catch(_){}
+      const role=(d.session.user&&d.session.user.role)||'field';
+      appRole=role; window._currentUser=(d.session.user&&d.session.user.email)||'';
+      hidePinOverlay();
+      onPinSuccess(role, ((d.session.user&&d.session.user.email)||'').split('@')[0]);
+    } else {
+      if(err)err.textContent=(d&&d.error==='auth_not_configured')?'Login not enabled yet — use your PIN':'Wrong email or password';
+    }
+  }catch(e){ if(err)err.textContent='No connection — use your PIN'; }
+  if(btn){ btn.disabled=false; btn.textContent='LOG IN'; }
 }
 function onPinSuccess(role, name){
   // Upgrade any legacy plaintext crew PINs to hashes now that we're in (purges plaintext at rest).
