@@ -6645,6 +6645,30 @@ function klyftonOps(input){
     return {text:klyftonBrief(), voice:"Here's your brief."};
   }
 
+  // DRAFT: payment reminders for unpaid invoices (copy-ready, escalating tone, nothing sent)
+  if(/draft.*(reminder|payment)|(reminder|nudge).*(invoice|payment)|chase.*(payment|invoice)|remind.*(pay|invoice)/.test(low)){
+    const inv=_opsArr('invoices').filter(v=>v && v.paid!==true && ((+v.amt||0)-(+v.dep||0))>0.5);
+    if(!inv.length) return {text:"✅ Nothing to chase — no unpaid invoices.", voice:"No unpaid invoices to chase."};
+    const blocks=inv.slice(0,6).map(v=>{ const bal=(+v.amt||0)-(+v.dep||0); const late=_opsDays(v.due||v.date); const fn=(String(v.cust||'').split(/\s+/)[0])||'there';
+      const msg = (late==null||late<=0) ? `Hi ${fn}, quick heads-up from Machine Gun Spray Foam — your balance of ${_opsMoney(bal)} is coming due. Thanks for your business!`
+        : late<=30 ? `Hi ${fn}, Machine Gun Spray Foam here — your ${_opsMoney(bal)} balance came due ${late} days ago. Mind squaring it up when you get a chance? Appreciate it.`
+        : `${fn}, this is Machine Gun Spray Foam — your ${_opsMoney(bal)} balance is ${late} days past due. Please take care of it, or give us a call and we'll work it out.`;
+      return `**${esc(v.cust||v.num||'—')}** — ${_opsMoney(bal)}${late>0?` · ${late}d late`:''}\n${esc(msg)}`;
+    }).join('\n\n');
+    return {text:`✍️ **${inv.length} payment reminder${inv.length>1?'s':''} — copy & send (nothing sent):**\n\n${blocks}`, voice:`Drafted ${inv.length} payment reminders for your review.`};
+  }
+
+  // DRAFT: a follow-up nudge for a named lead
+  { const nm=low.match(/(?:nudge|follow.?up|draft|message|reach out).*?(?:for|to)\s+([a-z][a-z .'\-]{1,40})/);
+    if(nm){ const q=nm[1].trim().replace(/[.?!]+$/,'');
+      const lead=_opsArr('leads').find(l=>String(l.name||'').toLowerCase().includes(q));
+      if(lead){ const d=_opsDays(lead.lastContact||lead.date); const fn=(String(lead.name).split(/\s+/)[0])||'there';
+        const msg=`Hi ${fn}, it's Clifton with Machine Gun Spray Foam. Circling back on your ${lead.service||'project'} — didn't want it to slip through the cracks. Happy to answer questions or get you on the schedule. What's the best next step for you?`;
+        return {text:`✍️ **Follow-up for ${esc(lead.name)}**${d!=null?` (quiet ${d}d)`:''} — copy & send:\n\n${esc(msg)}${lead.phone?`\n\n📞 ${esc(lead.phone)}`:''}${lead.email?`\n✉️ ${esc(lead.email)}`:''}`, voice:`Drafted a follow-up for ${lead.name}.`};
+      }
+    }
+  }
+
   // 1) RECEIVABLES — "who owes me money", unpaid / overdue invoices
   if(/(who|what).*(owe|owes)|owed? me|money owed|receivable|outstanding|unpaid|past.?due|over.?due|get paid|accounts? receivable|\bar\b/.test(low)
      && !/estimat|quote|bid|how much.*cost|collected|collections/.test(low)){
@@ -6739,6 +6763,35 @@ function klyftonOps(input){
     if(!n) return {text:"⏱️ **No crew hours clocked in the last 7 days.** Punches show up here once the crew clocks in/out on a job.", voice:"No crew hours in the last week."};
     const breakdown=Object.entries(per).sort((a,b)=>b[1]-a[1]).map(([w,hh])=>`• ${esc(w)} — ${(Math.round(hh*10)/10)} h`).join('\n');
     return {text:`⏱️ **${Math.round(h*10)/10} crew-hours** clocked in the last 7 days (${n} punch${n>1?'es':''}):\n\n${breakdown}`, voice:`${Math.round(h*10)/10} crew hours in the last 7 days.`};
+  }
+
+  // 9) GOVCON — open government bids (SAM.gov set-asides), soonest due first
+  if(/gov.?con|sam\.?gov|federal (bid|opportun|contract)|government (bid|lead|work|contract)|open bids?|bids? open|set.?aside|solicitation/.test(low)){
+    const gov=_opsArr('leads').filter(l=>l && !_opsDead(l.status) && (/government/i.test(l.service||'') || /sam\.gov/i.test(l.source||'')));
+    if(!gov.length) return {text:"🏛️ **No open GovCon leads** right now. The SAM.gov scanner runs Mon–Sat and drops new set-asides into your pipeline automatically.", voice:"No open government bids right now."};
+    const rows=gov.map(l=>{ const m=String(l.notes||'').match(/due\s+(\d{4}-\d{2}-\d{2})/i); const due=m?m[1]:null; const dd=due?_opsDays(due):null;
+      return {l, due, dd}; }).sort((a,b)=>((a.due?Date.parse(a.due):Infinity)-(b.due?Date.parse(b.due):Infinity)));
+    const body=rows.slice(0,10).map(x=>`• **${esc(x.l.name||'—')}**${x.due?` · due ${x.due}${x.dd!=null?(x.dd<=0?` (${-x.dd}d left)`:' (closed)'):''}`:''}`).join('\n');
+    return {text:`🏛️ **${gov.length} open GovCon lead${gov.length>1?'s':''}** (SAM.gov set-asides in your lane):\n\n${body}\n\nOpen one in CRM for the solicitation link.`, voice:`You have ${gov.length} open government bids.`};
+  }
+
+  // 10) RECENT ESTIMATES / BIDS
+  if(/recent (estimate|bid|quote)|last (estimate|bid|quote)|my (estimates|bids|quotes)|(estimates?|bids?) (saved|list|so far)|saved (estimate|bid)/.test(low)){
+    const ests=_opsArr('estimates').slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,8);
+    if(!ests.length) return {text:"📋 **No saved estimates yet.** Build one in the Estimator and hit Save — it'll show here and feed your margin tracking.", voice:"No saved estimates yet."};
+    const body=ests.map(e=>`• **${esc(e.customer||'—')}** — ${_opsMoney(e.value)}${isFinite(parseFloat(e.gm))?` · ${Math.round(parseFloat(e.gm)*100)}% GM`:''}${e.date?` · ${esc(e.date)}`:''}`).join('\n');
+    return {text:`📋 **Recent estimates (${ests.length}):**\n\n${body}`, voice:`Your ${ests.length} most recent estimates.`};
+  }
+
+  // 11) REVIEWS
+  if(/how many reviews|review count|google reviews?|our reviews|reviews.*(have|got)/.test(low)){
+    const n=(appState.reviews&&appState.reviews.length)||0;
+    return {text:`⭐ **${n} review${n===1?'':'s'} logged** (target 50).${n<50?` ${50-n} to go — ask every happy customer 1 hour after they pay.`:' 🎯 Target hit — keep it rolling.'}`, voice:`You have ${n} reviews logged.`};
+  }
+
+  // 12) HELP — what Klyfton can pull
+  if(/what can you (do|help|pull|tell)|^help\b|^what do you do|your (commands|capabilities)|how do (you|i) (work|use)|what should i ask/.test(low)){
+    return {text:`🤖 **Ask me for live numbers — straight from your data:**\n\n☀️ **brief** — your day at a glance\n💰 **who owes me money** — receivables\n🥶 **cold leads** — stalled pipeline + $ at risk\n📆 **this week** / **today** — schedule\n📊 **pipeline** — open value\n🏛️ **open bids** — GovCon set-asides\n📋 **recent estimates** · 💵 **collected** · ⏱️ **crew hours** · 📐 **avg margin** · ⭐ **reviews**\n✍️ **draft reminders** / **draft a nudge for [name]**\n\nAnything else, I'll think it through. Every draft is yours to approve — nothing sends on its own.`, voice:"Ask me for your brief, receivables, cold leads, schedule, pipeline, bids, or to draft a follow-up."};
   }
 
   return null;
@@ -9540,6 +9593,17 @@ ${s.sig?`<img class="sig" src="${e(s.sig)}" alt="signature">`:'<div class="sub">
     html+=`<div id="opsWx" style="margin:4px 0">🌦️ Pulling spray weather…</div>`;
     html+=`<div>🔨 <b>${jobs.length}</b> active job${jobs.length===1?'':'s'}${jobs.length?': '+jobs.slice(0,4).map(j=>esc(j.customer||j.name||j.jobNum||'job')).join(', ')+(jobs.length>4?'…':''):''}</div>`;
     html+=`<div>💰 Pipeline: <b>${money(pipe)}</b> across ${leads.length} open lead${leads.length===1?'':'s'}</div>`;
+    // Receivables — money owed to you (unpaid invoices), overdue flagged.
+    try{ const inv=(typeof _opsArr==='function'?_opsArr('invoices'):[]).filter(v=>v&&v.paid!==true&&((+v.amt||0)-(+v.dep||0))>0.5);
+      if(inv.length){ const ar=inv.reduce((s,v)=>s+((+v.amt||0)-(+v.dep||0)),0);
+        const late=inv.filter(v=>{const d=_opsDays(v.due||v.date);return d!=null&&d>0;}).length;
+        html+=`<div style="color:${late?'var(--yw)':'var(--t2)'}">🧾 Owed to you: <b>${money(ar)}</b> across ${inv.length} invoice${inv.length>1?'s':''}${late?` (${late} overdue)`:''}</div>`; }
+    }catch(e){}
+    // Overdue jobs — past scheduled date, not closed.
+    try{ const t0=new Date(); t0.setHours(0,0,0,0);
+      const od=jobs.filter(j=>{const t=Date.parse(String(j.date||'').slice(0,10)); return isFinite(t)&&t<t0.getTime();});
+      if(od.length){ html+=`<div style="color:var(--yw)">⚠️ ${od.length} job${od.length>1?'s':''} past scheduled date — reschedule or close</div>`; }
+    }catch(e){}
     if(stale.length){ html+=`<div style="color:var(--yw)">📞 Chase today (quiet 7+ days): ${stale.slice(0,5).map(l=>esc(l.name)+' ('+daysSince(l.date)+'d)').join(', ')}</div>`; }
     else { html+=`<div style="color:var(--gr)">📞 No stale leads — pipeline's warm.</div>`; }
     box.innerHTML=html;
