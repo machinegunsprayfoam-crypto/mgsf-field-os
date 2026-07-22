@@ -9,6 +9,7 @@
     "api/*.js": { "maxDuration": 300 }
   },
   "crons": [
+    { "path": "/api/sync?mirror=1", "schedule": "0 12 * * 1-6" },
     { "path": "/api/samgov?scan=1", "schedule": "0 13 * * 1-6" },
     { "path": "/api/invoice-remind?sweep=1", "schedule": "0 14 * * 1-6" },
     { "path": "/api/inventory-reorder?sweep=1", "schedule": "0 15 * * 1-6" },
