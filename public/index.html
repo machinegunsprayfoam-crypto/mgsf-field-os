@@ -5092,11 +5092,30 @@ async function emailLogin(){
       appRole=role; window._currentUser=(d.session.user&&d.session.user.email)||'';
       hidePinOverlay();
       onPinSuccess(role, ((d.session.user&&d.session.user.email)||'').split('@')[0]);
+      // First login on a temp password → nudge them to set a real one.
+      if(d.session.user&&d.session.user.must_change){ setTimeout(()=>{ try{ if(window.notify) notify('Set a real password to finish setup 🔐','info'); }catch(_){}; changePassword(true); }, 800); }
     } else {
       if(err)err.textContent=(d&&d.error==='auth_not_configured')?'Login not enabled yet — use your PIN':'Wrong email or password';
     }
   }catch(e){ if(err)err.textContent='No connection — use your PIN'; }
   if(btn){ btn.disabled=false; btn.textContent='LOG IN'; }
+}
+// Change your own password (replaces the temp one). Requires an email-login session token.
+async function changePassword(forced){
+  let s={}; try{ s=JSON.parse(localStorage.getItem('klyfton_session')||'{}'); }catch(e){}
+  if(!s.access_token){ try{ notify('Log in with your email first, then you can set a password','alert'); }catch(_){} return; }
+  const p1=prompt(forced?'Welcome! Set a real password to replace your temporary one (at least 6 characters):':'New password (at least 6 characters):');
+  if(!p1) return;
+  if(String(p1).length<6){ try{ notify('Password must be at least 6 characters','alert'); }catch(_){} return; }
+  const p2=prompt('Re-enter the new password to confirm:');
+  if(p1!==p2){ try{ notify('Passwords didn\'t match — try again','alert'); }catch(_){} return; }
+  try{
+    const r=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'change_password',access_token:s.access_token,new_password:String(p1)})});
+    const d=await r.json();
+    if(d&&d.ok){ try{ localStorage.setItem('klyfton_pw_changed','1'); }catch(_){}
+      try{ notify('Password updated ✓ — use it next time you log in','success'); }catch(_){} }
+    else { try{ notify('Couldn\'t update password: '+((d&&d.error)||'try again'),'alert'); }catch(_){} }
+  }catch(e){ try{ notify('No connection — try again with signal','alert'); }catch(_){} }
 }
 function onPinSuccess(role, name){
   // Upgrade any legacy plaintext crew PINs to hashes now that we're in (purges plaintext at rest).

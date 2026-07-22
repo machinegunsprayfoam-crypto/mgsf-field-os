@@ -26,7 +26,7 @@ function roleOf(user) {
     return r || "field"; // default least-privilege until a role is set on the account
   } catch { return "field"; }
 }
-function trimUser(u) { return u ? { id: u.id, email: u.email, role: roleOf(u) } : null; }
+function trimUser(u) { return u ? { id: u.id, email: u.email, role: roleOf(u), must_change: !!(u && u.app_metadata && u.app_metadata.must_change) } : null; }
 
 async function tokenGrant(kind, body) {
   const r = await fetch(SB_URL + "/auth/v1/token?grant_type=" + kind, {
@@ -109,6 +109,30 @@ module.exports = async (req, res) => {
       if (!r.ok) { res.status(200).json({ ok: false, error: "invalid_token" }); return; }
       const u = await r.json().catch(() => null);
       res.status(200).json({ ok: true, user: trimUser(u) });
+      return;
+    }
+    if (body.action === "change_password") {
+      const tok = String(body.access_token || "");
+      const np = String(body.new_password || "");
+      if (!tok || np.length < 6) { res.status(200).json({ ok: false, error: "min_6_chars" }); return; }
+      // Update the caller's own password using their bearer token (they must be logged in).
+      const r = await fetch(SB_URL + "/auth/v1/user", {
+        method: "PUT",
+        headers: { apikey: SB_KEY, Authorization: "Bearer " + tok, "Content-Type": "application/json" },
+        body: JSON.stringify({ password: np }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { res.status(200).json({ ok: false, error: String((j && (j.msg || j.error_description || j.error)) || "change_failed").slice(0, 140) }); return; }
+      // Best-effort: clear the must_change flag while preserving role.
+      try {
+        const meta = Object.assign({}, (j && j.app_metadata) || {}, { must_change: false });
+        if (j && j.id) await fetch(SB_URL + "/auth/v1/admin/users/" + j.id, {
+          method: "PUT",
+          headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ app_metadata: meta }),
+        });
+      } catch (_) {}
+      res.status(200).json({ ok: true });
       return;
     }
     res.status(200).json({ ok: false, error: "unknown_action" });
