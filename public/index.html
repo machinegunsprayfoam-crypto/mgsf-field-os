@@ -351,62 +351,100 @@ canvas.chart{width:100%;height:100%}
    a receding perspective grid floor, glowing edges + scanlines. Purely
    visual (additive); readability + layout preserved.
    ============================================================ */
-:root{ --neon:#00e5ff; --neonSoft:rgba(0,229,255,.5); }
+/* FX color channels — overridden per theme via :root[data-theme]. Default = GRID (Tron). */
+:root{ --neon:#00e5ff; --neonSoft:rgba(0,229,255,.5);
+  --gridRGB:0,229,255; --neonRGB:0,229,255; --accentRGB:249,115,22; }
 
-/* Signature Tron perspective grid floor (fixed, behind content, no clicks) */
+/* Signature perspective grid floor (fixed, behind content, no clicks) */
 #tronFloor{position:fixed;left:0;right:0;bottom:0;height:46vh;z-index:0;pointer-events:none;overflow:hidden;
-  perspective:320px;opacity:.5;
+  perspective:320px;opacity:.5;transition:opacity .4s;
   -webkit-mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.55) 42%,transparent 100%);
           mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.55) 42%,transparent 100%)}
 #tronFloor::before{content:"";position:absolute;left:-60%;right:-60%;top:0;bottom:-20%;
-  background-image:linear-gradient(rgba(0,229,255,.45) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(0,229,255,.35) 1px,transparent 1px);
+  background-image:linear-gradient(rgba(var(--gridRGB),.45) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(var(--gridRGB),.35) 1px,transparent 1px);
   background-size:46px 46px;transform:rotateX(74deg);transform-origin:50% 0;
   animation:tronRun 5.5s linear infinite}
 @keyframes tronRun{from{background-position:0 0}to{background-position:0 46px}}
-/* faint glowing horizon line where the floor meets the scene */
 #tronFloor::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
   background:var(--neon);box-shadow:0 0 18px 2px var(--neonSoft);opacity:.55}
 
-/* Holographic scanlines + vignette overlay (very subtle, sits above the grid, below UI) */
-#tronScan{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.55;
-  background:repeating-linear-gradient(to bottom,rgba(0,229,255,.035) 0 1px,transparent 1px 3px),
+/* Holographic scanlines + vignette overlay */
+#tronScan{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.55;transition:opacity .4s;
+  background:repeating-linear-gradient(to bottom,rgba(var(--gridRGB),.035) 0 1px,transparent 1px 3px),
              radial-gradient(120% 80% at 50% 0%,transparent 55%,rgba(0,0,0,.45) 100%)}
+/* "off" theme kills the FX layers entirely (clean look) */
+:root[data-theme="clean"] #tronFloor,:root[data-theme="clean"] #tronScan{display:none}
+:root[data-theme="stealth"] #tronFloor{opacity:.12}
+:root[data-theme="stealth"] #tronScan{opacity:.28}
 
-/* keep the real app shell above the fx layers. NOTE: overlays (boot/pin/modal/notif) keep their
-   own much-higher z-index — do not force them here or they'd drop behind the app. */
+/* keep the app shell above fx (overlays keep their own high z-index) */
 #topbar,#sidebar,#content,#chatPanel{position:relative;z-index:2}
 
-/* Neon edges + depth on panels (these had no box-shadow, so this is additive) */
+/* Neon edges + depth on panels */
 .card,.metric-card,.admin-section,.jsa-card,.log-row,.tc-card{
-  box-shadow:inset 0 1px 0 rgba(0,229,255,.12), 0 0 16px rgba(0,229,255,.045), 0 6px 22px rgba(0,0,0,.45)}
+  box-shadow:inset 0 1px 0 rgba(var(--neonRGB),.12), 0 0 16px rgba(var(--neonRGB),.045), 0 6px 22px rgba(0,0,0,.45)}
 .card:hover,.admin-section:hover,.jsa-card:hover{
-  box-shadow:inset 0 1px 0 rgba(0,229,255,.22), 0 0 26px rgba(0,229,255,.09), 0 8px 30px rgba(0,0,0,.5)}
+  box-shadow:inset 0 1px 0 rgba(var(--neonRGB),.22), 0 0 26px rgba(var(--neonRGB),.09), 0 8px 30px rgba(0,0,0,.5)}
 .metric-card{transition:transform .18s,box-shadow .18s}
 .metric-card:hover{transform:translateY(-2px);
-  box-shadow:inset 0 1px 0 rgba(0,229,255,.25), 0 0 26px rgba(249,115,22,.16), 0 8px 30px rgba(0,0,0,.5)}
+  box-shadow:inset 0 1px 0 rgba(var(--neonRGB),.25), 0 0 26px rgba(var(--accentRGB),.16), 0 8px 30px rgba(0,0,0,.5)}
 
 /* HUD-style glowing titles + numbers */
-.card-title{color:var(--cy);text-shadow:0 0 10px rgba(0,229,255,.4)}
-.metric-val{text-shadow:0 0 18px rgba(249,115,22,.55)}
-.logo-text{text-shadow:0 0 12px rgba(249,115,22,.85),0 0 34px rgba(249,115,22,.4)}
-.admin-section-title{text-shadow:0 0 10px rgba(249,115,22,.5)}
-h2{text-shadow:0 0 14px rgba(249,115,22,.35)}
+.card-title{color:var(--cy);text-shadow:0 0 10px rgba(var(--neonRGB),.4)}
+.metric-val{text-shadow:0 0 18px rgba(var(--accentRGB),.55)}
+.logo-text{text-shadow:0 0 12px rgba(var(--accentRGB),.85),0 0 34px rgba(var(--accentRGB),.4)}
+.admin-section-title{text-shadow:0 0 10px rgba(var(--accentRGB),.5)}
+h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
 
 /* Glowing buttons */
-.btn-primary{box-shadow:0 0 16px rgba(249,115,22,.4)}
-.btn-primary:hover{box-shadow:0 0 30px rgba(249,115,22,.75)}
-.btn-cyan{box-shadow:0 0 14px rgba(0,229,255,.28)}
-.btn-cyan:hover{box-shadow:0 0 26px rgba(0,229,255,.6);color:#fff;border-color:var(--neon)}
+.btn-primary{box-shadow:0 0 16px rgba(var(--accentRGB),.4)}
+.btn-primary:hover{box-shadow:0 0 30px rgba(var(--accentRGB),.75)}
+.btn-cyan{box-shadow:0 0 14px rgba(var(--neonRGB),.28)}
+.btn-cyan:hover{box-shadow:0 0 26px rgba(var(--neonRGB),.6);color:#fff;border-color:var(--neon)}
 
 /* Neon nav + input focus */
-.nav-item.active{border-color:var(--neon);box-shadow:0 0 18px rgba(0,229,255,.35),inset 0 0 12px rgba(0,229,255,.14)}
+.nav-item.active{border-color:var(--neon);box-shadow:0 0 18px rgba(var(--neonRGB),.35),inset 0 0 12px rgba(var(--neonRGB),.14)}
 .nav-item.active .nav-icon{filter:drop-shadow(0 0 6px var(--neon))}
-.inp:focus,.admin-inp:focus{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),0 0 14px rgba(0,229,255,.28)}
+.inp:focus,.admin-inp:focus{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),0 0 14px rgba(var(--neonRGB),.28)}
 
 /* Top bar reads like a HUD strip */
-#topbar{box-shadow:0 1px 0 rgba(0,229,255,.18),0 6px 22px rgba(0,0,0,.4)}
+#topbar{box-shadow:0 1px 0 rgba(var(--neonRGB),.18),0 6px 22px rgba(0,0,0,.4)}
 .status-dot{box-shadow:0 0 10px var(--gr),0 0 4px var(--gr)}
+
+/* ===== SELECTABLE THEMES (data-theme on <html>). GRID/Tron = default :root ===== */
+:root[data-theme="blaze"]{--bg:#0c0a07;--s1:#15100a;--s2:#1c140c;--s3:#241a10;
+  --or:#ff7a1a;--cy:#ffb347;--neon:#ff8c2a;--neonSoft:rgba(255,140,42,.5);
+  --gridRGB:255,140,42;--neonRGB:255,140,42;--accentRGB:255,122,26;
+  --bd:rgba(255,122,26,.2);--glow:rgba(255,122,26,.5)}
+:root[data-theme="tactical"]{--bg:#0a0d09;--s1:#111710;--s2:#161d13;--s3:#1e281a;
+  --or:#c2a878;--cy:#9bbb5a;--neon:#9bbb5a;--neonSoft:rgba(155,187,90,.5);
+  --gridRGB:130,160,80;--neonRGB:155,187,90;--accentRGB:194,168,120;
+  --bd:rgba(155,187,90,.2);--glow:rgba(194,168,120,.4);--tx:#e9ecdf;--t2:#93a082}
+:root[data-theme="matrix"]{--bg:#000600;--s1:#001400;--s2:#001c06;--s3:#02260c;
+  --or:#22ff66;--cy:#00ffa3;--neon:#00ff66;--neonSoft:rgba(0,255,90,.5);
+  --gridRGB:0,255,90;--neonRGB:0,255,120;--accentRGB:34,255,102;
+  --bd:rgba(0,255,100,.2);--glow:rgba(0,255,100,.4);--tx:#c9ffd2;--t2:#4fbf6a;--t3:#124a24}
+:root[data-theme="ice"]{--bg:#04080f;--s1:#0a121f;--s2:#0f1a2c;--s3:#16263f;
+  --or:#38bdf8;--cy:#7dd3fc;--neon:#4be0ff;--neonSoft:rgba(75,224,255,.5);
+  --gridRGB:80,200,255;--neonRGB:80,200,255;--accentRGB:56,189,248;
+  --bd:rgba(56,189,248,.2);--glow:rgba(56,189,248,.45);--tx:#eaf4ff;--t2:#8aa8c8}
+:root[data-theme="synthwave"]{--bg:#0e0420;--s1:#160a2e;--s2:#1e0f3d;--s3:#2a1550;
+  --or:#ff2e97;--cy:#22d3ee;--neon:#ff2e97;--neonSoft:rgba(255,46,151,.5);
+  --gridRGB:255,46,151;--neonRGB:34,211,238;--accentRGB:255,46,151;
+  --bd:rgba(255,46,151,.24);--glow:rgba(255,46,151,.5);--tx:#f6e8ff;--t2:#b48ad6}
+:root[data-theme="amber"]{--bg:#0a0700;--s1:#140d00;--s2:#1b1200;--s3:#241900;
+  --or:#ffb000;--cy:#ffcf6b;--neon:#ffb000;--neonSoft:rgba(255,176,0,.5);
+  --gridRGB:255,176,0;--neonRGB:255,176,0;--accentRGB:255,176,0;
+  --bd:rgba(255,176,0,.2);--glow:rgba(255,176,0,.4);--tx:#ffe6b0;--t2:#b8842e}
+:root[data-theme="stealth"]{--bg:#0a0a0c;--s1:#0f0f13;--s2:#141419;--s3:#1c1c23;
+  --or:#cbd5e1;--cy:#94a3b8;--neon:#8493a8;--neonSoft:rgba(132,147,168,.4);
+  --gridRGB:110,122,140;--neonRGB:132,147,168;--accentRGB:203,213,225;
+  --bd:rgba(148,163,184,.14);--glow:rgba(148,163,184,.22);--tx:#e5e9f0;--t2:#8a93a3}
+:root[data-theme="clean"]{--bg:#0b0d12;--s1:#111420;--s2:#161a28;--s3:#1e2333;
+  --or:#f97316;--cy:#38bdf8;--neon:#38bdf8;--neonSoft:rgba(56,189,248,.4);
+  --gridRGB:56,189,248;--neonRGB:56,189,248;--accentRGB:249,115,22;
+  --bd:rgba(255,255,255,.1);--glow:rgba(249,115,22,.3)}
 </style>
 <style id="mg-facelift">
   /* ── Klyfton facelift: depth, neon, glass, motion (additive) ── */
@@ -460,6 +498,47 @@ h2{text-shadow:0 0 14px rgba(249,115,22,.35)}
 
 </head>
 <body>
+<script>
+/* ===== THEME ENGINE — selectable skins, persisted per device. Applied here early so the boot
+   screen masks any flash. GRID (Tron) is the default (no data-theme attribute). ===== */
+(function(){
+  window.KLYFTON_THEMES = [
+    {id:'grid',      name:'Grid',      emoji:'⚡', sw:['#080810','#00e5ff','#f97316'], desc:'Tron neon — default'},
+    {id:'blaze',     name:'Blaze',     emoji:'🔥', sw:['#0c0a07','#ff8c2a','#ffb347'], desc:'Heavy brand orange'},
+    {id:'tactical',  name:'Tactical',  emoji:'🎖️', sw:['#0a0d09','#9bbb5a','#c2a878'], desc:'Military olive + tan'},
+    {id:'matrix',    name:'Matrix',    emoji:'💾', sw:['#000600','#00ff66','#22ff66'], desc:'Phosphor-green terminal'},
+    {id:'ice',       name:'Ice',       emoji:'❄️', sw:['#04080f','#4be0ff','#7dd3fc'], desc:'Arctic navy + cyan'},
+    {id:'synthwave', name:'Synthwave', emoji:'🌆', sw:['#0e0420','#ff2e97','#22d3ee'], desc:'Retro magenta + cyan'},
+    {id:'amber',     name:'Amber',     emoji:'🟠', sw:['#0a0700','#ffb000','#ffcf6b'], desc:'Retro amber CRT'},
+    {id:'stealth',   name:'Stealth',   emoji:'🕶️', sw:['#0a0a0c','#8493a8','#cbd5e1'], desc:'Calm steel — low FX'},
+    {id:'clean',     name:'Clean',     emoji:'▫️', sw:['#0b0d12','#38bdf8','#f97316'], desc:'Minimal — no grid/scanlines'}
+  ];
+  window.applyTheme = function(id){
+    if(!KLYFTON_THEMES.some(function(t){return t.id===id;})) id='grid';
+    if(id==='grid') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', id);
+    try{ localStorage.setItem('klyfton_theme', id); }catch(e){}
+    if(window.renderThemePicker) renderThemePicker();
+    if(window.notify){ var t=KLYFTON_THEMES.find(function(x){return x.id===id;}); notify('Theme: '+(t?t.name:id),'success'); }
+  };
+  window.renderThemePicker = function(){
+    var box=document.getElementById('themePicker'); if(!box) return;
+    var cur; try{ cur=localStorage.getItem('klyfton_theme')||'grid'; }catch(e){ cur='grid'; }
+    box.innerHTML = KLYFTON_THEMES.map(function(t){
+      var on = t.id===cur;
+      var sw = t.sw.map(function(c){return '<span style="width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,.15);background:'+c+'"></span>';}).join('');
+      return '<button onclick="applyTheme(\''+t.id+'\')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 11px;margin-bottom:6px;border-radius:8px;cursor:pointer;min-height:48px;'
+        +'background:'+(on?'rgba(var(--neonRGB),.12)':'var(--s3)')+';border:1px solid '+(on?'var(--neon)':'var(--bd)')+';color:var(--tx)">'
+        +'<span style="font-size:17px">'+t.emoji+'</span>'
+        +'<span style="display:inline-flex;gap:3px">'+sw+'</span>'
+        +'<span style="flex:1;line-height:1.25"><b style="font-size:13px">'+t.name+'</b><br><span style="font-size:10px;color:var(--t2)">'+t.desc+'</span></span>'
+        +(on?'<span style="color:var(--neon);font-size:11px;font-weight:700;white-space:nowrap">● ACTIVE</span>':'')+'</button>';
+    }).join('');
+  };
+  try{ window.applyTheme(localStorage.getItem('klyfton_theme')||'grid'); }catch(e){}
+  window.addEventListener('DOMContentLoaded', function(){ if(window.renderThemePicker) renderThemePicker(); });
+})();
+</script>
 <!-- BOOT SCREEN -->
 <div id="boot">
   <div class="boot-logo">KLYFTON AI</div>
@@ -1229,6 +1308,13 @@ h2{text-shadow:0 0 14px rgba(249,115,22,.35)}
           <span class="badge badge-cy">Full Access Only</span>
         </div>
         <div style="font-size:11px;color:var(--t2);margin-bottom:14px">Changes are saved locally and apply immediately. Defaults reload if you clear the override.</div>
+
+        <!-- App Theme -->
+        <div class="admin-section">
+          <div class="admin-section-title">🎨 APP THEME</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Pick the look. Full-neon for customer demos, calmer skins for daily field use. Saved to this device — tap one to apply instantly.</div>
+          <div id="themePicker"></div>
+        </div>
 
         <!-- Labor Rates -->
         <div class="admin-section">
