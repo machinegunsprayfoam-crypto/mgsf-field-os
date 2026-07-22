@@ -8,9 +8,12 @@
 //      on-device only. We never log the key.
 // No npm deps — global fetch only.
 
-// Key comes ONLY from the environment (Vercel SAM_API_KEY) or a per-request in-app key — never
-// hardcoded here. A hardcoded key would land in the repo (now public); SAM_API_KEY is set in Vercel.
-const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || "";
+// SAM.gov key — env var preferred (Vercel SAM_API_KEY). Owner opted to keep the existing key inline
+// until it expires in a few weeks: a SAM key only authenticates calls to PUBLIC federal opportunity
+// data, is rate-limited, and is free to regenerate — low value. When the replacement issues, put it
+// in Vercel SAM_API_KEY (env overrides this) and delete the inline fallback below.
+const DEFAULT_KEY = "SAM-a61acfcd-4511-4a92-a775-8333eab001e1";
+const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || DEFAULT_KEY;
 
 // Documented endpoint, with the /prod variant as a fallback (both are served).
 const SAM_HOSTS = [
