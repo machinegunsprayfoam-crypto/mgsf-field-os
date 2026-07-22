@@ -1633,6 +1633,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       </div>
       <div id="chatMessages"></div>
       <div class="chat-chips" id="chatChips">
+        <button class="chat-chip" onclick="opsAsk('brief')">☀️ Brief</button>
         <button class="chat-chip" onclick="opsAsk('who owes me money')">💰 Who owes me</button>
         <button class="chat-chip" onclick="opsAsk('cold leads')">🥶 Cold leads</button>
         <button class="chat-chip" onclick="opsAsk('this week')">📆 This week</button>
@@ -6639,9 +6640,14 @@ function klyftonOps(input){
   const low = String(input||'').toLowerCase().trim();
   if(!low) return null;
 
+  // 0) MORNING BRIEF — one composed rundown of the day (the "wake up to a plan" readout)
+  if(/\b(brief|rundown|run.?down|my day|catch me up|start my day|whats? (my|the) (day|plan)|daily (brief|report))\b/.test(low)){
+    return {text:klyftonBrief(), voice:"Here's your brief."};
+  }
+
   // 1) RECEIVABLES — "who owes me money", unpaid / overdue invoices
-  if(/(who|what).*(owe|owes)|owed? me|money owed|receivable|outstanding|unpaid|past.?due|over.?due|get paid|collect|accounts? receivable|\bar\b/.test(low)
-     && !/estimat|quote|bid|how much.*cost/.test(low)){
+  if(/(who|what).*(owe|owes)|owed? me|money owed|receivable|outstanding|unpaid|past.?due|over.?due|get paid|accounts? receivable|\bar\b/.test(low)
+     && !/estimat|quote|bid|how much.*cost|collected|collections/.test(low)){
     const inv=_opsArr('invoices').filter(v=>v && v.paid!==true && ((+v.amt||0)-(+v.dep||0))>0.5);
     if(!inv.length) return {text:"✅ **Nothing outstanding.** No unpaid invoices on the books right now.", voice:"You're all paid up — no outstanding invoices."};
     const rows=inv.map(v=>{ const bal=(+v.amt||0)-(+v.dep||0); const late=_opsDays(v.due||v.date); return {v,bal,late}; })
@@ -6716,7 +6722,70 @@ function klyftonOps(input){
     return {text:`📐 **Avg quoted GM: ${Math.round(avg*100)}%** across ${gms.length} saved bid${gms.length>1?'s':''} — ${flag}.\n\nTargets: Resi 55 · Comm 50 · Roof 48 · Gov 45.`, voice:`Your average quoted margin is ${Math.round(avg*100)} percent.`};
   }
 
+  // 7) COLLECTED — total on jobs marked Paid (honest: board total, not date-scoped)
+  if(/collected|collections|paid jobs|money in|brought in|how much.*(paid|collected)|revenue.*collected/.test(low)){
+    const paid=_opsArr('jobs').filter(j=>/paid/i.test(j.status||''));
+    const tot=paid.reduce((s,j)=>s+(+j.value||0),0);
+    if(!paid.length) return {text:"💵 **Nothing marked collected yet.** Move a job to *Paid* on the board and it lands here.", voice:"No paid jobs on the board yet."};
+    return {text:`💵 **${_opsMoney(tot)} collected** across ${paid.length} paid job${paid.length>1?'s':''} on the board.\n\n(Total of jobs marked *Paid* — not date-filtered; wire QuickBooks for true monthly revenue.)`, voice:`${_opsMoney(tot)} collected across ${paid.length} paid jobs.`};
+  }
+
+  // 8) CREW HOURS — clocked time in the last 7 days
+  if(/crew hours|hours (this week|worked|clocked|logged)|time ?card|labor hours|who.?s? clocked/.test(low)){
+    const cut=Date.now()-7*86400000; const punches=_opsArr('tc_punches');
+    let h=0, n=0; const per={};
+    punches.forEach(p=>{ const ti=Date.parse(p&&p.in), to=Date.parse(p&&p.out);
+      if(isFinite(ti)&&isFinite(to)&&to>ti&&to>=cut){ const hrs=(to-ti)/3.6e6; h+=hrs; n++; const who=p.name||p.crew||'crew'; per[who]=(per[who]||0)+hrs; } });
+    if(!n) return {text:"⏱️ **No crew hours clocked in the last 7 days.** Punches show up here once the crew clocks in/out on a job.", voice:"No crew hours in the last week."};
+    const breakdown=Object.entries(per).sort((a,b)=>b[1]-a[1]).map(([w,hh])=>`• ${esc(w)} — ${(Math.round(hh*10)/10)} h`).join('\n');
+    return {text:`⏱️ **${Math.round(h*10)/10} crew-hours** clocked in the last 7 days (${n} punch${n>1?'es':''}):\n\n${breakdown}`, voice:`${Math.round(h*10)/10} crew hours in the last 7 days.`};
+  }
+
   return null;
+}
+
+/* Compose the morning brief from the same live data — the headline numbers for the day.
+   This is the engine behind a future push-to-phone daily brief; today it's on-demand in chat. */
+function klyftonBrief(){
+  const hr=new Date().getHours();
+  const tod = hr<12?'Morning':hr<17?'Afternoon':'Evening';
+  const dstr=new Date().toLocaleDateString('en-US',{weekday:'long', month:'short', day:'numeric'});
+  const L=s=>'\n'+s;
+  const out=[`☀️ **${tod} brief — ${dstr}**`];
+
+  // Today's jobs
+  const tkey=new Date().toISOString().slice(0,10);
+  const today=_opsArr('jobs').filter(j=>j && String(j.date||'').slice(0,10)===tkey && !/paid|cancel/i.test(j.status||''));
+  out.push(L(today.length ? `📅 **Today:** ${today.length} job${today.length>1?'s':''} — ${today.map(j=>esc(j.customer||j.name||'Job')).join(', ')}` : '📅 **Today:** nothing scheduled'));
+
+  // This week + overdue
+  const t0=new Date(); t0.setHours(0,0,0,0); const wk=t0.getTime()+7*86400000;
+  const jobs=_opsArr('jobs').filter(j=>j && !/paid|cancel|complete/i.test(j.status||''));
+  const parse=d=>{ const t=Date.parse(String(d||'').slice(0,10)); return isFinite(t)?t:null; };
+  const week=jobs.filter(j=>{const t=parse(j.date); return t!=null&&t>=t0.getTime()&&t<=wk;}).length;
+  const overdue=jobs.filter(j=>{const t=parse(j.date); return t!=null&&t<t0.getTime();}).length;
+  out.push(L(`📆 **Week:** ${week} scheduled${overdue?` · ⚠️ ${overdue} overdue`:''}`));
+
+  // Receivables
+  const inv=_opsArr('invoices').filter(v=>v && v.paid!==true && ((+v.amt||0)-(+v.dep||0))>0.5);
+  if(inv.length){ const ar=inv.reduce((s,v)=>s+((+v.amt||0)-(+v.dep||0)),0);
+    const late=inv.filter(v=>{const d=_opsDays(v.due||v.date); return d!=null&&d>0;}).length;
+    out.push(L(`💰 **Owed to you:** ${_opsMoney(ar)} across ${inv.length} invoice${inv.length>1?'s':''}${late?` (${late} overdue)`:''}`));
+  }
+
+  // Cold leads
+  const cold=_opsArr('leads').filter(l=>l && !_opsDead(l.status)).map(l=>({l,d:_opsDays(l.lastContact||l.date)})).filter(x=>x.d==null||x.d>=7);
+  if(cold.length){ const val=cold.reduce((s,x)=>s+(+x.l.value||0),0);
+    out.push(L(`🥶 **Cold leads:** ${cold.length} gone quiet${val?` — ${_opsMoney(val)} at risk`:''}`));
+  }
+
+  // Pipeline
+  const openLeads=_opsArr('leads').filter(l=>l && !_opsDead(l.status));
+  const lv=openLeads.reduce((s,l)=>s+(+l.value||0),0), jv=jobs.reduce((s,j)=>s+(+j.value||0),0);
+  out.push(L(`📊 **Pipeline:** ${_opsMoney(lv+jv)} (${openLeads.length} leads + ${jobs.length} jobs)`));
+
+  out.push(L('\nTap a chip or ask **"cold leads"**, **"who owes me"**, or **"this week"** to drill in.'));
+  return out.join('');
 }
 
 function addMessage(text, who, speak_text='', atts=null){
