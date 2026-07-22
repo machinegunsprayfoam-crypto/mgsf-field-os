@@ -16,6 +16,11 @@ session, before building or advising:
 3. **Reconcile** anything new/changed into Klyfton's brain (`api/klyfton.js` DOCTRINE /
    EXPERT_LIBRARY blocks) before working. Flag pricing conflicts to Clifton — never silently
    pick a rate. Newest-dated locked rate wins.
+4. **GovCon check (Tango, not GovTribe — GovTribe is cancelled):** run a quick Tango
+   `search_opportunities` for MGSF's lane (NAICS 238310/238160/238190) in MT/ND/SD/WY + VA
+   SDVOSB set-asides. Flag only real, in-region, in-trade opportunities. (The app's SAM.gov
+   daily scanner already covers the regional baseline automatically.) A scheduled cron can't
+   carry the Tango/Drive connectors, so this check has to happen in an interactive session.
 
 Skip only if the user explicitly says to skip the Drive check.
 
