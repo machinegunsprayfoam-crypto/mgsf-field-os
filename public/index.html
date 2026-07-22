@@ -238,6 +238,9 @@ select.inp option{background:var(--s2)}
 .chat-input-area{padding:12px;border-top:1px solid var(--bd);flex-shrink:0}
 #chatInput{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:9px 12px;border-radius:8px;width:100%;font-size:13px;outline:none;resize:none;height:76px;font-family:var(--font)}
 #chatInput:focus{border-color:var(--or)}
+.chat-chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px 2px}
+.chat-chip{background:var(--s2);border:1px solid var(--bd);color:var(--t2);font-size:11px;padding:5px 9px;border-radius:14px;cursor:pointer;white-space:nowrap;font-family:var(--font)}
+.chat-chip:hover{border-color:var(--or);color:var(--or)}
 .chat-actions{display:flex;gap:6px;margin-top:8px}
 .chat-send{flex:1;background:var(--or);color:#000;border:none;border-radius:6px;padding:8px;font-weight:700;cursor:pointer;font-size:12px;transition:all .2s}
 .chat-send:hover{background:#ea6d0f;box-shadow:0 0 12px rgba(249,115,22,.3)}
@@ -1629,6 +1632,12 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <button class="top-btn" onclick="toggleChat()" style="font-size:10px">✕</button>
       </div>
       <div id="chatMessages"></div>
+      <div class="chat-chips" id="chatChips">
+        <button class="chat-chip" onclick="opsAsk('who owes me money')">💰 Who owes me</button>
+        <button class="chat-chip" onclick="opsAsk('cold leads')">🥶 Cold leads</button>
+        <button class="chat-chip" onclick="opsAsk('this week')">📆 This week</button>
+        <button class="chat-chip" onclick="opsAsk('pipeline')">📊 Pipeline</button>
+      </div>
       <div class="chat-input-area">
         <div id="chatAtts" class="chat-atts"></div>
         <textarea id="chatInput" placeholder="Ask Klyfton anything, or tap ＋ to send a photo or PDF..." onkeydown="chatKeydown(event)"></textarea>
@@ -6616,6 +6625,100 @@ function processChat(input){
   return {text: response, voice: voiceText};
 }
 
+/* ── Klyfton OPERATOR layer — deterministic answers computed from your LIVE data ──────────
+   These run BEFORE the AI hive so the high-value "run-the-business" questions get real,
+   trustworthy numbers instantly — offline, free, and never fabricated. Anything not matched
+   here falls through to the AI/canned responder. Returns {text, voice} or null (no match). */
+function _opsArr(k){ if(Array.isArray(appState[k])) return appState[k];
+  try{ const v=JSON.parse(localStorage.getItem('klyfton_'+k)); if(Array.isArray(v)) return v; }catch(e){} return []; }
+function _opsMoney(n){ return '$'+Math.round(+n||0).toLocaleString('en-US'); }
+function _opsDays(d){ const t=Date.parse(d); if(!isFinite(t)) return null; return Math.floor((Date.now()-t)/86400000); }
+function _opsDead(status){ return /won|lost|unqualif|closed|dead|complete|cancel/i.test(String(status||'')); }
+
+function klyftonOps(input){
+  const low = String(input||'').toLowerCase().trim();
+  if(!low) return null;
+
+  // 1) RECEIVABLES — "who owes me money", unpaid / overdue invoices
+  if(/(who|what).*(owe|owes)|owed? me|money owed|receivable|outstanding|unpaid|past.?due|over.?due|get paid|collect|accounts? receivable|\bar\b/.test(low)
+     && !/estimat|quote|bid|how much.*cost/.test(low)){
+    const inv=_opsArr('invoices').filter(v=>v && v.paid!==true && ((+v.amt||0)-(+v.dep||0))>0.5);
+    if(!inv.length) return {text:"✅ **Nothing outstanding.** No unpaid invoices on the books right now.", voice:"You're all paid up — no outstanding invoices."};
+    const rows=inv.map(v=>{ const bal=(+v.amt||0)-(+v.dep||0); const late=_opsDays(v.due||v.date); return {v,bal,late}; })
+                  .sort((a,b)=>(b.late??-1)-(a.late??-1));
+    const total=rows.reduce((s,r)=>s+r.bal,0);
+    const body=rows.slice(0,10).map(r=>`• **${esc(r.v.cust||r.v.num||'—')}** — ${_opsMoney(r.bal)}${r.late!=null&&r.late>0?` · ${r.late}d late`:(r.late!=null?' · due soon':'')}`).join('\n');
+    return {
+      text:`💰 **${_opsMoney(total)} outstanding** across ${rows.length} unpaid invoice${rows.length>1?'s':''}:\n\n${body}\n\nSay **"draft reminders"** and I'll write a nudge for each (draft only — nothing sends).`,
+      voice:`You're owed ${_opsMoney(total)} across ${rows.length} unpaid invoices.`
+    };
+  }
+
+  // 2) COLD / STALE LEADS — open leads with no recent contact
+  if(/cold lead|stale lead|went (cold|quiet|dark|silent)|no (response|reply|contact)|leads?.*(cold|stale|quiet|chase)|who.*chase|need.*follow.?up|dropped the ball|slipping/.test(low)){
+    const cut=7;
+    const leads=_opsArr('leads').filter(l=>l && !_opsDead(l.status));
+    const cold=leads.map(l=>({l, d:_opsDays(l.lastContact||l.date)}))
+                    .filter(x=>x.d==null || x.d>=cut)
+                    .sort((a,b)=>((+b.l.value||0)-(+a.l.value||0)) || ((b.d??999)-(a.d??999)));
+    if(!cold.length) return {text:`✅ **Pipeline's warm.** No open leads have gone quiet past ${cut} days.`, voice:"Your pipeline is warm — no cold leads."};
+    const val=cold.reduce((s,x)=>s+(+x.l.value||0),0);
+    const body=cold.slice(0,10).map(x=>`• **${esc(x.l.name||'—')}**${x.l.value?` — ${_opsMoney(x.l.value)}`:''} · ${x.d==null?'never contacted':x.d+'d quiet'}${x.l.status?` · ${esc(x.l.status)}`:''}`).join('\n');
+    return {
+      text:`🥶 **${cold.length} lead${cold.length>1?'s':''} gone quiet** (${cut}d+)${val?` — ${_opsMoney(val)} at risk`:''}:\n\n${body}\n\nSay **"draft a nudge for [name]"** and I'll write the follow-up.`,
+      voice:`${cold.length} leads have gone quiet${val?`, ${_opsMoney(val)} at risk`:''}.`
+    };
+  }
+
+  // 3) TODAY — jobs scheduled today
+  if(/(today'?s?|on today).*(job|schedule|work|crew)|jobs?.* today|what.*today|today.*(job|on|schedule)/.test(low)){
+    const t=new Date(); t.setHours(0,0,0,0); const key=t.toISOString().slice(0,10);
+    const jobs=_opsArr('jobs').filter(j=>j && String(j.date||'').slice(0,10)===key && !/paid|cancel/i.test(j.status||''));
+    if(!jobs.length) return {text:"📅 **Nothing scheduled today.** No jobs on the board for today.", voice:"Nothing on the schedule today."};
+    const body=jobs.map(j=>`• **${esc(j.customer||j.name||'Job')}**${j.value?` — ${_opsMoney(j.value)}`:''}${j.address?` · 📍 ${esc(j.address)}`:''}${j.crew?` · 👤 ${esc(j.crew)}`:''}`).join('\n');
+    return {text:`📅 **Today — ${jobs.length} job${jobs.length>1?'s':''}:**\n\n${body}`, voice:`You have ${jobs.length} job${jobs.length>1?'s':''} today.`};
+  }
+
+  // 4) THIS WEEK — next 7 days + overdue
+  if(/this week|my week|week (ahead|look)|upcoming|whats? (on|up|scheduled)|schedule|coming up|next few days/.test(low)){
+    const today=new Date(); today.setHours(0,0,0,0); const wk=new Date(today.getTime()+7*86400000);
+    const jobs=_opsArr('jobs').filter(j=>j && !/paid|cancel|complete/i.test(j.status||''));
+    const parse=d=>{ const t=Date.parse(String(d||'').slice(0,10)); return isFinite(t)?t:null; };
+    const week=jobs.filter(j=>{ const t=parse(j.date); return t!=null && t>=today.getTime() && t<=wk.getTime(); })
+                   .sort((a,b)=>parse(a.date)-parse(b.date));
+    const overdue=jobs.filter(j=>{ const t=parse(j.date); return t!=null && t<today.getTime(); })
+                      .sort((a,b)=>parse(a.date)-parse(b.date));
+    if(!week.length && !overdue.length) return {text:"📆 **Week's open.** No jobs scheduled in the next 7 days.", voice:"Nothing scheduled this week."};
+    let out='📆 **This week:**\n';
+    out += week.length ? '\n'+week.map(j=>`• ${esc(String(j.date).slice(5))} — **${esc(j.customer||j.name||'Job')}**${j.value?` (${_opsMoney(j.value)})`:''}${j.crew?` · ${esc(j.crew)}`:''}`).join('\n')
+                       : '\n• Nothing scheduled in the next 7 days.';
+    if(overdue.length) out += `\n\n⚠️ **${overdue.length} overdue** (past date, not closed):\n`+overdue.slice(0,6).map(j=>`• ${esc(String(j.date).slice(5))} — ${esc(j.customer||j.name||'Job')}`).join('\n');
+    return {text:out, voice:`${week.length} job${week.length===1?'':'s'} this week${overdue.length?`, and ${overdue.length} overdue`:''}.`};
+  }
+
+  // 5) PIPELINE — open value across leads + active jobs
+  if(/pipeline|book of business|how much.*(open|in play|in the pipe)|total.*(pipeline|open value)|whats? my pipeline|value.*pipeline/.test(low)){
+    const leads=_opsArr('leads').filter(l=>l && !_opsDead(l.status));
+    const jobs=_opsArr('jobs').filter(j=>j && !/paid|cancel|complete/i.test(j.status||''));
+    const lv=leads.reduce((s,l)=>s+(+l.value||0),0), jv=jobs.reduce((s,j)=>s+(+j.value||0),0);
+    return {
+      text:`📊 **Pipeline: ${_opsMoney(lv+jv)}**\n\n• **${leads.length}** open leads — ${_opsMoney(lv)}\n• **${jobs.length}** active jobs — ${_opsMoney(jv)}\n\nAsk **"cold leads"** to see what's stalling, or **"who owes me money"** for receivables.`,
+      voice:`Your pipeline is ${_opsMoney(lv+jv)} — ${leads.length} open leads and ${jobs.length} active jobs.`
+    };
+  }
+
+  // 6) QUOTED MARGIN — average achieved GM from saved bids vs the floor
+  if(/avg.*(margin|gm)|average.*(margin|gm)|quoted (margin|gm)|my margin|margins? (look|running)|are.*bids.*margin/.test(low)){
+    const gms=_opsArr('estimates').map(e=>parseFloat(e&&e.gm)).filter(v=>isFinite(v)&&v>0);
+    if(!gms.length) return {text:"📐 **No quoted-margin data yet.** Save a few estimates and I'll track your avg GM vs the 50% floor here.", voice:"No margin data yet — save some estimates first."};
+    const avg=gms.reduce((a,b)=>a+b,0)/gms.length;
+    const flag=avg>=0.5?'✅ above the 50% floor':(avg>=0.45?'⚠️ under the 50% floor':'🔴 well under the floor — tighten pricing');
+    return {text:`📐 **Avg quoted GM: ${Math.round(avg*100)}%** across ${gms.length} saved bid${gms.length>1?'s':''} — ${flag}.\n\nTargets: Resi 55 · Comm 50 · Roof 48 · Gov 45.`, voice:`Your average quoted margin is ${Math.round(avg*100)} percent.`};
+  }
+
+  return null;
+}
+
 function addMessage(text, who, speak_text='', atts=null){
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
@@ -7126,6 +7229,12 @@ async function klyftonStream(payload, signal, onDelta){
   return result || {text: preview};
 }
 
+// Quick-tap operator chips → drop the question in and send it.
+function opsAsk(q){
+  if(!appState.chatOpen){ toggleChat(); }
+  const inp=document.getElementById('chatInput'); if(inp) inp.value=q;
+  sendChat();
+}
 function sendChat(){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -7149,6 +7258,22 @@ function sendChat(){
   const hist = appState.chatHistory.slice(-20);
   appState.chatHistory.push({role:'user', content: text || ('['+atts.length+' attachment'+(atts.length>1?'s':'')+']')});
   appState.chatHistory = appState.chatHistory.slice(-120); save('chatHistory');
+
+  // OPERATOR fast-path: run-the-business questions get real numbers from live data, instantly
+  // and offline (no fabrication, no network). Skipped when a photo/PDF is attached (hive reads those).
+  if(text && !atts.length){
+    try{
+      const ops = klyftonOps(text);
+      if(ops && ops.text){
+        appState.chatHistory.push({role:'assistant', content: ops.text});
+        appState.chatHistory = appState.chatHistory.slice(-120); save('chatHistory');
+        addMessage(ops.text, 'ai', ops.voice||'');
+        if(statusEl) statusEl.textContent='● READY · live data';
+        playSound('nav');
+        return;
+      }
+    }catch(e){ /* fall through to the hive on any ops error */ }
+  }
 
   const bubble = addStreamingAiBubble();
 
