@@ -2,6 +2,23 @@
 
 Klyfton AI is a multi-agent command system built on Claude AI. This document describes how Silvr (another Claude-powered agent system) integrates as a secondary intelligence layer.
 
+## ⚡ Session-Start Protocol (do this FIRST, every session)
+
+**Google Drive changes constantly — audit it before doing any work.** At the start of every
+session, before building or advising:
+
+1. **Check the skills area** — `02_Skills_and_Packs` folder (and `claude-code-skills` / `skills`)
+   for new or updated `mgsf-*.skill` packages. `mgsf-core.skill` is the authoritative doctrine
+   (locked pricing, cost constants, GM targets, state multipliers, gates) — **it wins over any
+   conflicting number in code.**
+2. **Check recent Drive files** (`list_recent_files`) for new expert docs, pricing CSVs, or
+   decision logs since last session.
+3. **Reconcile** anything new/changed into Klyfton's brain (`api/klyfton.js` DOCTRINE /
+   EXPERT_LIBRARY blocks) before working. Flag pricing conflicts to Clifton — never silently
+   pick a rate. Newest-dated locked rate wins.
+
+Skip only if the user explicitly says to skip the Drive check.
+
 ## Architecture
 
 ### Existing Stack (Pre-Silvr)
