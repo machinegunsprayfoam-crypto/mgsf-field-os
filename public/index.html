@@ -1704,7 +1704,8 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div class="jsa-card">
           <label class="fl">Job</label>
-          <input id="ph_job" class="admin-inp" style="width:100%;max-width:340px" placeholder="Job name / address" oninput="renderPhotoGrid()">
+          <input id="ph_job" class="admin-inp" list="ph_job_list" style="width:100%;max-width:340px" placeholder="Pick or type a job / address" oninput="renderPhotoGrid()">
+          <datalist id="ph_job_list"></datalist>
           <div class="jsa-actions" style="margin-top:10px">
             <label class="btn btn-ghost">📷 Before<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhoto(this,'Before')"></label>
             <label class="btn btn-ghost">📷 During<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhoto(this,'During')"></label>
@@ -8800,7 +8801,20 @@ async function hardRefresh(){
     return {ok:OK, put, get, del, migrate};
   })();
 
-  window.renderPhotos = function(){ if(window.PhotoDB) PhotoDB.migrate().then(renderPhotoGrid); else renderPhotoGrid(); };
+  // Fill the job picker from real jobs (customer + name + address) so photos tag to a job
+  // consistently instead of free-typed strings that never match. Still lets you type anything.
+  function photoJobList(){
+    const dl=$('ph_job_list'); if(!dl) return;
+    const seen=new Set(), opts=[];
+    ((typeof appState!=='undefined'&&appState.jobs)||[]).forEach(j=>{
+      [j.customer, j.name, j.address].filter(Boolean).forEach(v=>{
+        const s=String(v).trim(); const k=s.toLowerCase();
+        if(s && !seen.has(k)){ seen.add(k); opts.push('<option value="'+esc(s)+'">'); }
+      });
+    });
+    dl.innerHTML=opts.join('');
+  }
+  window.renderPhotos = function(){ photoJobList(); if(window.PhotoDB) PhotoDB.migrate().then(renderPhotoGrid); else renderPhotoGrid(); };
   window.addPhoto = function(input, phase){
     const file=input.files&&input.files[0]; if(!file){ return; }
     const job=(($('ph_job')||{}).value||'').trim(); if(!job){ notify('Enter a job first','alert'); input.value=''; return; }
