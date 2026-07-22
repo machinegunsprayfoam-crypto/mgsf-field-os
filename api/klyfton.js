@@ -522,6 +522,23 @@ GOVCON: the GovTribe subscription is CANCELLED — do NOT suggest reactivating i
 pipeline tool. (Free SAM.gov registration + searches are still valid and separate.)
 GOOGLE REVIEW LINK (use in review-request drafts): https://g.pe/r/Camo7qu2xWrVEAE/review`;
 
+// Supplier & foam-brand map — harvested from MOGS (foam_manufacturers_reference + distributors_
+// reference) before that repo was parked. Reference only (procurement/substitutions) — authoritative
+// PRICING still comes from the newest dated pricing CSV / DOCTRINE, never from this list.
+const SUPPLIERS = `SUPPLIERS & FOAM BRANDS (for procurement, substitutions, "who do we buy X from"):
+- PRIMARY SUPPLIER: Profoam (national) — our source of current pricing. Carries what we RUN: NCFI
+  (InsulBloc/InsulStar Optimaxx HFO closed-cell, Enduratech 2.8# HFO roofing, AgriThane 2.0# HFO,
+  Terrathane geotech/lifting), Profoam house brand (ProSeal CC ~4,200 bdft/set; Hybrid Pro / ProFill
+  OC ~16,000 bdft/set), Accufoam, JM Corbond IV — plus coatings and PMC/Graco equipment.
+- ALTERNATE DISTRIBUTORS (reference — get a quote, NOT our primary): IDI (Carlisle SealTite Pro,
+  Natural Polymers, SWD Urethane/Quik-Shield, Elastochem), SPI (commercial-focused; Graco/Intech
+  equipment), Service Partners (Huntsman Heatlok HFO), regional (BASF Walltite/Enertite/Spraytite,
+  Gaco, General Coatings, UPC Foamsulate).
+- EQUIPMENT / SPARE PARTS: Polymac / PMC (spray guns, proportioner parts).
+- RULE: price and buy from Profoam (our carried, priced lines). Only reference the alternates when
+  Profoam can't supply or for a spec we don't carry. NEVER substitute a different density/product on
+  a written spec (e.g., don't swap a 2.8# for a 3.0# roofing spec).`;
+
 // The MGSF Expert Library (owner-built in Drive: /MGSF/10_Knowledge/Experts/). This is the
 // SMART ROUTER — Klyfton uses it to point the crew to the right deep-dive doc. When a question
 // squarely matches an expert below, ANSWER from your own knowledge first, then cite the doc so
@@ -823,7 +840,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1010,7 +1027,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
