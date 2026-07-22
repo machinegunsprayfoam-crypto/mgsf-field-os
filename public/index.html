@@ -1156,10 +1156,10 @@ canvas.chart{width:100%;height:100%}
           <div class="admin-row"><span class="admin-lbl">Equipment Day Rate ($)</span><input class="admin-inp" type="number" id="adm-equip-day" step="10" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default $425/day</span></div>
           <div class="admin-row"><span class="admin-lbl">Fuel / Transport ($)</span><input class="admin-inp" type="number" id="adm-fuel" step="5" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default $85/job</span></div>
           <div class="admin-row"><span class="admin-lbl">Overhead % (decimal)</span><input class="admin-inp" type="number" id="adm-overhead" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.15 (15%)</span></div>
-          <div class="admin-row"><span class="admin-lbl">GM Target — Residential</span><input class="admin-inp" type="number" id="adm-gm-res" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.50 (50%)</span></div>
-          <div class="admin-row"><span class="admin-lbl">GM Target — Commercial</span><input class="admin-inp" type="number" id="adm-gm-com" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.45 (45%)</span></div>
-          <div class="admin-row"><span class="admin-lbl">GM Target — Industrial</span><input class="admin-inp" type="number" id="adm-gm-ind" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.40 (40%)</span></div>
-          <div class="admin-row"><span class="admin-lbl">GM Target — Government</span><input class="admin-inp" type="number" id="adm-gm-gov" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.35 (35%)</span></div>
+          <div class="admin-row"><span class="admin-lbl">GM Target — Residential</span><input class="admin-inp" type="number" id="adm-gm-res" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.55 (55%)</span></div>
+          <div class="admin-row"><span class="admin-lbl">GM Target — Commercial</span><input class="admin-inp" type="number" id="adm-gm-com" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.50 (50%)</span></div>
+          <div class="admin-row"><span class="admin-lbl">GM Target — Industrial</span><input class="admin-inp" type="number" id="adm-gm-ind" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.48 (48%)</span></div>
+          <div class="admin-row"><span class="admin-lbl">GM Target — Government</span><input class="admin-inp" type="number" id="adm-gm-gov" step="0.01" oninput="adminDirty()"><span style="font-size:11px;color:var(--t2)">default 0.45 (45%)</span></div>
         </div>
 
         <!-- Material Buffers -->
@@ -4366,7 +4366,11 @@ function calculateBid(){
   if(results.length===0){ notify('Add at least one scope item first','alert'); return; }
 
   const mobCost    = calcMobCost(mob);
-  const totalSell  = results.reduce((s,r)=>s+r.sell,0)+mobCost;
+  let totalSell    = results.reduce((s,r)=>s+r.sell,0)+mobCost;
+  // MGSF $1,200 job minimum applies everywhere (mgsf-core doctrine). Floor before margin so the
+  // shown GM reflects the real (higher) margin at the minimum price.
+  const belowJobMin = totalSell > 0 && totalSell < 1200;
+  if(belowJobMin) totalSell = 1200;
   const totalMat   = results.reduce((s,r)=>s+r.totalMat,0);
   const totalLab   = results.reduce((s,r)=>s+r.laborCost,0);
   const totalDirect = results.reduce((s,r)=>s+r.directCost,0)+mobCost;
@@ -4427,7 +4431,9 @@ function calculateBid(){
       <span style="font-size:12px;font-weight:700;color:${goColor}">${projectGO?'✓ GO':'⚠ REVIEW GM'}</span>
       <span style="font-weight:700;color:var(--or);font-size:17px">$${totalSell.toLocaleString('en',{maximumFractionDigits:0})}</span>
     </div>
-  </div></div>
+  </div>
+  ${belowJobMin?`<div class="est-result-line" style="padding-top:4px"><span style="font-size:11px;color:var(--yw)">⚠ $1,200 job minimum applied (scope totaled less)</span></div>`:''}
+  </div>
   <div style="margin-top:10px;padding:8px 10px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);border-radius:6px;font-size:12px">
     <div style="font-weight:700;color:var(--cy);margin-bottom:5px">🧰 PREP &amp; TIME</div>
     <div style="display:flex;flex-wrap:wrap;gap:14px;color:var(--tx)">
@@ -4616,6 +4622,19 @@ function exportEstimate(){
     }catch(e){}
   });
   if(!itemsHTML){ notify('No completed scope items to export — fill in all required fields first.','alert'); return; }
+
+  // MGSF $1,200 job minimum applies everywhere (mgsf-core doctrine). If the scope totals below it,
+  // add a transparent adjustment line so the customer sees the floor and the math still ties out.
+  if(grandTotal > 0 && grandTotal < 1200){
+    const bump = 1200 - grandTotal;
+    itemsHTML += `<tr>
+      <td>—</td>
+      <td style="text-align:left">Job Minimum Adjustment</td>
+      <td>MGSF $1,200 job minimum</td>
+      <td style="text-align:right"><strong>$${bump.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>
+    </tr>`;
+    grandTotal = 1200;
+  }
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>Estimate ${estNum}</title>
