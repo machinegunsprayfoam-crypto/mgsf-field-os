@@ -153,6 +153,9 @@ module.exports = async (req, res) => {
         const rows = await kvGet(c);
         data[c] = rows.filter((r) => r && r.id != null && !tset.has(c + "|" + String(r.id)));
       }));
+      // SECURITY: never expose crew credentials through this public endpoint. Strip the plaintext
+      // PIN (and any hash) from crew records before returning them to an unauthenticated caller.
+      if (Array.isArray(data.crew)) data.crew = data.crew.map((r) => { const o = Object.assign({}, r); delete o.pin; delete o.pinHash; return o; });
       // Redact any secret that was saved into memory before returning it to the (public) client.
       const memory = (await kvGet(MEM)).filter((s) => !_isSecret(s));
       res.status(200).json({ configured: true, data, tomb, memory });
