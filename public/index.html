@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f97316">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Klyfton AI">
@@ -68,7 +68,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 .admin-section-title{font-size:11px;letter-spacing:2px;color:var(--or);font-weight:700;margin-bottom:12px;text-transform:uppercase}
 .admin-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .admin-lbl{font-size:12px;color:var(--t2);min-width:180px;flex-shrink:0}
-.admin-inp{background:var(--s3);border:1px solid var(--t3);color:var(--tx);padding:5px 10px;border-radius:5px;font-size:13px;width:110px}
+.admin-inp{background:var(--s3);border:1px solid var(--t3);color:var(--tx);padding:5px 10px;border-radius:5px;font-size:13px;width:100%;max-width:340px;box-sizing:border-box}
 .admin-inp:focus{outline:none;border-color:var(--or)}
 .csv-btn{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.28);color:var(--cy);font-size:10px;padding:3px 9px;border-radius:4px;cursor:pointer;letter-spacing:.5px;transition:all .2s;white-space:nowrap}
 .csv-btn:hover{background:rgba(0,212,255,.22);border-color:var(--cy);color:#fff}
@@ -89,6 +89,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 .status-dot{width:8px;height:8px;border-radius:50%;background:var(--gr);box-shadow:0 0 8px var(--gr);animation:blink 2s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
 .status-label{font-size:11px;color:var(--gr);letter-spacing:1px}
+/* honest online/offline state (JS flips .offline) */
+.status-dot.offline{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
+.status-label.offline{color:var(--red)}
+/* keyboard/switch users get a visible focus ring */
+:focus-visible{outline:2px solid var(--or);outline-offset:2px}
+/* field crews on phones: bigger tap targets, no accidental zoom on input focus */
+@media(max-width:820px){
+  .btn{min-height:44px}
+  .nav-item{min-height:48px}
+  #topClock{display:none}
+  .admin-inp,.inp{font-size:16px}
+}
 .top-spacer{flex:1}
 .top-clock{font-size:13px;color:var(--cy);font-family:monospace;letter-spacing:2px}
 .top-btn{background:none;border:1px solid var(--bd);color:var(--t2);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px;letter-spacing:1px;transition:all .2s}
@@ -107,7 +119,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 #navResize{position:absolute;top:0;right:0;width:11px;height:100%;cursor:ew-resize;touch-action:none;z-index:6}
 #navResize::before{content:"";position:absolute;top:50%;right:2px;transform:translateY(-50%);width:3px;height:34px;border-radius:3px;background:var(--bd)}
 #navResize:hover::before,#navResize.drag::before{background:var(--or,#f97316)}
-.nav-item{width:46px;height:46px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;border:1px solid transparent;gap:3px}
+.nav-item{width:48px;height:48px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;border:1px solid transparent;gap:3px}
 .nav-item:hover{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.15)}
 .nav-item.active{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.4);box-shadow:0 0 12px rgba(249,115,22,.15)}
 .nav-icon{font-size:18px;line-height:1}
@@ -451,8 +463,8 @@ canvas.chart{width:100%;height:100%}
   <div id="topbar">
     <div class="logo-text">KLYFTON<span class="logo-badge">AI v2.0</span></div>
     <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
-      <div class="status-dot"></div>
-      <span class="status-label">ONLINE</span>
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-label" id="statusLabel">ONLINE</span>
     </div>
     <div class="top-spacer"></div>
     <div class="top-clock" id="topClock">00:00:00 MT</div>
@@ -5702,7 +5714,7 @@ function openNewLead(status='New'){
   <div class="modal-title">+ NEW LEAD</div>
   <div class="form-group"><label class="form-label">Name *</label><input class="inp" id="ml_name" placeholder="Customer name"></div>
   <div class="form-group"><label class="form-label">Company</label><input class="inp" id="ml_company" placeholder="Company"></div>
-  <div class="form-group"><label class="form-label">Phone</label><input class="inp" id="ml_phone" placeholder="406-555-0000"></div>
+  <div class="form-group"><label class="form-label">Phone</label><input class="inp" type="tel" id="ml_phone" placeholder="406-555-0000"></div>
   <div class="form-group"><label class="form-label">Email</label><input class="inp" id="ml_email" placeholder="email@example.com"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <div class="form-group"><label class="form-label">Service</label><select class="inp" id="ml_svc"><option>Closed Cell</option><option>Open Cell</option><option>SPF Roofing</option><option>Concrete Lifting</option><option>Geotech</option><option>Coatings</option><option>Multiple</option></select></div>
@@ -5984,7 +5996,7 @@ function openNewJob(defaultStatus){
   <div class="form-group"><label class="form-label">Job Name *</label><input class="inp" id="nj_name" placeholder="e.g. Smith Residence — CC Walls"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <div class="form-group"><label class="form-label">Customer Name</label><input class="inp" id="nj_cust" placeholder="Full name"></div>
-    <div class="form-group"><label class="form-label">Phone</label><input class="inp" id="nj_phone" placeholder="406-"></div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="inp" type="tel" id="nj_phone" placeholder="406-"></div>
   </div>
   <div class="form-group"><label class="form-label">Job Address</label><input class="inp" id="nj_addr" placeholder="Street, City, ST"></div>
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
@@ -11416,6 +11428,22 @@ Verify current requirements with the local building department (AHJ) before fili
     }catch(e){}
     return ctx;
   };
+})();
+</script>
+
+<script>
+/* Honest online/offline indicator — the top-bar status now reflects real connectivity so a field
+   crew on spotty rural signal knows when live weather/AI/sync won't work (was hardcoded ONLINE). */
+(function(){
+  function paintNet(){
+    var on = navigator.onLine !== false;
+    var dot=document.getElementById('statusDot'), lbl=document.getElementById('statusLabel');
+    if(dot) dot.classList.toggle('offline', !on);
+    if(lbl){ lbl.textContent = on ? 'ONLINE' : 'OFFLINE'; lbl.classList.toggle('offline', !on); }
+  }
+  window.addEventListener('online', paintNet);
+  window.addEventListener('offline', paintNet);
+  paintNet();
 })();
 </script>
 
