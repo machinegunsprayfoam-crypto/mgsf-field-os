@@ -1129,6 +1129,13 @@ canvas.chart{width:100%;height:100%}
           <button class="btn btn-orange" style="width:100%;margin-top:4px" id="govSearchBtn" onclick="govSearch()">🔍 Search SAM.gov</button>
         </div>
 
+        <!-- SDVOSB Capability Statement -->
+        <div class="admin-section">
+          <div class="admin-section-title">📄 SDVOSB CAPABILITY STATEMENT</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:8px">The one-page doc every federal buyer asks for — built from your verified facts (UEI, NAICS, SDVOSB, services). Unverified items (past performance, bonding) print as OWNER INPUT REQUIRED — nothing fabricated. Attach it to any bid.</div>
+          <button class="btn btn-cyan" style="width:100%" onclick="downloadCapStatement(this)">📄 Generate Capability Statement (PDF)</button>
+        </div>
+
         <div id="govResults" style="font-size:12px;color:var(--t2)">Add your key, set filters, then Search to pull live opportunities.</div>
       </div>
 
@@ -8864,6 +8871,31 @@ async function hardRefresh(){
     }catch(e){
       notify('PDF service unreachable — opening print instead','info');
       if(window.printProposal) window.printProposal();
+    }finally{ if(btn){ btn.textContent=old; btn.disabled=false; } }
+  };
+  window.downloadCapStatement = async function(btn){
+    // Pull any owner-supplied real values from the app (past performance from completed jobs) so the
+    // statement isn't all "OWNER INPUT REQUIRED" — but never fabricate. Only real, closed jobs count.
+    const done=(appState.jobs||[]).filter(j=>j&&/complete|paid|closed/i.test(String(j.status||'')));
+    const past=done.slice(0,3).map(j=>{
+      const who=j.customer||j.name||''; const scope=j.service||j.scope||''; const val=Number(j.value||j.price)||0;
+      const when=String(j.date||'').slice(0,10);
+      return [who, scope, val?('$'+val.toLocaleString()):'', when].filter(Boolean).join(' — ');
+    }).filter(Boolean);
+    const payload={ base64:true }; if(past.length) payload.pastPerformance=past;
+    const old=btn?btn.textContent:''; if(btn){ btn.textContent='📄 Building…'; btn.disabled=true; }
+    try{
+      const r=await fetch('/api/capability-statement',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      const j=await r.json();
+      if(!j||!j.ok||!j.base64) throw new Error((j&&j.error)||'no_pdf');
+      const bytes=Uint8Array.from(atob(j.base64), c=>c.charCodeAt(0));
+      const blob=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href=url; a.download=j.filename||'MGSF-Capability-Statement.pdf'; document.body.appendChild(a); a.click();
+      a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      notify('Capability Statement downloaded — attach it to any bid','success');
+    }catch(e){
+      notify('Capability Statement service unreachable — try again in a moment','alert');
     }finally{ if(btn){ btn.textContent=old; btn.disabled=false; } }
   };
   window.renderProposalList = function(){
