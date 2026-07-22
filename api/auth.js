@@ -39,8 +39,49 @@ async function tokenGrant(kind, body) {
   return { ok: true, session: { access_token: j.access_token, refresh_token: j.refresh_token, expires_in: j.expires_in, user: trimUser(j.user) } };
 }
 
+// One-time account seed. Fixed roster only (can't create arbitrary accounts), idempotent
+// (skips anyone who already exists → re-running never resets a password), temp passwords the
+// owner chose for initial login. These are TEMPORARY and must be changed before auth is enforced;
+// this action is removed at the enforce phase. Uses the service key server-side (never exposed).
+const SEED_USERS = [
+  { email: "clifton@machinegunsprayfoam.info", password: "Clifton", role: "full" },
+  { email: "talia.protax@gmail.com", password: "Talia1", role: "admin" },
+  { email: "danielford774@gmail.com", password: "Daniel", role: "field" },
+];
+async function adminCreate(u) {
+  try {
+    const r = await fetch(SB_URL + "/auth/v1/admin/users", {
+      method: "POST",
+      headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: u.email, password: u.password, email_confirm: true, app_metadata: { role: u.role, must_change: true } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return { email: u.email, role: u.role, status: "created" };
+    const msg = String((j && (j.msg || j.error_description || j.error || j.message)) || "");
+    if (/already|registered|exists|duplicate/i.test(msg)) return { email: u.email, role: u.role, status: "exists" };
+    return { email: u.email, status: "error", error: msg.slice(0, 140) };
+  } catch (e) { return { email: u.email, status: "error", error: String(e && e.message || e).slice(0, 140) }; }
+}
+
 module.exports = async (req, res) => {
-  if (req.method === "GET") { res.status(200).json({ configured: SB_ON }); return; }
+  if (req.method === "GET") {
+    if (!SB_ON) { res.status(200).json({ configured: false }); return; }
+    // Seed the fixed roster (idempotent). GET so it can be triggered once from a browser/tool.
+    if (req.query && String(req.query.bootstrap) === "1") {
+      const results = [];
+      for (const u of SEED_USERS) results.push(await adminCreate(u));
+      res.status(200).json({ ok: true, seeded: results });
+      return;
+    }
+    // Self-test: confirm the login chain works end-to-end (no token returned).
+    if (req.query && String(req.query.selftest) === "1") {
+      const t = await tokenGrant("password", { email: SEED_USERS[0].email, password: SEED_USERS[0].password });
+      res.status(200).json({ ok: t.ok, loginWorks: t.ok, role: t.ok && t.session.user ? t.session.user.role : null, error: t.error || null });
+      return;
+    }
+    res.status(200).json({ configured: SB_ON });
+    return;
+  }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
   if (!SB_ON) { res.status(200).json({ ok: false, configured: false, error: "auth_not_configured" }); return; }
 
