@@ -11,6 +11,7 @@
   "crons": [
     { "path": "/api/samgov?scan=1", "schedule": "0 13 * * 1-6" },
     { "path": "/api/invoice-remind?sweep=1", "schedule": "0 14 * * 1-6" },
-    { "path": "/api/inventory-reorder?sweep=1", "schedule": "0 15 * * 1-6" }
+    { "path": "/api/inventory-reorder?sweep=1", "schedule": "0 15 * * 1-6" },
+    { "path": "/api/roof-maintenance?sweep=1", "schedule": "0 16 * * 1" }
   ]
 }
