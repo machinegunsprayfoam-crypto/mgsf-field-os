@@ -569,6 +569,7 @@ canvas.chart{width:100%;height:100%}
         <div class="card" id="opsBriefCard" style="border-left:3px solid var(--or)">
           <div class="card-title">☀️ Today's Brief <button class="btn btn-ghost" style="float:right;font-size:11px;padding:3px 8px" onclick="renderOpsBrief()">↻ Refresh</button></div>
           <div id="opsBrief" style="font-size:13px;line-height:1.7">Loading today's brief…</div>
+          <div id="keyAlerts"></div>
           <div style="margin-top:8px"><button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="klyftonDayPlan(true)">🧠 Klyfton's plan for today</button></div>
           <div id="dayPlan" style="margin-top:8px"></div>
         </div>
@@ -2500,7 +2501,7 @@ function switchModule(id){
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
-  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.tcReminderCheck) tcReminderCheck(); }
+  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
@@ -5081,13 +5082,34 @@ const API_KEYS = [
    get:'https://elevenlabs.io/app/settings/api-keys', test:'voice'},
   {id:'sam', store:'klyfton_sam_key', icon:'🏛️', name:'SAM.gov — federal opportunities',
    powers:'Live federal contract opportunities in the GOV tab', ph:'your SAM.gov API key',
-   get:'https://sam.gov/content/api-keys', test:'sam'},
+   get:'https://sam.gov/content/api-keys', test:'sam', cycle:90},
   {id:'hubspot', store:'klyfton_hubspot_token', icon:'🎯', name:'HubSpot — CRM',
    powers:'Pull your CRM call list and sync leads/deals', ph:'pat-…',
    get:'https://app.hubspot.com/settings/246088810/integrations/private-apps', test:'hubspot'},
 ];
 function _kGet(k){ try{ return (localStorage.getItem(k)||'').trim(); }catch(e){ return ''; } }
 function _kMask(v){ if(!v) return ''; return v.length<=8 ? '••••' : '••••••'+v.slice(-4); }
+// ── Key expiry tracking: never let a key (like SAM.gov, ~90-day) lapse unnoticed ──
+function _kExp(id){ try{ return localStorage.getItem('klyfton_keyexp_'+id)||''; }catch(e){ return ''; } }
+function _kExpDays(id){ const e=_kExp(id); if(!e) return null; return Math.ceil((new Date(e+'T23:59:59')-Date.now())/86400000); }
+function _keyBadge(id){ const d=_kExpDays(id);
+  if(d==null) return '<span style="font-size:9px;color:var(--t3)">no expiry set</span>';
+  if(d<=0)   return '<span style="font-size:9px;color:#ef4444;font-weight:700">⚠ EXPIRED</span>';
+  if(d<=7)   return '<span style="font-size:9px;color:#ef4444;font-weight:700">'+d+'d left — renew</span>';
+  if(d<=30)  return '<span style="font-size:9px;color:var(--yw)">'+d+'d left</span>';
+  return '<span style="font-size:9px;color:var(--gr)">'+d+'d left</span>'; }
+function apiKeyExpSave(id){ const inp=document.getElementById('akexp_'+id); const v=(inp&&inp.value||'').trim();
+  try{ if(v) localStorage.setItem('klyfton_keyexp_'+id,v); else localStorage.removeItem('klyfton_keyexp_'+id); }catch(e){}
+  renderApiKeys(); if(window.renderKeyAlerts) renderKeyAlerts(); }
+// Dashboard reminder — surfaces any saved key expiring within 14 days (or already expired).
+function renderKeyAlerts(){ const el=document.getElementById('keyAlerts'); if(!el) return;
+  const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
+  const due=API_KEYS.filter(k=>_kGet(k.store)&&_kExpDays(k.id)!=null&&_kExpDays(k.id)<=14).map(k=>({k,d:_kExpDays(k.id)})).sort((a,b)=>a.d-b.d);
+  el.innerHTML=due.map(({k,d})=>{ const red=d<=7;
+    return '<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:'+(red?'rgba(239,68,68,.12)':'rgba(234,179,8,.12)')+';border:1px solid '+(red?'rgba(239,68,68,.4)':'rgba(234,179,8,.4)')+'">'
+      +'<div style="font-size:12px;font-weight:700;color:'+(red?'#ef4444':'var(--yw)')+'">🔑 '+E(k.name.split(' — ')[0])+' key '+(d<=0?'has EXPIRED':'expires in '+d+' day'+(d===1?'':'s'))+'</div>'
+      +'<div style="font-size:11px;color:var(--t2);margin-top:2px">Regenerate it, then paste the new one in Admin → API Keys. <a href="'+k.get+'" target="_blank" style="color:var(--cy)">get a new key ↗</a></div></div>'; }).join('');
+}
 function renderApiKeys(){
   const el=document.getElementById('apiKeysList'); if(!el) return;
   const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
@@ -5107,9 +5129,15 @@ function renderApiKeys(){
         ${on?`<button class="btn btn-ghost" style="font-size:11px;padding:6px 10px;color:#ef4444;border-color:rgba(239,68,68,.35)" onclick="apiKeyClear('${k.id}')">Clear</button>`:''}
         <span id="akst_${k.id}" style="font-size:11px;align-self:center"></span>
       </div>
+      ${on?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 0 26px">
+        <span style="font-size:11px;color:var(--t2)">Expires</span>
+        <input class="admin-inp" type="date" id="akexp_${k.id}" value="${_kExp(k.id)}" style="font-size:11px;max-width:150px" onchange="apiKeyExpSave('${k.id}')">
+        ${_keyBadge(k.id)}${k.cycle?` <span style="font-size:10px;color:var(--t3)">· SAM keys ~${k.cycle}d</span>`:''}
+      </div>`:''}
     </div>`;
   }).join('');
   if(typeof renderAiSpend==='function') renderAiSpend();
+  if(typeof renderKeyAlerts==='function') renderKeyAlerts();
 }
 // AI spend meter — shows this month's Klyfton AI spend vs the monthly cap (GET /api/klyfton).
 async function renderAiSpend(){
@@ -5138,6 +5166,8 @@ function apiKeySave(id){
   const inp=document.getElementById('ak_'+id); const v=(inp&&inp.value||'').trim();
   if(!v){ const st=document.getElementById('akst_'+id); if(st){ st.textContent='Paste a key first.'; st.style.color='var(--yw)'; } return; }
   try{ localStorage.setItem(k.store, v); }catch(e){}
+  // A fresh cycle-based key (e.g. SAM ~90d) auto-sets its expiry so the reminder starts ticking.
+  if(k.cycle && !_kExp(id)){ try{ localStorage.setItem('klyfton_keyexp_'+id, new Date(Date.now()+k.cycle*86400000).toISOString().slice(0,10)); }catch(e){} }
   if(typeof notify==='function') notify(k.name.split(' — ')[0]+' key saved','ok');
   renderApiKeys();
   // Auto-test so the owner gets instant confirmation it works.
