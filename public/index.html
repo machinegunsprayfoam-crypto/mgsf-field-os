@@ -6164,6 +6164,7 @@ function renderJobs(){
           <button class="btn btn-ghost" onclick="event.stopPropagation();jsaFromJob(${j.id})" style="font-size:10px;padding:4px 8px" title="Open a JSA prefilled for this job">${j.jsaDone?'🦺 JSA ✓':'🦺 JSA'}</button>
           <button class="btn btn-primary" onclick="event.stopPropagation();jobPunch(${j.id},'in')" style="font-size:10px;padding:4px 8px" title="Crew clocks IN with their PIN">🕐 IN</button>
           <button class="btn btn-ghost" onclick="event.stopPropagation();jobPunch(${j.id},'out')" style="font-size:10px;padding:4px 8px" title="Crew clocks OUT with their PIN">🕐 OUT</button>
+          ${['In Progress','Invoiced','Paid'].includes(st.id)?`<button class="btn btn-ghost" onclick="event.stopPropagation();stepJobStatus(${j.id},-1)" style="font-size:10px;padding:4px 8px" title="Move back a stage">↩</button>`:''}
           ${st.id!=='Paid'&&st.id!=='Cancelled'?`<button class="btn btn-orange" onclick="event.stopPropagation();advanceJobStatus(${j.id})" style="font-size:10px;padding:4px 8px">→ ${nextSt.id==='Cancelled'?'PAID':nextSt.id.toUpperCase()}</button>`:''}
         </div>`;
       col.appendChild(card);
@@ -6366,6 +6367,25 @@ function advanceJobStatus(id){
 }
 
 function updateJobStatus(id){ advanceJobStatus(id); }
+
+// Step a job back one stage (fix a mis-tap without opening the editor). Only the linear
+// ladder Scheduled→In Progress→Invoiced→Paid; never touches Cancelled.
+function stepJobStatus(id, dir){
+  const j=appState.jobs.find(x=>x.id===id);
+  if(!j || dir>=0) { if(dir>0) return advanceJobStatus(id); return; }
+  const statuses=['Scheduled','In Progress','Invoiced','Paid'];
+  const cur=statuses.indexOf(j.status);
+  if(cur<=0) return;                      // already at Scheduled (or off-ladder) — nothing to undo
+  const old=j.status;
+  j.status=statuses[cur-1];
+  j.updated=new Date().toISOString();
+  save('jobs');
+  if(j.estSource){ estWriteback('job', j.estRef, {status:_jobStatusToEst(j.status)}); }
+  renderJobs();
+  notify(`${j.jobNum} ↩ ${j.status}`,'ok');
+  emitJobEvent(j, old);
+  playSound('click');
+}
 
 function openJobLog(id){
   const j=appState.jobs.find(x=>x.id===id);
@@ -8697,13 +8717,39 @@ async function hardRefresh(){
         <div style="font-size:11px;color:var(--t2);margin-top:8px">Substrate temp can differ from air — verify with an IR gun before you pull the trigger.</div>
       </div>`;
   }
+  // Compact next-12h spray window so the crew can pick the best block of the day, not just "now".
+  function wxHourly(hourly){
+    try{
+      if(!hourly||!hourly.time||!hourly.time.length) return '';
+      const now=Date.now(); let start=0;
+      for(let i=0;i<hourly.time.length;i++){ if(new Date(hourly.time[i]).getTime()>=now-3.6e6){ start=i; break; } }
+      const cells=[];
+      for(let i=start;i<Math.min(start+12,hourly.time.length);i++){
+        const t=hourly.temperature_2m[i], df=hourly.dew_point_2m[i], pp=(hourly.precipitation_probability||[])[i];
+        if(t==null||df==null) continue;
+        const f=sprayFlag(t,df); const dot=f.cls;
+        const hr=new Date(hourly.time[i]).toLocaleTimeString('en-US',{hour:'numeric'});
+        cells.push(`<div style="text-align:center;min-width:46px;padding:6px 2px;border-radius:6px;background:var(--s2)">
+          <div style="font-size:10px;color:var(--t2)">${esc(hr)}</div>
+          <div style="width:10px;height:10px;border-radius:50%;background:${dot};margin:4px auto"></div>
+          <div style="font-size:12px;font-weight:700">${t.toFixed(0)}°</div>
+          <div style="font-size:9px;color:var(--t3)">${(t-df).toFixed(0)}°Δ${pp!=null?'<br>'+pp+'%':''}</div>
+        </div>`);
+      }
+      if(!cells.length) return '';
+      return `<div class="jsa-card" style="margin-top:10px"><h4>Next 12 hours — spray window</h4>
+        <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:4px">${cells.join('')}</div>
+        <div style="font-size:10px;color:var(--t2);margin-top:6px">🟢 GO · 🟡 caution · 🔴 NO-GO (dew-point spread). Δ = temp−dew point · % = precip chance.</div></div>`;
+    }catch(e){ return ''; }
+  }
   async function wxFetch(lat, lon, place){
     $('wx_out').innerHTML='<p style="color:var(--t2);font-size:13px">Pulling conditions…</p>';
     try{
-      const u='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch';
+      const u='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m,precipitation&hourly=temperature_2m,dew_point_2m,precipitation_probability&forecast_hours=13&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch';
       const r=await fetch(u); const d=await r.json();
       if(!d.current) throw new Error('no data');
       wxRender(place, d.current);
+      const strip=wxHourly(d.hourly); if(strip) $('wx_out').innerHTML+=strip;
     }catch(e){
       $('wx_out').innerHTML='<div class="jsa-card" style="border-color:var(--yw)"><h4>No signal for live weather</h4><p style="font-size:13px;color:var(--t2)">Couldn\'t reach the weather service. Use the JSA form to enter temp + humidity by hand — it runs the same dew-point GO/NO-GO offline.</p></div>';
     }
