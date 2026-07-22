@@ -3182,6 +3182,14 @@ function buildScopeHTML(id, type, pre={}){
         <label class="form-label">Additional Labor Hours (override)</label>
         <input class="inp" type="number" id="si${id}_hrs" placeholder="auto" value="" oninput="updateScopePreview(${id})">
       </div>
+      <div class="form-group">
+        <label class="form-label">Crew on site</label>
+        <select class="inp" id="si${id}_crew" onchange="updateScopePreview(${id})">
+          <option value="1" selected>1 — Solo auditor</option>
+          <option value="2">2 — Auditor + helper</option>
+          <option value="3">3 — Auditor + 2</option>
+        </select>
+      </div>
       <div class="form-group" style="grid-column:span 2">
         <label class="form-label">Notes / Scope Details</label>
         <input class="inp" id="si${id}_notes" placeholder="e.g. Pre/post blower door for air sealing job" value="">
@@ -4207,16 +4215,20 @@ function getScopeCalc(id, state, market){
     const svcK = (document.getElementById('si'+id+'_svc')||{}).value||'blower_door';
     const sqft = parseFloat((document.getElementById('si'+id+'_sqft')||{}).value)||0;
     const hrsOvr = parseFloat((document.getElementById('si'+id+'_hrs')||{}).value)||0;
+    const crew = parseFloat((document.getElementById('si'+id+'_crew')||{}).value)||1;
     const s = BPI_SERVICES.find(x=>x.k===svcK)||BPI_SERVICES[0];
     const laborHrs  = hrsOvr || s.hrs + (s.ratePerSF>0&&sqft>0 ? sqft/600 : 0);
-    const laborCost = laborHrs*(MGSF.labor.installer+MGSF.labor.helper);
+    // Crew-scaled labor: a solo audit bills the auditor only ($/hr installer). Each added
+    // hand adds the helper rate for the same on-site hours. Old code always billed
+    // installer+helper (2-person) even for a 1-person audit — inflated every solo bid.
+    const laborCost = laborHrs*(MGSF.labor.installer+(crew-1)*MGSF.labor.helper);
     const perSFMat  = s.ratePerSF>0&&sqft>0 ? sqft*s.ratePerSF : 0;
     const rawMat    = s.matCost + perSFMat;
     const totalMat  = rawMat+consCostRaw;
     const directCost = totalMat+laborCost;
     const sell = sellFrom(directCost);
     const {gp,actualGm,gonogo} = gpInfo(sell,directCost);
-    const setsInfo = `${s.n} · ${laborHrs.toFixed(1)} hrs${sqft>0?' · '+sqft.toFixed(0)+' SF':''}`;
+    const setsInfo = `${s.n} · ${crew}-person · ${laborHrs.toFixed(1)} hrs${sqft>0?' · '+sqft.toFixed(0)+' SF':''}`;
     return {rawMat,waste:0,cons:0,totalMat,laborHrs,laborCost,directCost,sell,gp,actualGm,gm,gonogo,setsInfo};
   }
 
