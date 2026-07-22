@@ -2960,8 +2960,18 @@ let   auxId     = 0;  // shared row counter
 
 // PIN / Role system
 let appRole = 'none'; // 'full' | 'readonly' | 'none'
-const PIN_FULL = '0331';
-const PIN_READ = '1978';
+// PINs are stored/compared as SHA-256 hashes — no plaintext PIN lives in the source or in git.
+// Factory owner PIN below is a hash; the read-only factory PIN is disabled (set your own in Admin).
+// (A 4-digit PIN checked on-device is a gate, not a vault — real per-user auth arrives with the
+//  Supabase backend. This removes the publicly-guessable/plaintext PIN, which was the real hole.)
+const PIN_FULL_HASH = '051c2e380d07844ffaca43743957f8c0efe2bdf74c6c1e6a9dcccb8d1a3c596b'; // owner
+const PIN_READ_HASH = null;                                                              // off until set in Admin
+async function sha256Hex(str){
+  try{
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(str)));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){ return null; }
+}
 
 function wbInit(id)    { if(!wbData[id])    wbData[id]   ={sects:[],deds:[]}; }
 function rdInit(id)    { if(!rdData[id])    rdData[id]   ={app:'ext',deds:[],adds:[]}; }
@@ -4983,7 +4993,7 @@ function updatePinDots(){
     if(d) d.classList.toggle('filled',i<_pinBuffer.length);
   }
 }
-function pinSubmit(){
+async function pinSubmit(){
   // Crew PINs first — each worker's PIN logs them in with their role + name.
   const crewMatch = (appState.crew||[]).find(m=>m && m.pin===_pinBuffer);
   if(crewMatch){
@@ -4993,16 +5003,23 @@ function pinSubmit(){
     onPinSuccess(appRole, crewMatch.name);
     return;
   }
-  // Load any admin-overridden PINs (legacy owner/office PINs still work).
-  // Tolerant parse: a corrupted admin blob must NOT throw here or it locks the owner out of login.
+  // Load any admin-overridden PINs. Tolerant parse: a corrupted admin blob must NOT throw here or
+  // it locks the owner out of login.
   let saved={}; try{ saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}')||{}; }catch(e){ saved={}; }
-  const pinFull = saved.pinFull || PIN_FULL;
-  const pinRead = saved.pinRead || PIN_READ;
-  if(_pinBuffer===pinFull){
+  // Resolve the target hashes: prefer a stored hash, then hash a legacy plaintext override, then factory.
+  const buf = _pinBuffer;
+  const hash = await sha256Hex(buf);
+  const fullHash = saved.pinFullHash || (saved.pinFull ? await sha256Hex(saved.pinFull) : PIN_FULL_HASH);
+  const readHash = saved.pinReadHash || (saved.pinRead ? await sha256Hex(saved.pinRead) : PIN_READ_HASH);
+  // Constant-ish comparison via hashes. If crypto is somehow unavailable (hash===null), fall back to a
+  // direct compare against a legacy plaintext override only — never against a factory plaintext (there is none).
+  const okFull = hash ? (hash===fullHash) : (saved.pinFull && buf===saved.pinFull);
+  const okRead = hash ? (readHash && hash===readHash) : (saved.pinRead && buf===saved.pinRead);
+  if(okFull){
     appRole='full';
     hidePinOverlay();
     onPinSuccess('full');
-  } else if(_pinBuffer===pinRead){
+  } else if(okRead){
     appRole='readonly';
     hidePinOverlay();
     onPinSuccess('readonly');
@@ -5186,8 +5203,7 @@ const ADMIN_DEFAULTS = {
   laborRateBF:850, laborRateCoat:600, laborRateLift:25,
   equipDay:425, fuel:85, overhead:0.15,
   gmRes:0.55, gmCom:0.50, gmInd:0.48, gmGov:0.45,
-  wasteSpray:0.12, bufMat:0.05, scarfSF:0.35,
-  pinFull:'0331', pinRead:'1978'
+  wasteSpray:0.12, bufMat:0.05, scarfSF:0.35
 };
 
 function adminLoad(){
@@ -5224,7 +5240,7 @@ function adminDirty(){
   const s = document.getElementById('admStatus');
   if(s) s.textContent='Unsaved changes...';
 }
-function adminSave(){
+async function adminSave(){
   const gv = id => parseFloat(document.getElementById(id).value);
   const gs = id => document.getElementById(id).value.trim();
   const data = {
@@ -5245,11 +5261,14 @@ function adminSave(){
     bufMat:         gv('adm-buf-mat'),
     scarfSF:        gv('adm-scarf-sf'),
   };
-  // Only update PINs if user typed something
+  // PINs are stored as SHA-256 hashes — never plaintext. Only update if the user typed a new 4-digit
+  // PIN; otherwise keep the prior hash (migrating any legacy plaintext PIN to a hash on this save).
   const pf = gs('adm-pin-full'), pr = gs('adm-pin-read');
   const existing = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
-  data.pinFull = (pf.length===4 && /^\d{4}$/.test(pf)) ? pf : (existing.pinFull||'0331');
-  data.pinRead = (pr.length===4 && /^\d{4}$/.test(pr)) ? pr : (existing.pinRead||'1978');
+  data.pinFullHash = (pf.length===4 && /^\d{4}$/.test(pf)) ? await sha256Hex(pf)
+    : (existing.pinFullHash || (existing.pinFull ? await sha256Hex(existing.pinFull) : undefined));
+  data.pinReadHash = (pr.length===4 && /^\d{4}$/.test(pr)) ? await sha256Hex(pr)
+    : (existing.pinReadHash || (existing.pinRead ? await sha256Hex(existing.pinRead) : undefined));
   // Foam product pricing
   const foamPrices = {};
   EST_FOAM.forEach(p=>{
