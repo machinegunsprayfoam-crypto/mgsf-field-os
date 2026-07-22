@@ -217,7 +217,10 @@ module.exports = async (req, res) => {
       }
 
       // Add / update: union by id, but never resurrect a tombstoned record.
-      const incoming = Array.isArray(body.records) ? body.records : [];
+      let incoming = Array.isArray(body.records) ? body.records : [];
+      // SECURITY: never persist a plaintext crew PIN to storage. Keep the client-computed pinHash;
+      // drop any legacy plaintext `pin` (the client migrates its own local copy to a hash on login).
+      if (col === "crew") incoming = incoming.map((r) => { if (r && r.pin != null) { const o = Object.assign({}, r); delete o.pin; return o; } return r; });
       const tomb = await kvGet(TOMB);
       const tset = new Set(tomb.map((t) => t.c + "|" + String(t.id)));
       const merged = mergeById(await kvGet(col), incoming).filter((r) => !tset.has(col + "|" + String(r.id)));

@@ -2972,6 +2972,20 @@ async function sha256Hex(str){
     return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
   }catch(e){ return null; }
 }
+// Crew PINs use a SYNCHRONOUS hash so the daily clock-in path (jobPunch/tcCrewByPin) stays sync —
+// no async ripple. For a 4-digit on-device gate a fast hash is the same practical protection as
+// SHA-256 (both brute-forceable over 10k combos); the point is to keep PLAINTEXT PINs out of
+// localStorage/KV at rest. crewMatch(rec, pin) accepts a legacy plaintext pin so nobody is locked
+// out, and migrateCrewPins() upgrades any plaintext pin → pinHash the first chance it gets.
+function crewHash(s){ s=String(s==null?'':s); let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return 'c'+(h>>>0).toString(36); }
+function crewMatch(m, pin){ if(!m) return false; const p=String(pin==null?'':pin).trim();
+  return (m.pinHash && m.pinHash===crewHash(p)) || (m.pin!=null && String(m.pin)===p); }
+function migrateCrewPins(){
+  try{ let ch=false; ((typeof appState!=='undefined'&&appState.crew)||[]).forEach(m=>{
+    if(m && m.pin!=null && !m.pinHash){ m.pinHash=crewHash(String(m.pin)); delete m.pin; ch=true; } });
+    if(ch && typeof save==='function') save('crew');
+  }catch(e){}
+}
 
 function wbInit(id)    { if(!wbData[id])    wbData[id]   ={sects:[],deds:[]}; }
 function rdInit(id)    { if(!rdData[id])    rdData[id]   ={app:'ext',deds:[],adds:[]}; }
@@ -4994,8 +5008,8 @@ function updatePinDots(){
   }
 }
 async function pinSubmit(){
-  // Crew PINs first — each worker's PIN logs them in with their role + name.
-  const crewMatch = (appState.crew||[]).find(m=>m && m.pin===_pinBuffer);
+  // Crew PINs first — each worker's PIN logs them in with their role + name (hash or legacy plaintext).
+  const crewMatch = (appState.crew||[]).find(m=>window.crewMatch ? window.crewMatch(m, _pinBuffer) : (m && m.pin===_pinBuffer));
   if(crewMatch){
     appRole = crewMatch.role || 'field';
     window._currentUser = crewMatch.name || '';
@@ -5033,6 +5047,8 @@ async function pinSubmit(){
   }
 }
 function onPinSuccess(role, name){
+  // Upgrade any legacy plaintext crew PINs to hashes now that we're in (purges plaintext at rest).
+  try{ migrateCrewPins(); }catch(e){}
   // Apply admin overrides to MGSF constants
   adminApplyOverrides();
   // Owner-only Admin panel (settings, PINs, crew, pricing) — full access only.
@@ -5490,14 +5506,16 @@ function renderCrew(){
   const el=document.getElementById('crewList'); if(!el) return;
   const c=appState.crew||[];
   const E=(typeof esc==='function')?esc:(s=>String(s==null?'':s));
-  // Flag PINs shared by more than one person — punch-by-PIN can't tell them apart.
-  const pinCount={}; c.forEach(m=>{ if(m&&m.pin) pinCount[m.pin]=(pinCount[m.pin]||0)+1; });
+  // Flag PINs shared by more than one person — punch-by-PIN can't tell them apart. Key by the
+  // stored hash (falling back to hashing a legacy plaintext pin) so detection survives migration.
+  const pk=m=>m?(m.pinHash||(m.pin!=null?crewHash(String(m.pin)):'')):'';
+  const pinCount={}; c.forEach(m=>{ const k=pk(m); if(k) pinCount[k]=(pinCount[k]||0)+1; });
   const dupPins=Object.keys(pinCount).filter(p=>pinCount[p]>1);
   const warn = dupPins.length ? `<div style="font-size:11px;color:var(--yw);background:rgba(234,179,8,.1);border:1px solid var(--yw);border-radius:6px;padding:7px 9px;margin-bottom:8px">⚠️ ${dupPins.length===1?'Two or more crew share the same PIN':'Some crew share PINs'} — give each person a unique 4-digit PIN so the time clock can tell who punched. (Yours and Talia's can stay as they are.)</div>` : '';
   el.innerHTML = warn + (c.length ? c.map(m=>`
-    <div class="log-row" style="align-items:center;gap:8px${(m.pin&&pinCount[m.pin]>1)?';border-color:var(--yw)':''}">
+    <div class="log-row" style="align-items:center;gap:8px${(pk(m)&&pinCount[pk(m)]>1)?';border-color:var(--yw)':''}">
       <div style="flex:1">
-        <b>${E(m.name||'')}</b> <span class="badge badge-cy" style="font-size:9px">${crewRoleLabel(m.role)}</span>${(m.pin&&pinCount[m.pin]>1)?' <span class="badge" style="font-size:9px;background:rgba(234,179,8,.15);color:var(--yw);border:1px solid var(--yw)">DUP PIN</span>':''}
+        <b>${E(m.name||'')}</b> <span class="badge badge-cy" style="font-size:9px">${crewRoleLabel(m.role)}</span>${(pk(m)&&pinCount[pk(m)]>1)?' <span class="badge" style="font-size:9px;background:rgba(234,179,8,.15);color:var(--yw);border:1px solid var(--yw)">DUP PIN</span>':''}
         <div style="font-size:11px;color:var(--t2)">${E(m.phone||'')}${m.phone&&m.email?' · ':''}${E(m.email||'')} · PIN ••••</div>
       </div>
       <button class="btn btn-ghost" style="font-size:10px;padding:3px 7px" onclick="crewEdit(${m.id})">✏️ Edit</button>
@@ -5511,12 +5529,17 @@ function crewAdd(){
     const g=id=>((document.getElementById(id)||{}).value||'').trim();
     const name=g('cr_name'), pin=g('cr_pin');
     if(!name) return notify('Enter a name','alert');
-    if(!/^\d{4}$/.test(pin)) return notify('PIN must be exactly 4 digits','alert');
     // Guard against a corrupted (non-array) crew value in storage.
     if(!Array.isArray(appState.crew)) appState.crew=[];
-    const dupe=appState.crew.find(m=>m && m.pin===pin && m.id!==_crewEditId);
+    const existing=_crewEditId ? appState.crew.find(m=>m && m.id===_crewEditId) : null;
+    // PIN is required for a new member; on edit, leaving it blank keeps the existing PIN.
+    if(pin && !/^\d{4}$/.test(pin)) return notify('PIN must be exactly 4 digits','alert');
+    let pinHash = pin ? crewHash(pin)
+      : (existing ? (existing.pinHash || (existing.pin!=null?crewHash(String(existing.pin)):'')) : '');
+    if(!pinHash) return notify('PIN must be exactly 4 digits','alert');
+    const dupe=appState.crew.find(m=>m && m.id!==_crewEditId && (m.pinHash?m.pinHash===pinHash:(m.pin!=null&&crewHash(String(m.pin))===pinHash)));
     if(dupe) return notify('That PIN is already used by '+dupe.name,'alert');
-    const rec={ id:_crewEditId||Date.now(), name, role:g('cr_role')||'field', phone:g('cr_phone'), email:g('cr_email'), pin };
+    const rec={ id:_crewEditId||Date.now(), name, role:g('cr_role')||'field', phone:g('cr_phone'), email:g('cr_email'), pinHash };
     if(_crewEditId){ const i=appState.crew.findIndex(m=>m && m.id===_crewEditId); if(i>=0) appState.crew[i]=rec; else appState.crew.push(rec); }
     else appState.crew.push(rec);
     _crewEditId=null;
@@ -5532,9 +5555,10 @@ function crewAdd(){
 function crewEdit(id){
   const m=(appState.crew||[]).find(x=>x.id===id); if(!m) return; _crewEditId=id;
   const set=(i,v)=>{const e=document.getElementById(i); if(e) e.value=v||'';};
-  set('cr_name',m.name); set('cr_role',m.role||'field'); set('cr_phone',m.phone); set('cr_email',m.email); set('cr_pin',m.pin);
+  set('cr_name',m.name); set('cr_role',m.role||'field'); set('cr_phone',m.phone); set('cr_email',m.email); set('cr_pin','');
+  const pf=document.getElementById('cr_pin'); if(pf) pf.placeholder='•••• (leave blank to keep)';
   try{ document.getElementById('cr_name').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
-  notify('Editing '+m.name+' — change fields, then Save','info');
+  notify('Editing '+m.name+' — change fields, then Save (PIN stays unless you set a new one)','info');
 }
 function crewDelete(id){
   const m=(appState.crew||[]).find(x=>x.id===id); if(!m) return;
@@ -8460,7 +8484,7 @@ ${j.sig?`<h2>Foreman Signature</h2><img class="sig" src="${e(j.sig)}" alt="signa
   const defCrew=['Clifton','Daniel','Talia'];
   // Roster prefers Admin crew profiles (with PINs); falls back to the simple name list.
   function tcRoster(){ const c=((typeof appState!=='undefined'&&appState.crew)||[]).map(m=>m&&m.name).filter(Boolean); return c.length?c:LS('tc_crew',defCrew.slice()); }
-  function tcCrewByPin(pin){ return ((typeof appState!=='undefined'&&appState.crew)||[]).find(m=>m && String(m.pin)===String(pin).trim()); }
+  function tcCrewByPin(pin){ return ((typeof appState!=='undefined'&&appState.crew)||[]).find(m=>window.crewMatch?window.crewMatch(m,pin):(m && String(m.pin)===String(pin).trim())); }
   function tcActiveJobs(){ return ((typeof appState!=='undefined'&&appState.jobs)||[]).filter(j=>!['Paid','Cancelled','Completed'].includes(j.status)); }
   function tcJobName(id){ const j=((typeof appState!=='undefined'&&appState.jobs)||[]).find(x=>String(x.id)===String(id)); return j?(j.customer||j.name||'Job'):''; }
   function tcHasJSAToday(job){ try{ const arr=LS('jsas',[]); const today=new Date().toISOString().slice(0,10); const jn=(job.customer||job.name||'').toLowerCase();
