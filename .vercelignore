@@ -1,0 +1,20 @@
+# Shelved v2.0 / Silvr scaffolding — kept in the repo, NOT deployed (yet).
+#
+# These 7 serverless functions were added on top of the working 10-function build and
+# broke every deploy two ways:
+#   1) they pushed api/ to 17 functions, over the Vercel Hobby-plan cap of 12; and
+#   2) four of them `require()` npm packages (@anthropic-ai/sdk, @supabase/supabase-js)
+#      that can't resolve — this project has NO package.json and NO install step
+#      (vercel.json runs `echo skip-install`); the app runs on built-in fetch only.
+#
+# They stay in git so nothing is lost. To bring one live: delete its line below AFTER
+# (a) it's wired to the app, (b) its npm deps are handled (add a package.json + real
+# install, or rewrite it to use global fetch like the other functions), and (c) the
+# account is on Vercel Pro so the 12-function cap isn't hit again.
+api/silvr.js
+api/silvr-bridge.js
+api/govcon-scanner.js
+api/hubspot-sync.js
+api/jobs-sync.js
+api/multi-agent-task-queue.js
+api/predictive-lead-scoring.js
