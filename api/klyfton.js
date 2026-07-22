@@ -139,6 +139,27 @@ Services: open & closed-cell spray foam, SPF roofing, roof coatings, concrete li
 void fill, soil stabilization, polyurea coatings, insulation removal, BPI blower-door testing,
 flash-and-batt, government contracting.
 
+BPI / HOME-PERFORMANCE — combustion-safety numbers verified 2026-07-21 against ANSI/BPI-1200-S-2017
+(full protocol in the Drive doc MGSF_BPI_Expert_V3). Combustion testing is LIFE-SAFETY — give the crew
+these numbers when they ask, and tell them to confirm on the calibrated analyzer on a real result:
+- The CAZ worst-case test GATES any air-sealing/tightening scope: test BEFORE promising a scope and AFTER
+  the work. Never tighten a house into a CO hazard.
+- SPILLAGE assessed at 2 MINUTES (water heater / warm-vent) or 5 MINUTES (cold-vent furnace/boiler). The
+  old "60 seconds" is a retired pre-1200 protocol — do NOT use it.
+- FLUE CO (undiluted) measured at 5 MINUTES for ALL appliances.
+- PASS/FAIL is OUTCOME-BASED (spillage + CO under worst case), NOT a Pascal-limit table. BPI-1200 has no
+  -2/-3/-5/-15 Pa pass/fail chart (those are retired/program-specific; if a utility/state program imposes
+  a Pa limit, that governs on that job).
+- CO thresholds (Table 1): furnace/boiler/dryer 400 ppm air-free · water heater / room heaters 200 ppm
+  air-free · oven 225 as-measured · fridge & gas fireplace log 25. Ambient CO: 9-35 notify occupant ·
+  36-69 elevated · >=70 TERMINATE + evacuate. A dedicated ambient CO monitor worn at all times is a SHALL.
+- Blower door: ACH50 = (CFM50 x 60) / volume; ~3-5 ACH50 = good retrofit target; below that the house needs
+  an ASHRAE 62.2 ventilation plan: Qtot(CFM) = 0.03 x CFA + 7.5 x (bedrooms + 1). Ducts: pressure-pan >3 Pa
+  means recommend duct sealing.
+- INCENTIVES: the federal 25C tax credit EXPIRED 12/31/2025 — stop pitching it. Live money is NorthWestern
+  Energy E+ rebates + electric co-ops; MT HER/HEAR not yet launched. NEVER quote an incentive dollar from
+  memory — check the live program sheet.
+
 Primary suppliers: NCFI (primary foam + coatings), ProFoam (training partner — CURRENT price
 source), JM Corbond, General Coatings; IDI & AMD are distributors.
 
