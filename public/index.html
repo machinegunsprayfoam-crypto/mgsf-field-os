@@ -1100,24 +1100,24 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <h2 style="font-size:16px;color:var(--or);margin-bottom:4px">BUSINESS INTELLIGENCE</h2>
         <div class="metrics-row">
           <div class="metric-card">
-            <div class="metric-val">55%</div>
+            <div class="metric-val" id="gmResi">55%</div>
             <div class="metric-lbl">Foam Resi GM</div>
-            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:55%"></div></div>
+            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" id="gmResiBar" style="width:55%"></div></div>
           </div>
           <div class="metric-card">
-            <div class="metric-val">50%</div>
+            <div class="metric-val" id="gmComm">50%</div>
             <div class="metric-lbl">Foam Comm GM</div>
-            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:50%"></div></div>
+            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" id="gmCommBar" style="width:50%"></div></div>
           </div>
           <div class="metric-card">
-            <div class="metric-val">48%</div>
-            <div class="metric-lbl">SPF Roof GM</div>
-            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:48%"></div></div>
+            <div class="metric-val" id="gmRoof">48%</div>
+            <div class="metric-lbl">Roof / Ind GM</div>
+            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" id="gmRoofBar" style="width:48%"></div></div>
           </div>
           <div class="metric-card">
-            <div class="metric-val">45%</div>
-            <div class="metric-lbl">Min-Margin Floor</div>
-            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" style="width:45%"></div></div>
+            <div class="metric-val" id="gmFloor">45%</div>
+            <div class="metric-lbl">Gov / Floor GM</div>
+            <div class="progress-bar" style="margin-top:8px"><div class="progress-fill or" id="gmFloorBar" style="width:45%"></div></div>
           </div>
         </div>
 
@@ -1137,12 +1137,12 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <table class="tbl">
             <thead><tr><th>Metric</th><th>Target</th><th>Current</th><th>Status</th></tr></thead>
             <tbody>
-              <tr><td>Avg Response Time</td><td>&lt; 1 hour</td><td id="kpiResp">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
+              <tr><td>Avg Days to First Touch</td><td>Same day</td><td id="kpiResp">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Estimate → Close Rate</td><td>35%</td><td id="kpiClose">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Avg Job Value</td><td>$18K</td><td id="kpiJobVal">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Repeat Customer Rate</td><td>25%</td><td id="kpiRepeat">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
               <tr><td>Google Review Count</td><td>50</td><td id="reviewCount">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
-              <tr><td>Crew Utilization</td><td>85%</td><td id="kpiCrew">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
+              <tr><td>Crew Hours (30d)</td><td>—</td><td id="kpiCrew">—</td><td><span class="badge badge-cy">TRACK</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -7943,6 +7943,21 @@ function drawCharts(){
   const wonVals=rows.map(j=>Number(j.value)||0).filter(v=>v>0);
   set('kpiJobVal', wonVals.length?'$'+Math.round(wonVals.reduce((a,b)=>a+b,0)/wonVals.length/1000*10)/10+'K':'—');
   set('reviewCount', (appState.reviews&&appState.reviews.length)?String(appState.reviews.length):'—');
+  // Repeat-customer rate: share of distinct customers (from jobs) that have more than one job.
+  const cc={}; (appState.jobs||[]).forEach(j=>{ const c=String(j.customer||j.name||'').trim().toLowerCase(); if(c) cc[c]=(cc[c]||0)+1; });
+  const distinct=Object.keys(cc).length, repeat=Object.values(cc).filter(n=>n>1).length;
+  set('kpiRepeat', distinct?Math.round(repeat/distinct*100)+'%':'—');
+  // Avg days from lead created -> first logged contact (lastContact); real speed-to-lead signal.
+  const touched=(appState.leads||[]).map(l=>{ const a=Date.parse(String(l.date||'')), b=Date.parse(String(l.lastContact||'')); return (Number.isFinite(a)&&Number.isFinite(b)&&b>=a)?(b-a)/86400000:null; }).filter(v=>v!=null);
+  set('kpiResp', touched.length?(Math.round(touched.reduce((a,b)=>a+b,0)/touched.length*10)/10)+'d':'—');
+  // Crew hours clocked in the last 30 days from tc_punches (in/out timestamps).
+  try{ const pr=JSON.parse(localStorage.getItem('klyfton_tc_punches')||'[]'); const cut=Date.now()-30*86400000; let hrs=0;
+    (Array.isArray(pr)?pr:[]).forEach(p=>{ const ti=Date.parse(p&&p.in), to=Date.parse(p&&p.out); if(Number.isFinite(ti)&&Number.isFinite(to)&&to>ti&&to>=cut) hrs+=(to-ti)/3600000; });
+    set('kpiCrew', hrs>0?(Math.round(hrs*10)/10)+' h':'—');
+  }catch(e){ set('kpiCrew','—'); }
+  // Bind GM target cards to the live Admin overrides (MGSF.gmTargets) so editing them updates here.
+  try{ const gm=(window.MGSF&&MGSF.gmTargets)||{}; const gmset=(vid,bid,frac)=>{ const p=Math.round((Number(frac)||0)*100); const v=document.getElementById(vid),b=document.getElementById(bid); if(v)v.textContent=p+'%'; if(b)b.style.width=p+'%'; };
+    gmset('gmResi','gmResiBar',gm.resi); gmset('gmComm','gmCommBar',gm.comm); gmset('gmRoof','gmRoofBar',gm.ind); gmset('gmFloor','gmFloorBar',gm.gov); }catch(e){}
 }
 
 // ============================================================
