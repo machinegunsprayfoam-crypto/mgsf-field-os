@@ -445,6 +445,35 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
   --or:#f97316;--cy:#38bdf8;--neon:#38bdf8;--neonSoft:rgba(56,189,248,.4);
   --gridRGB:56,189,248;--neonRGB:56,189,248;--accentRGB:249,115,22;
   --bd:rgba(255,255,255,.1);--glow:rgba(249,115,22,.3)}
+
+/* ===== FUTURISTIC SET ===== */
+/* AEON (Y3024) — my read on humanity ~1000 yrs out: post-scarcity, human+AI symbiosis, spacefaring
+   and serene. Cosmic indigo + platinum starlight + a warm gold "human spark", on an iridescent
+   aurora grid that slowly shifts hue. Refined, not garish. */
+:root[data-theme="aeon"]{--bg:#05060d;--s1:#0b0d1a;--s2:#111426;--s3:#1a1e38;
+  --or:#e8c07d;--cy:#a9b8ff;--neon:#b7a6ff;--neonSoft:rgba(183,166,255,.5);
+  --gridRGB:150,180,255;--neonRGB:170,150,255;--accentRGB:232,192,125;
+  --bd:rgba(170,150,255,.18);--glow:rgba(232,192,125,.4);--tx:#eef1ff;--t2:#9aa3c8}
+:root[data-theme="aeon"] #tronFloor::before{animation:tronRun 6.5s linear infinite, aeonHue 16s linear infinite}
+:root[data-theme="aeon"] #tronFloor::after{animation:aeonHue 16s linear infinite}
+@keyframes aeonHue{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
+
+:root[data-theme="quantum"]{--bg:#03060a;--s1:#081420;--s2:#0c1c2e;--s3:#12283f;
+  --or:#2dd4bf;--cy:#5eead4;--neon:#22d3ee;--neonSoft:rgba(34,211,238,.5);
+  --gridRGB:34,211,238;--neonRGB:45,212,191;--accentRGB:45,212,191;
+  --bd:rgba(45,212,191,.2);--glow:rgba(45,212,191,.4);--tx:#e6feff;--t2:#7fb8c0}
+:root[data-theme="helios"]{--bg:#0d0702;--s1:#170d02;--s2:#1f1204;--s3:#2b1908;
+  --or:#ffd24a;--cy:#ff8a3c;--neon:#ffb03a;--neonSoft:rgba(255,176,58,.5);
+  --gridRGB:255,180,60;--neonRGB:255,200,80;--accentRGB:255,138,60;
+  --bd:rgba(255,180,60,.2);--glow:rgba(255,138,60,.45);--tx:#fff2d6;--t2:#c99a55}
+:root[data-theme="nebula"]{--bg:#08040f;--s1:#120a22;--s2:#1a0f33;--s3:#261648;
+  --or:#c084fc;--cy:#f0abfc;--neon:#a855f7;--neonSoft:rgba(168,85,247,.5);
+  --gridRGB:168,85,247;--neonRGB:200,130,255;--accentRGB:240,171,252;
+  --bd:rgba(168,85,247,.22);--glow:rgba(240,171,252,.4);--tx:#f3e9ff;--t2:#a78bc8}
+:root[data-theme="obsidian"]{--bg:#000000;--s1:#060608;--s2:#0a0a0d;--s3:#121216;
+  --or:#e6faff;--cy:#7fefff;--neon:#c8f7ff;--neonSoft:rgba(200,247,255,.5);
+  --gridRGB:120,200,220;--neonRGB:200,247,255;--accentRGB:230,250,255;
+  --bd:rgba(200,247,255,.12);--glow:rgba(200,247,255,.3);--tx:#eef6f9;--t2:#7f8c96}
 </style>
 <style id="mg-facelift">
   /* ── Klyfton facelift: depth, neon, glass, motion (additive) ── */
@@ -511,7 +540,12 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
     {id:'synthwave', name:'Synthwave', emoji:'🌆', sw:['#0e0420','#ff2e97','#22d3ee'], desc:'Retro magenta + cyan'},
     {id:'amber',     name:'Amber',     emoji:'🟠', sw:['#0a0700','#ffb000','#ffcf6b'], desc:'Retro amber CRT'},
     {id:'stealth',   name:'Stealth',   emoji:'🕶️', sw:['#0a0a0c','#8493a8','#cbd5e1'], desc:'Calm steel — low FX'},
-    {id:'clean',     name:'Clean',     emoji:'▫️', sw:['#0b0d12','#38bdf8','#f97316'], desc:'Minimal — no grid/scanlines'}
+    {id:'clean',     name:'Clean',     emoji:'▫️', sw:['#0b0d12','#38bdf8','#f97316'], desc:'Minimal — no grid/scanlines'},
+    {id:'aeon',      name:'Aeon · Y3024', emoji:'✦', sw:['#05060d','#b7a6ff','#e8c07d'], desc:'Humanity 1000 yrs on — iridescent, gold human-spark'},
+    {id:'quantum',   name:'Quantum',   emoji:'⚛️', sw:['#03060a','#22d3ee','#2dd4bf'], desc:'Deep indigo + electric teal'},
+    {id:'helios',    name:'Helios',    emoji:'☀️', sw:['#0d0702','#ffb03a','#ff8a3c'], desc:'Solar / Dyson gold plasma'},
+    {id:'nebula',    name:'Nebula',    emoji:'🌌', sw:['#08040f','#a855f7','#f0abfc'], desc:'Cosmic violet + starlight'},
+    {id:'obsidian',  name:'Obsidian',  emoji:'⬢', sw:['#000000','#c8f7ff','#7fefff'], desc:'Pure-black voidtech, ice-white'}
   ];
   window.applyTheme = function(id){
     if(!KLYFTON_THEMES.some(function(t){return t.id===id;})) id='grid';
