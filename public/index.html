@@ -2017,10 +2017,15 @@ let appState = {
 // (or sync down from other crew devices once cloud storage is attached). No demo seeds.
 
 function save(key){
-  // Returns false when the write fails (e.g. localStorage full) so callers can warn
-  // instead of silently losing data.
+  // Persist to localStorage. Returns false on failure (e.g. storage full). Also warns the user
+  // LOUDLY on failure — a silent failure here means a lost lead/job/estimate on a full device,
+  // and callers were telling the user "saved ✓" regardless. This guards every caller at the source.
   try{ localStorage.setItem('klyfton_'+key, JSON.stringify(appState[key])); return true; }
-  catch(e){ return false; }
+  catch(e){
+    try{ if(window.notify) notify("⚠️ Couldn't save "+key+" — this device's storage is full. Free up space (clear old photos) or open the app on another device; recent changes are at risk until it saves.",'alert'); }catch(_){}
+    try{ console.error('save() failed for '+key, e); }catch(_){}
+    return false;
+  }
 }
 
 // ============================================================
