@@ -50,7 +50,7 @@ const SB_MAP = {
   estimates: { table: "estimates", row: (r) => ({ id: _txt(r.id), customer: _txt(r.customer || r.name), service: _txt(r.service), state: _txt(r.state), status: _txt(r.status), total: _num(r.total != null ? r.total : (r.value != null ? r.value : r.sell)), date: _day(r.date || r.at) }) },
   matlogs: { table: "materials_log", row: (r) => ({ id: _txt(r.id), job: _txt(r.job), product: _txt(r.prod || r.product), unit: _txt(r.unit), est: _num(r.est), act: _num(r.act), cost: _num(r.cost), ts: r.ts || null }) },
   invoices: { table: "invoices", row: (r) => ({ id: _txt(r.id), customer: _txt(r.customer || r.cust), amount: _num(r.amount != null ? r.amount : r.amt), deposit: _num(r.deposit || r.dep), due: _txt(r.due), date: _day(r.date) }) },
-  crew: { table: "crew", row: (r) => ({ id: _txt(r.id), name: _txt(r.name), role: _txt(r.role), phone: _txt(r.phone), email: _txt(r.email) }), strip: ["pin"] },
+  crew: { table: "crew", row: (r) => ({ id: _txt(r.id), name: _txt(r.name), role: _txt(r.role), phone: _txt(r.phone), email: _txt(r.email) }), strip: ["pin", "pinHash"] },
 };
 async function sbUpsert(table, rows) {
   if (!rows.length) return 0;
