@@ -600,6 +600,12 @@ canvas.chart{width:100%;height:100%}
           </div>
         </div>
 
+        <!-- PIPELINE HEALTH — leak radar: which leads are going cold, worth-first, one-tap chase -->
+        <div class="card" id="pipeHealthCard" style="border-left:3px solid var(--cy)">
+          <div class="card-title">🩺 Pipeline Health <button class="btn btn-ghost" style="float:right;font-size:11px;padding:3px 8px" onclick="renderPipelineHealth()">↻ Refresh</button></div>
+          <div id="pipeHealth" style="font-size:13px;line-height:1.6">Loading pipeline health…</div>
+        </div>
+
         <div class="grid-2">
           <!-- PRIORITY ACTIONS -->
           <div class="card">
@@ -2509,7 +2515,7 @@ function switchModule(id){
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
-  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
+  if(id==='dashboard'){ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.renderPipelineHealth) renderPipelineHealth(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
     adminLoad();
@@ -8941,6 +8947,44 @@ async function hardRefresh(){
         const el=$('opsWx'); if(el) el.innerHTML=`🌦️ Glendive: <b>${Math.round(t)}°F</b>, dew ${Math.round(df)}°F, wind ${Math.round(w)} mph — <b style="color:${col}">${flag}</b>`;
       }).catch(()=>{ const el=$('opsWx'); if(el) el.innerHTML='🌦️ Spray weather: no signal — check the Weather tab on site.'; });
   };
+
+  /* ---------- PIPELINE HEALTH (leak radar) ----------
+     The in-app version of the CRM leak audit: open leads that have gone quiet, sorted by VALUE
+     first (chase the money), with the dollars-going-cold called out and one-tap Call/Text/Done.
+     "Quiet" = days since lastContact (falls back to created date). Never counts closed leads. */
+  const CLOSED_RE = /^(won|lost|dead|complete|completed|paid|cancel)/i;
+  window.markContacted = function(id){
+    const l=(appState.leads||[]).find(x=>String(x.id)===String(id)); if(!l) return;
+    l.lastContact=new Date().toISOString().slice(0,10);
+    save('leads');
+    if(window.renderPipelineHealth) renderPipelineHealth();
+    if(window.renderOpsBrief) renderOpsBrief();
+    notify('Marked contacted — '+(l.name||'lead'),'success');
+  };
+  window.renderPipelineHealth = function(){
+    const box=$('pipeHealth'); if(!box) return;
+    const open=(appState.leads||[]).filter(l=>l && !CLOSED_RE.test(String(l.status||'')));
+    const q = l => daysSince(l.lastContact||l.date);
+    const dated = open.filter(l=>(l.lastContact||l.date));
+    const stale = dated.filter(l=>q(l)>=3)
+      .sort((a,b)=>(Number(b.value)||0)-(Number(a.value)||0) || q(b)-q(a));
+    const atRisk = dated.filter(l=>q(l)>=7).reduce((s,l)=>s+(Number(l.value)||0),0);
+    if(!open.length){ box.innerHTML='<div style="color:var(--t2)">No open leads yet — add one in CRM and it\'ll show up here.</div>'; return; }
+    if(!stale.length){ box.innerHTML='<div style="color:var(--gr)">✅ Nothing going cold — every open lead\'s been touched inside 3 days. '+open.length+' in play.</div>'; return; }
+    const tier = d => d>=30?{l:'30d+ LAST CALL',c:'var(--red)'}:d>=7?{l:'7d+ chase',c:'var(--yw)'}:{l:'3-day nudge',c:'var(--cy)'};
+    let html=`<div style="margin-bottom:7px">🥶 <b style="color:${atRisk>0?'var(--yw)':'var(--gr)'}">${money(atRisk)}</b> going cold · <b>${stale.length}</b> lead${stale.length===1?'':'s'} need a touch</div>`;
+    html+= stale.slice(0,6).map(l=>{
+      const d=q(l), t=tier(d), ph=String(l.phone||'').replace(/[^0-9+]/g,'');
+      const acts=(ph?`<a class="btn btn-ghost" style="font-size:11px;padding:2px 7px" href="tel:${ph}" title="Call">📞</a><a class="btn btn-ghost" style="font-size:11px;padding:2px 7px" href="sms:${ph}" title="Text">💬</a>`:'')
+        +`<button class="btn btn-ghost" style="font-size:11px;padding:2px 7px" onclick="markContacted('${l.id}')" title="Mark contacted">✓</button>`;
+      return `<div class="log-row" style="align-items:center">
+        <span><b>${esc(l.name||'Lead')}</b>${l.value?' · '+money(l.value):''}${l.service?' · '+esc(l.service):''}<br>
+        <span style="color:${t.c};font-size:11px">${t.l} · quiet ${d}d</span></span>
+        <span style="white-space:nowrap">${acts}</span></div>`;
+    }).join('');
+    if(stale.length>6) html+=`<div style="font-size:11px;color:var(--t2);margin-top:5px">+${stale.length-6} more — <a href="#" onclick="switchModule('crm');return false" style="color:var(--cy)">open CRM →</a></div>`;
+    box.innerHTML=html;
+  };
   // Real dashboard metrics — computed from actual jobs/leads (no more demo numbers).
   window.renderDashMetrics = function(){
     const leads=(appState.leads||[]), jobs=(appState.jobs||[]);
@@ -8992,7 +9036,7 @@ async function hardRefresh(){
       .catch(function(){ box.innerHTML='<div style="font-size:12px;color:var(--red)">Couldn’t reach Klyfton — check your connection.</div>'; });
   };
   // First paint after boot.
-  const _dashPaint=()=>{ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.klyftonDayPlan) klyftonDayPlan(false); };
+  const _dashPaint=()=>{ if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.renderPipelineHealth) renderPipelineHealth(); if(window.klyftonDayPlan) klyftonDayPlan(false); };
   if(document.readyState==='complete') setTimeout(_dashPaint, 900);
   else window.addEventListener('load', ()=> setTimeout(_dashPaint, 900));
 })();
