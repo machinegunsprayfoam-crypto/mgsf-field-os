@@ -7,5 +7,8 @@
   "cleanUrls": true,
   "functions": {
     "api/*.js": { "maxDuration": 300 }
-  }
+  },
+  "crons": [
+    { "path": "/api/samgov?scan=1", "schedule": "0 13 * * 1-6" }
+  ]
 }

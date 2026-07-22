@@ -8,12 +8,9 @@
 //      on-device only. We never log the key.
 // No npm deps — global fetch only.
 
-// Baked-in default key so every device can search SAM.gov with no per-device pasting. Server-side
-// only (this file runs as a Vercel function, never shipped to the browser). A SAM.gov public API key
-// is low-risk — it only authenticates calls to public opportunity data and is regenerable for free at
-// sam.gov. Leave "" to require the env var or an in-app key; fill it to bake it in. Env var overrides.
-const DEFAULT_KEY = "SAM-a61acfcd-4511-4a92-a775-8333eab001e1";
-const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || DEFAULT_KEY;
+// Key comes ONLY from the environment (Vercel SAM_API_KEY) or a per-request in-app key — never
+// hardcoded here. A hardcoded key would land in the repo (now public); SAM_API_KEY is set in Vercel.
+const ENV_KEY = process.env.SAM_API_KEY || process.env.SAMGOV_API_KEY || "";
 
 // Documented endpoint, with the /prod variant as a fallback (both are served).
 const SAM_HOSTS = [
@@ -89,15 +86,9 @@ function normalize(o) {
   };
 }
 
-module.exports = async (req, res) => {
-  if (req.method === "GET") { res.status(200).json({ configured: !!ENV_KEY, clientConfigurable: true }); return; }
-  if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
-
-  const body = await readBody(req);
-  const key = ENV_KEY || (typeof body.apiKey === "string" ? body.apiKey.trim() : "");
-  if (!key) { res.status(200).json({ configured: false }); return; }
-
-  // Inputs (all optional, sane defaults for MGSF's lane).
+// Reusable search: fan out over NAICS×state combos (SAM's ncode/state filters are single-value),
+// merge unique opportunities, newest first. Used by both the manual POST search and the daily scan.
+async function runSearch(body, key) {
   const naics = (Array.isArray(body.naics) && body.naics.length ? body.naics : ["238310", "238160"])
     .map((s) => String(s).replace(/[^0-9]/g, "")).filter(Boolean).slice(0, 6);
   const states = (Array.isArray(body.states) && body.states.length ? body.states : ["MT", "ND", "SD", "WY"])
@@ -110,20 +101,10 @@ module.exports = async (req, res) => {
 
   const to = new Date();
   const from = new Date(Date.now() - days * 86400000);
-  const base = {
-    api_key: key,
-    postedFrom: mmddyyyy(from),
-    postedTo: mmddyyyy(to),
-    limit: String(perState),
-    offset: "0",
-    ptype,
-  };
+  const base = { api_key: key, postedFrom: mmddyyyy(from), postedTo: mmddyyyy(to), limit: String(perState), offset: "0", ptype };
   if (title) base.title = title;
   if (setAside) base.typeOfSetAside = setAside;
 
-  // SAM's `ncode` and `state` filters are single-value in practice — query each
-  // NAICS × state combo (single values, guaranteed to filter) and merge. Cap the
-  // combo count so a big NAICS list can't fan out into hundreds of calls.
   const COMBO_CAP = 40;
   const combos = [];
   let capped = false;
@@ -134,36 +115,106 @@ module.exports = async (req, res) => {
     }
     if (capped) break;
   }
-  if (!combos.length) { // no state given → query by NAICS nationwide
-    for (const nc of naics.slice(0, COMBO_CAP)) combos.push({ ncode: nc });
+  if (!combos.length) { for (const nc of naics.slice(0, COMBO_CAP)) combos.push({ ncode: nc }); }
+
+  const results = await Promise.all(
+    combos.map((c) => samQuery(Object.assign({}, base, c)).catch((e) => ({ ok: false, error: String((e && e.message) || e) })))
+  );
+  const seen = {};
+  const merged = [];
+  let firstErr = null;
+  for (const r of results) {
+    if (!r || !r.ok) { if (r && !firstErr) firstErr = r; continue; }
+    const rows = (r.data && r.data.opportunitiesData) || [];
+    for (const o of rows) {
+      const n = normalize(o);
+      const k = n.id || (n.title + "|" + n.posted);
+      if (!seen[k]) { seen[k] = 1; merged.push(n); }
+    }
   }
+  merged.sort((a, b) => String(b.posted).localeCompare(String(a.posted)));
+  return { merged, capped, firstErr, query: { naics, states, ptype, days, title: title || undefined, setAside: setAside || undefined } };
+}
+
+// ---- KV access (same store as api/sync.js) so the daily scan can write new opps straight to leads.
+function _kvEnv(suffixRe, excludeRe) {
+  for (const k of Object.keys(process.env)) { if (excludeRe && excludeRe.test(k)) continue; if (suffixRe.test(k) && process.env[k]) return process.env[k]; }
+  return undefined;
+}
+const KV_URL = _kvEnv(/KV_REST_API_URL$/i) || _kvEnv(/REST_API_URL$/i) || _kvEnv(/UPSTASH_REDIS_REST_URL$/i);
+const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i, /READ_ONLY/i) || _kvEnv(/REST_API_TOKEN$/i, /READ_ONLY/i);
+const KV_ON = !!(KV_URL && KV_TOKEN);
+async function kvGet(col) {
+  try {
+    const r = await fetch(KV_URL + "/get/" + encodeURIComponent("mgsf:" + col), { headers: { Authorization: "Bearer " + KV_TOKEN } });
+    if (!r.ok) return [];
+    const j = await r.json(); if (!j || j.result == null) return [];
+    const p = JSON.parse(j.result); return Array.isArray(p) ? p : [];
+  } catch { return []; }
+}
+async function kvSet(col, arr) {
+  await fetch(KV_URL + "/set/" + encodeURIComponent("mgsf:" + col), { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: JSON.stringify(arr) });
+}
+
+// Map a SAM opportunity to a Klyfton lead — deterministic id off the SAM notice id so re-scans
+// never double-add. Mirrors the fields the GOV tab's manual "Add as lead" writes.
+function oppToLead(o) {
+  const bits = [o.type, o.setAside, o.place, o.due ? "Due " + String(o.due).slice(0, 10) : "", o.link].filter(Boolean);
+  return {
+    id: "gov_" + (o.id || o.sol || (o.title || "").slice(0, 24)),
+    name: o.title, company: o.agency, phone: o.contactPhone || "", email: o.contactEmail || "",
+    service: "Government", state: o.state || "", value: 0,
+    source: "SAM.gov #" + (o.sol || o.id), status: "New",
+    date: String(o.posted || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+    notes: bits.join(" · "),
+  };
+}
+
+// The daily scan: search MGSF's core federal lane and add only genuinely-new opportunities to leads.
+async function runScan() {
+  if (!ENV_KEY) return { ok: false, error: "no_sam_key" };
+  if (!KV_ON) return { ok: false, error: "kv_not_attached" };
+  const { merged } = await runSearch(
+    { naics: ["238310", "238160", "238190", "238390", "238990"], states: ["MT", "ND", "SD", "WY"], days: 8, ptype: DEFAULT_PTYPES, limit: 40 },
+    ENV_KEY
+  );
+  const leads = await kvGet("leads");
+  const haveIds = new Set(leads.map((l) => String(l && l.id)));
+  const haveSols = new Set(leads.map((l) => String((l && l.source) || "")).filter(Boolean));
+  const added = [];
+  for (const o of merged) {
+    const lead = oppToLead(o);
+    if (haveIds.has(lead.id) || haveSols.has(lead.source)) continue;   // dedup vs existing leads
+    leads.push(lead); added.push(lead); haveIds.add(lead.id); haveSols.add(lead.source);
+  }
+  if (added.length) await kvSet("leads", leads.slice(-2000));
+  return { ok: true, scanned: merged.length, added: added.length, opportunities: added.slice(0, 25) };
+}
+
+module.exports = async (req, res) => {
+  if (req.method === "GET") {
+    // Daily auto-scan trigger (Vercel Cron hits /api/samgov?scan=1). Idempotent — dedups vs leads.
+    if (req.query && String(req.query.scan) === "1") {
+      try { const r = await runScan(); res.status(200).json(Object.assign({ configured: !!ENV_KEY }, r)); }
+      catch (e) { res.status(200).json({ configured: !!ENV_KEY, ok: false, error: String((e && e.message) || e).slice(0, 200) }); }
+      return;
+    }
+    res.status(200).json({ configured: !!ENV_KEY, clientConfigurable: true, autoScan: KV_ON });
+    return;
+  }
+  if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
+
+  const body = await readBody(req);
+  const key = ENV_KEY || (typeof body.apiKey === "string" ? body.apiKey.trim() : "");
+  if (!key) { res.status(200).json({ configured: false }); return; }
 
   try {
-    const results = await Promise.all(
-      combos.map((c) => samQuery(Object.assign({}, base, c)).catch((e) => ({ ok: false, error: String((e && e.message) || e) })))
-    );
-    const seen = {};
-    const merged = [];
-    let firstErr = null;
-    for (const r of results) {
-      if (!r || !r.ok) { if (r && !firstErr) firstErr = r; continue; }
-      const rows = (r.data && r.data.opportunitiesData) || [];
-      for (const o of rows) {
-        const n = normalize(o);
-        const k = n.id || (n.title + "|" + n.posted);
-        if (!seen[k]) { seen[k] = 1; merged.push(n); }
-      }
-    }
+    const { merged, capped, firstErr, query } = await runSearch(body, key);
     if (!merged.length && firstErr) {
       res.status(200).json({ configured: true, ok: false, error: firstErr.error || "sam_error", status: firstErr.status });
       return;
     }
-    merged.sort((a, b) => String(b.posted).localeCompare(String(a.posted)));
-    res.status(200).json({
-      configured: true, ok: true, count: merged.length, capped,
-      query: { naics, states, ptype, days, title: title || undefined, setAside: setAside || undefined },
-      opportunities: merged.slice(0, 80),
-    });
+    res.status(200).json({ configured: true, ok: true, count: merged.length, capped, query, opportunities: merged.slice(0, 80) });
   } catch (e) {
     res.status(200).json({ configured: true, ok: false, error: String((e && e.message) || e).slice(0, 200) });
   }
