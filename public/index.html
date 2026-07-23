@@ -6719,6 +6719,59 @@ function _opsMoney(n){ return '$'+Math.round(+n||0).toLocaleString('en-US'); }
 function _opsDays(d){ const t=Date.parse(d); if(!isFinite(t)) return null; return Math.floor((Date.now()-t)/86400000); }
 function _opsDead(status){ return /won|lost|unqualif|closed|dead|complete|cancel/i.test(String(status||'')); }
 
+// ── BUILDING BLOCK: entity lookup ──────────────────────────────────────────────
+// Answer about ONE customer/lead/job by name — pulls their lead, jobs, invoices and
+// estimates into a single card with a suggested next step. Token-overlap match so
+// "lawson", "the Lawson job", "joleen" all resolve. Returns {text,voice}, a
+// disambiguation list, or null (no match → fall through).
+const _FIND_STOP = new Set(['job','jobs','the','and','with','for','status','deal','lead','leads','invoice','invoices','customer','estimate','estimates','about','our','his','her','their','that','this']);
+function _findToks(s){ return String(s||'').toLowerCase().split(/[^a-z0-9]+/).filter(t=>t.length>=3 && !_FIND_STOP.has(t)); }
+function _entName(r){ return String((r&&(r.customer||r.name||r.cust))||'').trim(); }
+function klyftonFind(q){
+  q=String(q||'').trim(); const qt=_findToks(q);
+  if(!qt.length) return null;
+  const leads=_opsArr('leads'), jobs=_opsArr('jobs'), invoices=_opsArr('invoices'), estimates=_opsArr('estimates');
+  const hit=r=>{ const nt=_findToks(_entName(r)); return nt.length && nt.some(t=>qt.includes(t)); };
+  const L=leads.filter(hit), J=jobs.filter(hit), I=invoices.filter(hit), E=estimates.filter(hit);
+  const all=[...L,...J,...I,...E]; if(!all.length) return null;
+  // Group by customer name to catch "which Smith?" — disambiguate if clearly different people.
+  const groups={}; all.forEach(r=>{ const n=_entName(r); if(!n) return; const k=n.toLowerCase(); (groups[k]=groups[k]||{name:n,n:0}).n++; });
+  const keys=Object.keys(groups);
+  if(keys.length>1){
+    // Only disambiguate when the names really differ (not just lead vs job for the same person).
+    const distinct=keys.filter(k=>!keys.some(o=>o!==k && (o.includes(k)||k.includes(o))));
+    if(distinct.length>1){
+      const list=keys.map(k=>groups[k].name).slice(0,8).map(n=>`• ${esc(n)}`).join('\n');
+      return {text:`Found a few matches — which one?\n\n${list}\n\nSay the full name and I'll pull it up.`, voice:`I found ${keys.length} matches — which one?`};
+    }
+  }
+  const disp = _entName(all.slice().sort((a,b)=>_entName(b).length-_entName(a).length)[0]) || q;
+  const lines=[`🔎 **${esc(disp)}**`];
+  // Lead status
+  if(L.length){ const l=L[0]; const d=_opsDays(l.lastContact||l.date);
+    lines.push(`\n📇 **Lead:** ${esc(l.status||'—')}${l.value?` · ${_opsMoney(l.value)}`:''}${l.service?` · ${esc(l.service)}`:''}${d!=null?` · ${d===0?'contacted today':d+'d since contact'}`:''}`);
+    if(l.phone||l.email) lines.push(`   ${[l.phone,l.email].filter(Boolean).map(esc).join(' · ')}`);
+  }
+  // Jobs
+  if(J.length){ J.slice(0,4).forEach(j=>{ lines.push(`\n🔨 **Job:** ${esc(j.status||'—')}${j.value?` · ${_opsMoney(j.value)}`:''}${j.date?` · ${esc(j.date)}`:''}${j.service?` · ${esc(j.service)}`:''}`); }); }
+  // Invoices
+  if(I.length){ I.forEach(v=>{ const bal=(+v.amt||0)-(+v.dep||0); const late=_opsDays(v.due||v.date);
+    lines.push(`\n🧾 **Invoice:** ${v.paid?'✅ paid':`${_opsMoney(bal)} due${late!=null&&late>0?` · ${late}d late`:''}`}${v.num?` · ${esc(v.num)}`:''}`); }); }
+  // Estimates
+  if(E.length){ const e=E[0]; lines.push(`\n📋 **Estimate:** ${_opsMoney(e.value)}${isFinite(parseFloat(e.gm))?` · ${Math.round(parseFloat(e.gm)*100)}% GM`:''}${e.date?` · ${esc(e.date)}`:''}`); }
+  // Suggested next step — pick the most urgent signal
+  let next='';
+  const od=I.find(v=>v&&v.paid!==true && ((+v.amt||0)-(+v.dep||0))>0.5 && (()=>{const d=_opsDays(v.due||v.date);return d!=null&&d>0;})());
+  const openJob=J.find(j=>/schedul|progress|invoiced/i.test(j.status||''));
+  const coldLead=L.find(l=>{ if(_opsDead(l.status))return false; const d=_opsDays(l.lastContact||l.date); return d==null||d>=7; });
+  if(od) next=`💰 Overdue balance — say **"draft reminders"** to nudge them.`;
+  else if(coldLead) next=`📞 Gone quiet — say **"draft a nudge for ${esc(disp.split(/\s+/)[0])}"**.`;
+  else if(openJob && openJob.date) next=`📅 On the board for ${esc(openJob.date)}.`;
+  else if(L.length) next=`Next: log a contact or move it forward in the pipeline.`;
+  if(next) lines.push(`\n${next}`);
+  return {text:lines.join('\n'), voice:`Here's what I've got on ${disp}.`};
+}
+
 function klyftonOps(input){
   const low = String(input||'').toLowerCase().trim();
   if(!low) return null;
@@ -6915,10 +6968,17 @@ function klyftonOps(input){
     return {text:`📅 **Work by month:**\n\n${body}\n\n🏆 Best: **${best[0]}** at ${_opsMoney(best[1].v)}`, voice:`Your best month was ${best[0]}.`};
   }
 
+  // ENTITY LOOKUP — "what about Lawson", "look up Durham", "status on Agtegra", "update on…"
+  { const m=low.match(/(?:look ?up|find|pull up|tell me about|status (?:of|on|for)|where (?:are we|do we stand)(?:\s+(?:with|on))?|deal with|story (?:with|on|for)|update on|whats? (?:up |the )?(?:deal|story|status) (?:with|on|for))\s+(.{2,60})/);
+    if(m){ const r=klyftonFind(m[1].replace(/[?.!]+$/,'').trim()); if(r) return r; } }
+
   // 12) HELP — what Klyfton can pull
   if(/what can you (do|help|pull|tell)|^help\b|^what do you do|your (commands|capabilities)|how do (you|i) (work|use)|what should i ask/.test(low)){
     return {text:`🤖 **Ask me for live numbers — straight from your data:**\n\n☀️ **brief** — your day at a glance\n💰 **who owes me money** · 🥶 **cold leads** · 📆 **this week** / **today**\n📊 **pipeline** · 🏛️ **open bids** · 📋 **recent estimates** · 💵 **collected**\n⏱️ **crew hours** · 📐 **avg margin** · 🔧 **by service** · 📅 **by month**\n\n📣 **Marketing:**\n⭐ **review requests** — drafts a Google-review ask per finished job\n📣 **social post** — a ready-to-post caption from your work\n\n✍️ **Drafts:** **draft reminders** · **draft a nudge for [name]**\n\nAnything else, I'll think it through. Every draft is yours to approve — nothing sends on its own.`, voice:"Ask me for your brief, receivables, cold leads, schedule, pipeline, bids, review requests, or a social post."};
   }
+
+  // Bare name fallback — a short message that is (or contains) a customer/company name.
+  if(low.split(/\s+/).length<=4){ const r=klyftonFind(low.replace(/[?.!]+$/,'').trim()); if(r) return r; }
 
   return null;
 }
