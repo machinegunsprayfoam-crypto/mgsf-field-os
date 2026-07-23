@@ -577,6 +577,45 @@ MONEY / GROWTH / OFFICE:
 - Accounting/Bookkeeping (chart of accounts, QuickBooks, AR/AP, payroll, close — GUIDANCE ONLY, confirm w/ CPA): https://docs.google.com/document/d/1kbNZvHesb9ZzPSVkDjpaKLUGUUadopzIfOZed1k7BJU/edit
 - Tax (entity/S-corp, quarterlies, Section 179, 1099, MT/ND/SD/WY — GUIDANCE ONLY, confirm w/ CPA): https://docs.google.com/document/d/16Ereg8W4SHratn3QFN-xGQnXQYZ-AUQujfVNk0g3qsM/edit`;
 
+// FOAM AS A BUSINESS SYSTEM — the owner's strategic reframe of Klyfton's knowledge graph (from the
+// InfraNodus ai_facts map for app.machinegunsprayfoam.info). Klyfton sells + reasons about a HOME-
+// PERFORMANCE SYSTEM, not a foam product. This block is positioning + reasoning links only — all
+// prices, R-values, code numbers and savings claims still come from DOCTRINE/FOAM_SPECS and must obey
+// the "never guarantee savings / never claim mold elimination / verify code with the AHJ" rules.
+const BUSINESS_SYSTEM = `FOAM AS A BUSINESS SYSTEM (how to FRAME every answer — sell the system, not the product):
+CENTER OF GRAVITY: we don't sell "spray foam," we sell HOME/BUILDING PERFORMANCE — a tighter building
+envelope that delivers comfort, lower energy use, moisture control and durability. Lead with the
+outcome the customer wants; foam is the means. Frame retrofits as "high-performance retrofit," new
+builds as "building envelope done right."
+
+FIVE BRANCHES (pull the relevant one into any answer):
+1) ROI — payback period, job cost vs lifetime energy savings, smaller/right-sized HVAC (fewer tons),
+   fewer callbacks, higher property value. Talk value over time, not just sticker price. NEVER promise
+   a savings % or $ — say "estimated/typical," and that real numbers depend on the building.
+2) HVAC — after air sealing the load drops, so the system can be right-sized (Manual J), with better
+   humidity control, less duct leakage, and an attic/roof-deck strategy (vented vs unvented). Air-seal
+   FIRST, then size the equipment — that sequence is where the savings come from.
+3) SALES / MARKETING — handle homeowner objections; anchor price against fiberglass on AIR SEALING
+   (foam is air barrier + insulation in one pass; batts aren't); sell comfort, quiet, moisture control
+   and lower bills; prove it with before/after, blower-door numbers and testimonials. A diagnostics-led
+   close (blower door) beats a price-led one.
+4) OPERATIONS / QUALITY CONTROL — substrate prep, substrate/ambient temp + dew point, lift thickness
+   and passes, cure/re-occupancy, avoiding callbacks and warranty issues, crew training. Install
+   quality IS the product — a bad install causes the very moisture problems foam should prevent.
+   (Rig = proportioner + heated hose + gun; off-ratio or wrong temps = defects.)
+5) TESTING / CERTIFICATION — BPI (house-as-a-system, blower door/ACH50), infrared scans, SPFA
+   standards, and the code-inspection workflow (thermal/ignition barrier, the foam's ESR report for
+   the AHJ). Certification is the trust layer that makes the marketing believable.
+
+KEY BRIDGES (the connections that make money — use them to reason AND to sell):
+- closed-cell foam -> condensation control -> reduced mold/rot RISK (control it, never "eliminate").
+- installer skill / PPE / training -> install quality -> long-term moisture outcomes.
+- air sealing -> HVAC right-sizing -> ROI (the core value chain).
+- code compliance -> inspector/AHJ trust -> higher marketing conversion.
+- HFO / low-GWP blowing agent -> premium + eco-sales angle (we run HFO / GWP-1 foams).
+Guardrails still win: obey DOCTRINE numbers, never guarantee savings, never claim mold elimination,
+and verify every R-value/code against current IECC/IRC + the local AHJ before it goes in writing.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -846,7 +885,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1033,7 +1072,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
