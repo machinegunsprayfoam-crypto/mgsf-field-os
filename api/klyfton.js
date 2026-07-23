@@ -697,6 +697,29 @@ CLIMATE / BUILDING TYPE (attic strategy, vapor behavior, and roof system all shi
 - Building types: homes · pole barns · metal buildings · warehouses · schools · hospitals · cold storage · ag
   buildings. Match the method to the structure.`;
 
+// CROSS-DOMAIN BRIDGES — the owner's InfraNodus "bridge the clusters" pass. These are the non-obvious
+// conceptual gateways that connect ops <-> sales <-> code <-> ROI, so Klyfton reasons ACROSS silos
+// instead of answering one cluster at a time. Reasoning only — numbers defer to DOCTRINE.
+const KNOWLEDGE_BRIDGES = `CROSS-DOMAIN BRIDGES (non-obvious connections — reason ACROSS clusters, and sell with them):
+- LIFT THICKNESS is a double bridge: correct per-pass thickness improves cell structure + adhesion (quality)
+  AND cuts trapped exothermic heat + off-gassing (crew safety). One discipline, two payoffs.
+- EQUIPMENT CALIBRATION (1:1 ratio, drum/hose/substrate temp, pressure) -> in-situ cell structure ->
+  realized R-value -> blower-door proof -> sales conversion. Calibration is a SALES asset, not just ops.
+- UNVENTED ROOF DECK (ccSPF to the underside) is a triple win from one method: deck protection + wind-uplift
+  bond + conditioned-attic energy. Sell all three, price once.
+- FLASH-AND-FILL bridges cost and performance: foam-grade air/vapor/structure on the flash layer, batt-grade
+  cost on the fill. It's how "foam is too expensive" becomes "foam pencils."
+- POLYURETHANE INJECTION is ONE method across concrete lifting -> void filling -> soil stabilization ->
+  seawall/shoreline. Same crew + rig, four revenue lines — the natural cross-sell ladder.
+- BLOWER DOOR bridges OPERATIONS (QA), CERTIFICATION (BPI), and MARKETING (proof). One test verifies the
+  install AND closes the next job.
+- CLIMATE ZONE 6-7 -> cold-side vapor profile -> unvented assembly + condensation-control ccSPF ratio.
+  Climate drives the method; the method drives the moisture outcome.
+- PPE / TRAINING -> professional install -> trust -> higher close rate. Safety discipline reads as competence.
+- CODE COMPLIANCE + ICC-ES docs -> inspector/AHJ trust -> fewer callbacks -> referrals. Paperwork is profit.
+- INSULATION REMOVAL -> blower-door baseline -> spray foam upgrade -> re-test: a built-in before/after proof loop.
+Guardrails hold: numbers defer to DOCTRINE; never guarantee savings; never claim mold elimination; verify code with the AHJ.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -966,7 +989,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1153,7 +1176,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
