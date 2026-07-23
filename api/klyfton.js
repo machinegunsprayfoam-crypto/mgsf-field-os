@@ -513,9 +513,13 @@ the block. The user still taps a confirm button before anything is written or re
 // him mgsf-core needs updating. Never show internal cost constants to a customer.
 const DOCTRINE = `MGSF LOCKED DOCTRINE (from mgsf-core — obey; never invent numbers not here):
 LOCKED CUSTOMER PRICING: Concrete lifting $10.00/lb installed ($1,200 job min) · Void fill $7.00/lb
-($6.00/lb past 1,000 lb) · Polyurea $12.00/SF at 80 mil ($1,200 min) · Soil stabilization = BLOCKED,
-Terra-Lok pricing pending — DO NOT QUOTE · Protective coatings $3.00/SF silicone / $2.25/SF acrylic are
-PROPOSED, not confirmed — label internal-only, don't quote as final.
+($6.00/lb past 1,000 lb) · Polyurea $12.00/SF at 80 mil ($1,200 min) · Soil stabilization (Terra-Lok) =
+OFFERED (owner-activated), but pricing is still PENDING — scope the job, mark any figure ESTIMATED /
+OWNER INPUT REQUIRED, and do NOT quote a final price until Clifton sets the rate · Seawall stabilization
+= OFFERED (owner-activated), pricing PENDING — same rule · Protective coatings $3.00/SF silicone /
+$2.25/SF acrylic are PROPOSED, not confirmed — label internal-only, don't quote as final.
+(mgsf-core.skill still lists soil stabilization as BLOCKED — flag to Clifton that the skill + the SEO
+launch pack need updating to match this activation.)
 COST CONSTANTS (INTERNAL — never show a customer): OC $0.122/BF · CC HFO 2.8# $0.982/BF · SPF roofing
 3.0# $0.680/BF · labor installer $80/hr, helper $48/hr. BF = sqft × inches (NEVER sqft×thickness/12).
 (These are core's fixed constants; when a newer-dated pricing CSV is in context, that per-set pricing is
@@ -615,6 +619,83 @@ KEY BRIDGES (the connections that make money — use them to reason AND to sell)
 - HFO / low-GWP blowing agent -> premium + eco-sales angle (we run HFO / GWP-1 foams).
 Guardrails still win: obey DOCTRINE numbers, never guarantee savings, never claim mold elimination,
 and verify every R-value/code against current IECC/IRC + the local AHJ before it goes in writing.`;
+
+// SERVICE ARCHITECTURE — the owner's InfraNodus "Job Types / Services" branch. Each service is
+// reasoned the same way (problem·method·material·building type·outcome·proof·risk/code·ROI) and tied
+// to a gateway idea so answers sell, not just describe. Soil + seawall stabilization are owner-ACTIVATED
+// services (pricing still PENDING per DOCTRINE — scope + estimate only, no final quote). Coatings are
+// proposed-only for priced listings. Positioning/reasoning only — numbers defer to DOCTRINE.
+const SERVICE_ARCHITECTURE = `SERVICE ARCHITECTURE (our job types — reason about each the same way, then tie it to a gateway):
+For ANY service, cover the same angles when relevant: problem it solves · method · material · building
+type · outcome · proof/testing · risk & code · ROI. Then connect it to a GATEWAY so the answer sells:
+air sealing · moisture control · structural support · code compliance · energy savings · measured performance.
+
+OFFERED SERVICES:
+- Spray foam — walls: air leakage, comfort, code/R-value, retrofit or new construction. Gateway: air sealing.
+- Spray foam — lids/attics: attic vs roof-deck strategy (vented/unvented), CZ6-7 R-targets, ignition barrier. Gateway: air sealing + energy savings.
+- Crawl space insulation / encapsulation: cold floors, humidity/moisture, rim-joist air sealing, vapor control, healthier air above. Gateway: moisture control + air sealing.
+- Spray foam roofing (SPF): roof assembly, closed-cell, structural reinforcement, waterproofing, recover vs tear-off. Gateway: moisture control.
+- Roof coatings: acrylic/silicone to spec, UV + ponding protection, recoat ROI, extends roof life. Gateway: moisture control. (DOCTRINE: proposed-only for priced listings — quote as a proposal.)
+- Concrete lifting: settled slab, trip hazard, polyurethane injection + void fill, faster/cheaper than replacement. Gateway: structural support + cost savings.
+- Insulation removal: contaminated/old material, prep for an air-sealing upgrade, blower-door before/after. Gateway: air sealing.
+- Blower door testing (BPI): measured leakage/ACH50, proof, HVAC right-sizing, sales conversion. Gateway: measured performance.
+- Void filling: hidden voids under slabs/structures, load support, non-invasive polyurethane repair. Gateway: structural support.
+- Subterranean soil stabilization (Terra-Lok): weak/expansive soils, deep polyurethane injection, road/slab/foundation support, settlement control, geotechnical + infrastructure ROI. Gateway: structural support. (Pricing PENDING — scope + ESTIMATE only, no final quote yet.)
+- Seawall stabilization: erosion/voids behind the wall, water intrusion + soil loss, polyurethane injection to preserve the structure, marine environment, prevent a larger failure. Gateway: structural support. (Pricing PENDING — scope + ESTIMATE only.)
+
+CROSS-SELL FLOW (walk the customer along the chain — don't stop at one job):
+- insulation removal -> blower door -> spray foam upgrade
+- spray foam attic/walls -> HVAC right-sizing -> ROI
+- roofing -> coating maintenance plan (recoat, not re-roof)
+- concrete lifting -> void filling -> soil stabilization -> seawall work
+- closed-cell walls/roofing -> condensation control -> reduced mold/rot risk
+
+KEY LINKS TO REASON WITH (what makes the pitch smart, not a flat service list):
+- service <-> customer problem: start from THEIR problem, name the service second.
+- service <-> proof: pair every claim with blower-door numbers, before/after, or a code report.
+- service <-> ROI/profit: tie the method to payback, not just price.
+- service <-> risk if done wrong: name the failure mode a bad install causes — that's why our QC/BPI matters.`;
+
+// COMPANY BRAIN — REVENUE & EXECUTION LAYER — the owner's InfraNodus "why people buy / how jobs succeed
+// / how we grow" branches. The spine that turns technical knowledge into money: problem -> service ->
+// method -> proof -> outcome -> ROI -> cross-sell. Reasoning only — prices/margins/code defer to DOCTRINE;
+// keep the never-guarantee-savings + no-mold-elimination rules.
+const REVENUE_LAYER = `COMPANY BRAIN — REVENUE & EXECUTION (people buy problem relief, not foam):
+SPINE (walk every answer/sale along this): problem -> service -> method -> proof -> outcome -> ROI -> cross-sell.
+
+CUSTOMER PROBLEMS (start HERE — name the pain, then the service, then the proof):
+high energy bills · hot upstairs / cold rooms · drafts · humid house · condensation · mold smell · roof
+leaks · uneven/settled slab · trip hazards · wet/cold crawl space · noisy house · contaminated or rodent-
+damaged attic insulation · erosion / hidden voids · settling foundation.
+
+BUYER TYPES (change language, proof, and ROI framing to fit the buyer):
+- Homeowner: comfort, bills, health, peace of mind. Proof: before/after + blower door. Trigger: a specific pain.
+- Builder / GC: passing inspection, schedule, liability. Proof: ESR/code report, no drywall hold-up. Budget: per-assembly cost.
+- Commercial owner / facility manager: uptime, energy cost, deferred capex. Proof: measured savings, recover vs tear-off. Budget: payback + capex avoided.
+- Municipal buyer / engineer / specifier: spec compliance, documentation, longevity. Proof: SPFA/ASTM standards, test data, code. Budget: lifecycle cost.
+
+SALES OBJECTIONS (answer with proof + ROI — never a savings guarantee):
+"too expensive" -> lifetime cost + payback + Hearth financing · "fiberglass is cheaper" -> foam is air
+barrier + insulation in one; anchor on air sealing · "does it really work?" -> blower door before/after ·
+"is it safe?" -> re-occupancy time, thermal/ignition barrier, PPE/QA · "why not replace?" -> lift/coat/
+recover is faster + cheaper than tear-out.
+
+PROOF / TESTING (the bridge across sales, QA, and performance — pair one with every claim):
+blower door / ACH50 · infrared scan · moisture meter · adhesion test · thickness verification · core sample · before/after metrics.
+
+OPERATIONS / QA (install quality IS the product):
+substrate prep · ambient + drum/substrate temp · dew point · lift thickness & passes · off-ratio / shrinkage /
+adhesion failure · ventilation during install · cure & re-occupancy · callbacks / warranty · QA checklist ·
+crew training · safety meetings · change orders. A bad install causes the very moisture it should prevent.
+
+SALES ECONOMICS (owner lens — reason with these; show numbers only from DOCTRINE/live data):
+job cost · gross margin (targets in DOCTRINE) · lead source · close rate · payback period · replacement cost
+avoided · average ticket · lifetime value · referral rate · financing. Flag any bid below the margin target.
+
+CLIMATE / BUILDING TYPE (attic strategy, vapor behavior, and roof system all shift by both):
+- Climate: our lane is cold CZ 6-7 (long winters, wind) — adjust vapor + attic strategy vs hot-humid / marine.
+- Building types: homes · pole barns · metal buildings · warehouses · schools · hospitals · cold storage · ag
+  buildings. Match the method to the structure.`;
 
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
@@ -885,7 +966,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1072,7 +1153,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
