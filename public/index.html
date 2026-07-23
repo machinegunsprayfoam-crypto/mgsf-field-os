@@ -1657,6 +1657,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <button class="chat-chip" onclick="opsAsk('cold leads')">🥶 Cold leads</button>
         <button class="chat-chip" onclick="opsAsk('this week')">📆 This week</button>
         <button class="chat-chip" onclick="opsAsk('pipeline')">📊 Pipeline</button>
+        <button class="chat-chip" onclick="opsAsk('review requests')">⭐ Get reviews</button>
       </div>
       <div class="chat-input-area">
         <div id="chatAtts" class="chat-atts"></div>
@@ -6865,15 +6866,58 @@ function klyftonOps(input){
     return {text:`📋 **Recent estimates (${ests.length}):**\n\n${body}`, voice:`Your ${ests.length} most recent estimates.`};
   }
 
+  // 10b) REVIEW REQUESTS — the marketing engine: draft a review ask per completed/paid job
+  if(/review request|ask for (a )?review|get (more )?reviews|request.*review|drive reviews|review.*(ask|push|drive)|need reviews/.test(low)){
+    const link=(typeof MGSF!=='undefined'&&MGSF.reviewLink)||'https://g.page/r/Camo7qu2xWrVEAE/review';
+    const done=_opsArr('jobs').filter(j=>j&&/paid|complete/i.test(j.status||''));
+    if(!done.length) return {text:`No completed or paid jobs to ask yet. The moment a job's marked **Paid**, ask me again and I'll draft the review requests.\n\nYour Google review link: ${esc(link)}`, voice:"No completed jobs to request reviews for yet."};
+    const blocks=done.slice(0,6).map(j=>{ const cust=j.customer||j.name||'there'; const fn=String(cust).split(/\s+/)[0];
+      const msg=`Hi ${fn}, thanks again for choosing Machine Gun Spray Foam — it was a pleasure working on your project. If you were happy with it, would you take 60 seconds to leave us a Google review? It means a lot for a veteran-owned shop.\n${link}\nNo pressure either way. — Clifton, 406-939-8301`;
+      return `**${esc(cust)}**\n${esc(msg)}`; }).join('\n\n');
+    return {text:`⭐ **${done.length>6?'6 of '+done.length+' ':''}review request${done.length>1?'s':''} — copy & send (nothing sent):**\n\n${blocks}\n\n💡 Send it within a day of finishing — that's when reviews land. More Google reviews = higher map ranking = more calls.`, voice:`Drafted review requests for ${Math.min(done.length,6)} completed jobs.`};
+  }
+
   // 11) REVIEWS
   if(/how many reviews|review count|google reviews?|our reviews|reviews.*(have|got)/.test(low)){
     const n=(appState.reviews&&appState.reviews.length)||0;
     return {text:`⭐ **${n} review${n===1?'':'s'} logged** (target 50).${n<50?` ${50-n} to go — ask every happy customer 1 hour after they pay.`:' 🎯 Target hit — keep it rolling.'}`, voice:`You have ${n} reviews logged.`};
   }
 
+  // 13) SOCIAL POST — draft a marketing caption from your work (region-level, no customer PII)
+  if(/social post|facebook post|instagram|write.*(post|caption)|marketing post|before.?after post|content (for|idea)|gbp post|google business post/.test(low)){
+    const done=_opsArr('jobs').filter(j=>j&&/paid|complete/i.test(j.status||''));
+    const j=done[0]||null; const svc=(j&&j.service)?String(j.service):'a spray foam project';
+    const region=(j&&j.state)?j.state:'MT/ND/SD/WY';
+    const post=`🔫 Another one in the books for Machine Gun Spray Foam & Concrete Lifting!\n\n`+
+      `${j?('Just wrapped '+svc+(j.state?(' in '+j.state):'')+'. '):''}`+
+      `Spray foam insulation • SPF roofing • protective coatings • concrete lifting — veteran-owned, serving ${region}.\n\n`+
+      `Lower energy bills, tougher buildings, done right the first time. Free quotes: 406-939-8301\n\n`+
+      `#sprayfoam #insulation #veteranowned #montana #concretelifting #SPFroofing`;
+    return {text:`📣 **Draft social post — copy & post (drop a before/after photo on it):**\n\n${esc(post)}`, voice:"Drafted a social post — add a photo and it's ready."};
+  }
+
+  // 14) BY SERVICE — revenue + count grouped by service type
+  if(/per service|by service|service breakdown|revenue by service|best service|which service (makes|made)/.test(low)){
+    const by={}; _opsArr('jobs').forEach(j=>{ if(!j)return; const s=(String(j.service||'Other').trim())||'Other'; if(!by[s])by[s]={n:0,v:0}; by[s].n++; by[s].v+=(+j.value||0); });
+    const rows=Object.entries(by).sort((a,b)=>b[1].v-a[1].v);
+    if(!rows.length) return {text:"No jobs logged yet to break down by service.", voice:"No jobs yet to break down."};
+    const body=rows.slice(0,8).map(([s,d])=>`• **${esc(s)}** — ${d.n} job${d.n>1?'s':''}, ${_opsMoney(d.v)}`).join('\n');
+    return {text:`🔧 **Work by service:**\n\n${body}`, voice:"Here's your work broken down by service."};
+  }
+
+  // 15) BY MONTH — jobs + value grouped by month
+  if(/best month|by month|monthly|which month|revenue by month|month.*breakdown|per month/.test(low)){
+    const by={}; _opsArr('jobs').forEach(j=>{ if(!j||!j.date)return; const m=String(j.date).slice(0,7); if(!/^\d{4}-\d{2}$/.test(m))return; if(!by[m])by[m]={n:0,v:0}; by[m].n++; by[m].v+=(+j.value||0); });
+    const rows=Object.entries(by).sort((a,b)=>a[0].localeCompare(b[0]));
+    if(!rows.length) return {text:"No dated jobs yet to break down by month.", voice:"No dated jobs yet."};
+    const best=rows.slice().sort((a,b)=>b[1].v-a[1].v)[0];
+    const body=rows.slice(-8).map(([m,d])=>`• ${m} — ${d.n} job${d.n>1?'s':''}, ${_opsMoney(d.v)}`).join('\n');
+    return {text:`📅 **Work by month:**\n\n${body}\n\n🏆 Best: **${best[0]}** at ${_opsMoney(best[1].v)}`, voice:`Your best month was ${best[0]}.`};
+  }
+
   // 12) HELP — what Klyfton can pull
   if(/what can you (do|help|pull|tell)|^help\b|^what do you do|your (commands|capabilities)|how do (you|i) (work|use)|what should i ask/.test(low)){
-    return {text:`🤖 **Ask me for live numbers — straight from your data:**\n\n☀️ **brief** — your day at a glance\n💰 **who owes me money** — receivables\n🥶 **cold leads** — stalled pipeline + $ at risk\n📆 **this week** / **today** — schedule\n📊 **pipeline** — open value\n🏛️ **open bids** — GovCon set-asides\n📋 **recent estimates** · 💵 **collected** · ⏱️ **crew hours** · 📐 **avg margin** · ⭐ **reviews**\n✍️ **draft reminders** / **draft a nudge for [name]**\n\nAnything else, I'll think it through. Every draft is yours to approve — nothing sends on its own.`, voice:"Ask me for your brief, receivables, cold leads, schedule, pipeline, bids, or to draft a follow-up."};
+    return {text:`🤖 **Ask me for live numbers — straight from your data:**\n\n☀️ **brief** — your day at a glance\n💰 **who owes me money** · 🥶 **cold leads** · 📆 **this week** / **today**\n📊 **pipeline** · 🏛️ **open bids** · 📋 **recent estimates** · 💵 **collected**\n⏱️ **crew hours** · 📐 **avg margin** · 🔧 **by service** · 📅 **by month**\n\n📣 **Marketing:**\n⭐ **review requests** — drafts a Google-review ask per finished job\n📣 **social post** — a ready-to-post caption from your work\n\n✍️ **Drafts:** **draft reminders** · **draft a nudge for [name]**\n\nAnything else, I'll think it through. Every draft is yours to approve — nothing sends on its own.`, voice:"Ask me for your brief, receivables, cold leads, schedule, pipeline, bids, review requests, or a social post."};
   }
 
   return null;
