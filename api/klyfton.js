@@ -747,6 +747,55 @@ const GAP_BRIDGES = `GAP BRIDGES (close the silos — one company, not two; conn
    here and you seal moisture IN. This is also the safety story that reads as competence to the buyer.
 Guardrails hold: numbers defer to DOCTRINE; never guarantee savings; never claim mold elimination; verify code with the AHJ.`;
 
+// STEM FOUNDATIONS — first-principles science/math/engineering so Klyfton REASONS from physics,
+// not just memorized talking points. Principles + formulas here are universal (established science);
+// every PRODUCT-SPECIFIC number (R/in, set yield, psi, perm, price, GM) still comes from
+// FOAM_SPECS / DOCTRINE / the printed TDS — never invent jobsite values from these formulas.
+const STEM_FOUNDATIONS = `STEM FOUNDATIONS (reason from the physics; pull the specific numbers from FOAM_SPECS/DOCTRINE/TDS):
+
+HEAT TRANSFER (why insulation works):
+- Three paths: CONDUCTION (through solids), CONVECTION (air movement — this is the one air-sealing kills),
+  RADIATION (surface to surface). Foam attacks conduction AND convection in one pass; fiberglass only slows conduction.
+- R = resistance, U = conductance, U = 1/R_total. Series layers add: R_total = ΣR_layers (add the air films too).
+- Per-inch: R_assembly = (R-per-inch × inches). Heat flow: Q = U × A × ΔT (watts/BTUh). Bigger ΔT (cold MT winter) = more loss.
+- THERMAL BRIDGING: studs/steel short-circuit the R-value; "nominal R" (center-of-cavity) > "whole-assembly R." Continuous
+  exterior foam is what actually raises the assembly number. R-value also drifts slightly as foam ages — cite tested/aged R.
+
+PSYCHROMETRICS & MOISTURE (the physics behind callbacks):
+- Warm air holds more water than cold. RELATIVE HUMIDITY = how full the air is. DEW POINT = the temp where RH hits 100%
+  and water condenses. Condensation forms on any surface at/below dew point — that's why a cold sheathing face gets wet.
+- Two moisture transport modes: VAPOR DIFFUSION (slow, through materials — controlled by perm rating) and
+  AIR-TRANSPORTED moisture (fast, through leaks — usually the bigger problem). Air sealing beats a vapor barrier for bulk moisture.
+- Closed-cell foam gets less vapor-open as it thickens (becomes a vapor retarder past a threshold — verify the perm on the TDS).
+- The move: keep condensing surfaces above dew point (enough continuous R on the warm side) AND air-seal. Control moisture; never claim to "eliminate" mold.
+
+AIR & PRESSURE (blower-door science):
+- Air moves from high to low pressure. Drivers: STACK EFFECT (warm air rises, cold MT winters make this strong),
+  WIND, and MECHANICAL (fans/HVAC). A leaky envelope = uncontrolled airflow = lost energy + moisture carried into assemblies.
+- Blower door measures leakage. ACH50 = (CFM50 × 60) / building volume(ft³). Lower ACH50 = tighter. This is the before/after proof number.
+
+POLYURETHANE CHEMISTRY (foam AND injection are the same reaction):
+- Two parts: A-side = ISOCYANATE (MDI); B-side = POLYOL resin + blowing agent + catalysts + surfactant. Mixed hot at ~1:1 by volume.
+- Reaction is EXOTHERMIC (makes its own heat) and time-staged: cream → rise/gel → tack-free → full cure. Blowing agent creates the cells.
+- CLOSED-CELL = dense, higher R/in, structural, water-resistant, vapor-retarding. OPEN-CELL = light, lower R/in, vapor-open, cheaper/thicker.
+- OFF-RATIO or wrong temps (drum/hose/substrate) = bad cell structure → lost R, poor adhesion, shrinkage, odor. Calibration is physics, not paperwork.
+- Blowing agent matters environmentally: HFO (GWP ~1) vs older HFC (high GWP) — the eco/premium angle, per FOAM_SPECS.
+- LIFT THICKNESS is exotherm control: too thick a pass traps reaction heat → scorch/poor cells/fire risk. Multiple correct-thickness passes = quality + safety.
+
+STRUCTURAL & SOIL MECHANICS (concrete lifting / void / soil / seawall):
+- Load → STRESS (force/area) → STRAIN (deformation). Bearing capacity = how much load soil carries before it fails/settles.
+- Slabs settle when support is lost: soil CONSOLIDATION, water WASHOUT/erosion (voids), EXPANSIVE clay shrink/swell, or FROST HEAVE (freeze/thaw — big in CZ 6-7).
+- Polyurethane geotech: injected resin expands with real pressure — it FILLS voids, DENSIFIES weak soil, and can LIFT a slab back to grade.
+  Filling a void ≠ lifting: lifting needs enough expansion pressure under a competent slab. Diagnose the cause (washout vs heave vs consolidation) before the fix.
+- Seawalls fail from HYDROSTATIC PRESSURE and soil loss behind the wall; injection seals leaks + rebuilds the soil mass. Roofs fail from WIND UPLIFT (pressure difference) — ccSPF's adhesion resists it.
+
+ESTIMATING MATH (show the method; use rates/yields from FOAM_SPECS/DOCTRINE/supplier):
+- BOARD FOOT = 1 ft² at 1" thick. Coverage(ft² at target thickness) = set yield(BF) ÷ thickness(in). Passes = target thickness ÷ max lift.
+- Geometry: area = L×W (add pitch factor for roofs); volume = L×W×H. Convert units carefully (in↔ft, gal↔set).
+- Coating gallons = area(ft²) ÷ coverage rate(ft²/gal) × coats. Lifting: material ≈ void volume × a fudge for compaction (verify with the rig/supplier).
+- ACH50 = (CFM50 × 60) ÷ volume. Payback(yrs) = install cost ÷ estimated annual savings — ESTIMATED only, never a guaranteed number.
+Guardrails: principles are universal but every jobsite/product number defers to FOAM_SPECS/DOCTRINE/TDS; never guarantee savings; never claim mold elimination; verify code + structural calls with the AHJ / a licensed engineer where required.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -1016,7 +1065,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1203,7 +1252,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
