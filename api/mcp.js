@@ -22,6 +22,18 @@ function _kvEnv(suffixRe, excludeRe) {
 }
 const KV_URL = _kvEnv(/KV_REST_API_URL$/i) || _kvEnv(/REST_API_URL$/i) || _kvEnv(/UPSTASH_REDIS_REST_URL$/i);
 const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i, /READ_ONLY/i) || _kvEnv(/REST_API_TOKEN$/i, /READ_ONLY/i);
+
+// Bearer token resolver — tolerant of key misspellings (MCP_BEARER_TOKEN, MCPBEARERTOKEN,
+// MCP-BEARER-TOKEN, any case) and of pasted whitespace in the value. Fail-closed if absent.
+function _bearerToken() {
+  for (const k of Object.keys(process.env)) {
+    if (/^MCP[_-]?BEARER[_-]?TOKEN$/i.test(k)) {
+      const v = String(process.env[k] || "").trim();
+      if (v) return v;
+    }
+  }
+  return "";
+}
 const KV_ON = !!(KV_URL && KV_TOKEN);
 const PREFIX = "mgsf:";
 const TOMB = "_tomb";
@@ -207,9 +219,12 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
 
   // Bearer gate. 401 on any mismatch; no token configured = closed, not open.
+  // Accepts the token under MCP_BEARER_TOKEN or common misspellings (underscores/dashes
+  // dropped by dashboard entry, any case), value trimmed to survive paste whitespace.
   const auth = String(req.headers["authorization"] || "");
-  const expected = "Bearer " + (process.env.MCP_BEARER_TOKEN || "");
-  if (!process.env.MCP_BEARER_TOKEN || auth !== expected) { res.status(401).json({ error: "unauthorized" }); return; }
+  const token = _bearerToken();
+  const expected = "Bearer " + (token || "");
+  if (!token || auth !== expected) { res.status(401).json({ error: "unauthorized" }); return; }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
