@@ -40,6 +40,13 @@ async function fireWebhook(event, message, extra) {
     return r.ok;
   } catch { return false; }
 }
+function isTrustedCron(req) {
+  const h = (req && req.headers) || {};
+  if (!h["x-vercel-cron"]) return false;
+  const secret = process.env.CRON_SECRET || "";
+  if (!secret) return false;
+  return String(h.authorization || "") === "Bearer " + secret;
+}
 
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 120); }
@@ -128,7 +135,7 @@ function sweep(invoices, asOf) {
 
 module.exports = async (req, res) => {
   const asOf = Date.parse((req.query && clean(req.query.asOf, 20)) || "") || Date.now();
-  const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+  const isCron = isTrustedCron(req);
 
   if (req.method === "GET") {
     if ((req.query && String(req.query.sweep) === "1") || isCron) {

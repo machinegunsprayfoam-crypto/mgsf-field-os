@@ -103,6 +103,13 @@ async function kvSet(col, arr) {
     body: JSON.stringify(arr),
   });
 }
+function isTrustedCron(req) {
+  const h = (req && req.headers) || {};
+  if (!h["x-vercel-cron"]) return false;
+  const secret = process.env.CRON_SECRET || "";
+  if (!secret) return false;
+  return String(h.authorization || "") === "Bearer " + secret;
+}
 
 // Union by id. Incoming (the saving device's copy) wins on a shared id, so edits propagate.
 // Note: deletes are NOT propagated in v1 (a union keeps every id ever seen).
@@ -127,7 +134,7 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === "GET") {
-      const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+      const isCron = isTrustedCron(req);
       // Owner/diagnostic trigger: GET ?mirror=1 runs the Supabase mirror on demand (identical to
       // POST {action:"mirror"}). Idempotent upserts, gated on SB_ON — safe to hit from a browser
       // bookmark or an uptime ping to keep the reporting DB fresh.

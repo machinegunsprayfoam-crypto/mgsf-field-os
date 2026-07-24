@@ -35,6 +35,13 @@ async function fireWebhook(event, message, extra) {
     return r.ok;
   } catch { return false; }
 }
+function isTrustedCron(req) {
+  const h = (req && req.headers) || {};
+  if (!h["x-vercel-cron"]) return false;
+  const secret = process.env.CRON_SECRET || "";
+  if (!secret) return false;
+  return String(h.authorization || "") === "Bearer " + secret;
+}
 
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 120); }
@@ -81,7 +88,7 @@ function sweep(leads, asOfMs) {
 }
 
 module.exports = async (req, res) => {
-  const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+  const isCron = isTrustedCron(req);
   if (req.method === "GET") {
     if ((req.query && String(req.query.sweep) === "1") || isCron) {
       if (!KV_ON) { res.status(200).json({ ok: false, error: "kv_not_attached" }); return; }

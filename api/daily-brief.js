@@ -38,6 +38,13 @@ async function fireWebhook(event, message, extra) {
     return r.ok;
   } catch { return false; }
 }
+function isTrustedCron(req) {
+  const h = (req && req.headers) || {};
+  if (!h["x-vercel-cron"]) return false;
+  const secret = process.env.CRON_SECRET || "";
+  if (!secret) return false;
+  return String(h.authorization || "") === "Bearer " + secret;
+}
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
 const money = (n) => "$" + Math.round(num(n)).toLocaleString("en-US");
@@ -87,7 +94,7 @@ module.exports = async (req, res) => {
     const [jobs, leads, invoices] = await Promise.all([kvGet("jobs"), kvGet("leads"), kvGet("invoices")]);
     const brief = compose({ jobs, leads, invoices });
 
-    const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+    const isCron = isTrustedCron(req);
     const wantSend = (req.query && String(req.query.send) === "1") || isCron;
     // Never fire on Sundays — owner boundary (family day). Preview still works any day.
     const isSunday = new Date().getUTCDay() === 0;

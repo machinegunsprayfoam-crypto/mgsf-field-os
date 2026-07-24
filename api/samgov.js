@@ -158,6 +158,13 @@ async function kvGet(col) {
 async function kvSet(col, arr) {
   await fetch(KV_URL + "/set/" + encodeURIComponent("mgsf:" + col), { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: JSON.stringify(arr) });
 }
+function isTrustedCron(req) {
+  const h = (req && req.headers) || {};
+  if (!h["x-vercel-cron"]) return false;
+  const secret = process.env.CRON_SECRET || "";
+  if (!secret) return false;
+  return String(h.authorization || "") === "Bearer " + secret;
+}
 
 // Map a SAM opportunity to a Klyfton lead — deterministic id off the SAM notice id so re-scans
 // never double-add. Mirrors the fields the GOV tab's manual "Add as lead" writes.
@@ -197,7 +204,7 @@ async function runScan() {
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     // Daily auto-scan trigger (Vercel Cron hits /api/samgov?scan=1). Idempotent — dedups vs leads.
-    const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+    const isCron = isTrustedCron(req);
     if ((req.query && String(req.query.scan) === "1") || isCron) {
       try { const r = await runScan(); res.status(200).json(Object.assign({ configured: !!ENV_KEY }, r)); }
       catch (e) { res.status(200).json({ configured: !!ENV_KEY, ok: false, error: String((e && e.message) || e).slice(0, 200) }); }
