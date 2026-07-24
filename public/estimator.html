@@ -126,7 +126,7 @@ textarea{resize:vertical;min-height:54px}
 </div>
 
 <!-- APP -->
-<div id="app">
+<script>(function(){try{var KEY='mgsf_est_wide';var saved=localStorage.getItem(KEY);var wide=(saved===null)?(window.innerWidth>=1200):(saved==='1');var b=document.createElement('button');b.id='estWideBtn';b.type='button';function apply(){document.body.classList.toggle('est-wide',wide);b.textContent=wide?'CENTERED VIEW':'FULL-WIDTH VIEW';}b.onclick=function(){wide=!wide;try{localStorage.setItem(KEY,wide?'1':'0');}catch(e){}apply();};function mount(){document.body.appendChild(b);apply();}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}}catch(e){}})();</script><div id="app">
   <!-- Coating product manager — reachable from the roof panel so a primer/topcoat can be
        added or edited without leaving the estimator (the full Admin catalog is hidden here). -->
   <div id="coatmgr" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:300;align-items:center;justify-content:center;padding:14px">
