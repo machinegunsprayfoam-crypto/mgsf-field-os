@@ -796,6 +796,51 @@ ESTIMATING MATH (show the method; use rates/yields from FOAM_SPECS/DOCTRINE/supp
 - ACH50 = (CFM50 × 60) ÷ volume. Payback(yrs) = install cost ÷ estimated annual savings — ESTIMATED only, never a guaranteed number.
 Guardrails: principles are universal but every jobsite/product number defers to FOAM_SPECS/DOCTRINE/TDS; never guarantee savings; never claim mold elimination; verify code + structural calls with the AHJ / a licensed engineer where required.`;
 
+// HVAC ENGINEERING — the discipline that turns air-sealing into ROI. After foam drops the load, the
+// system must be RE-SIZED or the savings and comfort are left on the table (and an oversized unit
+// actively hurts). We advise + coordinate; a licensed HVAC pro runs the final Manual J/S/D and signs
+// the install. Principles/constants here are standard engineering; job-specific tonnage/model numbers
+// come from an actual load calc, never from a rule of thumb.
+const HVAC_ENGINEERING = `HVAC ENGINEERING (why air-sealing + foam and HVAC are one system — advise, don't self-size the install):
+THE SEQUENCE (this is where the money is): air-seal + insulate FIRST → the heating/cooling LOAD drops →
+THEN size the equipment to the new load. Do it in that order or you pay twice and comfort suffers.
+
+LOAD & SIZING (the ACCA "Manuals"):
+- Manual J = load calculation (how many BTU/h the tightened house actually needs, room by room). It is the
+  input to everything; a foam retrofit CHANGES the Manual J, so re-run it — don't reuse the old size.
+- Manual S = equipment selection (pick the unit that matches the Manual J load). Manual D = duct design
+  (size ducts to the new airflow). 1 ton = 12,000 BTU/h.
+- SENSIBLE vs LATENT load: sensible = temperature, latent = moisture removal. A tight, air-sealed house
+  shifts the balance — humidity control matters more, raw tonnage less.
+
+WHY OVERSIZING HURTS (the counter-intuitive sell): a too-big unit SHORT-CYCLES (blasts on/off), so it
+never runs long enough to dehumidify → clammy house, temperature swings, more wear, higher bills. After
+foam, the right answer is usually a SMALLER, right-sized (often variable-speed/modulating) system. "Foam
+lets you buy less HVAC" is a real, honest ROI lever — frame it as estimated, never a guaranteed dollar figure.
+
+EFFICIENCY METRICS (know them, verify the unit's rating): cooling = SEER2 (higher = better); heat pump
+heating = HSPF2; furnace = AFUE (% of fuel to heat). Cold-climate heat pumps (ccASHP) now hold capacity
+well into CZ 6-7 winters but need a sane backup/balance-point plan — pair the recommendation with our
+blower-door numbers so the sizing is real.
+
+AIRFLOW & DISTRIBUTION: ~400 CFM/ton nominal; static pressure too high = starved airflow (undersized/
+leaky ducts). Duct leakage in unconditioned space wastes conditioned air — seal/insulate ducts or bring
+them inside the envelope (an unvented/conditioned attic via roof-deck ccSPF does exactly this).
+
+VENTILATION (a tight house needs designed fresh air — "build tight, ventilate right"):
+- ASHRAE 62.2 target: Qtot(CFM) = 0.03 × conditioned ft² + 7.5 × (bedrooms + 1). (Already in the estimator logic.)
+- Below ~3 ACH50 the house needs mechanical ventilation. In CZ 6-7 an ERV (recovers heat AND some moisture)
+  usually beats a plain exhaust fan. This is a SERVICE we should surface after a tight foam job, not an afterthought.
+
+COMBUSTION SAFETY (non-negotiable when we tighten a house): tightening can backdraft atmospheric gas
+appliances (furnace/water heater) → CO risk. Any air-sealing scope must include a combustion-safety /
+CAZ check; recommend sealed-combustion or power-vented appliances where needed. This is a stop-work RED FLAG item.
+
+CROSS-SELL / REASONING LINKS: air seal → lower load → right-size (Manual J) → ERV for fresh air →
+CAZ/combustion check → blower-door proof. Every link is a service and a talking point.
+Guardrails: we ADVISE and coordinate — a licensed HVAC contractor runs the final load calc and signs the
+install; numbers defer to the actual Manual J + DOCTRINE; never guarantee savings; verify code with the AHJ.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -1065,7 +1110,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1252,7 +1297,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
