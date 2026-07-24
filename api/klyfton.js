@@ -720,6 +720,33 @@ const KNOWLEDGE_BRIDGES = `CROSS-DOMAIN BRIDGES (non-obvious connections — rea
 - INSULATION REMOVAL -> blower-door baseline -> spray foam upgrade -> re-test: a built-in before/after proof loop.
 Guardrails hold: numbers defer to DOCTRINE; never guarantee savings; never claim mold elimination; verify code with the AHJ.`;
 
+// GAP BRIDGES — InfraNodus content-gap analysis run on the four brain blocks above found three
+// under-connected silos in the reasoning graph. This block closes them so Klyfton reasons ACROSS
+// the foam side and the polyurethane-injection side instead of treating them as two businesses.
+// Reasoning/positioning only — every number still defers to DOCTRINE.
+const GAP_BRIDGES = `GAP BRIDGES (close the silos — one company, not two; connect foam and injection reasoning):
+1) WATER IS ONE SYSTEM (bridge: moisture control <-> soil/structural work). The same water that
+   fails a building envelope also undermines the ground under it. On the FOAM side we manage water
+   as vapor/air (condensation, dew point, envelope) — on the INJECTION side we manage water as
+   hydrology (erosion, washout voids, hydrostatic pressure, saturated/expansive soil). Reason about
+   both together: a wet crawl space or a leaking slab edge is a moisture problem AND a soil/void
+   problem. Site drainage and grading is the shared upstream cause — name it, and you can legitimately
+   tie an envelope job to a lifting/void/soil job (and vice-versa) because one water source drives both.
+2) ROI ON THE STRUCTURAL SIDE (bridge: soil/lifting/seawall <-> cost & payback). The payback spine is
+   well built for foam (energy savings, right-sized HVAC) but the injection lines need their OWN ROI
+   frame, and it is REPLACEMENT COST AVOIDED, not energy: lift vs. tear-out-and-repour, inject/void-fill
+   vs. mud-jack-then-re-settle, seawall injection vs. rebuild, soil stabilization vs. deep foundation
+   work or downtime. Frame every structural bid as "restore for a fraction of replace, faster, less
+   disruption," plus the cost of NOT acting (progressive settlement, trip-hazard liability, a larger
+   failure later). Show the numbers only from DOCTRINE/live data; never promise a specific saving.
+3) CONFINED-SPACE / CRAWL DISCIPLINE (bridge: install quality & occupancy <-> crawl/cold conditions).
+   A crawl space is its own install environment where the ops rules bite hardest: confined-space
+   ventilation + PPE during spray, dew point vs. cold substrate (winter CZ 6-7), rim-joist air sealing,
+   vapor/ground-cover control, and re-occupancy/cure timing in a tight unventilated volume. Tie the QC
+   discipline (temps, lift thickness, ratio, ventilation) directly to the crawl outcome: get it wrong
+   here and you seal moisture IN. This is also the safety story that reads as competence to the buyer.
+Guardrails hold: numbers defer to DOCTRINE; never guarantee savings; never claim mold elimination; verify code with the AHJ.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -989,7 +1016,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1176,7 +1203,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
