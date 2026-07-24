@@ -581,6 +581,40 @@ const SUPPLIERS = `SUPPLIERS & FOAM BRANDS (for procurement, substitutions, "who
   Profoam can't supply or for a spec we don't carry. NEVER substitute a different density/product on
   a written spec (e.g., don't swap a 2.8# for a 3.0# roofing spec).`;
 
+// PROCUREMENT STRATEGY — the strategic layer above reordering: HOW we source and buy to protect
+// margin, keep supply resilient, and hold negotiating leverage. Mirrors MGSF/10_INVENTORY/
+// PROCUREMENT_STRATEGY.md. Reasoning/policy only — every price, term, and lead time defers to the
+// supplier pricing data / DOCTRINE and is confirmed with the vendor, never guessed.
+const PROCUREMENT = `PROCUREMENT STRATEGY (how we SOURCE and buy — reason with this; numbers defer to DOCTRINE/supplier pricing):
+PRIORITIES (in order): 1) never miss booked work for lack of material · 2) protect margin (best real
+TOTAL cost = price + freight + terms + waste) · 3) stay resilient (no single point of failure on
+critical chemical) · 4) preserve cash (no overstock or shelf-life-expired SPF).
+
+SOURCING: Profoam is primary for our carried/priced lines (buy there by default). Keep at least one
+QUALIFIED alternate for each critical input (closed-cell, roofing, lifting foam, iso/resin, key
+Graco/PMC wear parts) — IDI, SPI, Service Partners, regional (BASF/Gaco/UPC). A live #2 is both a
+supply safety net AND leverage on the #1. Spec-integrity rule holds: never substitute a different
+density/product on a WRITTEN spec.
+
+STRATEGIC LEVERS (where margin is won): annual/volume pricing agreement with the primary once yearly
+spend is known · RFQ a competing quote on any large buy above the owner-set threshold before
+committing · time buys to price trends (iso/polyol swing with petrochemicals — pre-buy shelf-stable
+items ahead of announced increases, without exceeding max_stock/shelf life) · buy on DELIVERED total
+cost, not sticker · use payment terms (early-pay discount vs net terms) against the cash-flow gap.
+
+JOB-DRIVEN PRE-BUYS: for big scheduled jobs, pre-buy against the confirmed takeoff (+ waste factor)
+so one large job never drains everyone's safety stock; tie the cost to the job.
+
+RISK & COMPLIANCE: watch vendor concentration (% spend in one supplier) and keep the #2 warm; keep
+current vendor COIs on file before ordering where required; log every chemical lot for recall/warranty
+traceability; rotate FIFO and respect shelf life. CONTROLS: owner approves POs above threshold + all
+new vendors; bookkeeping does PO -> packing slip -> invoice 3-way match before payment.
+
+DAY-TO-DAY reordering (when/how-much: reorder point = avg daily usage x lead time + safety stock,
+min/max, A-09 auto-draft PO) is the operational layer — this block is the strategy above it.
+Guardrails: policy/reasoning only — actual prices, terms, lead times, and thresholds defer to the
+supplier pricing data + DOCTRINE and are confirmed with the vendor; never fabricate a price or term.`;
+
 // The MGSF Expert Library (owner-built in Drive: /MGSF/10_Knowledge/Experts/). This is the
 // SMART ROUTER — Klyfton uses it to point the crew to the right deep-dive doc. When a question
 // squarely matches an expert below, ANSWER from your own knowledge first, then cite the doc so
@@ -1185,7 +1219,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1372,7 +1406,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
