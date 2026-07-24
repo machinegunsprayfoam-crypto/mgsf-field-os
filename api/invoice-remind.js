@@ -128,9 +128,10 @@ function sweep(invoices, asOf) {
 
 module.exports = async (req, res) => {
   const asOf = Date.parse((req.query && clean(req.query.asOf, 20)) || "") || Date.now();
+  const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
 
   if (req.method === "GET") {
-    if (req.query && String(req.query.sweep) === "1") {
+    if ((req.query && String(req.query.sweep) === "1") || isCron) {
       if (!KV_ON) { res.status(200).json({ ok: false, error: "kv_not_attached" }); return; }
       try {
         const invoices = await kvGet("invoices");

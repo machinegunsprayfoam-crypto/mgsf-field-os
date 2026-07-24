@@ -197,7 +197,8 @@ async function runScan() {
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     // Daily auto-scan trigger (Vercel Cron hits /api/samgov?scan=1). Idempotent — dedups vs leads.
-    if (req.query && String(req.query.scan) === "1") {
+    const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+    if ((req.query && String(req.query.scan) === "1") || isCron) {
       try { const r = await runScan(); res.status(200).json(Object.assign({ configured: !!ENV_KEY }, r)); }
       catch (e) { res.status(200).json({ configured: !!ENV_KEY, ok: false, error: String((e && e.message) || e).slice(0, 200) }); }
       return;

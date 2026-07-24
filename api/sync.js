@@ -127,10 +127,11 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === "GET") {
+      const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
       // Owner/diagnostic trigger: GET ?mirror=1 runs the Supabase mirror on demand (identical to
       // POST {action:"mirror"}). Idempotent upserts, gated on SB_ON — safe to hit from a browser
       // bookmark or an uptime ping to keep the reporting DB fresh.
-      if (req.query && String(req.query.mirror) === "1") {
+      if ((req.query && String(req.query.mirror) === "1") || isCron) {
         if (!SB_ON) { res.status(200).json({ configured: true, supabase: false, hint: "Set SUPABASE_URL + SUPABASE_SECRET_KEY in Vercel and run db/schema.sql." }); return; }
         try { const counts = await sbMirror(); res.status(200).json({ configured: true, supabase: true, ok: true, mirrored: counts }); }
         catch (e) { res.status(200).json({ configured: true, supabase: true, ok: false, error: String(e.message || e).slice(0, 240) }); }

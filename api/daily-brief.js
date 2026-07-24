@@ -87,7 +87,8 @@ module.exports = async (req, res) => {
     const [jobs, leads, invoices] = await Promise.all([kvGet("jobs"), kvGet("leads"), kvGet("invoices")]);
     const brief = compose({ jobs, leads, invoices });
 
-    const wantSend = req.query && String(req.query.send) === "1";
+    const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
+    const wantSend = (req.query && String(req.query.send) === "1") || isCron;
     // Never fire on Sundays — owner boundary (family day). Preview still works any day.
     const isSunday = new Date().getUTCDay() === 0;
     let sent = false;

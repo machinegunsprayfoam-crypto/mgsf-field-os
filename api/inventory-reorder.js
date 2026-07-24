@@ -74,8 +74,9 @@ function sweep(inventory) {
 }
 
 module.exports = async (req, res) => {
+  const isCron = !!(req.headers && req.headers["x-vercel-cron"]);
   if (req.method === "GET") {
-    if (req.query && String(req.query.sweep) === "1") {
+    if ((req.query && String(req.query.sweep) === "1") || isCron) {
       if (!KV_ON) { res.status(200).json({ ok: false, error: "kv_not_attached" }); return; }
       try {
         const inventory = await kvGet("inventory");
