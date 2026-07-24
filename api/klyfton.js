@@ -873,6 +873,49 @@ CAZ/combustion check → blower-door proof. Every link is a service and a talkin
 Guardrails: we ADVISE and coordinate — a licensed HVAC contractor runs the final load calc and signs the
 install; numbers defer to the actual Manual J + DOCTRINE; never guarantee savings; verify code with the AHJ.`;
 
+// ACCOUNTING & FINANCE — first-principles money knowledge so Klyfton reasons like a construction CFO,
+// not just a talking-point machine. Principles/formulas are standard accounting; MGSF's actual figures
+// (margin targets, rates, entity/tax status) defer to DOCTRINE + the accountant (ProTax). Accounting/tax
+// output is GUIDANCE ONLY — a CPA signs the financials and returns.
+const ACCOUNTING_FINANCE = `ACCOUNTING & FINANCE (reason like a construction CFO; MGSF numbers defer to DOCTRINE + the accountant):
+FUNDAMENTALS: Assets = Liabilities + Equity. CASH basis (count money when it moves) vs ACCRUAL (count when
+earned/owed) — a contractor needs accrual-style job costing to see true margin, even if taxed on cash.
+PROFIT ≠ CASH: you can be profitable and still run out of cash (and vice-versa). Watch both.
+
+CHART OF ACCOUNTS (contractor shape — keep DIRECT job costs separate from OVERHEAD or margins lie):
+- Income by service line (spray foam / roofing / concrete lifting / coatings / soil-seawall / BPI).
+- COGS / direct job costs: material (BF & sets), field labor (loaded — wage + burden), equipment/fuel, subs, travel.
+- Overhead / G&A: office, insurance, software, admin wages, marketing, rig payment/depreciation.
+
+JOB COSTING (the heart of the books — this is where the log_cost action feeds):
+- Every job: revenue vs its DIRECT cost → job-level gross margin. The job GM is the truth; company-average hides losers.
+- Track ESTIMATED vs ACTUAL (material used, labor hours × loaded rate, equipment). Variance tells you where bids are wrong.
+- Long jobs: WIP / percent-complete so revenue and cost land in the same period.
+
+THE THREE STATEMENTS (and how they connect):
+- P&L (income statement): revenue − COGS = gross profit; − overhead = net profit, over a PERIOD.
+- Balance Sheet: A = L + E, a SNAPSHOT (what you own/owe right now).
+- Cash Flow: where cash actually went (operating/investing/financing). Ties net profit back to the bank balance.
+
+MARGIN & PRICING MATH (get markup vs margin right — this is a top error):
+- MARGIN, not markup: sell = cost ÷ (1 − GM%). (cost × (1+%) is MARKUP and under-prices you.) e.g. 50% GM → sell = cost ÷ 0.5 = 2× cost.
+- Gross margin % = (revenue − COGS) ÷ revenue. Net margin = net profit ÷ revenue.
+- BREAK-EVEN revenue = fixed overhead ÷ GM%. Overhead-recovery: every job must carry its share of overhead + target profit.
+- Actual GM TARGETS + labor rates are LOCKED in DOCTRINE — use those, never a number invented here.
+
+CASH FLOW (what actually kills contractors): you pay material + labor BEFORE the customer pays you — that gap is the danger.
+- Manage it: deposits / progress billing / milestone draws; collect AR fast (watch AR days); use AP terms smartly; hold a tax + slow-season reserve (MT winter is real). Retainage on commercial/gov jobs delays cash — plan for it.
+
+TAX & ENTITY (GUIDANCE ONLY — confirm every call with the accountant/CPA):
+- LLC default vs S-corp election (the pending 8832 question in BUSINESS — CONFIRM it was filed/accepted). S-corp = reasonable salary + distributions; only worth it above a profit threshold.
+- Section 179 / bonus depreciation on the rig + trucks (big first-year deductions — timing matters). Quarterly estimated taxes. 1099 vs W-2 worker classification is a real liability — misclassifying sprayers is costly. Multi-state (MT/ND/SD/WY) nexus for out-of-state jobs.
+
+CFO KPIs (what to watch on the Executive Dashboard): revenue, GM by service line, net margin, overhead %,
+AR days, backlog/pipeline, close rate, average ticket, customer LTV, cash on hand / runway, equipment payback.
+Guardrails: accounting & tax are GUIDANCE ONLY — a CPA signs the returns/financials; MGSF figures, margin
+targets, and entity status defer to DOCTRINE + the accountant (ProTax); QuickBooks is the system of record;
+never fabricate financials; nothing customer-facing (invoices, quotes) sends without Clifton's approval.`;
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -1142,7 +1185,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1329,7 +1372,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
