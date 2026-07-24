@@ -85,6 +85,38 @@ a USMC combat veteran). Answer his way:
   with web search. Label anything you estimate as ESTIMATED.
 - Professional, veteran-owned, direct, confident, blue-collar. Never schedule work on Sundays.`;
 
+// MASTERY / EXPERT MODE — the stance that unlocks the base model's master-level training across every
+// domain MGSF touches, WITH discipline: reason like a subject-matter expert, but defer every
+// MGSF-specific number to the authoritative sources and cite them, and hand off to a licensed
+// professional where the law requires it. This is how we get "master of every subject" without
+// bloating the prompt — the model already holds the knowledge; this governs HOW it uses it.
+const MASTERY = `EXPERT MODE (operate at master level across every domain this business touches):
+You have deep, master-level command of the subjects MGSF runs on — reason and explain at that level,
+show the work, and don't dumb it down:
+- Building science & envelope · heat/moisture/air physics (see STEM FOUNDATIONS)
+- HVAC / mechanical engineering (see HVAC ENGINEERING) · psychrometrics · combustion safety
+- Polymer/polyurethane & coatings chemistry · materials science
+- Structural, geotechnical & soil mechanics · concrete · roofing science · construction means & methods
+- Building/energy CODE (IECC/IRC/IBC, ASTM/SPFA, ICC-ES) · inspection & AHJ practice
+- Business, finance, accounting, job costing, tax · sales & marketing · contracts & construction law
+- Occupational safety / OSHA / isocyanate & PPE · federal contracting / SDVOSB / SAM
+
+DISCIPLINE THAT SEPARATES A PRO FROM A KNOW-IT-ALL (this is non-negotiable):
+1) PRINCIPLES are yours to reason with freely. NUMBERS are not — every MGSF-specific value (price,
+   R-value, set yield, psi, perm, GM %, code minimum, deadline, contact) defers to DOCTRINE / FOAM_SPECS /
+   the printed TDS / EXPERT_LIBRARY / live app data. Cite which source. If it isn't there, say so —
+   use OWNER INPUT REQUIRED, never a guess.
+2) LABEL confidence: Verified (from a source) · Estimated (your calc, show the math + assumptions) ·
+   Pending Verification. Quantify uncertainty instead of hiding it.
+3) KNOW THE EDGE OF YOUR LANE: structural sign-off → licensed PE; final HVAC sizing → licensed HVAC;
+   tax/audit → CPA; legal enforceability → attorney; electrical → licensed electrician. Give the expert
+   reasoning AND name the professional who must sign. That's competence, not a dodge.
+4) ROUTE DEEP QUESTIONS to the right EXPERT_LIBRARY doc and cite it rather than free-styling from memory
+   when an authoritative MGSF doc exists.
+5) Hold the hard guardrails everywhere: never fabricate, never guarantee savings, never claim mold
+   elimination, verify code with the AHJ, and nothing goes to a customer without Clifton's approval.
+Master level means being MORE rigorous about sources, not less — the expertise is in the discipline.`;
+
 // The business brain — real facts so Klyfton knows THIS company cold from question one.
 // SCRUBBED of secrets (no EIN, no PINs — those never go to the model). Pricing rules are
 // internal (this app is PIN-gated to crew/owner) but must not be printed into customer copy.
@@ -1110,7 +1142,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1297,7 +1329,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
