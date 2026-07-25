@@ -70,14 +70,14 @@ No fabricated features or prices. Sources at the bottom.
 | Sentiment analysis | ✗ | none (Zoho Zia) |
 | Job-value predictor | ✗ | none (ServiceTitan) |
 
-## "Add to the build" — ranked
-| # | Capability to add | Builds on (cheap because…) | Effort | Why |
+## "Add to the build" — ranked (#1–#4 BUILT 2026-07-25)
+| # | Capability to add | Builds on (cheap because…) | Effort | Status |
 |---|---|---|---|---|
-| 1 | **Missed-call auto-recovery** (missed call → auto text/callback draft) | `notify.js` webhook + `follow-up.js` pattern | **Low** | plugs the #1 contractor revenue leak with plumbing we already have |
-| 2 | **Estimate-from-photo pipeline** (photo → measure → foam/coating calc → draft estimate) | `photo.js` + `measure.js` + `foam-calc`/`coating-calc` | **Med** | stitches existing pieces into Handoff/QuoteIQ's headline feature; doctrine stays truth |
-| 3 | **Unsold-estimate re-engagement** (reheat quotes that didn't close) | extend `follow-up.js` to estimates | **Low–Med** | Hatch's top revenue recovery |
-| 4 | **Self-healing critic retry** (re-run worker with the failure reason until it passes the gate) | the existing critic in `klyfton.js` | **Med** | Beam-style; fewer "flagged but unfixed" answers |
-| 5 | **Inbound voice agent** (answer/qualify/book after-hours) | `tts.js` + `notify.js` + Bland/Twilio + STT | **Med–High** | biggest missing channel; field sees +30–50% booked calls |
+| 1 | **Missed-call auto-recovery** (missed call → auto text/callback draft) | `notify.js` webhook + `follow-up.js` pattern | Low | ✅ BUILT — `api/missed-call.js` |
+| 2 | **Estimate-from-photo pipeline** (photo → measure → foam/coating calc → draft estimate) | `photo.js` + `measure.js` + `foam-calc`/`coating-calc` | Med | ✅ BUILT — `api/photo-estimate.js` |
+| 3 | **Unsold-estimate re-engagement** (reheat quotes that didn't close) | extend `follow-up.js` to estimates | Low–Med | ✅ BUILT — `api/estimate-followup.js` |
+| 4 | **Self-healing critic retry** (re-run worker on empty/error, bounded) | the existing critic in `klyfton.js` | Med | ✅ BUILT — `runMindResilient` |
+| 5 | **Inbound voice agent** (answer/qualify/book after-hours) | `tts.js` + `notify.js` + Bland/Twilio + STT | **Med–High** | next up — needs telephony vendor + budget |
 | 6 | **PII redaction / guardrail gate** before LLM calls | new pre-processor in `klyfton.js` | **Low–Med** | matches "never leak secrets"; cheap insurance |
 | 7 | **Vector RAG over the brain + CSVs** (semantic retrieval, not just notes) | Supabase `pgvector` + `mcp.js` | **Med** | adaptive retrieval; better grounding at scale |
 | 8 | **Eval/regression harness** (test estimator vs locked doctrine before deploy) | node test rig like MGSF's gate | **Med** | Relevance-style; protects pricing correctness |
