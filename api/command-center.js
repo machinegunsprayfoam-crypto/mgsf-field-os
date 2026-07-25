@@ -14,6 +14,9 @@ const SB_URL = _kvEnv(/SUPABASE_URL$/i);
 const SB_KEY = _kvEnv(/SUPABASE_SERVICE_ROLE_KEY$/i) || _kvEnv(/SERVICE_ROLE_KEY$/i) || _kvEnv(/SUPABASE_SECRET/i);
 const SB_ON = !!(SB_URL && SB_KEY);
 const memory = require("./memory"); // battery state-of-charge
+// The battery is a VERY LARGE capacity pack — pgvector scales far past this; it's the gauge's
+// full-scale reference (how many long-term facts the machine can hold). Override with BATTERY_CAPACITY.
+const BATTERY_CAPACITY = parseInt(process.env.BATTERY_CAPACITY || "100000", 10) || 100000;
 
 // The real minds the Queen recruits (from klyfton.js SPECIALISTS) — so the grid shows what actually
 // exists. Live per-agent stats get merged in from the leaderboard view. No invented agents.
@@ -43,7 +46,7 @@ module.exports = async (req, res) => {
   const stamp = new Date().toISOString();
   if (!SB_ON) {
     res.status(200).json({ ok: true, configured: false, kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER, drivetrain: [],
-      odometer: { forward_miles: 0, reverse_miles: 0, net_miles: 0, fuel_usd: 0 }, battery: { charge: 0 },
+      odometer: { forward_miles: 0, reverse_miles: 0, net_miles: 0, fuel_usd: 0 }, battery: { charge: 0, capacity: BATTERY_CAPACITY },
       note: "Command Center is read-only and needs Supabase (run db/schema.sql + set SUPABASE_URL + service-role key). Showing roster only until then.", generatedAt: stamp });
     return;
   }
@@ -58,7 +61,7 @@ module.exports = async (req, res) => {
     const kpis = (Array.isArray(kpiRows) && kpiRows[0]) ? kpiRows[0] : EMPTY_KPIS;
     const leaderboard = Array.isArray(board) ? board : [];
     const odometer = (Array.isArray(odoRows) && odoRows[0]) ? odoRows[0] : { forward_miles: 0, reverse_miles: 0, net_miles: 0, fuel_usd: 0 };
-    const battery = { charge: (batt && typeof batt.count === "number") ? batt.count : 0 };
+    const battery = { charge: (batt && typeof batt.count === "number") ? batt.count : 0, capacity: BATTERY_CAPACITY };
     // Merge live stats onto the roster so every agent card shows its run count + success %.
     const byAgent = {};
     for (const row of leaderboard) if (row && row.agent) byAgent[String(row.agent)] = row;

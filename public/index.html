@@ -1126,7 +1126,10 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <div class="metrics-row" id="ccKpis"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Powertrain · 7 days</h3>
         <div id="ccGauges" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px"></div>
-        <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">Odometer = reciprocity: <b style="color:#22c55e">▲ forward</b> when you drive a gear (leverage) · <b style="color:#ef4444">▼ reverse</b> when the machine asks your approval (attention). Net = is it a net force-multiplier. <b>Fuel</b> (tokens/$) is a separate gauge — it never nets out. <b>Battery</b> = memory; your approvals recharge it (regen).</div>
+        <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">Odometer = reciprocity: <b style="color:#22c55e">▲ forward</b> when you drive a gear (leverage) · <b style="color:#ef4444">▼ reverse</b> when the machine asks your approval (attention). Net = is it a net force-multiplier. <b>Fuel</b> (tokens/$) is a separate gauge — it never nets out.</div>
+        <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Battery · long-term memory</h3>
+        <div id="ccBattery"></div>
+        <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">A <b>very-large-capacity pack</b> — the persistent memory (pgvector) the machine runs on. Every approval you make is <b style="color:#22c55e">regen</b> that recharges it, so it does more from memory and burns less fuel re-deriving what it already knows.</div>
         <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Agents</h3>
         <div id="ccGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Top Agents · 30 days</h3>
@@ -12429,6 +12432,7 @@ window.renderCommand = async function(){
           + ' <span style="color:'+stcol(v.status)+'">'+e(v.status||'')+'</span>';
       }).join('<br>') : '<span style="opacity:.6">No gears have turned yet — a job event (estimate closed, job completed) turns the drivetrain and lands here.</span>');
     renderGauges(d.odometer||{}, d.battery||{});
+    renderBattery(d.battery||{});
     set('ccNote', d.configured ? '' : e(d.note||'Telemetry not configured yet — showing the agent roster only.'));
   }catch(err){
     set('ccKpis','<div class="metric-card"><div class="metric-val">—</div><div class="metric-lbl">offline</div></div>');
@@ -12450,8 +12454,7 @@ window.renderGauges = function(od, batt){
   var card = function(inner){ return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(249,115,22,.18);border-radius:10px;padding:14px 12px 12px;display:flex;flex-direction:column;align-items:center;gap:6px">'+inner+'</div>'; };
   host.innerHTML =
       card('<canvas id="gaOdo" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>')
-    + card('<canvas id="gaFuel" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>')
-    + card('<canvas id="gaBatt" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>');
+    + card('<canvas id="gaFuel" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>');
 
   // helper: half-dial (180°) with a colored needle + big center readout + label
   function dial(id, opts){
@@ -12490,11 +12493,49 @@ window.renderGauges = function(od, batt){
     zones:[[Math.PI, Math.PI*1.5, 'rgba(34,197,94,.35)'],[Math.PI*1.5, Math.PI*2, 'rgba(245,158,11,.5)']],
     big:'$'+fuel.toFixed(2), label:'FUEL · 7-day burn', sub:'tokens — never nets out' });
 
-  // BATTERY — state of charge = facts stored; fill toward a soft 100 reference (glyph-like).
-  var socFrac = Math.min(1, charge/100);
-  dial('gaBatt', { frac: socFrac, needle:GRN,
-    zones:[[Math.PI, Math.PI+socFrac*Math.PI, GRN],[Math.PI+socFrac*Math.PI, Math.PI*2, DIM]],
-    big:String(charge), label:'BATTERY · memory', sub:'approvals recharge it' });
+};
+
+// The BATTERY PACK — a very-large-capacity EV-style pack (persistent memory). Wide segmented
+// battery: cells fill with state-of-charge; big honest count + capacity. Canvas 2D, theme-aware.
+window.renderBattery = function(batt){
+  var host=document.getElementById('ccBattery'); if(!host) return;
+  var charge=Math.max(0,+(batt.charge||0)), cap=Math.max(1,+(batt.capacity||100000));
+  var pct=Math.min(1, charge/cap);
+  if(!host.firstChild){ host.innerHTML='<canvas id="gaPack" width="1000" height="230" style="width:100%;height:auto;display:block"></canvas>'; }
+  var cv=document.getElementById('gaPack'); var g=cv.getContext('2d'); var W=cv.width,H=cv.height;
+  var css=getComputedStyle(document.documentElement);
+  var ink=(css.getPropertyValue('--tx')||'#e8eaed').trim()||'#e8eaed';
+  var or=(css.getPropertyValue('--or')||'#f97316').trim()||'#f97316';
+  var GRN='#22c55e', GRN2='#16a34a', DIM='rgba(140,150,165,.22)', EDGE='rgba(160,170,185,.55)';
+  g.clearRect(0,0,W,H);
+  // battery body + terminal
+  var bx=30, by=40, bw=W-140, bh=H-110, rad=16, term=26;
+  function rr(x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+  rr(bx,by,bw,bh,rad); g.lineWidth=6; g.strokeStyle=EDGE; g.stroke();
+  rr(bx+bw+8,by+bh*0.30,term,bh*0.40,7); g.fillStyle=EDGE; g.fill(); // terminal nub
+  // cells
+  var N=40, pad=14, gap=6, innerW=bw-pad*2, cellW=(innerW-gap*(N-1))/N, cy0=by+pad, cellH=bh-pad*2;
+  var lit=pct*N;
+  for(var i=0;i<N;i++){
+    var x=bx+pad+i*(cellW+gap);
+    rr(x,cy0,cellW,cellH,3);
+    var fillFrac = Math.max(0, Math.min(1, lit-i));   // partial fill on the leading cell
+    if(fillFrac>0){ g.fillStyle = (i/N<0.10? '#f59e0b' : GRN); g.globalAlpha = 0.35+0.65*fillFrac; g.fill(); g.globalAlpha=1; }
+    else { g.fillStyle=DIM; g.fill(); }
+  }
+  // if charged but under one cell, show a visible sliver so a large pack never reads dead
+  if(charge>0 && lit<0.15){ var x0=bx+pad; rr(x0,cy0,Math.max(cellW*0.5,4),cellH,3); g.fillStyle=GRN; g.fill(); }
+  // readouts: big honest count (left), then label; percent + capacity (right)
+  g.textAlign='left'; g.textBaseline='alphabetic';
+  var num=charge.toLocaleString();
+  g.font='800 '+Math.round(H*0.20)+'px ui-monospace,Menlo,Consolas,monospace'; g.fillStyle=ink;
+  g.fillText(num, bx+2, H-24);
+  var numW=g.measureText(num).width;
+  g.font='700 '+Math.round(H*0.075)+'px system-ui,sans-serif'; g.fillStyle=or;
+  g.fillText('facts stored', bx+2+numW+14, H-26);
+  g.textAlign='right'; g.fillStyle='rgba(160,168,180,.95)';
+  g.font='700 '+Math.round(H*0.085)+'px system-ui,sans-serif';
+  g.fillText((pct*100).toFixed(pct<0.01?2:1)+'%  ·  capacity '+cap.toLocaleString(), bx+bw, H-26);
 };
 </script>
 
