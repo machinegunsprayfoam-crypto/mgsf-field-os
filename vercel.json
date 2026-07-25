@@ -9,6 +9,8 @@
     "api/*.js": { "maxDuration": 300 }
   },
   "crons": [
+    { "path": "/api/axle?cadence=daily", "schedule": "30 11 * * 1-6" },
+    { "path": "/api/axle?cadence=weekly", "schedule": "35 11 * * 1" },
     { "path": "/api/sync?mirror=1", "schedule": "0 12 * * 1-6" },
     { "path": "/api/daily-brief?send=1", "schedule": "0 13 * * 1-6" },
     { "path": "/api/samgov?scan=1", "schedule": "5 13 * * 1-6" },

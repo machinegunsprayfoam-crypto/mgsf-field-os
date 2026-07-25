@@ -44,11 +44,19 @@ Both feed the same gearbox; a gear-turn is either **engine-driven** (an event) o
 (a scheduled tick). The Command Center's drivetrain strip shows both.
 
 ## What this tells us to build next
-- The **axle** is the scheduler layer: a time-driven `turn()` (daily/weekly ticks) that engages a
-  saved transmission program (e.g. the "Money chain" or "Field crew" preset) on a cadence.
-- The **clutch** (approval gate) already exists in `act.js`; the **transmission programs** (saved
-  engagement sets) are the next gearbox feature.
+- ✅ **The axle is BUILT** (`api/axle.js`, 2026-07-25) — a time-driven `turn()` that engages a saved
+  **transmission program** (`PROGRAMS.daily` / `PROGRAMS.weekly`) through the gearbox on a cadence.
+  Sunday-guarded; idempotent per day; dual-drive honored (AI gears run, owner gears draft+block).
+  Two Vercel crons added (`?cadence=daily` 11:30, `?cadence=weekly` Mon 11:35, both `1-6`). It does
+  **not** replace the 7 dedicated outward crons — it's the coordination/heartbeat layer that couples
+  TIME to the drivetrain so the clock's turns show on the Command Center strip (source `axle:*`).
+- The **clutch** (approval gate) already exists in `act.js`; the dual-drive makes it the owner
+  transmission. Saved engagement **presets** (Money/Workers/All) still to graduate from the 3D model
+  into named gearbox programs the axle can run.
 - The **dashboard** is live (Phase C). The **wheels** turn for real once triggers call `turn()`.
+- Still missing crew: a **Mechanic** (health/repair agent) and an **Engineer** (build/improve agent) —
+  the car has suspension (`runMindResilient`) + an ECU/critic, but nobody in the pit. Deferred by
+  Clifton 2026-07-25 in favor of the axle.
 
 ## Refinements (Clifton, 2026-07-25)
 - **Engine powers the Queen** — the Queen is *driven*, not the prime mover. The engine (hive) sends

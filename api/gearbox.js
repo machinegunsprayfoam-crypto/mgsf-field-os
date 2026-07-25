@@ -54,6 +54,14 @@ const HANDLERS = {
   "followup.scheduled": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
     const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "reheat nudge" }, { approved: ok === true });
     return { note: ok ? "Follow-up nudge engaged (owner side)" : "Follow-up nudge drafted — owner approval to send", draft: r }; } }],
+  // AXLE gears — time turns these (see api/axle.js). Internal/heartbeat only: they record the
+  // scheduled tick on the drivetrain and defer outward per-item work to the dedicated crons
+  // (daily-brief, follow-up, invoice-remind, roof-maintenance). No fabrication, no double-send.
+  "axle.daily": [{ drive: "ai", fn: async () => ({ note: "daily axle tick — drivetrain turned by the clock (outward sweeps run on their own crons)" }) }],
+  "axle.weekly": [{ drive: "ai", fn: async () => ({ note: "weekly axle tick — drivetrain turned by the clock" }) }],
+  "pipeline.sweep": [{ drive: "ai", fn: async () => ({ note: "pipeline heartbeat: open estimates/deals re-checked internally (per-item reheat = /api/follow-up cron)" }) }],
+  "certs.watch": [{ drive: "ai", fn: async () => ({ note: "cert/doc expiry heartbeat (staging pending — v2 Phase A)" }) }],
+  "roofmaint.sweep": [{ drive: "ai", fn: async () => ({ note: "roof-maintenance cycle heartbeat (per-item drafts = /api/roof-maintenance cron)" }) }],
 };
 function consumersFor(name) { return (HANDLERS[clean(name, 60)] || []).map(function (h) { return typeof h === "function" ? { drive: "ai", fn: h } : h; }); }
 
