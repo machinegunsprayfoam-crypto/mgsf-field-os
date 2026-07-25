@@ -39,6 +39,7 @@ No fabricated features or prices. Sources at the bottom.
 | Ability | Klyfton | Notes |
 |---|---|---|
 | Tool use / function calling | ✓ | web tool + many `api/` endpoints |
+| **Outward action executor ("arms")** | ✓ | `api/act.js` — gated dispatch (email/SMS/appointment/CRM/invoice/order); approval-required, webhook-routed, inert until wired |
 | Web search | ✓ | `WEB_TOOL` |
 | Document generation (PDF/proposal/cert) | ✓ | `proposal-pdf`, `capability-statement`, `warranty-cert` |
 | Voice **output** (TTS) | ✓ | `api/tts.js` (ElevenLabs/OpenAI) |
