@@ -7,7 +7,7 @@
 > (modules driving each other, both directions). Klyfton has good hands (arms) and almost no
 > drivetrain (gears) — the brain hand-cranks each module. The gearbox is the drivetrain.
 
-_Status: SPEC (not built). Rides on existing `notify.js` (outbound tooth) + `act.js` (arms/approval) +
+_Status: PHASE A+B BUILT (spine + first meshes) 2026-07-25. Rides on existing `notify.js` (outbound tooth) + `act.js` (arms/approval) +
 Supabase. Plain `fetch`, no npm. Fixes the "good rooms, missing hallways" gap InfraNodus keeps flagging._
 
 ## 1. A tooth = a typed event

@@ -41,14 +41,15 @@ module.exports = async (req, res) => {
   if (req.method !== "GET") { res.status(405).json({ error: "method_not_allowed" }); return; }
   const stamp = new Date().toISOString();
   if (!SB_ON) {
-    res.status(200).json({ ok: true, configured: false, kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER,
+    res.status(200).json({ ok: true, configured: false, kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER, drivetrain: [],
       note: "Command Center is read-only and needs Supabase (run db/schema.sql + set SUPABASE_URL + service-role key). Showing roster only until then.", generatedAt: stamp });
     return;
   }
   try {
-    const [kpiRows, board] = await Promise.all([
+    const [kpiRows, board, drivetrain] = await Promise.all([
       sbGet("v_agent_kpis_7d?select=*").catch(() => []),
       sbGet("v_agent_leaderboard?select=*").catch(() => []),
+      sbGet("v_gearbox_recent?select=*&limit=12").catch(() => []), // recent gear-turns (drivetrain)
     ]);
     const kpis = (Array.isArray(kpiRows) && kpiRows[0]) ? kpiRows[0] : EMPTY_KPIS;
     const leaderboard = Array.isArray(board) ? board : [];
@@ -59,7 +60,7 @@ module.exports = async (req, res) => {
       const s = byAgent[a.key] || byAgent[a.label];
       return { ...a, runs: s ? s.runs : 0, successPct: s ? s.success_pct : null };
     });
-    res.status(200).json({ ok: true, configured: true, kpis, leaderboard, roster, generatedAt: stamp });
+    res.status(200).json({ ok: true, configured: true, kpis, leaderboard, roster, drivetrain: Array.isArray(drivetrain) ? drivetrain : [], generatedAt: stamp });
   } catch (e) {
     res.status(200).json({ ok: false, configured: true, error: String(e.message || e).slice(0, 140),
       kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER, generatedAt: stamp });

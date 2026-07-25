@@ -182,3 +182,33 @@ language sql stable as $$
   order by embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- ============================================================================
+-- GEARBOX (event drivetrain) — the durable spine that lets modules mesh like gears. Each gear-turn
+-- (a typed event) is recorded here: it's the transmission log, the replay source, and what the
+-- Command Center's drivetrain strip reads ("which gear drove which; what's blocked for approval").
+-- Written server-side by /api/gearbox. `key` is the idempotency key — a repeat (name,key) is a
+-- no-op so a gear never double-fires. See GEARBOX_SPEC.md.
+-- ============================================================================
+create table if not exists events (
+  id           text primary key,          -- hash(name|key) — idempotency
+  name         text not null,             -- "estimate.closed"
+  event_key    text,                      -- caller's idempotency key (e.g. "EST-1042")
+  payload      jsonb,
+  source       text,                      -- which gear emitted
+  status       text default 'pending',    -- 'pending'|'done'|'blocked'|'error'
+  result       jsonb,                     -- dispatch trace / handler results
+  created_at   timestamptz default now(),
+  processed_at timestamptz
+);
+create index if not exists events_name_idx   on events (name);
+create index if not exists events_status_idx on events (status);
+create index if not exists events_created_idx on events (created_at desc);
+alter table events enable row level security;
+
+-- Recent drivetrain activity for the Command Center strip (last 7 days).
+create or replace view v_gearbox_recent as
+  select id, name, event_key, source, status, created_at, processed_at
+  from events
+  where created_at >= now() - interval '7 days'
+  order by created_at desc;
