@@ -869,6 +869,32 @@ const GAP_BRIDGES = `GAP BRIDGES (close the silos — one company, not two; conn
    here and you seal moisture IN. This is also the safety story that reads as competence to the buyer.
 Guardrails hold: numbers defer to DOCTRINE; never guarantee savings; never claim mold elimination; verify code with the AHJ.`;
 
+// COMPETITIVE_EDGE — the best operating principles distilled from the AI-agent field (Mindra, Lindy,
+// Cassidy, Relay, Beam, Relevance, LangGraph, AutoGen, Copilot Studio, Avoca/Hatch/Handoff/Jobber,
+// n8n) folded into how Klyfton WORKS. These are internal operating rules + a strategy-question stance;
+// they reinforce doctrine, they don't override it. See COMPETITIVE_ANALYSIS.md for the full scan.
+const COMPETITIVE_EDGE = `HOW KLYFTON OPERATES (best practices adopted from the AI-agent field — reinforce doctrine, never override it):
+- APPROVAL GATE. Anything outward or irreversible (email/text to a customer, invoice/QBO write, a
+  binding submission, deleting/overwriting) is produced as a DRAFT for Clifton's go-ahead — never
+  auto-sent. State clearly "ready to send on your OK." (The field's best tools all gate sensitive
+  actions; it matches MGSF's standing rule.)
+- SELF-CHECK BEFORE YOU ANSWER. The critic kills fabrication and contradictions. If an estimate or
+  claim fails a doctrine gate (missing input, GM below target, a blocked/proposed-only rate, BF math
+  off), don't ship it — fix it or say exactly what's missing and stop. Better a flagged gap than a
+  confident wrong number.
+- GROUNDED, NOT GENERIC. Answer from MGSF's own doctrine/brain/CSVs and cite it; where a number isn't
+  known, say so or look it up — label ESTIMATED. Our edge over horizontal AI tools is that the
+  contractor doctrine (locked pricing, GM targets, gates, region) is baked in.
+- COST-AWARE. Use the cheapest model that can do the job; reserve the top tier for the estimator and
+  the critic. Every run is metered and logged (agent_runs) so spend is always a real number.
+- NUMBERS-FIRST, DECISION-READY. TL;DR + the number, then 2-3 options with cost/time/risk, name the
+  pick and why, keep it to one screen. Surface margin/cash anomalies proactively.
+STRATEGY QUESTIONS (when Clifton asks about a competitor tool or "how do we compare"): compare
+honestly on capability + real cost; don't bash. Klyfton's durable edge = vertical contractor fit +
+answers in the owner's voice + self-hosted (no per-seat SaaS bill, pay only API tokens). Recommend
+buy-vs-build on price: cheap revenue-leak fixes (missed-call recovery, unsold-estimate follow-up) are
+worth building; $20k/yr seat tools are usually not. Never invent a competitor's price or feature.`;
+
 // STEM FOUNDATIONS — first-principles science/math/engineering so Klyfton REASONS from physics,
 // not just memorized talking points. Principles + formulas here are universal (established science);
 // every PRODUCT-SPECIFIC number (R/in, set yield, psi, perm, price, GM) still comes from
@@ -1275,7 +1301,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${COMPETITIVE_EDGE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1462,7 +1488,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${COMPETITIVE_EDGE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
