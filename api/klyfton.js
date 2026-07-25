@@ -75,6 +75,42 @@ async function kvAddSpend(usd) {
   } catch {}
 }
 
+// ---- Agent-run telemetry (opt-in) --------------------------------------------
+// Records ONE row per Klyfton request (Queen→Worker→Critic) to Supabase `agent_runs`
+// so the Operations Command Center can show REAL KPIs — tasks completed, success rate,
+// top agents — never fabricated numbers. Dormant unless SUPABASE_URL + a service-role/
+// secret key are set (mirrors the resolver in api/sync.js). Fire-and-forget: it never
+// throws and never blocks the answer. `task` is truncated to 200 chars; no keys/PINs.
+const SB_URL = _kvEnv(/SUPABASE_URL$/i);
+const SB_KEY = _kvEnv(/SUPABASE_SERVICE_ROLE_KEY$/i) || _kvEnv(/SERVICE_ROLE_KEY$/i) || _kvEnv(/SUPABASE_SECRET/i);
+const SB_ON = !!(SB_URL && SB_KEY);
+async function logAgentRun(run) {
+  if (!SB_ON) return;
+  try {
+    const minds = Array.isArray(run.minds) ? run.minds.filter(Boolean) : [];
+    const row = {
+      mode: run.mode || null,
+      agent: minds[0] || null,
+      minds: minds.join(", ") || null,
+      task: (run.task || "").toString().replace(/\s+/g, " ").trim().slice(0, 200) || null,
+      status: run.status || null,
+      duration_ms: (typeof run.durationMs === "number" && isFinite(run.durationMs)) ? Math.round(run.durationMs) : null,
+      model: run.model || null,
+      cost_usd: (typeof run.costUsd === "number" && isFinite(run.costUsd)) ? Number(run.costUsd.toFixed(6)) : null,
+    };
+    await fetch(SB_URL.replace(/\/$/, "") + "/rest/v1/agent_runs", {
+      method: "POST",
+      headers: {
+        apikey: SB_KEY,
+        Authorization: "Bearer " + SB_KEY,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(row),
+    });
+  } catch (e) {}
+}
+
 // Shared voice — every mind answers the way the owner wants (MOGS owner profile).
 const BASE_VOICE = `You serve Machine Gun Spray Foam & Concrete Lifting, LLC (owner: Clifton Behner,
 a USMC combat veteran). Answer his way:
@@ -1454,6 +1490,11 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     }
   }
 
+  // Agent-run telemetry accumulator: filled in at each terminal point below, then written
+  // once in the finally. Defaults to 'error' so an exception path is logged as a failure.
+  const startedAt = Date.now();
+  const run = { mode: null, minds: [], status: "error", model: null };
+
   // The finally records this request's spend to KV (even with no budget set — so the
   // running monthly total is always watchable), on both the success and error paths.
   try {
@@ -1469,6 +1510,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
         const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, meter);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
+        run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model });
         res.end();
         return;
@@ -1480,12 +1522,14 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       );
       const answers = workers.filter((w) => w && w.text);
       if (!answers.length) {
+        run.mode = "hive"; run.minds = plan.minds; run.status = "empty";
         sseSend(res, { done: true, text: "The hive came back empty — try rephrasing.", configured: true });
         res.end();
         return;
       }
       if (answers.length === 1) {
         const { text, remember } = splitMemory(answers[0].text);
+        run.mode = "single"; run.minds = [answers[0].mind]; run.status = "ok";
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
         res.end();
         return;
@@ -1507,6 +1551,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
         (t) => emit(t),
         meter
       );
+      run.mode = "hive"; run.minds = answers.map((a) => a.mind); run.model = model || CRITIC_MODEL; run.status = "ok";
       const { text, remember } = splitMemory(raw || answers[0].text);
       sseSend(res, { done: true, text, remember, configured: true, mode: "hive", minds: answers.map((a) => a.mind), model: model || CRITIC_MODEL });
       res.end();
@@ -1533,6 +1578,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
       const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, meter);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
+      run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
       res.status(200).json({
         text,
         remember,
@@ -1550,11 +1596,13 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
+      run.mode = "hive"; run.minds = plan.minds; run.status = "empty";
       res.status(200).json({ text: "The hive came back empty — try rephrasing.", configured: true });
       return;
     }
     if (answers.length === 1) {
       const { text, remember } = splitMemory(answers[0].text);
+      run.mode = "single"; run.minds = [answers[0].mind]; run.status = "ok";
       res.status(200).json({ text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
       return;
     }
@@ -1570,6 +1618,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
         { role: "user", content: `Question:\n${userText}\n\nSpecialist answers:\n\n${panel}` },
       ],
     }, meter);
+    run.mode = "hive"; run.minds = answers.map((a) => a.mind); run.model = synth.model || CRITIC_MODEL; run.status = "ok";
     const { text, remember } = splitMemory(textFrom(synth.content) || answers[0].text);
     res.status(200).json({
       text,
@@ -1589,6 +1638,9 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   } finally {
     if (KV_ON && meter.usd > 0) {
       try { await kvAddSpend(meter.usd.toFixed(6)); } catch (e) {}
+    }
+    if (SB_ON) {
+      try { await logAgentRun({ ...run, task: userText, durationMs: Date.now() - startedAt, costUsd: meter.usd }); } catch (e) {}
     }
   }
 };

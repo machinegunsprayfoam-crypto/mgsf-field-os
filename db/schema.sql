@@ -90,6 +90,26 @@ create table if not exists memory (
   synced_at timestamptz default now()
 );
 
+-- Agent-run telemetry — one row per Klyfton (Queen→Worker→Critic) request. This is the
+-- REAL source for the Operations Command Center KPIs (tasks completed, success rate, top
+-- agents). Written server-side by /api/klyfton via the service role; the numbers are only
+-- ever what actually ran — never fabricated. `task` is a truncated request summary (≤200
+-- chars); no credentials or PINs are ever written here.
+create table if not exists agent_runs (
+  id          bigint generated always as identity primary key,
+  ts          timestamptz default now(),
+  mode        text,      -- 'single' | 'hive'
+  agent       text,      -- primary mind (first recruited) — for simple grouping
+  minds       text,      -- comma-joined minds involved in the run
+  task        text,      -- truncated user request (≤200 chars)
+  status      text,      -- 'ok' | 'empty' | 'error'
+  duration_ms integer,   -- wall-clock for the request
+  model       text,      -- synthesizer/worker model that produced the answer
+  cost_usd    numeric,   -- metered Anthropic spend for the run
+  raw         jsonb,
+  synced_at   timestamptz default now()
+);
+
 -- Lock everything down: RLS on, no policies → only the service role (server-side) can read/write.
 alter table leads          enable row level security;
 alter table jobs           enable row level security;
@@ -98,6 +118,7 @@ alter table materials_log  enable row level security;
 alter table invoices       enable row level security;
 alter table crew           enable row level security;
 alter table memory         enable row level security;
+alter table agent_runs     enable row level security;
 
 -- Handy analytics views (optional but nice for the reporting layer).
 create or replace view v_pipeline as
@@ -110,3 +131,25 @@ create or replace view v_close_rate as
          round(100.0 * count(*) filter (where status='Won')
                / nullif(count(*) filter (where status in ('Won','Lost')),0), 1) as close_pct
   from leads;
+
+-- Operations Command Center KPIs — the four stat tiles, over a rolling 7-day window.
+-- Everything here is computed from real logged runs (agent_runs); nothing is fabricated.
+create or replace view v_agent_kpis_7d as
+  select count(*)                                                              as tasks_7d,
+         count(distinct agent)                                                 as active_agents_7d,
+         round(100.0 * count(*) filter (where status='ok')
+               / nullif(count(*),0), 1)                                        as success_pct_7d,
+         round(avg(duration_ms))                                              as avg_ms_7d
+  from agent_runs
+  where ts >= now() - interval '7 days';
+
+-- Top-agents leaderboard — hive runs credit every mind involved (minds unnested), 30-day window.
+create or replace view v_agent_leaderboard as
+  select trim(m)                                                               as agent,
+         count(*)                                                              as runs,
+         round(100.0 * count(*) filter (where status='ok')
+               / nullif(count(*),0), 1)                                        as success_pct
+  from agent_runs, unnest(string_to_array(minds, ', ')) as m
+  where ts >= now() - interval '30 days' and coalesce(minds,'') <> ''
+  group by 1
+  order by 2 desc;
