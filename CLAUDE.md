@@ -4,6 +4,11 @@ Klyfton AI is a multi-agent command system built on Claude AI. This document des
 
 ## ⚡ Session-Start Protocol (do this FIRST, every session)
 
+**0. Read [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) FIRST** — the single source of truth for build
+state, decisions already made, standing constraints, open threads, and environment gotchas. It
+exists so no session starts blind or re-derives settled facts. When you finish a unit of work or
+make a decision, update it in the same commit. It wins over vague memory (doctrine still wins over it).
+
 **Google Drive changes constantly — audit it before doing any work.** At the start of every
 session, before building or advising:
 
