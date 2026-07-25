@@ -198,17 +198,33 @@ create table if not exists events (
   source       text,                      -- which gear emitted
   status       text default 'pending',    -- 'pending'|'done'|'blocked'|'error'
   result       jsonb,                     -- dispatch trace / handler results
+  miles        integer default 0,         -- odometer: +owner-drive (Clifton drove it), -AI-into-owner (machine asked him)
   created_at   timestamptz default now(),
   processed_at timestamptz
 );
 create index if not exists events_name_idx   on events (name);
 create index if not exists events_status_idx on events (status);
 create index if not exists events_created_idx on events (created_at desc);
+alter table events add column if not exists miles integer default 0;  -- for pre-existing events tables
 alter table events enable row level security;
 
 -- Recent drivetrain activity for the Command Center strip (last 7 days).
 create or replace view v_gearbox_recent as
-  select id, name, event_key, source, status, created_at, processed_at
+  select id, name, event_key, source, status, miles, created_at, processed_at
   from events
   where created_at >= now() - interval '7 days'
   order by created_at desc;
+
+-- THE ODOMETER (7-day). Two gauges, deliberately separate:
+--   • miles = reciprocity. +forward = Clifton drove a gear (leverage); -reverse = the machine
+--     reached into him for approval (his attention). net = is the machine a net force-multiplier.
+--   • fuel  = the real cost (agent_runs.cost_usd). The odometer nets out; the fuel gauge never does.
+create or replace view v_odometer as
+  select
+    coalesce(sum(case when miles > 0 then miles else 0 end), 0)      as forward_miles,
+    coalesce(abs(sum(case when miles < 0 then miles else 0 end)), 0) as reverse_miles,
+    coalesce(sum(miles), 0)                                          as net_miles,
+    (select coalesce(sum(cost_usd), 0) from agent_runs
+       where ts >= now() - interval '7 days')                        as fuel_usd
+  from events
+  where created_at >= now() - interval '7 days';

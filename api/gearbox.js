@@ -77,13 +77,15 @@ async function sbInsertEvent(e, status) {
     return { persisted: r.ok };
   } catch (x) { return { persisted: false }; }
 }
-async function sbMark(e, status, result) {
+async function sbMark(e, status, result, miles) {
   if (!SB_ON) return;
   try {
+    const patch = { status: status || "done", result: result, processed_at: new Date().toISOString() };
+    if (typeof miles === "number") patch.miles = miles;
     await fetch(SB_URL.replace(/\/$/, "") + "/rest/v1/events?id=eq." + encodeURIComponent(eid(e.name, e.key)), {
       method: "PATCH",
       headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({ status: status || "done", result: result, processed_at: new Date().toISOString() }),
+      body: JSON.stringify(patch),
     });
   } catch (x) {}
 }
@@ -94,8 +96,13 @@ async function sbMark(e, status, result) {
 // action — it produces a DRAFT and the event goes 'blocked' until the SAME turn is re-issued
 // with approved:true (Clifton's transmission engaging that gear from his side). A blocked
 // owner gear does NOT cascade — the drivetrain stops at the clutch until he presses it.
+// THE ODOMETER (Clifton's model). Each meshing of the two transmissions racks miles:
+//   +1 FORWARD  — an OWNER gear turned from the owner side (approved): Clifton drove the machine (leverage).
+//   -1 REVERSE  — an OWNER gear that BLOCKED (AI reached into him for approval): his attention spent.
+//    0          — an AI-internal gear freewheeling: no cross-engagement (still burns fuel/tokens, tracked separately).
+// Net miles = is the machine a net force-multiplier. Fuel (tokens/$) is a SEPARATE gauge — it never nets out.
 async function dispatch(e, ctx, approved) {
-  ctx = ctx || { depth: 0, seen: new Set(), trace: [] };
+  ctx = ctx || { depth: 0, seen: new Set(), trace: [], miles: 0 };
   const stamp = e.name + "|" + e.key;
   if (ctx.depth > 8 || ctx.seen.has(stamp)) { ctx.trace.push({ event: e.name, skipped: "depth_or_cycle" }); return ctx; }
   ctx.seen.add(stamp);
@@ -104,25 +111,32 @@ async function dispatch(e, ctx, approved) {
   const node = { event: e.name, key: e.key, handled: handlers.length, results: [] };
   ctx.trace.push(node);
   let anyBlocked = false;
+  let nodeMiles = 0;
   for (const h of handlers) {
     // Owner-drive gears are the approval gate expressed as a transmission: they only turn
     // when engaged from the owner side (approved:true). Un-approved => draft + blocked, no cascade.
     if (h.drive === "owner" && !approved) {
       let out;
       try { out = await h.fn(e, false); } catch (x) { out = { error: String(x).slice(0, 140) }; }
-      node.results.push({ drive: "owner", blocked: true, note: out && out.note, draft: out && out.draft ? (out.draft.status || "needs_approval") : "needs_approval", error: out && out.error });
+      nodeMiles -= 1; // REVERSE — the machine reached into Clifton for approval
+      node.results.push({ drive: "owner", blocked: true, miles: -1, note: out && out.note, draft: out && out.draft ? (out.draft.status || "needs_approval") : "needs_approval", error: out && out.error });
       anyBlocked = true;
       continue; // do NOT run emits — the wheels don't turn until the clutch is pressed
     }
     let out;
-    try { out = await h.fn(e, h.drive === "owner" && approved === true); } catch (x) { out = { error: String(x).slice(0, 140) }; }
-    node.results.push({ drive: h.drive, note: out && out.note, draft: out && out.draft ? (out.draft.status || "drafted") : undefined, error: out && out.error });
+    const ownerRan = h.drive === "owner" && approved === true;
+    try { out = await h.fn(e, ownerRan); } catch (x) { out = { error: String(x).slice(0, 140) }; }
+    const m = ownerRan ? 1 : 0; // FORWARD when Clifton drove an owner gear; AI-internal = 0
+    nodeMiles += m;
+    node.results.push({ drive: h.drive, miles: m, note: out && out.note, draft: out && out.draft ? (out.draft.status || "drafted") : undefined, error: out && out.error });
     if (out && Array.isArray(out.emits)) {
       for (const child of out.emits) { ctx.depth++; await dispatch(child, ctx, approved); ctx.depth--; }
     }
   }
-  if (!handlers.length) await sbMark(e, "done", { note: "no consumer (emitted, unmeshed)" });
-  else await sbMark(e, anyBlocked ? "blocked" : "done", node);
+  node.miles = nodeMiles;
+  ctx.miles += nodeMiles;
+  if (!handlers.length) await sbMark(e, "done", { note: "no consumer (emitted, unmeshed)" }, 0);
+  else await sbMark(e, anyBlocked ? "blocked" : "done", node, nodeMiles);
   return ctx;
 }
 
@@ -131,14 +145,18 @@ async function turn(name, key, payload, source, approved) {
   if (!e.name) return { ok: false, error: "event name required" };
   const ctx = await dispatch(e, undefined, approved === true);
   const blocked = ctx.trace.some(function (n) { return n.results && n.results.some(function (r) { return r.blocked; }); });
-  return { ok: true, configured: SB_ON, turned: e.name, drive: approved === true ? "owner" : "ai", blocked: blocked, trace: ctx.trace, persisted: SB_ON };
+  let fwd = 0, rev = 0;
+  ctx.trace.forEach(function (n) { if (n.miles > 0) fwd += n.miles; else if (n.miles < 0) rev += -n.miles; });
+  return { ok: true, configured: SB_ON, turned: e.name, drive: approved === true ? "owner" : "ai", blocked: blocked,
+    miles: { forward: fwd, reverse: rev, net: ctx.miles }, trace: ctx.trace, persisted: SB_ON };
 }
 
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ ok: true, configured: SB_ON, meshes: Object.keys(HANDLERS),
       drives: { ai: "autonomous / reversible / zero-$ — runs and cascades on its own", owner: "outward action (invoice/sms/order) — drafts + blocks until turned again with approved:true" },
-      note: "POST {action:'turn', event:{name,key,payload,source}, approved?:true}. AI gears run autonomously; OWNER gears (the arms) come back as gated drafts (needs_approval) and only turn when re-issued with approved:true. Persists to the events table when Supabase is set." });
+      odometer: { forward: "+1 when Clifton drives an owner gear (approved) — leverage", reverse: "-1 when an owner gear blocks (machine asks for approval) — his attention", net: "is the machine a net force-multiplier", fuel: "tokens/$ (agent_runs.cost_usd) — a SEPARATE gauge; it never nets out. see v_odometer" },
+      note: "POST {action:'turn', event:{name,key,payload,source}, approved?:true}. AI gears run autonomously; OWNER gears (the arms) come back as gated drafts (needs_approval) and only turn when re-issued with approved:true. Each turn returns miles {forward,reverse,net}. Persists to the events table when Supabase is set." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }

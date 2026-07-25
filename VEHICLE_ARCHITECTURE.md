@@ -31,8 +31,9 @@ is how power gets from those movers to the road (real work) safely.
 | **Seatbelts / airbags** | Guardrails — never fabricate, never guarantee savings, never claim mold elimination |
 | **Suspension** | Self-healing / error handling — `runMindResilient`, retries, graceful degradation |
 | **Steering** | Clifton's direction — owner intent sets the heading |
-| **Dashboard / gauges** | The **Operations Command Center** — KPI tiles, top-agents, the live drivetrain strip |
-| **Odometer** | `agent_runs` telemetry — every mile (run) logged |
+| **Dashboard / gauges** | The **Operations Command Center** — KPI tiles, top-agents, the live drivetrain strip, the odometer |
+| **Odometer (with reverse gear)** | **Miles = reciprocity.** +1 FORWARD when Clifton drives an owner gear (leverage); −1 REVERSE when an owner gear blocks (the machine reaches into him for approval — his attention). Net = is the machine a net force-multiplier. `events.miles` + `v_odometer`. |
+| **Fuel gauge** | **Tokens / $** — `agent_runs.cost_usd`. A SEPARATE gauge from the odometer: miles can net to zero while fuel still burned. The odometer nets out; the fuel gauge never lies. |
 
 ## The two prime movers (the key idea)
 - **Engine = reactive.** A real-world event (estimate closed, job completed) fires → the driveshaft
