@@ -1128,6 +1128,8 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <div id="ccGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Top Agents · 30 days</h3>
         <div id="ccBoard" style="font-size:13px;line-height:1.9"></div>
+        <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Drivetrain · recent gear-turns</h3>
+        <div id="ccDrive" style="font-size:12px;line-height:1.7;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
         <div style="margin-top:16px"><button onclick="renderCommand()" style="background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700">↻ Refresh</button></div>
       </div>
       <div id="mod-intel" class="module">
@@ -12415,6 +12417,14 @@ window.renderCommand = async function(){
     }).join(''));
     var board = d.leaderboard||[];
     set('ccBoard', board.length ? board.map(function(b,i){return (i+1)+'. '+e(b.agent)+' — '+b.runs+' runs · '+(b.success_pct!=null?(b.success_pct+'%'):'—');}).join('<br>') : '<span style="opacity:.6">No runs logged yet — ask Klyfton something and it shows up here.</span>');
+    var dt = d.drivetrain||[];
+    var stcol = function(s){ return s==='blocked'?'#ffcf6b':(s==='error'?'#ff6b6b':(s==='done'?'#4ad9c4':'#9aa4b0')); };
+    set('ccDrive', dt.length ? dt.map(function(v){
+        var t = v.created_at? String(v.created_at).replace('T',' ').slice(5,16):'';
+        return '<span style="color:#8a929c">'+t+'</span> <span style="color:var(--or)">'+e(v.name)+'</span>'
+          + (v.source?' <span style="opacity:.55">← '+e(v.source)+'</span>':'')
+          + ' <span style="color:'+stcol(v.status)+'">'+e(v.status||'')+'</span>';
+      }).join('<br>') : '<span style="opacity:.6">No gears have turned yet — a job event (estimate closed, job completed) turns the drivetrain and lands here.</span>');
     set('ccNote', d.configured ? '' : e(d.note||'Telemetry not configured yet — showing the agent roster only.'));
   }catch(err){
     set('ccKpis','<div class="metric-card"><div class="metric-val">—</div><div class="metric-lbl">offline</div></div>');
