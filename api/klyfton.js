@@ -615,6 +615,26 @@ min/max, A-09 auto-draft PO) is the operational layer — this block is the stra
 Guardrails: policy/reasoning only — actual prices, terms, lead times, and thresholds defer to the
 supplier pricing data + DOCTRINE and are confirmed with the vendor; never fabricate a price or term.`;
 
+// EQUIPMENT — what MGSF runs a job with (the production rig + concrete pump) AND the access /
+// material-handling equipment we rent or buy to reach and move work (scissor/telehandler/boom).
+// The dollar figures here are RESEARCHED MARKET RANGES to sanity-check against a live vendor quote —
+// they are NOT MGSF-locked numbers. Our actual owned fleet + amortized day rates live in the app's
+// equipment_database.csv; job pricing/margins still defer to DOCTRINE.
+const EQUIPMENT = `EQUIPMENT (spec the right machine for the job; costs below are market ranges to verify, not locked):
+PRODUCTION RIG (a matched system — a strong proportioner underperforms if the generator/compressor/hose can't feed it):
+- Proportioner (Graco Reactor 2 / PMC PH-2): ~30-50 lb/min output, 6-20 kW heaters. Electric (E-30/E-XP2) or hydraulic (H-30/H-40); E-XP2/H for high-pressure coatings/polyurea.
+- Spray gun (Graco Fusion AP / Probler P2), heated hose 50-310 ft (length must match the proportioner).
+- Air compressor 6-30 CFM @ 100 psi; generator 6-20 kW small rigs, 30 kW+ big rigs (size = total watts x 1.25 -> kVA).
+- Platform: box truck (small-med) or gooseneck/5th-wheel trailer (large). Turnkey SPF rig market range ~$50k-150k+ (starter ~$33-58k); proportioner alone ~$35k bare / ~$42k packaged.
+- Concrete/geotech: compact system (Alchatek PolyBadger) ~$22-25k portable slab lifting; full trailer rig (HMI-class) for high-volume lifting/void/soil/seawall.
+ACCESS / MATERIAL-HANDLING (rent per job unless utilization is high):
+- Scissor lift: 19-60 ft, big platform, flat ground -> interior high walls/ceilings (warehouses, shops, metal buildings). Rent ~$220/day.
+- Telehandler: lifts 5,000-12,000 lb, 18-55 ft reach -> moving foam/lifting sets (a geotech set ~1,100 lb), loading the rig, material up high, rough terrain. Rent ~$245-665/day; buy used ~$30-80k / new $70k+.
+- Boom lift: 30-135 ft, reaches up AND over -> exterior walls/roofs, over obstacles. Articulating = up-and-over; telescopic = max straight reach (~10-20% cheaper). Rent ~$340-580/day (80 ft class much more).
+JOB-SCOPE -> MACHINE: interior high wall/ceiling on flat floor -> scissor · exterior wall/roof/over-obstacle -> boom (articulating) · haul/place foam & lifting sets, rough ground -> telehandler · residential attic/crawl -> none (rig + ladders).
+RENT VS BUY: rent for occasional use; buying usually wins past ~60% utilization (~12-14+ days/month on the same machine). On any 2+ week job, lock the MONTHLY rate (~80% cheaper than daily). MGSF's episodic commercial work usually = rent per job.
+Guardrails: dollar figures are researched market ranges to VERIFY with a vendor, never quoted to a customer as fact; MGSF's owned fleet + day rates come from equipment_database.csv; job pricing/margins defer to DOCTRINE; licensed/certified operators where required.`;
+
 // The MGSF Expert Library (owner-built in Drive: /MGSF/10_Knowledge/Experts/). This is the
 // SMART ROUTER — Klyfton uses it to point the crew to the right deep-dive doc. When a question
 // squarely matches an expert below, ANSWER from your own knowledge first, then cite the doc so
@@ -1219,7 +1239,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1406,7 +1426,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
