@@ -1,13 +1,26 @@
 ﻿# Klyfton AI v2.0 — 7 Major Improvements (Autonomous Deployment)
 
+> **⚠ STATUS CORRECTION (2026-07-25):** Despite the "✓ Deployed" labels below, **none of these 7
+> functions ever deployed.** They are shelved in [`.vercelignore`](.vercelignore) because they broke
+> every deploy two ways — they pushed past Vercel's function-count cap, and four of them `require()`
+> npm packages (`@anthropic-ai/sdk`, `@supabase/supabase-js`) that can't resolve (this project has no
+> `package.json`; it runs on built-in `fetch` only). Kept in git so nothing is lost. Much of the
+> *intent* has since been rebuilt correctly in plain `fetch`: the execution/"arms" layer → `api/act.js`;
+> multi-agent parallelism → the live Queen→worker hive; job persistence → the `agent_runs` telemetry
+> table; GovCon → `api/samgov.js`; HubSpot → `api/hubspot.js`. The one idea not yet rebuilt is
+> **predictive lead scoring**. Treat the "✓ Deployed" lines below as ASPIRATIONAL, not factual.
+
 ## Overview
-This document describes 7 major enhancements to Klyfton AI that are now deployed in the codebase. Each module is production-ready and integrates directly with the existing Claude AI backend.
+This document describes 7 proposed enhancements to Klyfton AI. **They are NOT live** (see the status
+correction above) — the code exists in the repo but is shelved and not deployed. Each was written to
+integrate with the existing Claude AI backend, but the npm-dependency and function-cap issues blocked
+deployment.
 
 ---
 
 ## 1. Multi-Agent Task Delegation System
 **File:** \pi/multi-agent-task-queue.js\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** 10x faster execution via parallel task processing
 
 ### What It Does
@@ -43,7 +56,7 @@ Instead of waiting for each estimate to finish, Klyfton can now process batch re
 
 ## 2. Real-Time Supabase Job Persistence
 **File:** \pi/jobs-sync.js\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** Live job visibility, persistent data, automation triggers
 
 ### What It Does
@@ -83,7 +96,7 @@ Real-time job updates mean your dashboard is never stale. Close a job on the rig
 
 ## 3. HubSpot Native Sync
 **File:** \pi/hubspot-sync.js\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** Single source of truth, no duplicate data entry
 
 ### What It Does
@@ -119,7 +132,7 @@ You no longer maintain two separate lead databases. HubSpot becomes your officia
 
 ## 4. Automated Government Contracting (GovCon) Scanner
 **File:** \pi/govcon-scanner.js\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** Never miss a federal bid, auto-compliance checking
 
 ### What It Does
@@ -159,7 +172,7 @@ Federal contracts are usually 2–5x higher value than commercial. You're curren
 
 ## 5. Field Tech Mobile PWA
 **File:** \public/mobile.html\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** Field crew updates from phone, offline support
 
 ### What It Does
@@ -186,7 +199,7 @@ No more waiting for field crew to get back to the office to update job status. C
 
 ## 6. Predictive Lead Scoring & Auto-Routing
 **File:** \pi/predictive-lead-scoring.js\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** Faster sales cycle, prioritize high-conversion leads
 
 ### What It Does
@@ -229,7 +242,7 @@ You're spending time on low-fit leads. This agent identifies the 20% that will c
 
 ## 7. Expanded Voice Commands
 **File:** \public/voice-commands-enhanced.js\  
-**Status:** ✓ Deployed  
+**Status:** ⚠ SHELVED — not deployed (see correction banner at top)  
 **Impact:** Hands-free operation, faster execution during field work
 
 ### What It Does
