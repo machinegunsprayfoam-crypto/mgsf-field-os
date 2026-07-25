@@ -29,6 +29,7 @@ _Last updated: 2026-07-25._
 - **KLYFTON_V2_UPGRADE_PLAN (Drive doc, 7/24)** is the real roadmap — "same rooms, real hallways." Its InfraNodus gap pass already ran (3 gaps: brain can't see certs/docs; assistant↔CRM don't talk; assistant can't see the job). Recommended start = **Phase A** (stage certs/docs + cert-expiry watch).
 - **Hearth** is Clifton's missed-call AI → `missed-call.js` must defer to Hearth (don't double-text). Also Hearth = $0-down financing partner on the marketing site.
 - Competitor scan done (~34 tools); Klyfton's edge = vertical contractor fit + owner's voice + self-hosted (no per-seat bill).
+- **Klyfton's brain stays CLAUDE-LOCKED (Clifton's call 2026-07-25)** — Haiku router + Sonnet workers/critic (Opus optional). One tuned voice > swappable. Other models only for UTILITY: OpenAI embeddings (semantic memory) + OpenAI/ElevenLabs TTS. Do NOT make the brain model-agnostic. (MOGS, the separate ERP, IS multi-provider via AIProvider.gs — that's fine, different system.)
 
 ## 4. Standing constraints (hard rules — always)
 - Never fabricate numbers/prices/specs; label ESTIMATED; doctrine (`mgsf-core`) wins.
