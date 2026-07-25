@@ -50,6 +50,19 @@ Both feed the same gearbox; a gear-turn is either **engine-driven** (an event) o
   engagement sets) are the next gearbox feature.
 - The **dashboard** is live (Phase C). The **wheels** turn for real once triggers call `turn()`.
 
+## Refinements (Clifton, 2026-07-25)
+- **Engine powers the Queen** — the Queen is *driven*, not the prime mover. The engine (hive) sends
+  power down the driveline to spin her; she distributes it (differential/router).
+- **Two linked transmissions, opposite sides — the dual-drive.** The **Klyfton (AI)** transmission
+  and the **Clifton (owner)** transmission grip the *same* gears from opposite sides. A gear can be
+  driven by the AI (autonomous, reversible/zero-$) or by the owner (approval). **Gated gears
+  (Invoice, Review, Arms) can ONLY be driven from the owner side** — that *is* the approval gate,
+  expressed as a transmission. In code: two engagement sources per gear — an autonomous binding and
+  an approval-required binding.
+- **RPM is real — RPM sets speed.** A tachometer/throttle: `speed ≈ rpm × engaged gears`. Throttle
+  (idle/cruise/redline) sets how fast the drivetrain runs = system throughput. Ties to the budget
+  (fuel) and the axle (time cadence).
+
 ## Cross-references
 - [`GEARBOX_SPEC.md`](GEARBOX_SPEC.md) · [`OPERATIONS_COMMAND_CENTER.md`](OPERATIONS_COMMAND_CENTER.md) ·
   [`api/gearbox.js`](api/gearbox.js) · [`api/act.js`](api/act.js) · [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) ·
