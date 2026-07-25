@@ -70,6 +70,29 @@ The `events` table feeds a new Command Center strip: recent gear-turns, which ge
 anything **blocked awaiting approval** (this is also where the "arms running / pending" view lives).
 Turns the dashboard from a data display into a live drivetrain view.
 
+## 7a. The DUAL-DRIVE (BUILT 2026-07-25) — two transmissions, one gearbox
+Clifton's refinement made real in `api/gearbox.js`. Every gear carries a **drive tag**:
+- **`drive:"ai"`** — the autonomous transmission. Reversible / zero-$ / internal. It turns on its own
+  and cascades to the next gear. (estimate.closed → lead.won, job.completed → review+roof, etc.)
+- **`drive:"owner"`** — the outward gears (Invoice, Review SMS, Follow-up nudge). These can ONLY be
+  turned from the **owner side**. Un-approved, the gear drafts through `act.js` and the event goes
+  **`blocked`** — and the cascade **stops there** (the wheels don't turn until the clutch is pressed).
+  Re-issue the same turn with **`approved:true`** and the owner transmission engages that gear for
+  real (arms.execute with `approved:true` — still passes act.js's own gate; inert until
+  `ALERTS_WEBHOOK_URL` is wired; never fabricates).
+
+Same gears, gripped from both sides. The approval gate **is** the owner's transmission — not a flag
+bolted on, but the second drive. API: `POST {action:"turn", event:{…}, approved?:true}`; the response
+carries `drive` ("ai"|"owner") and `blocked` (true if any owner gear stopped the train). Verified:
+`estimate.closed` (AI) cascades `lead.won → invoice.created` then blocks at the owner gear; a second
+turn of `invoice.created` with `approved:true` engages it.
+
+## 7b. External platforms couple in as bolt-on transmissions — see [`TRANSMISSION_COUPLING.md`](TRANSMISSION_COUPLING.md)
+Clifton's next idea: every *other* AI platform (Hearth, a Zapier bot, a future vendor agent) gets **its
+own transmission** that hooks into MGSF's gearbox from the outside — the same way the owner and AI
+transmissions grip the gears, an external partner grips them through a defined coupling. One universal
+port, many transmissions. Spec in `TRANSMISSION_COUPLING.md`.
+
 ## 8. Build phases
 - **A — Spine:** `events` table + `emit()` + `/api/gearbox` dispatcher + registry reader. (Low risk, additive.)
 - **B — First meshes:** wire the 4 meshes in §6 (estimate→CRM→invoice; job→review/roof; estimate→follow-up).

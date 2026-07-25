@@ -27,27 +27,35 @@ function evt(name, key, payload, source) {
 // ---- REGISTRY: event name -> [handlers]. Each handler(e) returns { note, emits?:[evt...], draft? }.
 // Handlers NEVER send — outward steps call arms.execute(..., {approved:false}) => a gated draft.
 // They decide the next gear to turn (emits). This is the money drivetrain from the spec.
+// DUAL-DRIVE: each handler is tagged with the transmission side that turns it.
+//   drive:"ai"    = autonomous — internal/reversible/zero-$ transmission, runs on its own.
+//   drive:"owner" = outward action (send/invoice/order) — produces a DRAFT and the event goes
+//                   'blocked' until turned again with approved:true (Clifton's side of the box).
+// Same gears, two transmissions coupled from both sides (see VEHICLE_ARCHITECTURE.md).
 const HANDLERS = {
-  "estimate.closed": [async (e) => {
-    const p = e.payload || {};
-    const crm = await arms.execute({ type: "crm_update", object: "deal", id: p.customer || p.id || "", fields: { stage: "won" } }, { approved: false });
-    return { note: "CRM 'won' update drafted (gated)", draft: crm, emits: [evt("lead.won", e.key, p, "gearbox:estimate.closed")] };
-  }],
-  "lead.won": [async (e) => {
-    const p = e.payload || {};
-    const inv = await arms.execute({ type: "create_invoice", customer: p.customer || "", amount: p.amount || p.total || 0, job: p.job || "" }, { approved: false });
-    return { note: "Invoice drafted (gated)", draft: inv, emits: [evt("invoice.created", e.key, p, "gearbox:lead.won")] };
-  }],
-  "invoice.created": [async () => ({ note: "Invoice logged — awaiting owner approval to send" })],
-  "job.completed": [async (e) => {
-    const p = e.payload || {};
+  // AI side: advance the pipeline internally, emit the next gear.
+  "estimate.closed": [{ drive: "ai", fn: async (e) => ({ note: "pipeline → won (internal)", emits: [evt("lead.won", e.key, e.payload || {}, "gearbox:estimate.closed")] }) }],
+  "lead.won": [{ drive: "ai", fn: async (e) => ({ note: "deal won — invoice gear next", emits: [evt("invoice.created", e.key, e.payload || {}, "gearbox:lead.won")] }) }],
+  // OWNER side: the outward money action. Un-approved => arms draft it (needs_approval) and the
+  // gear blocks. Approved (owner transmission engaged) => arms.execute for real (still passes
+  // through act.js's own gate/ALERTS_WEBHOOK — inert until that env is wired, never fabricates).
+  "invoice.created": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
+    const inv = await arms.execute({ type: "create_invoice", customer: p.customer || "", amount: p.amount || p.total || 0, job: p.job || "" }, { approved: ok === true });
+    return { note: ok ? "Invoice engaged (owner side)" : "Invoice drafted — owner approval to send", draft: inv }; } }],
+  "job.completed": [{ drive: "ai", fn: async (e) => { const p = e.payload || {};
     const emits = [evt("review.requested", e.key, p, "gearbox:job.completed")];
     if (/roof|spf/i.test(String(p.service || ""))) emits.push(evt("roofmaint.enroll", e.key, p, "gearbox:job.completed"));
-    return { note: "Review request + roof-maintenance enroll queued", emits };
-  }],
-  "estimate.sent": [async (e) => ({ note: "Follow-up scheduled (2/7/21-day reheat)", emits: [evt("followup.scheduled", e.key, e.payload || {}, "gearbox:estimate.sent")] })],
+    return { note: "review + roof-maint gears engaged", emits }; } }],
+  "review.requested": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
+    const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "review request" }, { approved: ok === true });
+    return { note: ok ? "Review request engaged (owner side)" : "Review request drafted — owner approval to send", draft: r }; } }],
+  "roofmaint.enroll": [{ drive: "ai", fn: async () => ({ note: "enrolled on the roof-maintenance cycle (internal)" }) }],
+  "estimate.sent": [{ drive: "ai", fn: async (e) => ({ note: "follow-up scheduled (2/7/21-day)", emits: [evt("followup.scheduled", e.key, e.payload || {}, "gearbox:estimate.sent")] }) }],
+  "followup.scheduled": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
+    const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "reheat nudge" }, { approved: ok === true });
+    return { note: ok ? "Follow-up nudge engaged (owner side)" : "Follow-up nudge drafted — owner approval to send", draft: r }; } }],
 };
-function consumersFor(name) { return HANDLERS[clean(name, 60)] || []; }
+function consumersFor(name) { return (HANDLERS[clean(name, 60)] || []).map(function (h) { return typeof h === "function" ? { drive: "ai", fn: h } : h; }); }
 
 async function sbInsertEvent(e, status) {
   if (!SB_ON) return { persisted: false };
@@ -61,20 +69,24 @@ async function sbInsertEvent(e, status) {
     return { persisted: r.ok };
   } catch (x) { return { persisted: false }; }
 }
-async function sbMarkDone(e, result) {
+async function sbMark(e, status, result) {
   if (!SB_ON) return;
   try {
     await fetch(SB_URL.replace(/\/$/, "") + "/rest/v1/events?id=eq." + encodeURIComponent(eid(e.name, e.key)), {
       method: "PATCH",
       headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({ status: "done", result: result, processed_at: new Date().toISOString() }),
+      body: JSON.stringify({ status: status || "done", result: result, processed_at: new Date().toISOString() }),
     });
   } catch (x) {}
 }
 
 // Turn a gear: persist the event, run its consumers, and recursively turn the gears they drive.
 // Bounded: max depth + a per-turn visited set so a cycle can't spin the box forever.
-async function dispatch(e, ctx) {
+// DUAL-DRIVE: an "ai" gear runs autonomously and cascades. An "owner" gear is an outward
+// action — it produces a DRAFT and the event goes 'blocked' until the SAME turn is re-issued
+// with approved:true (Clifton's transmission engaging that gear from his side). A blocked
+// owner gear does NOT cascade — the drivetrain stops at the clutch until he presses it.
+async function dispatch(e, ctx, approved) {
   ctx = ctx || { depth: 0, seen: new Set(), trace: [] };
   const stamp = e.name + "|" + e.key;
   if (ctx.depth > 8 || ctx.seen.has(stamp)) { ctx.trace.push({ event: e.name, skipped: "depth_or_cycle" }); return ctx; }
@@ -83,30 +95,42 @@ async function dispatch(e, ctx) {
   const handlers = consumersFor(e.name);
   const node = { event: e.name, key: e.key, handled: handlers.length, results: [] };
   ctx.trace.push(node);
+  let anyBlocked = false;
   for (const h of handlers) {
+    // Owner-drive gears are the approval gate expressed as a transmission: they only turn
+    // when engaged from the owner side (approved:true). Un-approved => draft + blocked, no cascade.
+    if (h.drive === "owner" && !approved) {
+      let out;
+      try { out = await h.fn(e, false); } catch (x) { out = { error: String(x).slice(0, 140) }; }
+      node.results.push({ drive: "owner", blocked: true, note: out && out.note, draft: out && out.draft ? (out.draft.status || "needs_approval") : "needs_approval", error: out && out.error });
+      anyBlocked = true;
+      continue; // do NOT run emits — the wheels don't turn until the clutch is pressed
+    }
     let out;
-    try { out = await h(e); } catch (x) { out = { error: String(x).slice(0, 140) }; }
-    node.results.push({ note: out && out.note, draft: out && out.draft ? (out.draft.status || "drafted") : undefined, error: out && out.error });
-    await sbMarkDone(e, node);
+    try { out = await h.fn(e, h.drive === "owner" && approved === true); } catch (x) { out = { error: String(x).slice(0, 140) }; }
+    node.results.push({ drive: h.drive, note: out && out.note, draft: out && out.draft ? (out.draft.status || "drafted") : undefined, error: out && out.error });
     if (out && Array.isArray(out.emits)) {
-      for (const child of out.emits) { ctx.depth++; await dispatch(child, ctx); ctx.depth--; }
+      for (const child of out.emits) { ctx.depth++; await dispatch(child, ctx, approved); ctx.depth--; }
     }
   }
-  if (!handlers.length) await sbMarkDone(e, { note: "no consumer (emitted, unmeshed)" });
+  if (!handlers.length) await sbMark(e, "done", { note: "no consumer (emitted, unmeshed)" });
+  else await sbMark(e, anyBlocked ? "blocked" : "done", node);
   return ctx;
 }
 
-async function turn(name, key, payload, source) {
+async function turn(name, key, payload, source, approved) {
   const e = evt(name, key, payload, source);
   if (!e.name) return { ok: false, error: "event name required" };
-  const ctx = await dispatch(e);
-  return { ok: true, configured: SB_ON, turned: e.name, trace: ctx.trace, persisted: SB_ON };
+  const ctx = await dispatch(e, undefined, approved === true);
+  const blocked = ctx.trace.some(function (n) { return n.results && n.results.some(function (r) { return r.blocked; }); });
+  return { ok: true, configured: SB_ON, turned: e.name, drive: approved === true ? "owner" : "ai", blocked: blocked, trace: ctx.trace, persisted: SB_ON };
 }
 
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ ok: true, configured: SB_ON, meshes: Object.keys(HANDLERS),
-      note: "POST {action:'turn', event:{name,key,payload,source}} to turn a gear. Outward steps come back as gated drafts (needs_approval) — never auto-sent. Persists to the events table when Supabase is set." });
+      drives: { ai: "autonomous / reversible / zero-$ — runs and cascades on its own", owner: "outward action (invoice/sms/order) — drafts + blocks until turned again with approved:true" },
+      note: "POST {action:'turn', event:{name,key,payload,source}, approved?:true}. AI gears run autonomously; OWNER gears (the arms) come back as gated drafts (needs_approval) and only turn when re-issued with approved:true. Persists to the events table when Supabase is set." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -116,7 +140,7 @@ module.exports = async (req, res) => {
   try {
     if (clean(body.action, 20) === "turn") {
       const e = body.event || {};
-      res.status(200).json(await turn(e.name, e.key, e.payload, e.source));
+      res.status(200).json(await turn(e.name, e.key, e.payload, e.source, body.approved === true));
       return;
     }
     res.status(200).json({ ok: false, error: "unknown_action", supported: ["turn"] });
