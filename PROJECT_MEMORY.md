@@ -19,6 +19,7 @@ _Last updated: 2026-07-25._
 - Brain blocks added: STEM, HVAC, accounting/finance, MASTERY, GAP_BRIDGES, PROCUREMENT, EQUIPMENT, **COMPETITIVE_EDGE** (all wired into BOTH prompt builders; `node -c` clean).
 - 4 capabilities: `api/missed-call.js`, `api/estimate-followup.js`, `api/photo-estimate.js`, self-healing `runMindResilient` in klyfton.js.
 - **`api/act.js` = the "arms"** — gated outward executor (email/sms/appointment/crm/invoice/order). Requires `approved:true`; dispatches via `ALERTS_WEBHOOK_URL`; **inert until that env is set**.
+- **`api/memory.js` = semantic memory (pgvector)** — Klyfton's real long-term recall. `remember`/`recall` (top-K by embedding similarity). Gated on Supabase + `OPENAI_API_KEY` (text-embedding-3-small, 1536-dim); stores notes without a vector if no embed key (degrades to note recall). Wired into klyfton.js: every non-trivial message best-effort recalls the 6 most relevant facts (no-op/zero-cost when unconfigured). **Owner activation:** run the SEMANTIC MEMORY block in `db/schema.sql` + set `OPENAI_API_KEY` in Vercel.
 - Docs: COMPETITIVE_ANALYSIS.md, CAPABILITIES_ROADMAP.md, OPERATIONS_COMMAND_CENTER.md.
 
 **Marketing — COMPLETE (Passes 16–25 in mgsf-marketing/NIGHT_LOG.md):** crawl-space page built (SEO_GAPS P1), all internal links + sitemap + og:url + FAQ schema (9/9 service pages) + canonical/robots/alt all verified. Nothing safe left to add.

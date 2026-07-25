@@ -153,3 +153,32 @@ create or replace view v_agent_leaderboard as
   where ts >= now() - interval '30 days' and coalesce(minds,'') <> ''
   group by 1
   order by 2 desc;
+
+-- ============================================================================
+-- SEMANTIC MEMORY (pgvector) — Klyfton's long-term recall.
+-- Today `memory` holds note strings and the app dumps the last ~20 into context. With
+-- embeddings, recall retrieves the RELEVANT note for a given question instead of dumping
+-- everything — so a customer preference or confirmed price surfaces exactly when it matters,
+-- months later. Backward compatible: the `note` column stays; `embedding` is nullable, so rows
+-- without an embedding still work via the old note recall. Written server-side by /api/memory.
+-- Embeddings are 1536-dim (OpenAI text-embedding-3-small). If you switch providers, change the
+-- dimension here AND re-embed existing rows.
+-- Run this block once in Supabase after the tables above.
+-- ============================================================================
+create extension if not exists vector;
+alter table memory add column if not exists embedding vector(1536);
+alter table memory add column if not exists updated_at timestamptz default now();
+-- Cosine-distance ANN index for fast top-K search.
+create index if not exists memory_embedding_idx on memory using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+
+-- Top-K semantic search: the closest notes to a query embedding (higher similarity = closer).
+-- Called from /api/memory via PostgREST RPC (/rest/v1/rpc/match_memory).
+create or replace function match_memory(query_embedding vector(1536), match_count int default 6)
+returns table (id text, note text, similarity float)
+language sql stable as $$
+  select id, note, 1 - (embedding <=> query_embedding) as similarity
+  from memory
+  where embedding is not null
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;

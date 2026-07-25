@@ -9,6 +9,11 @@
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
+// Semantic long-term memory (pgvector) — best-effort recall of the RELEVANT remembered facts for
+// each message. Gated + graceful: if pgvector memory isn't configured, recall() returns instantly
+// with no network call, so this adds zero cost until it's turned on. See api/memory.js.
+const semanticMemory = require("./memory");
+
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
 // Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
 // Bump WORKER/CRITIC to "claude-opus-4-8" for max smarts, or drop to "claude-haiku-4-5" for cheapest.
@@ -1494,7 +1499,20 @@ module.exports = async (req, res) => {
   }
 
   const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
-  const ctx = contextBlock(body.context, body.memory);
+  // Merge the client-sent memory with a SEMANTIC recall of the most relevant long-term facts for
+  // this specific message (top-K by embedding similarity). Best-effort + gated: no-op with zero
+  // network cost when pgvector memory isn't configured, and never blocks the answer on failure.
+  let memList = Array.isArray(body.memory) ? body.memory.slice() : [];
+  if (userText && !isTrivial(userText, attachments)) {
+    try {
+      const rec = await semanticMemory.recall(userText, 6);
+      if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
+        const hits = rec.results.map((x) => x && x.note).filter(Boolean);
+        memList = Array.from(new Set(hits.concat(memList))); // relevant recalls first, de-duped
+      }
+    } catch (e) { /* fall back to client-sent memory */ }
+  }
+  const ctx = contextBlock(body.context, memList);
 
   // The router is text-only; give it a hint when a message is just an attachment.
   const routeText = userText || "[user attached " + attachments.length + " " +
