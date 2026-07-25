@@ -38,6 +38,12 @@ _Last updated: 2026-07-25._
 - Competitor scan done (~34 tools); Klyfton's edge = vertical contractor fit + owner's voice + self-hosted (no per-seat bill).
 - **Klyfton's brain stays CLAUDE-LOCKED (Clifton's call 2026-07-25)** — Haiku router + Sonnet workers/critic (Opus optional). One tuned voice > swappable. Other models only for UTILITY: OpenAI embeddings (semantic memory) + OpenAI/ElevenLabs TTS. Do NOT make the brain model-agnostic. (MOGS, the separate ERP, IS multi-provider via AIProvider.gs — that's fine, different system.)
 
+## 3b. TWO WEBSITES — critical, don't trip over this (confirmed 2026-07-25 via Vercel)
+- **Clifton owns/controls BOTH domains.** (a) **`machinegunsprayfoam.net`** (apex + www) is attached to his Vercel `mgsf-marketing` project = the `mgsf-marketing` repo (the 20 AI-built pages). Latest deploy showed `live:false`/not-promoted — may not be serving as production. (b) **`machinegunsprayfoam.info`** is a **ProFoam-built site** (their platform; polished; 403s all bot fetches — can't read/edit it). Business entity: "Machine Gun Spray Foam and Concrete Lifting Insulation Contractors, LLC," Glendive MT.
+- **Decision (2026-07-25): KEEP BOTH for now.** Clifton earlier leaned `.info` as keeper, then chose keep-both. Do NOT retire/redirect either without his explicit go. When he decides, staging a `vercel.json` redirect (all paths → the keeper's homepage; URL structures differ so don't path-preserve) is the consolidation move.
+- **PHONE DISCREPANCY (money item, owner-gated):** the repo/.net site uses **406-939-8301** (Clifton confirmed CORRECT, ×145). A public listing for the ProFoam `.info` site shows **406-941-2428** — either wrong or a ProFoam call-tracking/forwarding number. Owner to verify on the live `.info` site + Google Business Profile; we can't edit ProFoam. Do NOT "fix" the .net number — it's the right one.
+- **GoDaddy connector = availability/suggest only** (can't list owned domains; quota-limited). Use **Vercel MCP** to inspect real deployed domains. Two competing sites split Google ranking (Clifton aware).
+
 ## 4. Standing constraints (hard rules — always)
 - Never fabricate numbers/prices/specs; label ESTIMATED; doctrine (`mgsf-core`) wins.
 - Never guarantee savings; never claim mold elimination; no implied engineering w/o a licensed PE.
