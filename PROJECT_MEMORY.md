@@ -44,6 +44,7 @@ _Last updated: 2026-07-25._
 - **Owner-gated (do NOT do unilaterally):** merge branch→main; confirm Terra-Lok/soil pricing; fix `g.pe`→`g.page`; submit sitemap to Search Console; enter real fleet #s in `equipment_database.csv`; wire `ALERTS_WEBHOOK_URL` to bring the arms live.
 - **Bigger builds awaiting Clifton's go:** Command Center **UI (Phase 2)** in index.html; **octopus** = multi-arm parallel executor (upgrade act.js) — Clifton wanted an InfraNodus gap-check first; **predictive lead scoring**; v2 plan **Phase A**.
 - **InfraNodus scan queue** (`/home/user/REPO_SCAN_PROGRESS.md`): SKILLS→MODULES→EXPERTS→DRIVE→setup-assistant→html-parsing. Only MGSF done. Corpora staged. **Only runs interactively** (connector absent in cron; ~1 call/15min rate limit).
+- **Clifton's Command-Center↔Klyfton pipeline (4 steps, staged, awaiting InfraNodus):** (1) scan `/home/user/CC_CORPUS.md` (Command Center); (2) scan `/home/user/KLYFTON_CORPUS.md` (whole brain); (3) FIX discrepancies in both — safe code/doc fixes directly, FLAG owner-gated ones, never fabricate; (4) CROSS-COMPARE the two for mutual upgrades. Both corpora staged; pipeline steps written at the bottom of KLYFTON_CORPUS.md. Runs when InfraNodus reconnects (flapping all session; ~1 call/15min).
 
 ## 6. Environment gotchas (save yourself the rediscovery)
 - **Cron/scheduled fires carry NO MCP connectors** (InfraNodus/Drive/Vercel/GitHub-MCP). Local tools only. Connectors work only in Clifton's **interactive** sessions.
