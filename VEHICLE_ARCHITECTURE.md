@@ -17,6 +17,7 @@ is how power gets from those movers to the road (real work) safely.
 | **Driveshaft** | The event **spine** / bus (`events` table) | Carries power from the engine down the drivetrain |
 | **Transmission** | The **gearbox** — engage any combination of gears | Selects which gears take the drive (any/all combos) |
 | **Clutch** | The **arms' approval gate** (`act.js`) | Engages power to *outward* action only when you press it (your approval) — lets the engine run without the wheels moving |
+| **★ Automatic Transfer Switch** | `api/ats.js` — fuel ⟷ battery | When the monthly fuel (token budget) runs LOW (≥ `ATS_TRANSFER_PCT`, default 80%), auto-transfers the load from FUEL (full hive, best models) to BATTERY (single cheapest mind + memory recall) — the graceful step before the hard cap. Like a generator/solar ATS flipping to battery when the primary drops. |
 | **Differential** | The Queen **router** | Splits the drive to many gears at different rates (fan-out / gear ratio) |
 | **Wheels / tires** | Outward actions — jobs booked, emails/texts sent, invoices | Where the rubber meets the road (real work on the ground) |
 

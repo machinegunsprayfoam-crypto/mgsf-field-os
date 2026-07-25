@@ -13,6 +13,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // each message. Gated + graceful: if pgvector memory isn't configured, recall() returns instantly
 // with no network call, so this adds zero cost until it's turned on. See api/memory.js.
 const semanticMemory = require("./memory");
+const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
 
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
 // Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
@@ -1304,7 +1305,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 }
 
 // Run one specialist mind on the question.
-async function runMind(key, mindKey, userText, history, ctx, attachments, meter) {
+async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
   const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${COMPETITIVE_EDGE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
@@ -1312,7 +1313,7 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter)
     .map((m) => ({ role: m.role, content: String(m.content) }));
   messages.push({ role: "user", content: buildUserContent(userText, attachments) });
   const data = await callClaude(key, {
-    model: WORKER_MODEL,
+    model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
     // and fast (the synth writes the full final answer). Big worker budgets + adaptive
     // thinking were pushing complex, multi-mind asks past the 60s function limit and
@@ -1324,7 +1325,7 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter)
     tools: [WEB_TOOL],
     messages,
   }, meter);
-  return { mind: spec.name, text: textFrom(data.content), model: data.model || WORKER_MODEL };
+  return { mind: spec.name, text: textFrom(data.content), model: data.model || modelOverride || WORKER_MODEL };
 }
 
 // Self-healing worker (adopted from the field's auto-retry/self-healing pattern, e.g. Beam): a
@@ -1332,13 +1333,13 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter)
 // Capped at a single extra call so we never blow the function's 60s time / cost budget. The
 // synthesizer+critic still catches fabrication and doctrine-gate failures downstream; this layer
 // only recovers flaky/empty runs so one hiccup doesn't silently drop a mind from the hive.
-async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter) {
+async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
   try {
-    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter);
+    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride);
     if (first && first.text && first.text.trim()) return first;
   } catch (e) { /* fall through to one retry */ }
   try {
-    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter);
+    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride);
     return (retry && retry.text && retry.text.trim()) ? retry : null;
   } catch (e) { return null; }
 }
@@ -1443,11 +1444,13 @@ module.exports = async (req, res) => {
   // Lightweight status read — current month's AI spend vs the cap. No AI work, no key needed.
   if (req.method === "GET") {
     const spent = KV_ON ? await kvSpentThisMonth() : 0;
+    const sw = ats.decide({ spent: spent, budget: MONTHLY_BUDGET_USD });
     res.status(200).json({
       tracking: KV_ON,
       budget: MONTHLY_BUDGET_USD,
       spent: Math.round(spent * 100) / 100,
       capped: KV_ON && MONTHLY_BUDGET_USD > 0 && spent >= MONTHLY_BUDGET_USD,
+      power: sw.source, ats: { source: sw.source, level: sw.level, pctUsed: Math.round(sw.pctUsed * 100) / 100, remaining: sw.remaining, transferPct: sw.transferPct, reason: sw.reason },
       month: costKey().split(":").pop(),
     });
     return;
@@ -1539,6 +1542,9 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   // Monthly cost cap (opt-in): needs KV attached AND KLYFTON_MONTHLY_BUDGET_USD set.
   // Over budget → refuse new AI work with a friendly note. The estimator, JSA drafts,
   // and time clock never touch this endpoint, so they keep working.
+  // Automatic Transfer Switch state — decided once, applied to whichever plan runs below.
+  // Defaults to full FUEL (no downshift) so behavior is unchanged unless a budget is set and low.
+  let atsState = { source: "fuel", downshift: null };
   if (KV_ON && MONTHLY_BUDGET_USD > 0) {
     const spent = await kvSpentThisMonth();
     if (spent >= MONTHLY_BUDGET_USD) {
@@ -1548,7 +1554,10 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       else res.status(200).json({ configured: true, capped: true, text: msg });
       return;
     }
+    atsState = ats.decide({ spent: spent, budget: MONTHLY_BUDGET_USD });
   }
+  // On battery, the whole run uses the cheapest worker model (undefined on fuel = normal model).
+  const atsModel = (atsState.downshift && atsState.downshift.model) || undefined;
 
   // Agent-run telemetry accumulator: filled in at each terminal point below, then written
   // once in the finally. Defaults to 'error' so an exception path is logged as a failure.
@@ -1562,23 +1571,24 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   if (wantStream) {
     sseInit(res);
     try {
-      const plan = isTrivial(userText, attachments)
+      let plan = isTrivial(userText, attachments)
         ? { minds: ["general"], complexity: "simple" }
         : await route(key, routeText, history, meter);
+      plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
-        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter);
+        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
         run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
-        sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model });
+        sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model, power: atsState.source });
         res.end();
         return;
       }
 
       // Complex job → run the swarm (non-streamed), then stream the synthesizer.
       const workers = await Promise.all(
-        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter))
+        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel))
       );
       const answers = workers.filter((w) => w && w.text);
       if (!answers.length) {
@@ -1630,13 +1640,14 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   // ---- Non-streaming path (JSON) — used by GROW tools and as the fallback ----
   try {
     // 1) Queen recruits the minds (skipped for trivial greetings/acks).
-    const plan = isTrivial(userText, attachments)
+    let plan = isTrivial(userText, attachments)
       ? { minds: ["general"], complexity: "simple" }
       : await route(key, routeText, history, meter);
+    plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter);
+      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
       res.status(200).json({
@@ -1646,13 +1657,14 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
         mode: "single",
         minds: [only.mind],
         model: only.model,
+        power: atsState.source,
       });
       return;
     }
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter))
+      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {

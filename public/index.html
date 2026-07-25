@@ -1125,6 +1125,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <div style="opacity:.65;font-size:12px;margin-bottom:10px">Real agent activity — last 7 days, from logged runs (never fabricated). <span id="ccNote"></span></div>
         <div class="metrics-row" id="ccKpis"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Powertrain · 7 days</h3>
+        <div id="ccPower" style="margin-bottom:12px"></div>
         <div id="ccGauges" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px"></div>
         <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">Odometer = reciprocity: <b style="color:#22c55e">▲ forward</b> when you drive a gear (leverage) · <b style="color:#ef4444">▼ reverse</b> when the machine asks your approval (attention). Net = is it a net force-multiplier. <b>Fuel</b> (tokens/$) is a separate gauge — it never nets out.</div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Battery · long-term memory</h3>
@@ -12433,6 +12434,7 @@ window.renderCommand = async function(){
       }).join('<br>') : '<span style="opacity:.6">No gears have turned yet — a job event (estimate closed, job completed) turns the drivetrain and lands here.</span>');
     renderGauges(d.odometer||{}, d.battery||{});
     renderBattery(d.battery||{});
+    renderPower(d.power||{});
     set('ccNote', d.configured ? '' : e(d.note||'Telemetry not configured yet — showing the agent roster only.'));
   }catch(err){
     set('ccKpis','<div class="metric-card"><div class="metric-val">—</div><div class="metric-lbl">offline</div></div>');
@@ -12493,6 +12495,32 @@ window.renderGauges = function(od, batt){
     zones:[[Math.PI, Math.PI*1.5, 'rgba(34,197,94,.35)'],[Math.PI*1.5, Math.PI*2, 'rgba(245,158,11,.5)']],
     big:'$'+fuel.toFixed(2), label:'FUEL · 7-day burn', sub:'tokens — never nets out' });
 
+};
+
+// AUTOMATIC TRANSFER SWITCH indicator — shows whether the machine is running on FUEL (fresh
+// inference) or has transferred to BATTERY (memory + cheapest single mind) because fuel ran low.
+window.renderPower = function(pw){
+  var host=document.getElementById('ccPower'); if(!host) return;
+  var onBatt = (pw.source==='battery');
+  var pct = Math.round((+(pw.pctUsed||0))*100);
+  var xfer = Math.round((+(pw.transferPct||0.8))*100);
+  var col = onBatt ? '#f59e0b' : '#22c55e';
+  var icon = onBatt ? '🔋' : '⛽';
+  var title = onBatt ? 'ON BATTERY' : 'ON FUEL';
+  var budget = (+(pw.budget||0));
+  var right = budget>0 ? ('$'+(+(pw.spent||0)).toFixed(2)+' / $'+budget.toFixed(0)+' this month · '+pct+'% used · transfer at '+xfer+'%')
+                       : 'no monthly budget set — always on fuel (set KLYFTON_MONTHLY_BUDGET_USD to arm the switch)';
+  // a two-position switch: FUEL | BATTERY, with the active side lit
+  var seg = function(on,label,c){ return '<span style="padding:3px 10px;border-radius:6px;font-weight:800;font-size:11px;letter-spacing:.04em;'
+    +(on?('background:'+c+';color:#0a0d12'):'background:rgba(255,255,255,.05);color:#8a929c')+'">'+label+'</span>'; };
+  host.innerHTML =
+    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,.03);border:1px solid '+(onBatt?'rgba(245,158,11,.4)':'rgba(34,197,94,.28)')+';border-radius:10px;padding:10px 14px">'
+    + '<span style="font-size:20px">'+icon+'</span>'
+    + '<span style="font-weight:900;color:'+col+';letter-spacing:.05em">'+title+'</span>'
+    + '<span style="display:inline-flex;gap:4px">'+seg(!onBatt,'⛽ FUEL',' #22c55e')+seg(onBatt,'🔋 BATTERY','#f59e0b')+'</span>'
+    + '<span style="opacity:.7;font-size:12px;margin-left:auto">'+right+'</span>'
+    + '</div>'
+    + (onBatt ? '<div style="opacity:.7;font-size:11px;margin-top:5px;color:#f59e0b">Transferred to battery — running on a single mind + cheapest model + memory to protect the budget. Resets on the 1st.</div>' : '');
 };
 
 // The BATTERY PACK — a very-large-capacity EV-style pack (persistent memory). Wide segmented
