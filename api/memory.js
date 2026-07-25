@@ -69,6 +69,17 @@ async function remember(note) {
   } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
 }
 
+// Battery state-of-charge: how many facts the battery holds. Cheap HEAD count via PostgREST.
+async function charge() {
+  if (!SB_ON) return { ok: true, configured: false, count: 0 };
+  try {
+    const r = await sbFetch("/rest/v1/memory?select=id", { method: "HEAD", headers: { Prefer: "count=exact", Range: "0-0" } });
+    const cr = r.headers.get("content-range") || "";      // "0-0/123" or "*/123"
+    const total = parseInt((cr.split("/")[1] || "0"), 10) || 0;
+    return { ok: true, configured: true, count: total };
+  } catch (e) { return { ok: false, configured: true, count: 0, error: String(e).slice(0, 120) }; }
+}
+
 // Retrieve the top-K notes most relevant to a query.
 async function recall(query, k) {
   const q = clean(query);
@@ -108,5 +119,6 @@ module.exports = async (req, res) => {
 
 module.exports.remember = remember;
 module.exports.recall = recall;
+module.exports.charge = charge;
 module.exports.embed = embed;
 module.exports._vecLiteral = vecLiteral;

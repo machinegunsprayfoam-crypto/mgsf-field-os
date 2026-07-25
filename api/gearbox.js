@@ -8,7 +8,8 @@
 // POST { action:"turn", event:{ name, key, payload, source } }  -> emit + dispatch, returns the trace
 // GET                                                            -> config + registered meshes
 const crypto = require("crypto");
-const arms = require("./act"); // outward teeth go through the approval gate
+const arms = require("./act");     // outward teeth go through the approval gate
+const battery = require("./memory"); // the alternator charges this (regen on the reverse stroke)
 
 function _kvEnv(suffixRe, excludeRe) {
   for (const k of Object.keys(process.env)) { if (excludeRe && excludeRe.test(k)) continue; if (suffixRe.test(k) && process.env[k]) return process.env[k]; }
@@ -147,8 +148,16 @@ async function turn(name, key, payload, source, approved) {
   const blocked = ctx.trace.some(function (n) { return n.results && n.results.some(function (r) { return r.blocked; }); });
   let fwd = 0, rev = 0;
   ctx.trace.forEach(function (n) { if (n.miles > 0) fwd += n.miles; else if (n.miles < 0) rev += -n.miles; });
+  // ALTERNATOR (hybrid regen): an approved owner-gear turn IS Clifton's decision. Capture it to the
+  // battery (memory) so the reverse stroke recharges the system instead of wasting the energy. This
+  // is the only place the drivetrain charges the battery. Best-effort, gated, reversible/internal —
+  // never blocks the turn, never fabricates. Zero-op when memory is unconfigured.
+  let charged = false;
+  if (approved === true && fwd > 0) {
+    try { const c = await battery.remember("Owner approved gear '" + e.name + "'" + (e.key ? " [" + e.key + "]" : "") + " (" + e.at.slice(0, 10) + ")"); charged = !!(c && c.stored); } catch (x) {}
+  }
   return { ok: true, configured: SB_ON, turned: e.name, drive: approved === true ? "owner" : "ai", blocked: blocked,
-    miles: { forward: fwd, reverse: rev, net: ctx.miles }, trace: ctx.trace, persisted: SB_ON };
+    miles: { forward: fwd, reverse: rev, net: ctx.miles }, charged: charged, trace: ctx.trace, persisted: SB_ON };
 }
 
 module.exports = async (req, res) => {

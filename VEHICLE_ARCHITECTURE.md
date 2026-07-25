@@ -25,7 +25,7 @@ is how power gets from those movers to the road (real work) safely.
 |---|---|
 | **Ignition / key** | Auth — crew code / API key (turns it on) |
 | **Battery** | Persistent memory — `PROJECT_MEMORY.md` + pgvector memory (holds charge across sessions, starts the engine) |
-| **Alternator** | Feedback loops that recharge — realized margin → Estimator; reviews → Marketing; run cost → budget |
+| **Alternator (regen)** | **HYBRID regenerative braking (BUILT 2026-07-25):** the reverse stroke recharges instead of wasting energy — an approved owner-gear turn IS Clifton's decision, captured to the battery (memory) by `gearbox.turn()` → `memory.remember()`. Best-effort, gated, reversible. Also the slower feedback loops: realized margin → Estimator; reviews → Marketing; run cost → budget. |
 | **ECU (engine computer)** | `mgsf-core` doctrine + the critic — governs limits, kills fabrication |
 | **Brakes** | Hard gates / kill switches — no Sunday, no auto-send, monthly budget cap |
 | **Seatbelts / airbags** | Guardrails — never fabricate, never guarantee savings, never claim mold elimination |
@@ -58,6 +58,14 @@ Both feed the same gearbox; a gear-turn is either **engine-driven** (an event) o
 - Still missing crew: a **Mechanic** (health/repair agent) and an **Engineer** (build/improve agent) —
   the car has suspension (`runMindResilient`) + an ECU/critic, but nobody in the pit. Deferred by
   Clifton 2026-07-25 in favor of the axle.
+
+## The hybrid (Clifton, 2026-07-25)
+It's a **hybrid** — an engine (tokens/fuel) *and* an electric side (the battery = memory) with an
+**alternator that recharges on the reverse stroke**. When the machine reaches into Clifton for a
+decision (a REVERSE odometer mile), that isn't waste heat off the brakes — his approval is captured to
+memory (regen), so attention spent comes back as stored charge. Two power sources, and the braking
+energy is recovered. **Gauges live** in the Command Center Powertrain cluster: the odometer (net-miles
+needle, red↔green), the fuel gauge (7-day token $), and the battery (memory state-of-charge).
 
 ## Refinements (Clifton, 2026-07-25)
 - **Engine powers the Queen** — the Queen is *driven*, not the prime mover. The engine (hive) sends

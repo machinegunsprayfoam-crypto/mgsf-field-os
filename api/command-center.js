@@ -13,6 +13,7 @@ function _kvEnv(suffixRe, excludeRe) {
 const SB_URL = _kvEnv(/SUPABASE_URL$/i);
 const SB_KEY = _kvEnv(/SUPABASE_SERVICE_ROLE_KEY$/i) || _kvEnv(/SERVICE_ROLE_KEY$/i) || _kvEnv(/SUPABASE_SECRET/i);
 const SB_ON = !!(SB_URL && SB_KEY);
+const memory = require("./memory"); // battery state-of-charge
 
 // The real minds the Queen recruits (from klyfton.js SPECIALISTS) — so the grid shows what actually
 // exists. Live per-agent stats get merged in from the leaderboard view. No invented agents.
@@ -42,20 +43,22 @@ module.exports = async (req, res) => {
   const stamp = new Date().toISOString();
   if (!SB_ON) {
     res.status(200).json({ ok: true, configured: false, kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER, drivetrain: [],
-      odometer: { forward_miles: 0, reverse_miles: 0, net_miles: 0, fuel_usd: 0 },
+      odometer: { forward_miles: 0, reverse_miles: 0, net_miles: 0, fuel_usd: 0 }, battery: { charge: 0 },
       note: "Command Center is read-only and needs Supabase (run db/schema.sql + set SUPABASE_URL + service-role key). Showing roster only until then.", generatedAt: stamp });
     return;
   }
   try {
-    const [kpiRows, board, drivetrain, odoRows] = await Promise.all([
+    const [kpiRows, board, drivetrain, odoRows, batt] = await Promise.all([
       sbGet("v_agent_kpis_7d?select=*").catch(() => []),
       sbGet("v_agent_leaderboard?select=*").catch(() => []),
       sbGet("v_gearbox_recent?select=*&limit=12").catch(() => []), // recent gear-turns (drivetrain)
       sbGet("v_odometer?select=*").catch(() => []),               // the odometer (miles + fuel)
+      memory.charge().catch(() => ({ count: 0 })),                // battery state-of-charge (memory)
     ]);
     const kpis = (Array.isArray(kpiRows) && kpiRows[0]) ? kpiRows[0] : EMPTY_KPIS;
     const leaderboard = Array.isArray(board) ? board : [];
     const odometer = (Array.isArray(odoRows) && odoRows[0]) ? odoRows[0] : { forward_miles: 0, reverse_miles: 0, net_miles: 0, fuel_usd: 0 };
+    const battery = { charge: (batt && typeof batt.count === "number") ? batt.count : 0 };
     // Merge live stats onto the roster so every agent card shows its run count + success %.
     const byAgent = {};
     for (const row of leaderboard) if (row && row.agent) byAgent[String(row.agent)] = row;
@@ -63,7 +66,7 @@ module.exports = async (req, res) => {
       const s = byAgent[a.key] || byAgent[a.label];
       return { ...a, runs: s ? s.runs : 0, successPct: s ? s.success_pct : null };
     });
-    res.status(200).json({ ok: true, configured: true, kpis, leaderboard, roster, drivetrain: Array.isArray(drivetrain) ? drivetrain : [], odometer, generatedAt: stamp });
+    res.status(200).json({ ok: true, configured: true, kpis, leaderboard, roster, drivetrain: Array.isArray(drivetrain) ? drivetrain : [], odometer, battery, generatedAt: stamp });
   } catch (e) {
     res.status(200).json({ ok: false, configured: true, error: String(e.message || e).slice(0, 140),
       kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER, generatedAt: stamp });

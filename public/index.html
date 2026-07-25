@@ -1124,6 +1124,9 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <h2 style="font-size:16px;color:var(--or);margin-bottom:4px">OPERATIONS COMMAND CENTER</h2>
         <div style="opacity:.65;font-size:12px;margin-bottom:10px">Real agent activity — last 7 days, from logged runs (never fabricated). <span id="ccNote"></span></div>
         <div class="metrics-row" id="ccKpis"></div>
+        <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Powertrain · 7 days</h3>
+        <div id="ccGauges" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px"></div>
+        <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">Odometer = reciprocity: <b style="color:#22c55e">▲ forward</b> when you drive a gear (leverage) · <b style="color:#ef4444">▼ reverse</b> when the machine asks your approval (attention). Net = is it a net force-multiplier. <b>Fuel</b> (tokens/$) is a separate gauge — it never nets out. <b>Battery</b> = memory; your approvals recharge it (regen).</div>
         <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Agents</h3>
         <div id="ccGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Top Agents · 30 days</h3>
@@ -12425,11 +12428,73 @@ window.renderCommand = async function(){
           + (v.source?' <span style="opacity:.55">← '+e(v.source)+'</span>':'')
           + ' <span style="color:'+stcol(v.status)+'">'+e(v.status||'')+'</span>';
       }).join('<br>') : '<span style="opacity:.6">No gears have turned yet — a job event (estimate closed, job completed) turns the drivetrain and lands here.</span>');
+    renderGauges(d.odometer||{}, d.battery||{});
     set('ccNote', d.configured ? '' : e(d.note||'Telemetry not configured yet — showing the agent roster only.'));
   }catch(err){
     set('ccKpis','<div class="metric-card"><div class="metric-val">—</div><div class="metric-lbl">offline</div></div>');
     set('ccNote','Command Center endpoint unavailable.');
   }
+};
+
+// Powertrain gauge cluster — the odometer (needle swings red on reverse, green on forward),
+// the fuel gauge (7-day token $ — a separate gauge, never nets out), and the battery (memory
+// charge; your approvals recharge it via regen). Canvas 2D, theme-aware, no libraries.
+window.renderGauges = function(od, batt){
+  var host = document.getElementById('ccGauges'); if(!host) return;
+  var fwd = +(od.forward_miles||0), rev = +(od.reverse_miles||0), net = +(od.net_miles||0);
+  var fuel = +(od.fuel_usd||0), charge = +(batt.charge||0);
+  var css = getComputedStyle(document.documentElement);
+  var ink = (css.getPropertyValue('--tx')||'#e8eaed').trim() || '#e8eaed';
+  var or  = (css.getPropertyValue('--or')||'#f97316').trim() || '#f97316';
+  var GRN='#22c55e', RED='#ef4444', AMB='#f59e0b', DIM='rgba(140,150,165,.35)';
+  var card = function(inner){ return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(249,115,22,.18);border-radius:10px;padding:14px 12px 12px;display:flex;flex-direction:column;align-items:center;gap:6px">'+inner+'</div>'; };
+  host.innerHTML =
+      card('<canvas id="gaOdo" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>')
+    + card('<canvas id="gaFuel" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>')
+    + card('<canvas id="gaBatt" width="320" height="190" style="width:100%;max-width:210px;height:auto"></canvas>');
+
+  // helper: half-dial (180°) with a colored needle + big center readout + label
+  function dial(id, opts){
+    var cv=document.getElementById(id); if(!cv) return; var g=cv.getContext('2d');
+    var W=cv.width, H=cv.height, cx=W/2, cy=H*0.82, R=W*0.40;
+    g.clearRect(0,0,W,H); g.lineCap='round';
+    // track split into left/right zones
+    var zones = opts.zones || [[Math.PI, Math.PI*1.5, DIM],[Math.PI*1.5, Math.PI*2, DIM]];
+    for(var z=0; z<zones.length; z++){ g.beginPath(); g.arc(cx,cy,R,zones[z][0],zones[z][1]); g.strokeStyle=zones[z][2]; g.lineWidth=W*0.055; g.stroke(); }
+    // needle
+    var frac = Math.max(0,Math.min(1, opts.frac)); var ang = Math.PI + frac*Math.PI;
+    g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+Math.cos(ang)*R*0.92, cy+Math.sin(ang)*R*0.92);
+    g.strokeStyle=opts.needle; g.lineWidth=W*0.022; g.stroke();
+    g.beginPath(); g.arc(cx,cy,W*0.03,0,Math.PI*2); g.fillStyle=opts.needle; g.fill();
+    // readouts
+    g.textAlign='center'; g.fillStyle=ink;
+    g.font='800 '+Math.round(W*0.135)+'px ui-monospace,Menlo,Consolas,monospace';
+    g.fillText(opts.big, cx, cy-R*0.30);
+    g.font='700 '+Math.round(W*0.052)+'px system-ui,sans-serif'; g.fillStyle=or;
+    g.fillText(opts.label, cx, cy+H*0.10);
+    if(opts.sub){ g.font='600 '+Math.round(W*0.044)+'px system-ui,sans-serif'; g.fillStyle='rgba(160,168,180,.9)'; g.fillText(opts.sub, cx, cy+H*0.155); }
+  }
+
+  // ODOMETER — needle maps net across [-span, +span]; left red (reverse), right green (forward).
+  var span = Math.max(1, fwd+rev, Math.abs(net));
+  var odFrac = 0.5 + (net/(2*span)); // 0=full reverse(left), 1=full forward(right)
+  var odCol = net>0?GRN:(net<0?RED:DIM);
+  dial('gaOdo', { frac:odFrac, needle:odCol,
+    zones:[[Math.PI, Math.PI*1.5, 'rgba(239,68,68,.5)'],[Math.PI*1.5, Math.PI*2, 'rgba(34,197,94,.5)']],
+    big:(net>0?'+':'')+net, label:'ODOMETER · net mi',
+    sub:'▲'+fwd+'  ▼'+rev });
+
+  // FUEL — 7-day token burn ($). Separate gauge; scaled to a soft rolling reference just for the arc.
+  var fuelRef = Math.max(0.01, fuel);              // arc is illustrative; the $ is the truth
+  dial('gaFuel', { frac: Math.min(1, fuel/(fuelRef*1.25)+ (fuel>0?0.15:0)), needle:AMB,
+    zones:[[Math.PI, Math.PI*1.5, 'rgba(34,197,94,.35)'],[Math.PI*1.5, Math.PI*2, 'rgba(245,158,11,.5)']],
+    big:'$'+fuel.toFixed(2), label:'FUEL · 7-day burn', sub:'tokens — never nets out' });
+
+  // BATTERY — state of charge = facts stored; fill toward a soft 100 reference (glyph-like).
+  var socFrac = Math.min(1, charge/100);
+  dial('gaBatt', { frac: socFrac, needle:GRN,
+    zones:[[Math.PI, Math.PI+socFrac*Math.PI, GRN],[Math.PI+socFrac*Math.PI, Math.PI*2, DIM]],
+    big:String(charge), label:'BATTERY · memory', sub:'approvals recharge it' });
 };
 </script>
 
