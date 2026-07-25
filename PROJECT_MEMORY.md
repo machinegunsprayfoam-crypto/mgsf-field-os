@@ -16,6 +16,7 @@ _Last updated: 2026-07-25._
 ## 2. Current build state
 **Klyfton backend (field-os) — shipped to branch, not merged:**
 - `agent_runs` telemetry table + KPI views (Command Center **Phase 1**). Owner step to activate: re-run `db/schema.sql` in Supabase + confirm `SUPABASE_URL`/service-role key in Vercel.
+- Command Center **Phase 2 UI** ✅ — `api/command-center.js` (read endpoint) + `public/index.html` OPS nav → `mod-command` panel (KPI tiles + agent grid + leaderboard, `renderCommand()`). Real data once telemetry is on; honest roster-only state until then.
 - Brain blocks added: STEM, HVAC, accounting/finance, MASTERY, GAP_BRIDGES, PROCUREMENT, EQUIPMENT, **COMPETITIVE_EDGE** (all wired into BOTH prompt builders; `node -c` clean).
 - 4 capabilities: `api/missed-call.js`, `api/estimate-followup.js`, `api/photo-estimate.js`, self-healing `runMindResilient` in klyfton.js.
 - **`api/act.js` = the "arms"** — gated outward executor (email/sms/appointment/crm/invoice/order). Requires `approved:true`; dispatches via `ALERTS_WEBHOOK_URL`; **inert until that env is set**.

@@ -26,10 +26,15 @@ real source.
 
 Until then Klyfton behaves exactly as before; telemetry is purely additive.
 
-## Phase 2 — Command Center UI (next)
-A view in `public/index.html`: agent grid + a 4-tile KPI strip + top-agents leaderboard,
-reading `v_agent_kpis_7d` and `v_agent_leaderboard` through `/api/sync` (or a small read
-endpoint). Matches the look; the numbers are real (small at first — that's honest).
+## Phase 2 — Command Center UI ✅ BUILT
+- **`api/command-center.js`** — read endpoint: 7-day KPI tiles + top-agents leaderboard (from the
+  `v_agent_kpis_7d` / `v_agent_leaderboard` views) + the real 8-mind roster with live per-agent
+  stats merged in. Read-only, gated on Supabase, honest empty state (no fabricated numbers).
+- **`public/index.html`** — new **OPS** nav item → `mod-command` panel: 4 KPI tiles + agent grid +
+  30-day leaderboard + refresh, in the app's theme. `renderCommand()` fetches the endpoint; shows a
+  roster-only state until telemetry is turned on. Additive/isolated — no other module touched.
+- **Activation:** run `db/schema.sql` in Supabase + set `SUPABASE_URL` + service-role key; then the
+  tiles fill from real logged runs.
 
 ## Phase 3 — Roster
 Grow the agent roster with agents that do real MGSF work (e.g. the Latent Node / knowledge-
