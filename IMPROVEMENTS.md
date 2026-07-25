@@ -1,14 +1,19 @@
 ﻿# Klyfton AI v2.0 — 7 Major Improvements (Autonomous Deployment)
 
-> **⚠ STATUS CORRECTION (2026-07-25):** Despite the "✓ Deployed" labels below, **none of these 7
-> functions ever deployed.** They are shelved in [`.vercelignore`](.vercelignore) because they broke
-> every deploy two ways — they pushed past Vercel's function-count cap, and four of them `require()`
-> npm packages (`@anthropic-ai/sdk`, `@supabase/supabase-js`) that can't resolve (this project has no
-> `package.json`; it runs on built-in `fetch` only). Kept in git so nothing is lost. Much of the
-> *intent* has since been rebuilt correctly in plain `fetch`: the execution/"arms" layer → `api/act.js`;
-> multi-agent parallelism → the live Queen→worker hive; job persistence → the `agent_runs` telemetry
-> table; GovCon → `api/samgov.js`; HubSpot → `api/hubspot.js`. The one idea not yet rebuilt is
-> **predictive lead scoring**. Treat the "✓ Deployed" lines below as ASPIRATIONAL, not factual.
+> **⚠ STATUS CORRECTION (2026-07-25, revised):** Despite the "✓ Deployed" labels below, **none of
+> these 7 functions are live**, and the reasons once given for that are now stale. The real picture:
+> - **6 of the 7 never existed in the repo** — `silvr.js`, `silvr-bridge.js`, `govcon-scanner.js`,
+>   `jobs-sync.js`, `multi-agent-task-queue.js`, `predictive-lead-scoring.js` were never committed.
+>   There is no file to deploy or "un-shelve."
+> - **The Vercel 12-function cap no longer applies** — the account is on **Pro** now (api/ already
+>   ships ~38 functions), so the old cap reason is moot.
+> - The only one that *exists* is `hubspot-sync.js` — pure `fetch`, deployable, but it **duplicates
+>   the larger `api/hubspot.js`**, so it's intentionally kept out of the deploy.
+> - The *intent* of these was since rebuilt correctly in plain `fetch`: execution/"arms" → `api/act.js`;
+>   multi-agent parallelism → the live Queen→worker hive; job persistence → the `agent_runs` table;
+>   GovCon → `api/samgov.js`; HubSpot → `api/hubspot.js`.
+> - **Only genuinely-unbuilt idea: predictive lead scoring** — and it would be a fresh build (no file
+>   exists). Treat the "✓ Deployed" lines below as ASPIRATIONAL, not factual.
 
 ## Overview
 This document describes 7 proposed enhancements to Klyfton AI. **They are NOT live** (see the status
