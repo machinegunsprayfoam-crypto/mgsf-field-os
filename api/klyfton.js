@@ -1322,6 +1322,22 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter)
   return { mind: spec.name, text: textFrom(data.content), model: data.model || WORKER_MODEL };
 }
 
+// Self-healing worker (adopted from the field's auto-retry/self-healing pattern, e.g. Beam): a
+// transient failure — a thrown error or an EMPTY answer — gets ONE bounded retry before we give up.
+// Capped at a single extra call so we never blow the function's 60s time / cost budget. The
+// synthesizer+critic still catches fabrication and doctrine-gate failures downstream; this layer
+// only recovers flaky/empty runs so one hiccup doesn't silently drop a mind from the hive.
+async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter) {
+  try {
+    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter);
+    if (first && first.text && first.text.trim()) return first;
+  } catch (e) { /* fall through to one retry */ }
+  try {
+    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter);
+    return (retry && retry.text && retry.text.trim()) ? retry : null;
+  } catch (e) { return null; }
+}
+
 // Short greetings / acks don't need the Queen — skip the router round-trip and
 // answer straight from the general mind. Saves a Haiku call + latency on most turns.
 function isTrivial(text, attachments) {
@@ -1534,7 +1550,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
-        const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, meter);
+        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
         run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model });
@@ -1544,7 +1560,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
       // Complex job → run the swarm (non-streamed), then stream the synthesizer.
       const workers = await Promise.all(
-        plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments, meter).catch(() => null))
+        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter))
       );
       const answers = workers.filter((w) => w && w.text);
       if (!answers.length) {
@@ -1602,7 +1618,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMind(key, plan.minds[0], userText, history, ctx, attachments, meter);
+      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
       res.status(200).json({
@@ -1618,7 +1634,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMind(key, m, userText, history, ctx, attachments, meter).catch(() => null))
+      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
