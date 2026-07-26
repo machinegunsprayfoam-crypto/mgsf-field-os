@@ -126,6 +126,13 @@ body.lay-phone .grid-2,body.lay-phone .grid-3{grid-template-columns:1fr}
 body.lay-phone #sidebar{width:60px;min-width:60px;max-width:60px;padding:10px 4px 96px;gap:6px 4px}
 body.lay-phone #navResize{display:none}
 body.lay-tablet #sidebar{width:92px;min-width:92px;max-width:92px}
+/* phone: icon-only top bar so all buttons (incl. the device selector) fit */
+body.lay-phone .tbl{display:none}
+body.lay-phone .logo-badge,body.lay-phone .status-label{display:none}
+body.lay-phone #topbar{gap:4px;padding:0 6px;overflow-x:auto;overflow-y:hidden}
+body.lay-phone .top-btn{padding:6px 7px;font-size:14px}
+body.lay-phone #layoutSeg button{padding:6px 8px;font-size:14px}
+body.lay-phone .logo-text{font-size:15px}
 body.lay-phone #chatPanel:not(.collapsed){position:fixed;top:52px;right:0;bottom:0;width:min(92vw,360px);z-index:60;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
 /* TABLET — medium */
 body.lay-tablet .metrics-row{grid-template-columns:repeat(2,1fr)}
@@ -702,17 +709,17 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <span class="status-label" id="statusLabel">ONLINE</span>
     </div>
     <div id="layoutSeg" title="Pick the layout for your device">
-      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout">📱 Phone</button>
-      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout">▭ Tablet</button>
-      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout">🖥 Desk</button>
+      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout">📱<span class="tbl"> Phone</span></button>
+      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout">▭<span class="tbl"> Tablet</span></button>
+      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout">🖥<span class="tbl"> Desk</span></button>
     </div>
     <div class="top-spacer"></div>
     <div class="top-clock" id="topClock">00:00:00 MT</div>
-    <button class="top-btn active" id="soundBtn" onclick="toggleSound()">🔊 SOUND</button>
-    <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()">🎙️ VOICE</button>
-    <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version">⟳ UPDATE</button>
-    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on">💡 HELP</button>
-    <button class="top-btn" onclick="toggleChat()">💬 KLYFTON</button>
+    <button class="top-btn active" id="soundBtn" onclick="toggleSound()">🔊<span class="tbl"> SOUND</span></button>
+    <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()">🎙️<span class="tbl"> VOICE</span></button>
+    <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version">⟳<span class="tbl"> UPDATE</span></button>
+    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on">💡<span class="tbl"> HELP</span></button>
+    <button class="top-btn" onclick="toggleChat()">💬<span class="tbl"> KLYFTON</span></button>
   </div>
   <script>
   // Device layout selector: forces Phone/Tablet/Desktop layout (body class), persisted per device,
@@ -2273,12 +2280,12 @@ function toggleSound(){
   appState.soundOn = !appState.soundOn;
   const btn = document.getElementById('soundBtn');
   if(appState.soundOn){
-    btn.textContent='🔊 SOUND';
+    btn.innerHTML='🔊<span class="tbl"> SOUND</span>';
     btn.classList.add('active');
     document.getElementById('ambientBar').classList.add('on');
     if(appState.audioCtx) startAmbient(); else initAudio();
   } else {
-    btn.textContent='🔇 MUTED';
+    btn.innerHTML='🔇<span class="tbl"> MUTED</span>';
     btn.classList.remove('active');
     document.getElementById('ambientBar').classList.remove('on');
     stopAmbient();
