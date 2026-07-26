@@ -1,48 +1,49 @@
 <meta charset="utf-8">
-<title>Klyfton AI — The Gear Train of Connections</title>
+<title>Klyfton AI — Live Connection Map</title>
 <style>
-  :root{
-    --bg:#070809; --ink:#e9edf2; --dim:#828a93; --faint:#4a525b;
-    --or:#F4581E; --orhi:#ffb07a;
-  }
-  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 40%,#0d1013 0%,#070809 62%,#040506 100%);overflow:hidden;color:var(--ink)}
+  :root{--bg:#070809;--ink:#e9edf2;--dim:#828a93;--faint:#4a525b;--or:#F4581E;--orhi:#ffb07a;
+    --gold:#ffcf6b;--goldhi:#ffe6a8;--live:#3ecf8e;--auth:#e0654e;--off:#c9a24a}
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 42%,#0d1013 0%,#070809 62%,#040506 100%);overflow:hidden;color:var(--ink)}
   #wrap{position:fixed;inset:0}
   canvas{display:block;width:100%;height:100%;cursor:grab}
   canvas.drag{cursor:grabbing}
-  .lbl{position:fixed;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.13em;text-transform:uppercase;pointer-events:none;user-select:none}
-  #title{top:18px;left:22px;font-size:11px;color:var(--dim)}
+  .lbl{position:fixed;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;pointer-events:none;user-select:none}
+  #title{top:16px;left:20px;font-size:11px;color:var(--dim)}
   #title b{display:block;font-size:19px;letter-spacing:.02em;color:var(--ink);margin-top:5px;font-family:-apple-system,"Segoe UI",Arial,sans-serif;font-weight:800;text-transform:none}
   #title b span{color:var(--or)}
-  #hint{bottom:14px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--faint);text-align:center;line-height:1.7}
+  #stat{top:16px;left:20px;margin-top:56px;font-size:10px;color:var(--faint);line-height:1.7}
+  #stat b{color:var(--ink);font-variant-numeric:tabular-nums}
+  #hint{bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--faint);text-align:center;line-height:1.7}
   #hint b{color:var(--dim);font-weight:700}
-  #panel{position:fixed;top:18px;right:20px;width:256px;font-family:ui-monospace,Menlo,Consolas,monospace;
-    background:linear-gradient(180deg,rgba(20,24,29,.93),rgba(12,15,19,.93));border:1px solid #232a31;border-radius:12px;
-    padding:14px 16px;color:var(--ink);pointer-events:none;box-shadow:0 18px 50px rgba(0,0,0,.5)}
-  #panel .k{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
-  #panel .name{font-size:16px;font-weight:800;margin:2px 0 8px;letter-spacing:.02em;font-family:-apple-system,"Segoe UI",Arial,sans-serif;text-transform:none}
+  #panel{position:fixed;top:16px;right:18px;width:262px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    background:linear-gradient(180deg,rgba(20,24,29,.94),rgba(12,15,19,.94));border:1px solid #232a31;border-radius:12px;
+    padding:13px 15px;color:var(--ink);pointer-events:none;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  #panel .k{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  #panel .name{font-size:16px;font-weight:800;margin:2px 0 7px;font-family:-apple-system,"Segoe UI",Arial,sans-serif}
   #panel .row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-top:1px solid #1b2128;color:var(--dim)}
   #panel .row b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
-  #panel .ab{font-size:10.5px;color:#9aa4af;margin-top:8px;line-height:1.7}
+  #panel .pill{display:inline-block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:20px;font-weight:700}
+  #panel .ab{font-size:10.5px;color:#9aa4af;margin-top:8px;line-height:1.75}
   #panel .ab i{color:#eef2f6;font-style:normal}
-  #panel .diff{margin-top:10px;font-size:10px;color:var(--faint);line-height:1.6;border-top:1px solid #1b2128;padding-top:8px}
-  #panel .diff em{color:var(--orhi);font-style:normal}
-  .badge{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:middle}
-  #legend{position:fixed;left:22px;bottom:44px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;color:var(--dim);line-height:1.9;pointer-events:none}
-  #legend .badge{width:8px;height:8px}
+  #panel .note{margin-top:9px;font-size:9.5px;color:var(--faint);line-height:1.6;border-top:1px solid #1b2128;padding-top:8px}
+  #panel .note em{color:var(--orhi);font-style:normal}
+  #legend{position:fixed;left:20px;bottom:40px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;color:var(--dim);line-height:1.85;pointer-events:none}
+  #legend .b{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle}
 </style>
 <div id="wrap"><canvas id="cv"></canvas></div>
-<div class="lbl" id="title">Klyfton · Machine Gun Spray Foam<b>THE GEAR TRAIN — <span>engine · departments · connections · abilities</span></b></div>
+<div class="lbl" id="title">Klyfton · Machine Gun Spray Foam<b>LIVE CONNECTION MAP — <span>what’s actually hooked in</span></b></div>
+<div id="stat"></div>
 <div id="panel">
   <div class="k" id="pKind">Engine</div>
   <div class="name" id="pName">KLYFTON AI</div>
-  <div class="row"><span>Teeth (ratio)</span><b id="pTeeth">40</b></div>
-  <div class="row"><span>Drives</span><b id="pDrive">7 departments</b></div>
-  <div class="row"><span>Abilities live</span><b id="pAb">0</b></div>
-  <div class="ab" id="pList">Click any connection gear to engage its ability gears.</div>
-  <div class="diff" id="pDiff"><em>Differential:</em> each connection runs at its own RPM — a rate-limited API can slip without stalling the engine.</div>
+  <div id="pStatus"></div>
+  <div class="row"><span>Departments</span><b id="pDept">13</b></div>
+  <div class="row"><span>Connections</span><b id="pConn">—</b></div>
+  <div class="ab" id="pList">Click any gear to inspect its capabilities.</div>
+  <div class="note" id="pNote"><em>Two tiers:</em> a gold driveline wired into the app’s code, wrapped by the live connector arsenal the agent can engage on command.</div>
 </div>
 <div id="legend"></div>
-<div class="lbl" id="hint"><b>click</b> a connection to engage its abilities · <b>drag</b> to orbit · <b>scroll</b> to zoom · every gear turns at its true tooth-ratio</div>
+<div class="lbl" id="hint"><b>click</b> a connection to engage its capability gears · <b>drag</b> to orbit · <b>scroll</b> to zoom</div>
 <script>
 (function(){
   var cv=document.getElementById("cv"),ctx=cv.getContext("2d"),W,H,DPR;
@@ -50,195 +51,263 @@
   addEventListener("resize",resize);resize();
   var reduce=false;try{reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){}
 
-  var M=6.2;                        // global gear module (px pitch-dia per tooth)
-  function prad(N){return M*N/2;}   // pitch radius
-
-  // ---- curated MGSF toolset, grouped into departments ----
+  var M=5.6; function prad(N){return M*N/2;}
+  // status: W=wired in app code (gold) · L=live connector (green) · A=installed, needs auth (red/dim)
+  var C=function(n,s,a){return{n:n,s:s||"L",a:a||[]};};
   var DEPTS=[
+    {name:"ENGINE & BRAIN", color:"#F4581E", teeth:22, conns:[
+      C("Anthropic","W",["Queen route","Worker minds","Critic","Messages API"]),
+      C("Supabase","W",["Brain","Memory","Events","Odometer"]),
+      C("OpenAI","W",["Embeddings","TTS"]),
+      C("ElevenLabs","W",["Voice TTS"]),
+      C("Infranodus","W",["Graph","Gaps","Statements"])
+    ]},
     {name:"CRM & LEADS", color:"#ff7a59", teeth:20, conns:[
-      {name:"HubSpot", teeth:14, ab:["Contacts","Deals","Companies","Search"]},
-      {name:"Twilio",  teeth:12, ab:["SMS","Voice","Lookup"]},
-      {name:"Lusha",   teeth:12, ab:["Contacts","Companies","Enrich"]}
+      C("HubSpot","W",["Contacts","Deals","Companies","Search"]),
+      C("Clarify","L",["Records","Query","Campaigns"]),
+      C("Clay","L",["Enrich","Find leads","Subroutines"]),
+      C("Lusha","L",["Contacts","Companies","Enrich"]),
+      C("Vibe Prospecting","L",["Businesses","Prospects","Enrich"]),
+      C("Sprouts","L",["Enrich","ICP","Leads"]),
+      C("G2","L",["Products","Buyer intent","Reviews"])
     ]},
     {name:"MONEY", color:"#2ca01c", teeth:20, conns:[
-      {name:"QuickBooks", teeth:14, ab:["Invoices","Estimates","P&L","Payments"]},
-      {name:"PayPal",     teeth:12, ab:["Invoices","Transactions","Disputes"]},
-      {name:"Plaid",      teeth:12, ab:["Accounts","Balances"]}
+      C("QuickBooks","W",["Invoices","Estimates","P&L","Payroll"]),
+      C("PayPal","L",["Invoices","Transactions","Disputes"]),
+      C("Plaid","L",["Items","Analytics","Debug"]),
+      C("Stripe","A",["Payments","Payouts"])
     ]},
-    {name:"COMMS & DOCS", color:"#4285f4", teeth:22, conns:[
-      {name:"Gmail",    teeth:13, ab:["Draft","Send","Label","Search"]},
-      {name:"Calendar", teeth:12, ab:["Events","Create","Free/Busy"]},
-      {name:"Slack",    teeth:12, ab:["Message","Channels","Search"]},
-      {name:"Drive",    teeth:13, ab:["Search","Read","Upload","Recent"]},
-      {name:"Notion",   teeth:12, ab:["Pages","Databases","Search"]},
-      {name:"DocuSign", teeth:12, ab:["Send","Templates","Status"]}
+    {name:"COMMS & MEETINGS", color:"#4285f4", teeth:22, conns:[
+      C("Twilio","W",["SMS","Voice","Lookup"]),
+      C("Gmail","L",["Draft","Send","Label","Search"]),
+      C("Slack","L",["Message","Channels","Search"]),
+      C("Microsoft 365","L",["Outlook","Teams","SharePoint"]),
+      C("Zoom","L",["Recordings","Recap","Search"]),
+      C("Fathom","L",["Meetings","Transcript","Summary"]),
+      C("Fireflies","L",["Transcript","Summary","Search"]),
+      C("Granola","L",["Notes","Transcript"]),
+      C("Read AI","L",["Meetings","Reports"]),
+      C("tl;dv","L",["Transcript","Notes"])
     ]},
-    {name:"BUILD & INFRA", color:"#d3d8de", teeth:20, conns:[
-      {name:"GitHub",   teeth:14, ab:["PRs","Commits","Actions","Repos"]},
-      {name:"Vercel",   teeth:12, ab:["Deploy","Logs","Errors"]},
-      {name:"Supabase", teeth:14, ab:["Brain","Events","Memory","Odometer"]}
+    {name:"CALENDAR & TASKS", color:"#7c5cff", teeth:20, conns:[
+      C("Google Calendar","L",["Events","Create","Free/Busy"]),
+      C("Todoist","L",["Tasks","Projects","Reminders"]),
+      C("Linear","L",["Issues","Projects","Cycles"]),
+      C("Asana","L",["Tasks","Projects","Portfolios"]),
+      C("ClickUp","L",["Tasks","Docs","Time"]),
+      C("Process Street","L",["Workflows","Runs","Tasks"])
     ]},
-    {name:"MARKETING & SEO", color:"#d9469b", teeth:20, conns:[
-      {name:"Ahrefs",    teeth:12, ab:["Keywords","Backlinks","Rank"]},
-      {name:"Semrush",   teeth:12, ab:["Keywords","Traffic","Audit"]},
-      {name:"Windsor",   teeth:13, ab:["Meta Ads","Google Ads","GA4"]},
-      {name:"WordPress", teeth:12, ab:["Posts","Pages","Media"]}
-    ]},
-    {name:"GOVCON", color:"#5b8def", teeth:18, conns:[
-      {name:"SAM · Tango", teeth:14, ab:["Opps","NAICS","Awards"]},
-      {name:"Granted",     teeth:12, ab:["Grants","Funders"]}
+    {name:"FILES · DOCS · SIGN", color:"#00a3a3", teeth:22, conns:[
+      C("Google Drive","W",["Search","Read","Upload"]),
+      C("Notion","L",["Pages","Databases","Search"]),
+      C("Airtable","L",["Bases","Tables","Records"]),
+      C("DocuSeal","L",["Templates","Send","Sign"]),
+      C("Docusign","L",["Envelopes","Templates","Recipients"]),
+      C("SignNow","L",["Invites","Templates","Docs"]),
+      C("PDF Viewer","L",["Render","List"]),
+      C("Cognito Forms","L",["Forms","Entries","Files"]),
+      C("Jotform","L",["Forms","Submissions","Analyze"])
     ]},
     {name:"AUTOMATION", color:"#ff4f00", teeth:18, conns:[
-      {name:"Zapier", teeth:13, ab:["Zaps","Triggers","Actions"]},
-      {name:"Make",   teeth:12, ab:["Scenarios","Webhooks"]}
+      C("Zapier","W",["Actions","Zaps","Code"]),
+      C("Make","L",["Scenarios","Hooks","Data stores"]),
+      C("Jentic","L",["Search APIs","Execute"])
+    ]},
+    {name:"BUILD & INFRA", color:"#d3d8de", teeth:22, conns:[
+      C("Vercel","W",["Deploy","Logs","Projects","Errors"]),
+      C("Cloudflare","L",["Workers","D1","KV","R2"]),
+      C("PlanetScale","L",["Branches","Queries","Insights"]),
+      C("GitHub","L",["PRs","Commits","Actions","Repos"]),
+      C("Postman","L",["Collections","Specs","Mocks"]),
+      C("Swagger","L",["APIs","Portals","Docs"]),
+      C("QuickNode","L",["Endpoints","Metrics","Chains"]),
+      C("Manufact","L",["Deploy","Servers","Logs"]),
+      C("GoDaddy","L",["Domain check","Suggest"]),
+      C("Context7","L",["Library docs"]),
+      C("MS Learn","L",["Docs","Code"]),
+      C("pg-aiguide","L",["PG docs","Skills"]),
+      C("Konshus","L",["Memory","Briefing","Recall"]),
+      C("Sentry","A",["Errors","Traces"]),
+      C("Replit","A",["Apps","Deploy"])
+    ]},
+    {name:"MARKETING & SEO", color:"#d9469b", teeth:22, conns:[
+      C("Ahrefs","L",["Keywords","Backlinks","Rank","Audit"]),
+      C("Semrush","L",["Keywords","Traffic","Competitors"]),
+      C("Windsor.ai","L",["Meta Ads","Google Ads","GA4"]),
+      C("Supermetrics","L",["Ads data","Query","Sources"]),
+      C("WordPress","L",["Sites","Posts","Domains"]),
+      C("Webflow","L",["CMS","Pages","Assets"]),
+      C("Profound","A",["Visibility","Citations"])
+    ]},
+    {name:"CREATIVE & MEDIA", color:"#b06bff", teeth:20, conns:[
+      C("Adobe","L",["Image edit","Video","Fonts"]),
+      C("Canva","L",["Designs","Export","Templates"]),
+      C("Figma","L",["Design ctx","Diagrams"]),
+      C("Lucid","L",["Diagrams","ERD","Org chart"]),
+      C("Whimsical","L",["Flowcharts","Mindmaps","Wireframes"]),
+      C("Excalidraw","L",["Diagrams"]),
+      C("Descript","L",["Edit","Transcript","Publish"]),
+      C("Splice","L",["Sounds","Stacks"]),
+      C("Cloudinary","A",["Assets","Transform"])
+    ]},
+    {name:"GOVCON & GRANTS", color:"#5b8def", teeth:20, conns:[
+      C("SAM.gov","W",["Daily scan","Opportunities"]),
+      C("Tango","L",["Opps","Awards","Vehicles"]),
+      C("GovTribe","L",["Opps","Awards","Vendors"]),
+      C("Granted","L",["Grants","Funders"])
+    ]},
+    {name:"DATA & RESEARCH", color:"#e0a12e", teeth:20, conns:[
+      C("Weather.gov","W",["Forecast","Points"]),
+      C("Census Geocode","W",["Geocode","Address"]),
+      C("Apps Script","W",["Sheets","Docs","Web app"]),
+      C("Wolfram","L",["Compute","Knowledge"]),
+      C("Elicit","L",["Papers","Reviews","Trials"]),
+      C("Indeed","L",["Jobs","Company","Resume"]),
+      C("ICD-10","L",["Codes","Validate"]),
+      C("protocols.io","L",["Protocols","Search"])
+    ]},
+    {name:"TRAVEL & MISC", color:"#6b7580", teeth:18, conns:[
+      C("Booking.com","L",["Hotels","Homes"]),
+      C("Expedia","L",["Flights","Hotels"]),
+      C("Kiwi.com","L",["Flights"]),
+      C("Uber","L",["Estimates"]),
+      C("Spotify","L",["Search","Playlist"])
     ]}
   ];
-  var SUN={name:"KLYFTON AI", color:"#F4581E", teeth:40};
+  var SUN={name:"KLYFTON AI",color:"#F4581E",teeth:44};
   var Rs=prad(SUN.teeth);
+  var RIM={W:"#ffcf6b",L:"#3ecf8e",A:"#e0654e"};
+  var STATUSTXT={W:"Wired in app code",L:"Live connector",A:"Installed · needs auth"};
 
-  // ---- lay out static positions (departments spin in place, don't orbit) ----
-  var AB_TEETH_INFO=13;
+  // ---- layout (departments spin in place; connections fan outward, double-rowed when many) ----
+  var totalConn=0,byStatus={W:0,L:0,A:0};
   DEPTS.forEach(function(d,i){
-    d.ang=(i/DEPTS.length)*Math.PI*2 - Math.PI/2;   // world dir from sun
-    d.rp=prad(d.teeth); d.dist=Rs+d.rp+8;
+    d.ang=(i/DEPTS.length)*6.2832 - Math.PI/2; d.rp=prad(d.teeth); d.dist=Rs+d.rp+22;
     d.cx=Math.cos(d.ang)*d.dist; d.cy=Math.sin(d.ang)*d.dist;
-    // connections fan on the OUTWARD side of the department
-    var n=d.conns.length, span=Math.min(2.6, 0.7+n*0.30);
+    var n=d.conns.length, span=Math.min(3.5,0.7+n*0.30);
     d.conns.forEach(function(c,j){
-      var t=n===1?0.5:j/(n-1);
-      var dir=d.ang + (t-0.5)*span;                  // world dir from dept to conn
-      c.rp=prad(c.teeth); var cd=d.rp+c.rp;
-      c.cx=d.cx+Math.cos(dir)*cd; c.cy=d.cy+Math.sin(dir)*cd; c.dir=dir;
-      c.open=false; c.grow=0;
-      // abilities fan further outward from the connection
-      var m=c.ab.length, aspan=Math.min(2.2,0.7+m*0.28), ar=prad(11), ad=c.rp+ar;
-      c.abG=c.ab.map(function(nm,k){
-        var tt=m===1?0.5:k/(m-1);
-        var ab=dir+(tt-0.5)*aspan;
-        return {name:nm,teeth:11,ra:ar,cx:c.cx+Math.cos(ab)*ad,cy:c.cy+Math.sin(ab)*ad};
-      });
+      totalConn++; byStatus[c.s]=(byStatus[c.s]||0)+1;
+      var t=n===1?0.5:j/(n-1), dir=d.ang+(t-0.5)*span;
+      c.teeth=12; c.rp=prad(c.teeth);
+      var row=j%2, cd=d.rp+c.rp+row*prad(11)*1.9;
+      c.cx=d.cx+Math.cos(dir)*cd; c.cy=d.cy+Math.sin(dir)*cd; c.dir=dir; c.open=false; c.grow=0;
+      var m=c.a.length, aspan=Math.min(2.0,0.6+m*0.26), ar=prad(9), ad=c.rp+ar+6;
+      c.abG=c.a.map(function(nm,k){var tt=m===1?0.5:k/(m-1),ab=dir+(tt-0.5)*aspan;
+        return {name:nm,teeth:9,cx:c.cx+Math.cos(ab)*ad,cy:c.cy+Math.sin(ab)*ad};});
     });
   });
+  document.getElementById("pConn").textContent=totalConn;
+  document.getElementById("pDept").textContent=DEPTS.length;
+  document.getElementById("stat").innerHTML=
+    '<b>'+totalConn+'</b> connections across <b>'+DEPTS.length+'</b> departments<br>'+
+    '<span style="color:var(--gold)">■</span> <b>'+byStatus.W+'</b> wired in code &nbsp; '+
+    '<span style="color:var(--live)">■</span> <b>'+byStatus.L+'</b> live &nbsp; '+
+    '<span style="color:var(--auth)">■</span> <b>'+(byStatus.A||0)+'</b> need auth';
+  document.getElementById("legend").innerHTML=
+    '<div><span class="b" style="background:var(--gold)"></span>WIRED IN APP CODE</div>'+
+    '<div><span class="b" style="background:var(--live)"></span>LIVE CONNECTOR</div>'+
+    '<div><span class="b" style="background:var(--auth)"></span>NEEDS AUTH</div>';
 
-  // planet meshing sun/driver: θp = -(Nd/Np)θd + (Nd/Np+1)·α + π/Np
   function planetAngle(theta,Nd,Np,alpha){var r=Nd/Np;return -r*theta+(r+1)*alpha+Math.PI/Np;}
 
-  // ---- camera (tilt for slight iso) ----
-  var yaw=0,pitch=1.06,zoom=0.78,tgtZoom=0.78,drag=false,lx=0,ly=0,moved=false;
+  var yaw=0,pitch=1.12,zoom=0.60,tgtZoom=0.60,drag=false,lx=0,ly=0,moved=false;
   cv.addEventListener("mousedown",function(e){drag=true;lx=e.clientX;ly=e.clientY;moved=false;cv.classList.add("drag");});
   addEventListener("mouseup",function(){drag=false;cv.classList.remove("drag");});
-  addEventListener("mousemove",function(e){
-    if(drag){var dx=e.clientX-lx,dy=e.clientY-ly;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
-      yaw+=dx*0.006;pitch+=dy*0.004;pitch=Math.max(0.4,Math.min(1.45,pitch));lx=e.clientX;ly=e.clientY;}
-  });
-  cv.addEventListener("wheel",function(e){e.preventDefault();tgtZoom*=(e.deltaY<0?1.1:0.91);tgtZoom=Math.max(0.4,Math.min(2.2,tgtZoom));},{passive:false});
+  addEventListener("mousemove",function(e){if(drag){var dx=e.clientX-lx,dy=e.clientY-ly;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
+    yaw+=dx*0.006;pitch+=dy*0.004;pitch=Math.max(0.4,Math.min(1.45,pitch));lx=e.clientX;ly=e.clientY;}});
+  cv.addEventListener("wheel",function(e){e.preventDefault();tgtZoom*=(e.deltaY<0?1.1:0.91);tgtZoom=Math.max(0.32,Math.min(2.6,tgtZoom));},{passive:false});
 
-  function P(x,y){
-    var cyw=Math.cos(yaw),syw=Math.sin(yaw),rx=x*cyw-y*syw,ry=x*syw+y*cyw,sy=Math.sin(pitch);
-    return {x:W/2+rx*zoom,y:H/2+ry*sy*zoom,sy:sy};
-  }
+  function P(x,y){var cyw=Math.cos(yaw),syw=Math.sin(yaw),rx=x*cyw-y*syw,ry=x*syw+y*cyw,sy=Math.sin(pitch);
+    return {x:W/2+rx*zoom,y:H/2+ry*sy*zoom,sy:sy};}
 
-  function drawGear(x,y,teeth,rot,body,opt){
-    opt=opt||{};var c=P(x,y),R=prad(teeth)*zoom;if(R<1.2)return c;
+  function drawGear(x,y,teeth,rot,body,opt){opt=opt||{};var c=P(x,y),R=prad(teeth)*zoom;if(R<1)return c;
     var tipH=R*0.20,root=R-R*0.10,tip=R+tipH;
     ctx.save();ctx.translate(c.x,c.y);ctx.scale(1,c.sy);ctx.rotate(rot);
     ctx.beginPath();
     for(var i=0;i<teeth;i++){var a0=i/teeth*6.2832,w=Math.PI/teeth*0.34,a1=(i+0.5)/teeth*6.2832;
-      ctx.lineTo(Math.cos(a0-w)*root,Math.sin(a0-w)*root);
-      ctx.lineTo(Math.cos(a0-w*0.6)*tip,Math.sin(a0-w*0.6)*tip);
-      ctx.lineTo(Math.cos(a0+w*0.6)*tip,Math.sin(a0+w*0.6)*tip);
-      ctx.lineTo(Math.cos(a0+w)*root,Math.sin(a0+w)*root);
+      ctx.lineTo(Math.cos(a0-w)*root,Math.sin(a0-w)*root);ctx.lineTo(Math.cos(a0-w*0.6)*tip,Math.sin(a0-w*0.6)*tip);
+      ctx.lineTo(Math.cos(a0+w*0.6)*tip,Math.sin(a0+w*0.6)*tip);ctx.lineTo(Math.cos(a0+w)*root,Math.sin(a0+w)*root);
       ctx.lineTo(Math.cos(a1)*root,Math.sin(a1)*root);}
     ctx.closePath();
     var g=ctx.createRadialGradient(-R*0.3,-R*0.3,R*0.1,0,0,R);
-    g.addColorStop(0,body[0]);g.addColorStop(.55,body[1]);g.addColorStop(1,body[2]);
-    ctx.fillStyle=g;if(opt.glow){ctx.shadowBlur=opt.glow;ctx.shadowColor=opt.rim||body[1];}ctx.fill();ctx.shadowBlur=0;
-    ctx.beginPath();ctx.arc(0,0,R*0.9,0,7);ctx.lineWidth=Math.max(1,R*0.09);ctx.strokeStyle=opt.rim||body[3];ctx.stroke();
-    ctx.strokeStyle="rgba(6,8,10,.55)";ctx.lineWidth=Math.max(1,R*0.05);
+    g.addColorStop(0,body[0]);g.addColorStop(.55,body[1]);g.addColorStop(1,body[2]);ctx.fillStyle=g;
+    if(opt.glow){ctx.shadowBlur=opt.glow;ctx.shadowColor=opt.rim||body[1];}ctx.fill();ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(0,0,R*0.9,0,7);ctx.lineWidth=Math.max(1,R*0.10);ctx.strokeStyle=opt.rim||body[3];ctx.stroke();
+    ctx.strokeStyle="rgba(6,8,10,.5)";ctx.lineWidth=Math.max(.8,R*0.05);
     var sp=teeth>16?4:3;for(var k=0;k<sp;k++){ctx.beginPath();ctx.rotate(6.2832/sp);ctx.moveTo(0,0);ctx.lineTo(0,-R*0.72);ctx.stroke();}
-    ctx.beginPath();ctx.arc(0,0,R*0.22,0,7);ctx.fillStyle=body[4]||"#12161b";ctx.fill();
-    ctx.restore();return c;
-  }
-  function label(x,y,text,color,size,dy){var c=P(x,y),fs=size*zoom;if(fs<5.5)return;
+    ctx.beginPath();ctx.arc(0,0,R*0.22,0,7);ctx.fillStyle=body[4]||"#12161b";ctx.fill();ctx.restore();return c;}
+  function label(x,y,text,color,size,dy){var c=P(x,y),fs=size*zoom;if(fs<5)return;
     ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="800 "+fs+"px ui-monospace,Menlo,Consolas,monospace";
-    ctx.lineWidth=Math.max(2.2,fs*0.44);ctx.strokeStyle="rgba(6,8,10,.92)";ctx.lineJoin="round";
+    ctx.lineWidth=Math.max(2,fs*0.46);ctx.strokeStyle="rgba(6,8,10,.95)";ctx.lineJoin="round";
     ctx.strokeText(text,c.x,c.y+(dy||0));ctx.fillStyle=color;ctx.fillText(text,c.x,c.y+(dy||0));}
 
-  var STEEL=["#d3d9e0","#96a0ab","#3a414a","#eef2f6","#161a20"];
-  var STEELHOT=["#eef3f8","#b7c0ca","#454d57","#ffffff","#1b2027"];
-  var DEPTBODY=["#c2c9d2","#7f8893","#2f353d","#e7ebf0","#12161b"];
-  var SUNBODY=["#ffc1a0","#F4581E","#7a2408","#ffd9c0","#4a1605"];
+  var STEEL=["#cfd5dd","#8f99a4","#363d46","#e7ebf0","#161a20"],
+      STEELHOT=["#eef3f8","#b7c0ca","#454d57","#ffffff","#1b2027"],
+      GOLDBODY=["#ffe6b0","#ecb64e","#7a561a","#fff0cf","#2a1e08"],
+      GOLDHOT=["#fff2d6","#ffcf6b","#8a6410","#ffffff","#33260c"],
+      DIMBODY=["#8a9099","#5c636c","#2a2f36","#a4acb5","#12161b"],
+      DEPTBODY=["#c2c9d2","#7f8893","#2f353d","#e7ebf0","#12161b"],
+      SUNBODY=["#ffc1a0","#F4581E","#7a2408","#ffd9c0","#4a1605"];
+  function bodyFor(s,hot){return s==="W"?(hot?GOLDHOT:GOLDBODY):s==="A"?DIMBODY:(hot?STEELHOT:STEEL);}
 
-  // ---- hit test connections ----
-  var hover=null;
-  cv.addEventListener("mousemove",function(e){
-    var best=null,bd=1e9;
-    DEPTS.forEach(function(d){d.conns.forEach(function(c){var p=P(c.cx,c.cy),dd=Math.hypot(e.clientX-p.x,e.clientY-p.y);if(dd<c.rp*zoom*1.15&&dd<bd){bd=dd;best=c;}});});
-    hover=best;cv.style.cursor=drag?"grabbing":(best?"pointer":"grab");
-  });
-  var selected=null;
+  var hover=null,selected=null;
+  cv.addEventListener("mousemove",function(e){var best=null,bd=1e9;
+    DEPTS.forEach(function(d){d.conns.forEach(function(c){var p=P(c.cx,c.cy),dd=Math.hypot(e.clientX-p.x,e.clientY-p.y);
+      if(dd<c.rp*zoom*1.25&&dd<bd){bd=dd;best=c;}});});
+    hover=best;cv.style.cursor=drag?"grabbing":(best?"pointer":"grab");});
   cv.addEventListener("click",function(){if(moved){moved=false;return;}
     if(hover){hover.open=!hover.open;selected=hover.open?hover:null;updatePanel();}});
 
-  function liveCount(){var n=0;DEPTS.forEach(function(d){d.conns.forEach(function(c){if(c.open)n+=c.ab.length;});});return n;}
   function updatePanel(){
     if(selected){var c=selected,dept=null;DEPTS.forEach(function(d){d.conns.forEach(function(cc){if(cc===c)dept=d;});});
       document.getElementById("pKind").textContent=dept.name;
-      var n=document.getElementById("pName");n.textContent=c.name;n.style.color="#fff";
-      document.getElementById("pTeeth").textContent=c.teeth;
-      document.getElementById("pDrive").textContent=(SUN.teeth/c.teeth).toFixed(2)+"× engine RPM";
-      document.getElementById("pAb").textContent=c.ab.length;
-      document.getElementById("pList").innerHTML='<span class="badge" style="background:'+dept.color+'"></span>'+c.ab.map(function(a){return "<i>"+a+"</i>";}).join(" · ");
-      document.getElementById("pDiff").innerHTML='<em>Ratio:</em> ability gears (11T) spin '+(SUN.teeth/11).toFixed(2)+'× engine speed — this connection’s tooth-count sets its own pace; the differential lets it slip when its API is rate-limited.';
+      var n=document.getElementById("pName");n.textContent=c.n;n.style.color="#fff";
+      document.getElementById("pStatus").innerHTML='<span class="pill" style="background:'+RIM[c.s]+'22;color:'+RIM[c.s]+';border:1px solid '+RIM[c.s]+'55">'+STATUSTXT[c.s]+'</span>';
+      var rows=document.querySelectorAll("#panel .row");rows[0].style.display="none";rows[1].style.display="flex";
+      document.getElementById("pConn").parentNode.querySelector("span").textContent="Capabilities";
+      document.getElementById("pConn").textContent=c.a.length;
+      document.getElementById("pList").innerHTML='<span class="b" style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;background:'+RIM[c.s]+'"></span>'+c.a.map(function(a){return "<i>"+a+"</i>";}).join(" · ");
+      document.getElementById("pNote").innerHTML=c.s==="W"?'<em>Wired:</em> this runs inside the deployed Klyfton app — called directly from api/*.js, not just reachable by the agent.':c.s==="A"?'<em>Needs auth:</em> installed but not authenticated — the gear is declutched until you sign in.':'<em>Live:</em> authenticated and engaged — the agent can drive this on command right now.';
     }else{
       document.getElementById("pKind").textContent="Engine";
       var n=document.getElementById("pName");n.textContent="KLYFTON AI";n.style.color="#fff";
-      document.getElementById("pTeeth").textContent=SUN.teeth;
-      document.getElementById("pDrive").textContent=DEPTS.length+" departments";
-      document.getElementById("pAb").textContent=liveCount();
-      document.getElementById("pList").textContent="Click any connection gear to engage its ability gears.";
-      document.getElementById("pDiff").innerHTML='<em>Differential:</em> each connection runs at its own RPM — a rate-limited API can slip without stalling the engine.';
+      document.getElementById("pStatus").innerHTML='<span class="pill" style="background:#F4581E22;color:#ffb07a;border:1px solid #F4581E55">Claude · the hive engine</span>';
+      var rows=document.querySelectorAll("#panel .row");rows[0].style.display="flex";rows[1].style.display="flex";
+      document.getElementById("pConn").parentNode.querySelector("span").textContent="Connections";
+      document.getElementById("pConn").textContent=totalConn;document.getElementById("pDept").textContent=DEPTS.length;
+      document.getElementById("pList").textContent="Click any gear to engage its capability gears.";
+      document.getElementById("pNote").innerHTML='<em>Two tiers:</em> a gold driveline wired into the app’s code, wrapped by the live connector arsenal the agent can engage on command.';
     }
   }
   updatePanel();
-  document.getElementById("legend").innerHTML=DEPTS.map(function(d){return '<div><span class="badge" style="background:'+d.color+'"></span>'+d.name+'</div>';}).join("");
 
-  // ---- animate ----
-  var theta=0,RPM=reduce?0:0.9;
+  var theta=0,RPM=reduce?0:0.85;
   function frame(){
-    ctx.clearRect(0,0,W,H);zoom+=(tgtZoom-zoom)*0.12;
-    // shafts: sun→dept and dept→conn (beneath)
-    ctx.lineCap="round";
+    ctx.clearRect(0,0,W,H);zoom+=(tgtZoom-zoom)*0.12;ctx.lineCap="round";
     DEPTS.forEach(function(d){var a=P(0,0),b=P(d.cx,d.cy);
-      ctx.strokeStyle="rgba(120,130,140,.14)";ctx.lineWidth=3*zoom;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-      d.conns.forEach(function(c){var e=P(c.cx,c.cy);ctx.strokeStyle=hexA(d.color,.14);ctx.lineWidth=2*zoom;ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(e.x,e.y);ctx.stroke();});
-    });
-    // build draw list with depth (projected y)
+      ctx.strokeStyle="rgba(120,130,140,.12)";ctx.lineWidth=3*zoom;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      d.conns.forEach(function(c){var e=P(c.cx,c.cy);ctx.strokeStyle=hexA(RIM[c.s],.13);ctx.lineWidth=1.6*zoom;ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(e.x,e.y);ctx.stroke();});});
     var list=[{y:P(0,0).y,t:"sun"}];
-    DEPTS.forEach(function(d,i){list.push({y:P(d.cx,d.cy).y,t:"dept",d:d});
+    DEPTS.forEach(function(d){list.push({y:P(d.cx,d.cy).y,t:"dept",d:d});
       d.conns.forEach(function(c){c.grow+=((c.open?1:0)-c.grow)*0.14;list.push({y:P(c.cx,c.cy).y,t:"conn",d:d,c:c});});});
     list.sort(function(a,b){return a.y-b.y;});
     list.forEach(function(it){
-      if(it.t==="sun"){drawGear(0,0,SUN.teeth,theta,SUNBODY,{rim:SUN.color,glow:26});}
+      if(it.t==="sun"){drawGear(0,0,SUN.teeth,theta,SUNBODY,{rim:SUN.color,glow:28});}
       else if(it.t==="dept"){var d=it.d,rot=planetAngle(theta,SUN.teeth,d.teeth,d.ang);
-        drawGear(d.cx,d.cy,d.teeth,rot,DEPTBODY,{rim:d.color,glow:12});
-        label(d.cx*0.84,d.cy*0.84,d.name,d.color,9,0);}
-      else{var d=it.d,c=it.c;var drot=planetAngle(theta,SUN.teeth,d.teeth,d.ang);
-        var crot=planetAngle(drot,d.teeth,c.teeth,c.dir);
-        var hot=(hover===c||c.open);
+        drawGear(d.cx,d.cy,d.teeth,rot,DEPTBODY,{rim:d.color,glow:12});label(d.cx*0.86,d.cy*0.86,d.name,d.color,8.5,0);}
+      else{var d=it.d,c=it.c,drot=planetAngle(theta,SUN.teeth,d.teeth,d.ang),crot=planetAngle(drot,d.teeth,c.teeth,c.dir);
+        var hot=(hover===c||c.open),rim=RIM[c.s];
         if(c.grow>0.02){c.abG.forEach(function(ag){var arot=planetAngle(crot,c.teeth,ag.teeth,0);
           var gx=c.cx+(ag.cx-c.cx)*c.grow,gy=c.cy+(ag.cy-c.cy)*c.grow;
-          drawGear(gx,gy,ag.teeth,arot,["#c6ccd4","#828b95","#343b43","#e7ebf0","#14181d"],{rim:d.color,glow:7*c.grow});
-          if(c.grow>0.6)label(gx,gy,ag.name,"#e2e7ee",8.5,0);});}
-        drawGear(c.cx,c.cy,c.teeth,crot,hot?STEELHOT:STEEL,{rim:d.color,glow:hot?18:8});
-        if(hot)label(c.cx,c.cy,c.name,"#ffffff",10.5,0);
+          drawGear(gx,gy,ag.teeth,arot,["#c6ccd4","#828b95","#343b43","#e7ebf0","#14181d"],{rim:rim,glow:6*c.grow});
+          if(c.grow>0.55)label(gx,gy,ag.name,"#e2e7ee",7.5,0);});}
+        drawGear(c.cx,c.cy,c.teeth,crot,bodyFor(c.s,hot),{rim:rim,glow:hot?18:(c.s==="W"?9:5)});
+        if(hot)label(c.cx,c.cy,c.n,"#ffffff",9.5,0);
       }
     });
-    label(0,0,"KLYFTON AI","#ffd9c0",13,0);
-    if(!reduce)theta+=0.012*RPM;
-    requestAnimationFrame(frame);
-  }
-  function hexA(h,a){var n=parseInt(h.slice(1),16);return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")";}
+    label(0,0,"KLYFTON AI","#ffd9c0",12,0);
+    if(!reduce)theta+=0.012*RPM;requestAnimationFrame(frame);}
+  function hexA(h,a){if(h[0]!=="#")return h;var n=parseInt(h.slice(1),16);return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")";}
   frame();
 })();
 </script>
