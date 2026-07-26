@@ -2820,11 +2820,13 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = a REAL 3D CONNECTION MAP: Klyfton engine (center) -> 13 department gears (real
-// Connection-Map colors) -> each fans out its connection gears. Genuine 3D extruded gear meshes
-// (front/back caps, side walls, hub + axle), a hand-rolled software renderer (per-face normals,
-// flat lighting, painter's depth sort, back-face cull), tumbling slowly on a gentle rock.
-// Auto-stops on fade; draws one static frame if reduced-motion.
+// Boot loader = a REAL MESHING 3D GEARBOX (hybrid). Klyfton engine (sun, center) drives 6 primary
+// gears that actually mesh it (center distance = module*(z1+z2)/2, pitch circles tangent), each
+// branching outward into department -> connection gears that mesh their parent. Gear ratio = tooth
+// ratio (small gears spin faster; meshed gears counter-rotate). Includes a compound reduction
+// (two gears on one shaft) and a right-angle bevel takeoff. Genuine 3D extruded meshes (caps, side
+// walls, hub, axle) via a hand-rolled software renderer (per-face normals, flat lighting, painter's
+// depth sort, back-face cull), gently rocking. Auto-stops on fade; one static frame if reduced-motion.
 let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
@@ -2833,84 +2835,93 @@ function startBootGears(){
   let DPR=1, W=0, H=0;
   function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth||520; H=cv.clientHeight||400; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
   resize(); window.addEventListener('resize', resize);
-  var TAU=Math.PI*2;
-  // real 3D extruded gear mesh: front/back caps, side walls, raised hub + axle
-  function circle(z,r,seg){ var a=[]; for(var i=0;i<seg;i++){ var t=i/seg*TAU; a.push([Math.cos(t)*r,Math.sin(t)*r,z]); } return a; }
-  function buildGear(teeth,R,th){
-    var root=R*0.72, tip=R, half=Math.PI/teeth, out=[], i;
-    for(i=0;i<teeth;i++){ var b=i/teeth*TAU;
-      out.push([b-half*0.86,root]);out.push([b-half*0.46,tip]);out.push([b+half*0.46,tip]);out.push([b+half*0.86,root]); }
-    var n=out.length, V=[], t2=th/2;
+  var TAU=Math.PI*2, MOD=5.4;
+  function PR(N){ return MOD*N/2; }
+  function circ(z,r,seg){ var a=[]; for(var i=0;i<seg;i++){ var t=i/seg*TAU; a.push([Math.cos(t)*r,Math.sin(t)*r,z]); } return a; }
+  function buildGear(N,th){
+    var r=PR(N),add=MOD*0.92,ded=MOD*1.12,tip=r+add,root=r-ded,half=Math.PI/N,out=[],i;
+    for(i=0;i<N;i++){ var b=i/N*TAU;
+      out.push([b-half*0.80,root]);out.push([b-half*0.42,tip]);out.push([b+half*0.42,tip]);out.push([b+half*0.80,root]); }
+    var n=out.length,V=[],t2=th/2;
     for(i=0;i<n;i++)V.push([Math.cos(out[i][0])*out[i][1],Math.sin(out[i][0])*out[i][1], t2]);
     for(i=0;i<n;i++)V.push([Math.cos(out[i][0])*out[i][1],Math.sin(out[i][0])*out[i][1],-t2]);
-    var F=[], f=[], bk=[];
-    for(i=0;i<n;i++)f.push(i); F.push({idx:f,t:'cap'});
-    for(i=n-1;i>=0;i--)bk.push(n+i); F.push({idx:bk,t:'cap'});
+    var F=[],f=[],bk=[];
+    for(i=0;i<n;i++)f.push(i);F.push({idx:f,t:'cap'});
+    for(i=n-1;i>=0;i--)bk.push(n+i);F.push({idx:bk,t:'cap'});
     for(i=0;i<n;i++){ var j=(i+1)%n; F.push({idx:[i,j,n+j,n+i],t:'side'}); }
-    var seg=16, base=V.length, hp=circle(t2+R*0.03,R*0.40,seg); for(i=0;i<seg;i++)V.push(hp[i]);
-    var hf=[]; for(i=0;i<seg;i++)hf.push(base+i); F.push({idx:hf,t:'hub'});
-    var base2=V.length, ap=circle(t2+R*0.06,R*0.16,seg); for(i=0;i<seg;i++)V.push(ap[i]);
-    var af=[]; for(i=0;i<seg;i++)af.push(base2+i); F.push({idx:af,t:'axle'});
-    return {V:V,F:F};
+    var seg=16,base=V.length,hp=circ(t2+0.5,r*0.30,seg);for(i=0;i<seg;i++)V.push(hp[i]);
+    var hf=[];for(i=0;i<seg;i++)hf.push(base+i);F.push({idx:hf,t:'hub'});
+    var b2=V.length,ap=circ(t2+1.0,r*0.12,seg);for(i=0;i<seg;i++)V.push(ap[i]);
+    var af=[];for(i=0;i<seg;i++)af.push(b2+i);F.push({idx:af,t:'axle'});
+    return {V:V,F:F,r:r,N:N};
   }
-  // department palette (matches the live Connection Map); n = connection gears per dept
-  const DEPTS=[
-    {c:'#ffcf6b',n:3},{c:'#ff7a59',n:3},{c:'#2ca01c',n:2},{c:'#4285f4',n:3},
-    {c:'#7c5cff',n:2},{c:'#00a3a3',n:3},{c:'#ff4f00',n:2},{c:'#d3d8de',n:3},
-    {c:'#d9469b',n:2},{c:'#b06bff',n:3},{c:'#5b8def',n:2},{c:'#e0a12e',n:2},{c:'#6b7580',n:2}
-  ];
-  const GEARS=[], LINES=[], DR=150, CR=270;
-  function addGear(px,py,teeth,R,th,dir,col,kind){ GEARS.push({m:buildGear(teeth,R,th),px:px,py:py,dir:dir,col:col,kind:kind,teeth:teeth,spin:Math.random()*TAU}); }
-  addGear(0,0,18,52,26,1,'#F4581E','engine');
-  DEPTS.forEach(function(d,i){
-    var a=i/DEPTS.length*TAU, dx=DR*Math.cos(a), dy=DR*Math.sin(a), dir=(i%2?1:-1);
-    addGear(dx,dy,13,30,15,dir,d.c,'dept'); LINES.push([0,0,dx,dy,d.c]);
-    for(var j=0;j<d.n;j++){ var fa=a+((j-(d.n-1)/2))*0.34, cd=CR+(j%2)*40, cx=cd*Math.cos(fa), cy=cd*Math.sin(fa);
-      addGear(cx,cy,10,17,10,-dir,d.c,'conn'); LINES.push([dx,dy,cx,cy,d.c]); }
-  });
-  var bx=0.60, by=0.0, phase=0, CAMZ=1080, FOC=1080;
-  var L=(function(v){ var m=Math.hypot(v[0],v[1],v[2]); return [v[0]/m,v[1]/m,v[2]/m]; })([-0.35,-0.5,0.8]);
+  var G={}, ORDER=[];
+  function addG(id,s){ s.id=id; s.th=s.th||14; s.m=buildGear(s.N,s.th); G[id]=s; ORDER.push(id); return s; }
+  var PAL=['#ff7a59','#2ca01c','#4285f4','#d9469b','#7c5cff','#e0a12e'];
+  addG('sun',{N:30,axis:'z',col:'#F4581E',driver:null});
+  var prim=[{N:16,a:0.35,nd:2},{N:13,a:1.45,nd:1},{N:18,a:2.55,nd:2},{N:12,a:3.75,nd:1},{N:16,a:4.75,nd:2},{N:13,a:5.75,nd:1}];
+  prim.forEach(function(p,i){ var col=PAL[i%PAL.length];
+    addG('P'+i,{N:p.N,parent:'sun',absPhi:p.a,axis:'z',col:col});
+    for(var j=0;j<p.nd;j++){ var sp=p.nd===1?0:(j?0.62:-0.62);
+      addG('P'+i+'D'+j,{N:12,parent:'P'+i,spread:sp,axis:'z',col:col});
+      addG('P'+i+'D'+j+'C',{N:10,parent:'P'+i+'D'+j,spread:0,axis:'z',col:col}); } });
+  addG('P2K',{N:10,parent:'P2',compound:true,axis:'z',col:PAL[2]});
+  addG('P2Kd',{N:20,parent:'P2K',spread:0.0,axis:'z',col:PAL[2]});
+  addG('P3B',{N:13,parent:'P3',spread:0,axis:'x',bevel:true,col:'#00a3a3'});
+  function place(id){ var g=G[id];
+    if(!g.parent){ g.cx=0;g.cy=0;g.cz=0;g.out=0;g.phi=0; return; }
+    var p=G[g.parent];
+    if(g.compound){ g.cx=p.cx;g.cy=p.cy;g.cz=p.cz;g.phi=p.phi;g.out=p.out; return; }
+    var phi=(g.parent==='sun')?g.absPhi:(Math.atan2(p.cy,p.cx)+(g.spread||0)); g.phi=phi;
+    var D=g.bevel?(PR(p.N)+g.th*0.55):(PR(p.N)+PR(g.N));
+    g.cx=p.cx+Math.cos(phi)*D; g.cy=p.cy+Math.sin(phi)*D; g.cz=p.cz+(g.bevel?PR(g.N)*0.8:0);
+    g.out=Math.atan2(g.cy,g.cx);
+  }
+  ORDER.forEach(place);
+  var OFF=Math.PI;
+  function theta(g,t){ if(!g.parent)return t; var p=G[g.parent],pt=theta(p,t);
+    if(g.compound)return pt; var ratio=p.N/g.N; return -ratio*pt+(1+ratio)*g.phi+Math.PI/g.N+OFF; }
+  var bx=0.52, by=0.0, phase=0, CAMZ=1250, FOC=1250;
+  var LT=(function(v){ var m=Math.hypot(v[0],v[1],v[2]); return [v[0]/m,v[1]/m,v[2]/m]; })([-0.3,-0.5,0.8]);
   function clamp255(x){ x=x|0; return x<0?0:x>255?255:x; }
   function shd(hex,f){ var n=parseInt(hex.slice(1),16); return 'rgb('+clamp255(((n>>16)&255)*f)+','+clamp255(((n>>8)&255)*f)+','+clamp255((n&255)*f)+')'; }
-  function hexA(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+  function oriented(v,axis){ if(axis==='x')return [v[2],v[1],-v[0]]; return v; }
   function frame(){
-    var FIT=Math.min(W,H)/600;
+    var FIT=Math.min(W,H)/760;
     ctx.clearRect(0,0,W,H);
-    var cbx=Math.cos(bx),sbx=Math.sin(bx),cby=Math.cos(by),sby=Math.sin(by);
-    function xform(vx,vy,vz){ var y=vy*cbx-vz*sbx,z=vy*sbx+vz*cbx,x=vx; return [x*cby+z*sby,y,-x*sby+z*cby]; }
-    function proj(p){ var s=FOC/(CAMZ-p[2])*FIT; return [W/2+p[0]*s,H/2-p[1]*s,s]; }
-    for(var i=0;i<LINES.length;i++){ var Ln=LINES[i]; var a=proj(xform(Ln[0],Ln[1],0)),b=proj(xform(Ln[2],Ln[3],0));
-      ctx.strokeStyle=hexA(Ln[4],0.13); ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); }
+    var t=phase, cbx=Math.cos(bx),sbx=Math.sin(bx),cby=Math.cos(by),sby=Math.sin(by);
+    function xf(x,y,z){ var y2=y*cbx-z*sbx,z2=y*sbx+z*cbx; return [x*cby+z2*sby,y2,-x*sby+z2*cby]; }
+    function pj(p){ var s=FOC/(CAMZ-p[2])*FIT; return [W/2+p[0]*s,H/2-p[1]*s,s]; }
+    ORDER.forEach(function(k){ var g=G[k]; if(!g.parent||g.compound)return; var p=G[g.parent];
+      var a=pj(xf(p.cx,p.cy,p.cz)),b=pj(xf(g.cx,g.cy,g.cz));
+      ctx.strokeStyle='rgba(120,130,140,.10)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); });
     var polys=[];
-    for(var gi=0;gi<GEARS.length;gi++){ var G=GEARS[gi],cs=Math.cos(G.spin*G.dir),sn=Math.sin(G.spin*G.dir),V=G.m.V,TV=new Array(V.length),eng=G.kind==='engine';
-      for(var vi=0;vi<V.length;vi++){ var v=V[vi]; var lx=v[0]*cs-v[1]*sn,ly=v[0]*sn+v[1]*cs,lz=v[2]; lx+=G.px; ly+=G.py; TV[vi]=xform(lx,ly,lz); }
-      var Fc=G.m.F, baseCol=eng?'#F4581E':G.col;
+    ORDER.forEach(function(k){ var g=G[k]; var th=theta(g,t),cs=Math.cos(th),sn=Math.sin(th),V=g.m.V,TV=new Array(V.length),eng=(k==='sun');
+      for(var vi=0;vi<V.length;vi++){ var v=V[vi]; var lx=v[0]*cs-v[1]*sn,ly=v[0]*sn+v[1]*cs,lz=v[2]; var o=oriented([lx,ly,lz],g.axis); TV[vi]=xf(o[0]+g.cx,o[1]+g.cy,o[2]+g.cz); }
+      var Fc=g.m.F,base=g.col;
       for(var fi=0;fi<Fc.length;fi++){ var face=Fc[fi],idx=face.idx,p0=TV[idx[0]],p1=TV[idx[1]],p2=TV[idx[2]];
         var ux=p1[0]-p0[0],uy=p1[1]-p0[1],uz=p1[2]-p0[2],wx=p2[0]-p0[0],wy=p2[1]-p0[1],wz=p2[2]-p0[2];
         var nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
-        if(nzn<=0.02) continue;
-        var diff=(nx/nl)*L[0]+(ny/nl)*L[1]+nzn*L[2]; if(diff<0)diff=0;
-        var lit=0.34+0.82*diff, col;
-        if(face.t==='axle') col=eng?shd('#7a2408',1):'#141820';
-        else if(face.t==='hub') col=shd(baseCol,lit*0.52);
-        else if(face.t==='side') col=shd(baseCol,lit*0.60);
-        else col=shd(baseCol, eng?Math.max(0.95,lit):lit);
-        var sp=[],zc=0; for(var k=0;k<idx.length;k++){ var pp=proj(TV[idx[k]]); sp.push(pp); zc+=TV[idx[k]][2]; }
+        if(nzn<=0.02)continue;
+        var diff=(nx/nl)*LT[0]+(ny/nl)*LT[1]+nzn*LT[2]; if(diff<0)diff=0; var lit=0.32+0.85*diff,col;
+        if(face.t==='axle')col=eng?shd('#7a2408',1):'#141820';
+        else if(face.t==='hub')col=shd(base,lit*0.5);
+        else if(face.t==='side')col=shd(base,lit*0.58);
+        else col=shd(base,eng?Math.max(0.95,lit):lit);
+        var sp=[],zc=0; for(var q=0;q<idx.length;q++){ var pp=pj(TV[idx[q]]); sp.push(pp); zc+=TV[idx[q]][2]; }
         polys.push({z:zc/idx.length,sp:sp,col:col,glow:(eng&&face.t==='cap')?7:0});
       }
-    }
+    });
     polys.sort(function(a,b){ return a.z-b.z; });
     for(var pi=0;pi<polys.length;pi++){ var P=polys[pi],sp=P.sp;
-      ctx.beginPath(); ctx.moveTo(sp[0][0],sp[0][1]); for(var k=1;k<sp.length;k++)ctx.lineTo(sp[k][0],sp[k][1]); ctx.closePath();
+      ctx.beginPath(); ctx.moveTo(sp[0][0],sp[0][1]); for(var q=1;q<sp.length;q++)ctx.lineTo(sp[q][0],sp[q][1]); ctx.closePath();
       if(P.glow){ ctx.shadowBlur=P.glow; ctx.shadowColor='#F4581E'; } ctx.fillStyle=P.col; ctx.fill(); ctx.shadowBlur=0;
-      ctx.strokeStyle='rgba(0,0,0,.30)'; ctx.lineWidth=0.5; ctx.stroke();
-    }
-    var c0=proj(xform(0,0,30)); var fs=Math.max(9,13*c0[2]);
-    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
-    ctx.lineWidth=Math.max(3,fs*0.5); ctx.strokeStyle='rgba(5,6,8,.92)'; ctx.lineJoin='round';
-    ctx.strokeText('KLYFTON AI',c0[0],c0[1]+fs*2.4); ctx.fillStyle='#ffd9c0';
-    ctx.fillText('KLYFTON AI',c0[0],c0[1]+fs*2.4); ctx.textBaseline='alphabetic';
-    if(!reduce){ phase+=0.005; by=0.82*Math.sin(phase); for(var g=0;g<GEARS.length;g++){ GEARS[g].spin+=0.015*(26/GEARS[g].teeth); } _bootGearRAF=requestAnimationFrame(frame); }
+      ctx.strokeStyle='rgba(0,0,0,.32)'; ctx.lineWidth=0.5; ctx.stroke(); }
+    var c0=pj(xf(0,0,20)); var fs=Math.max(9,12*c0[2]);
+    ctx.textAlign='center'; ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(5,6,8,.9)'; ctx.lineJoin='round';
+    ctx.strokeText('KLYFTON AI',c0[0],c0[1]+fs*2.6); ctx.fillStyle='#ffd9c0'; ctx.fillText('KLYFTON AI',c0[0],c0[1]+fs*2.6);
+    if(!reduce){ phase+=0.010; by=0.55*Math.sin(phase*0.32); _bootGearRAF=requestAnimationFrame(frame); }
   }
   frame();
 }
