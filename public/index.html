@@ -2820,13 +2820,13 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = the ACTUAL CONNECTION MAP as a 3D angle box. KLYFTON AI is the central drive; 13
-// radial shafts come off it (one per real department), and each shaft carries its REAL connections
-// as a compound gear stack (multiple gears on one shaft) — 92 gears total, 1:1 with the live
-// inventory. Labels = real department name + real count; gold = wired into the app code. Genuine 3D
-// extruded gear meshes on a hand-rolled software renderer (general-axis placement, per-face normals,
-// flat lighting, painter's depth sort, back-face cull), auto-fit to the canvas, gently rocking.
-// Auto-stops on fade; one static frame if reduced-motion.
+// Boot loader = a BRASS-AND-STEEL 3D CLOCKWORK. KLYFTON AI is the central drive; nested OCTAGON
+// angle-boxes fan off it, each turning the drive 90 degrees onto a new shaft that ends in another
+// box driving more gears and boxes ("and so forth"). Because each child box sits perpendicular to
+// its parent, the movement genuinely occupies all three dimensions. Clock palette (brass gears,
+// steel accents, gunmetal plates) — no color coding. Real extruded gear + octagon-plate meshes on a
+// hand-rolled software renderer (arbitrary orientation frames, per-face normals, flat lighting,
+// painter's depth sort, back-face cull), auto-fit, slow orbit. Auto-stops on fade; static if reduced-motion.
 let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
@@ -2835,121 +2835,126 @@ function startBootGears(){
   let DPR=1, W=0, H=0;
   function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth||520; H=cv.clientHeight||400; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
   resize(); window.addEventListener('resize', resize);
-  var TAU=Math.PI*2, MOD=4.4;
+  var TAU=Math.PI*2, MOD=4.0;
   function PR(N){return MOD*N/2;}
+  // vec helpers
+  function add(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
+  function sc(a,s){return[a[0]*s,a[1]*s,a[2]*s];}
+  function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+  function nrm(a){var m=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/m,a[1]/m,a[2]/m];}
+  function comb(u,v,w,x,y,z){return[u[0]*x+v[0]*y+w[0]*z, u[1]*x+v[1]*y+w[1]*z, u[2]*x+v[2]*y+w[2]*z];}
+
+  // ---- meshes ----
   function circ(z,r,seg){var a=[];for(var i=0;i<seg;i++){var t=i/seg*TAU;a.push([Math.cos(t)*r,Math.sin(t)*r,z]);}return a;}
-  function buildGear(N,th){
-    var r=PR(N),add=MOD*0.92,ded=MOD*1.12,tip=r+add,root=r-ded,half=Math.PI/N,out=[],i;
-    for(i=0;i<N;i++){var b=i/N*TAU;out.push([b-half*0.80,root]);out.push([b-half*0.42,tip]);out.push([b+half*0.42,tip]);out.push([b+half*0.80,root]);}
-    var n=out.length,V=[],t2=th/2;
-    for(i=0;i<n;i++)V.push([Math.cos(out[i][0])*out[i][1],Math.sin(out[i][0])*out[i][1], t2]);
-    for(i=0;i<n;i++)V.push([Math.cos(out[i][0])*out[i][1],Math.sin(out[i][0])*out[i][1],-t2]);
+  function gear(N,th){
+    var r=PR(N),ad=MOD*0.9,de=MOD*1.1,tip=r+ad,root=r-de,half=Math.PI/N,o=[],i;
+    for(i=0;i<N;i++){var b=i/N*TAU;o.push([b-half*0.80,root],[b-half*0.42,tip],[b+half*0.42,tip],[b+half*0.80,root]);}
+    var n=o.length,V=[],t2=th/2;
+    for(i=0;i<n;i++)V.push([Math.cos(o[i][0])*o[i][1],Math.sin(o[i][0])*o[i][1], t2]);
+    for(i=0;i<n;i++)V.push([Math.cos(o[i][0])*o[i][1],Math.sin(o[i][0])*o[i][1],-t2]);
     var F=[],f=[],bk=[];
-    for(i=0;i<n;i++)f.push(i);F.push({idx:f,t:'cap'});
-    for(i=n-1;i>=0;i--)bk.push(n+i);F.push({idx:bk,t:'cap'});
-    for(i=0;i<n;i++){var j=(i+1)%n;F.push({idx:[i,j,n+j,n+i],t:'side'});}
-    var seg=14,base=V.length,hp=circ(t2+0.4,r*0.32,seg);for(i=0;i<seg;i++)V.push(hp[i]);
-    var hf=[];for(i=0;i<seg;i++)hf.push(base+i);F.push({idx:hf,t:'hub'});
-    return {V:V,F:F,r:r,N:N};
+    for(i=0;i<n;i++)f.push(i);F.push({x:f,t:'cap'});
+    for(i=n-1;i>=0;i--)bk.push(n+i);F.push({x:bk,t:'cap'});
+    for(i=0;i<n;i++){var j=(i+1)%n;F.push({x:[i,j,n+j,n+i],t:'side'});}
+    var seg=14,b0=V.length,hp=circ(t2+0.4,r*0.34,seg);for(i=0;i<seg;i++)V.push(hp[i]);
+    var hf=[];for(i=0;i<seg;i++)hf.push(b0+i);F.push({x:hf,t:'hub'});
+    var b1=V.length,hp2=circ(-t2-0.4,r*0.34,seg);for(i=0;i<seg;i++)V.push(hp2[i]);
+    var hf2=[];for(i=seg-1;i>=0;i--)hf2.push(b1+i);F.push({x:hf2,t:'hub'});
+    return {V:V,F:F,N:N};
+  }
+  function prism(sides,R,th){                  // octagon box plate
+    var V=[],F=[],t2=th/2,i;
+    for(i=0;i<sides;i++){var a=(i+0.5)/sides*TAU;V.push([Math.cos(a)*R,Math.sin(a)*R, t2]);}
+    for(i=0;i<sides;i++){var a=(i+0.5)/sides*TAU;V.push([Math.cos(a)*R,Math.sin(a)*R,-t2]);}
+    var f=[],bk=[];for(i=0;i<sides;i++)f.push(i);F.push({x:f,t:'plate'});
+    for(i=sides-1;i>=0;i--)bk.push(sides+i);F.push({x:bk,t:'plate'});
+    for(i=0;i<sides;i++){var j=(i+1)%sides;F.push({x:[i,j,sides+j,sides+i],t:'pside'});}
+    return {V:V,F:F};
   }
 
-  // ---- REAL inventory: 13 departments, real connection counts (Live Connection Map) ----
-  var DEPT=[
-    {n:'ENGINE & BRAIN', c:'#ffcf6b', k:5,  wired:true},
-    {n:'CRM & LEADS',    c:'#ff7a59', k:7},
-    {n:'MONEY',          c:'#2ca01c', k:4},
-    {n:'COMMS & MTGS',   c:'#4285f4', k:10},
-    {n:'CAL & TASKS',    c:'#7c5cff', k:6},
-    {n:'FILES·DOCS·SIGN',c:'#00a3a3', k:9},
-    {n:'AUTOMATION',     c:'#ff4f00', k:3},
-    {n:'BUILD & INFRA',  c:'#d3d8de', k:15},
-    {n:'MARKETING·SEO',  c:'#d9469b', k:7},
-    {n:'CREATIVE·MEDIA', c:'#b06bff', k:9},
-    {n:'GOVCON·GRANTS',  c:'#5b8def', k:4},
-    {n:'DATA·RESEARCH',  c:'#e0a12e', k:8},
-    {n:'TRAVEL·MISC',    c:'#6b7580', k:5}
-  ];
-  var CAP=99;                                 // uncapped: render every connection (1:1)
-  var BOX={N:40, th:34}; BOX.m=buildGear(BOX.N,BOX.th); var BR=PR(BOX.N);
-  var TEETH=[15,13,12,11,10,9,8];             // stepping gear sizes along a shaft
-  var SHAFTS=[];
-  DEPT.forEach(function(dept,i){
-    var phi=i/DEPT.length*TAU, dx=Math.cos(phi), dy=Math.sin(phi);
-    // orthonormal frame: shaft axis = dax (radial, in-plane); u = world-up; v = dax x u (tangential)
-    var dax=[dx,dy,0], u=[0,0,1], v=[dy,-dx,0];
-    var gears=[], cnt=Math.min(CAP,dept.k), t=BR+16, dir=(i%2?1:-1);
-    for(var g=0; g<cnt; g++){
-      var N=TEETH[g%TEETH.length], gm=buildGear(N, 8);
-      gears.push({m:gm, N:N, t:t, dir:dir});
-      t += PR(N)*0.5 + 7;                       // step along the shaft
-    }
-    SHAFTS.push({dept:dept, phi:phi, d:dax, u:u, v:v, gears:gears, end:t, spin:Math.random()*TAU, ratio:BOX.N/TEETH[0]});
-  });
-  var MAXEND=Math.max.apply(null,SHAFTS.map(function(s){return s.end;}));  // longest shaft sets the scale
+  // ---- clock palette (brass / steel / gunmetal plate) ----
+  var BRASS={hi:'#c6a047',b:'#9a7629',lo:'#463814',hub:'#2e250c'};   // warm brass
+  var STEEL={hi:'#b8c0ca',b:'#828d99',lo:'#363c44',hub:'#1b1f25'};   // muted steel
+  var PLATE={hi:'#454c55',b:'#2f353d',lo:'#191d23',hub:'#12161b'};   // gunmetal plate
+  var GOLD ={hi:'#d8b458',b:'#b78d30',lo:'#5a4211',hub:'#332507'};   // polished brass (centre)
 
-  var bx=0.60, by=0.0, phase=0, CAMZ=1400, FOC=1400, FIT=1;
-  var LT=(function(x){var m=Math.hypot(x[0],x[1],x[2]);return [x[0]/m,x[1]/m,x[2]/m];})([-0.3,-0.5,0.85]);
-  function clamp(x){x=x|0;return x<0?0:x>255?255:x;}
-  function shd(hex,f){var n=parseInt(hex.slice(1),16);return 'rgb('+clamp(((n>>16)&255)*f)+','+clamp(((n>>8)&255)*f)+','+clamp((n&255)*f)+')';}
-  function hexA(h,a){var n=parseInt(h.slice(1),16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
+  // ---- build a tree of angle boxes: box drives K gears; some gears carry a shaft to a child box ----
+  var PARTS=[];
+  function emitGear(pos,u,v,w,N,th,pal,rate,ph){PARTS.push({k:'g',m:gear(N,th),pos:pos,u:u,v:v,w:w,pal:pal,rate:rate,ph:ph||0});}
+  function emitBox(pos,u,v,w,R,pal){PARTS.push({k:'b',m:prism(8,R,7),pos:pos,u:u,v:v,w:w,pal:pal,rate:0,ph:0});}
+  function emitRod(a,b){PARTS.push({k:'r',a:a,b:b});}
 
-  function frame(){
-    FIT=Math.min(W,H)*0.43/MAXEND;   // auto-fit to the longest shaft
-    ctx.clearRect(0,0,W,H);
-    var t=phase, cbx=Math.cos(bx),sbx=Math.sin(bx),cby=Math.cos(by),sby=Math.sin(by);
-    function tilt(x,y,z){var y2=y*cbx-z*sbx,z2=y*sbx+z*cbx;return [x*cby+z2*sby,y2,-x*sby+z2*cby];}
-    function pj(p){var s=FOC/(CAMZ-p[2])*FIT;return [W/2+p[0]*s,H/2-p[1]*s,s];}
-    function polyFor(gm, spin, cen, u,v,d, col, wired){
-      var cs=Math.cos(spin),sn=Math.sin(spin),V=gm.V,TV=new Array(V.length),i;
-      for(i=0;i<V.length;i++){var lx=V[i][0]*cs-V[i][1]*sn, ly=V[i][0]*sn+V[i][1]*cs, lz=V[i][2];
-        var wx=lx*u[0]+ly*v[0]+lz*d[0]+cen[0], wy=lx*u[1]+ly*v[1]+lz*d[1]+cen[1], wz=lx*u[2]+ly*v[2]+lz*d[2]+cen[2];
-        TV[i]=tilt(wx,wy,wz);}
-      for(var fi=0;fi<gm.F.length;fi++){var face=gm.F[fi],idx=face.idx,p0=TV[idx[0]],p1=TV[idx[1]],p2=TV[idx[2]];
-        var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2],bxx=p2[0]-p0[0],byy=p2[1]-p0[1],bzz=p2[2]-p0[2];
-        var nx=ay*bzz-az*byy,ny=az*bxx-ax*bzz,nz=ax*byy-ay*bxx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
-        if(nzn<=0.02)continue;
-        var diff=(nx/nl)*LT[0]+(ny/nl)*LT[1]+nzn*LT[2];if(diff<0)diff=0;var lit=0.32+0.85*diff,cc;
-        var base=wired?'#ffcf6b':col;
-        if(face.t==='hub')cc=shd(base,lit*0.5);else if(face.t==='side')cc=shd(base,lit*0.62);else cc=shd(base,lit);
-        var sp=[],zc=0;for(var q=0;q<idx.length;q++){var pp=pj(TV[idx[q]]);sp.push(pp);zc+=TV[idx[q]][2];}
-        polys.push({z:zc/idx.length,sp:sp,col:cc,glow:0});
+  function box(pos,u,v,w,drN,dnN,plateR,depth,kOut,spawn,rate){
+    emitBox(pos,u,v,w,plateR,PLATE);
+    emitGear(add(pos,sc(w,5)),u,v,w,drN,10,depth===TOP?GOLD:BRASS,rate,0);   // central drive gear (brass)
+    var ring=PR(drN)+PR(dnN);                                                // mesh centre distance
+    for(var kk=0;kk<kOut;kk++){
+      var a=kk/kOut*TAU + (depth===TOP?0.20:0.35);
+      var dir=nrm(comb(u,v,w,Math.cos(a),Math.sin(a),0));
+      var gp=add(add(pos,sc(dir,ring)),sc(w,5));
+      var drate=-rate*drN/dnN;                                               // meshed => counter-rotate, by ratio
+      emitGear(gp,u,v,w,dnN,10,(kk%3===0?STEEL:BRASS),drate,a);             // mostly brass, occasional steel
+      if(depth>0 && kk<spawn){
+        var end=add(gp,sc(dir,plateR*0.95));
+        emitRod(add(gp,sc(w,5)),add(end,sc(w,5)));
+        // child box at right angle: its axis = the shaft dir; frame u2 = parent axis w
+        var w2=dir, u2=nrm(w), v2=nrm(cross(w2,u2));
+        box(end,u2,v2,w2, Math.max(12,drN-6), Math.max(8,dnN-3), plateR*0.60, depth-1, depth>1?4:3, depth>1?1:0, drate);
       }
     }
-    // shafts (rods) first
-    SHAFTS.forEach(function(s){var a=pj(tilt(s.d[0]*BR*0.7,s.d[1]*BR*0.7,0)),b=pj(tilt(s.d[0]*s.end,s.d[1]*s.end,0));
-      ctx.strokeStyle=hexA(s.dept.c,0.28);ctx.lineWidth=Math.max(1.5,4*a[2]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
+  }
+  var TOP=2;
+  box([0,0,0],[1,0,0],[0,1,0],[0,0,1], 20,12, 74, TOP, 6, 6, 0.012);
+
+  // ---- camera ----
+  var yaw=-0.5, pitch=0.5, CAMZ=900, FOC=900, FIT=1, phase=0;
+  var LT=nrm([-0.35,-0.55,0.75]);
+  function clamp(x){x=x|0;return x<0?0:x>255?255:x;}
+  function shade(pal,f,part){var hex=(part==='hub')?pal.hub:(f>1?pal.hi:f>0.6?pal.b:pal.lo);
+    var n=parseInt(hex.slice(1),16);var g=(part==='hub')?1:(0.55+0.5*f);
+    return 'rgb('+clamp(((n>>16)&255)*g)+','+clamp(((n>>8)&255)*g)+','+clamp((n&255)*g)+')';}
+  // extent for auto-fit
+  var MAXR=0; PARTS.forEach(function(p){if(p.pos){var d=Math.hypot(p.pos[0],p.pos[1],p.pos[2]);if(d>MAXR)MAXR=d;}});
+  MAXR+=90;
+
+  function frame(){
+    FIT=Math.min(W,H)*0.52/MAXR;
+    ctx.clearRect(0,0,W,H);
+    var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch);
+    function tf(p){var x=p[0]*cy - p[2]*sy, z=p[0]*sy + p[2]*cy, y=p[1]*cx - z*sx; z=p[1]*sx + z*cx; return[x,y,z];}
+    function pj(p){var s=FOC/(CAMZ-p[2])*FIT;return[W/2+p[0]*s,H/2-p[1]*s,s];}
+    // rods first
+    PARTS.forEach(function(p){if(p.k!=='r')return;var a=pj(tf(p.a)),b=pj(tf(p.b));
+      ctx.strokeStyle='rgba(150,140,120,.35)';ctx.lineWidth=Math.max(1.5,3.4*a[2]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
     var polys=[];
-    // box (engine) — the angle box
-    (function(){var cs=Math.cos(t),sn=Math.sin(t),V=BOX.m.V,TV=new Array(V.length);
-      for(var i=0;i<V.length;i++){var lx=V[i][0]*cs-V[i][1]*sn,ly=V[i][0]*sn+V[i][1]*cs,lz=V[i][2];TV[i]=tilt(lx,ly,lz);}
-      for(var fi=0;fi<BOX.m.F.length;fi++){var face=BOX.m.F[fi],idx=face.idx,p0=TV[idx[0]],p1=TV[idx[1]],p2=TV[idx[2]];
-        var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2],bxx=p2[0]-p0[0],byy=p2[1]-p0[1],bzz=p2[2]-p0[2];
-        var nx=ay*bzz-az*byy,ny=az*bxx-ax*bzz,nz=ax*byy-ay*bxx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;if(nzn<=0.02)continue;
-        var diff=(nx/nl)*LT[0]+(ny/nl)*LT[1]+nzn*LT[2];if(diff<0)diff=0;var lit=0.4+0.8*diff,cc;
-        if(face.t==='hub')cc=shd('#7a2408',1);else if(face.t==='side')cc=shd('#F4581E',lit*0.7);else cc=shd('#F4581E',Math.max(0.95,lit));
-        var sp=[],zc=0;for(var q=0;q<idx.length;q++){var pp=pj(TV[idx[q]]);sp.push(pp);zc+=TV[idx[q]][2];}
-        polys.push({z:zc/idx.length,sp:sp,col:cc,glow:face.t==='cap'?8:0});}
-    })();
-    // each shaft's gear stack (compound: all share the shaft's spin)
-    SHAFTS.forEach(function(s){var sspin=-s.ratio*t*s.gears[0].dir;
-      s.gears.forEach(function(g,gi){var cen=[s.d[0]*g.t,s.d[1]*g.t,s.d[2]*g.t];
-        polyFor(g.m, sspin+gi*0.3, cen, s.u,s.v,s.d, s.dept.c, s.dept.wired);});});
+    PARTS.forEach(function(p){if(p.k==='r')return;
+      var sp=(p.rate*phase)+(p.ph||0),cs=Math.cos(sp),sn=Math.sin(sp),V=p.m.V,TV=new Array(V.length),i;
+      for(i=0;i<V.length;i++){var lx=V[i][0],ly=V[i][1],lz=V[i][2];
+        if(p.k==='g'){var rx=lx*cs-ly*sn,ry=lx*sn+ly*cs;lx=rx;ly=ry;}   // gears spin about local z
+        var wpt=add(comb(p.u,p.v,p.w,lx,ly,lz),p.pos);
+        TV[i]=tf(wpt);}
+      for(var fi=0;fi<p.m.F.length;fi++){var F=p.m.F[fi],x=F.x,p0=TV[x[0]],p1=TV[x[1]],p2=TV[x[2]];
+        var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2],bx2=p2[0]-p0[0],by2=p2[1]-p0[1],bz2=p2[2]-p0[2];
+        var nx=ay*bz2-az*by2,ny=az*bx2-ax*bz2,nz=ax*by2-ay*bx2,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
+        if(nzn<=0.02)continue;
+        var diff=(nx/nl)*LT[0]+(ny/nl)*LT[1]+nzn*LT[2];if(diff<0)diff=0;
+        var f=0.30+0.95*diff, part=(F.t==='hub')?'hub':(F.t==='plate'||F.t==='pside')?'plate':'g';
+        var pal=(F.t==='plate'||F.t==='pside')?PLATE:p.pal;
+        var col=shade(pal,f,part==='hub'?'hub':'x');
+        var poly=[],zc=0;for(var q=0;q<x.length;q++){var pp=pj(TV[x[q]]);poly.push(pp);zc+=TV[x[q]][2];}
+        polys.push({z:zc/x.length,poly:poly,col:col,glow:(p.pal===GOLD&&F.t==='cap')?7:0});
+      }
+    });
     polys.sort(function(a,b){return a.z-b.z;});
-    for(var pi=0;pi<polys.length;pi++){var P=polys[pi],sp=P.sp;
-      ctx.beginPath();ctx.moveTo(sp[0][0],sp[0][1]);for(var q=1;q<sp.length;q++)ctx.lineTo(sp[q][0],sp[q][1]);ctx.closePath();
-      if(P.glow){ctx.shadowBlur=P.glow;ctx.shadowColor='#F4581E';}ctx.fillStyle=P.col;ctx.fill();ctx.shadowBlur=0;
+    for(var pi=0;pi<polys.length;pi++){var P=polys[pi],q=P.poly;
+      ctx.beginPath();ctx.moveTo(q[0][0],q[0][1]);for(var j=1;j<q.length;j++)ctx.lineTo(q[j][0],q[j][1]);ctx.closePath();
+      if(P.glow){ctx.shadowBlur=P.glow;ctx.shadowColor='#d4a53a';}ctx.fillStyle=P.col;ctx.fill();ctx.shadowBlur=0;
       ctx.strokeStyle='rgba(0,0,0,.30)';ctx.lineWidth=0.5;ctx.stroke();}
-    // labels: dept name + real count at shaft ends
-    SHAFTS.forEach(function(s){var e=pj(tilt(s.d[0]*(s.end+18),s.d[1]*(s.end+18),0));var fs=Math.max(8,10*e[2]);
-      ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
-      var txt=s.dept.n+' ·'+s.dept.k;
-      ctx.lineWidth=3;ctx.strokeStyle='rgba(6,8,10,.92)';ctx.lineJoin='round';ctx.strokeText(txt,e[0],e[1]);
-      ctx.fillStyle=s.dept.wired?'#ffe6a8':'#cdd4dc';ctx.fillText(txt,e[0],e[1]);});
-    var c0=pj(tilt(0,0,20));var fs=Math.max(9,13*c0[2]);
+    var c0=pj(tf([0,0,26]));var fs=Math.max(9,13*c0[2]);
     ctx.textAlign='center';ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
-    ctx.lineWidth=3;ctx.strokeStyle='rgba(5,6,8,.9)';ctx.lineJoin='round';
-    ctx.strokeText('KLYFTON AI',c0[0],c0[1]);ctx.fillStyle='#ffd9c0';ctx.fillText('KLYFTON AI',c0[0],c0[1]);
-    if(!reduce){ phase+=0.009; by=0.5*Math.sin(phase*0.3); _bootGearRAF=requestAnimationFrame(frame); }
+    ctx.lineWidth=3;ctx.strokeStyle='rgba(8,7,5,.9)';ctx.lineJoin='round';
+    ctx.strokeText('KLYFTON AI',c0[0],c0[1]);ctx.fillStyle='#ffe6a8';ctx.fillText('KLYFTON AI',c0[0],c0[1]);
+    if(!reduce){ phase+=1; yaw+=0.004; _bootGearRAF=requestAnimationFrame(frame); }
   }
   frame();
 }
