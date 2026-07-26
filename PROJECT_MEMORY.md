@@ -5,7 +5,7 @@ already known. If something here conflicts with a vague memory, **this file wins
 current: when you finish a unit of work or make a decision, update the relevant section here in
 the same commit. Doctrine numbers (`mgsf-core.skill`) still win over everything.
 
-_Last updated: 2026-07-25._
+_Last updated: 2026-07-26._
 
 ## 1. What this is / repos
 - **mgsf-field-os** — Klyfton AI (the app): `api/klyfton.js` = Queen router → worker minds → synthesizer/critic hive; `public/index.html` = single-file app; Supabase brain; **Vercel PRO**, auto-deploys **from `main`**.
@@ -28,6 +28,12 @@ _Last updated: 2026-07-25._
 - **`api/act.js` = the "arms"** — gated outward executor (email/sms/appointment/crm/invoice/order). Requires `approved:true`; dispatches via `ALERTS_WEBHOOK_URL`; **inert until that env is set**.
 - **`api/memory.js` = semantic memory (pgvector)** — Klyfton's real long-term recall. `remember`/`recall` (top-K by embedding similarity). Gated on Supabase + `OPENAI_API_KEY` (text-embedding-3-small, 1536-dim); stores notes without a vector if no embed key (degrades to note recall). Wired into klyfton.js: every non-trivial message best-effort recalls the 6 most relevant facts (no-op/zero-cost when unconfigured). **Owner activation:** run the SEMANTIC MEMORY block in `db/schema.sql` + set `OPENAI_API_KEY` in Vercel.
 - Docs: COMPETITIVE_ANALYSIS.md, CAPABILITIES_ROADMAP.md, OPERATIONS_COMMAND_CENTER.md.
+
+**Frontend / UX (public/index.html) — session 2026-07-26 (branch, not merged):**
+- **Boot loader = the 3D "brain" gear machine** (`startBootGears`): pentagon gold KLYFTON-AI brain center, 13 departments as RED octagon angle-boxes (white outline) each grinding RAINBOW extruded gears, blue drive shafts (brain→boxes + box↔box ring links). Hand-rolled software 3D on canvas (extruded meshes, per-face normals, painter-sort, back-face cull); brightness floor so nothing renders black on the black bg. This is the app's uploading/boot screen. (Went through many owner-directed iterations; this is the settled version.)
+- **Phone/Tablet/Desktop layout selector** (`#layoutSeg` in top bar + `window.setLayout`) — forces `body.lay-phone|lay-tablet|lay-desktop`, persisted per device (`localStorage 'mgsf_layout'`), overrides @media. Phone = icon-only top bar + 60px icon nav rail so modules get full width.
+- **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
+- **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
 **Marketing — COMPLETE (Passes 16–25 in mgsf-marketing/NIGHT_LOG.md):** crawl-space page built (SEO_GAPS P1), all internal links + sitemap + og:url + FAQ schema (9/9 service pages) + canonical/robots/alt all verified. Nothing safe left to add.
 
