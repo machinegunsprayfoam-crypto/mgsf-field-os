@@ -122,6 +122,10 @@ body.lay-phone .nav-item{min-height:54px}
 body.lay-phone .admin-inp,body.lay-phone .inp{font-size:16px}
 body.lay-phone .metrics-row{grid-template-columns:repeat(2,1fr)}
 body.lay-phone .grid-2,body.lay-phone .grid-3{grid-template-columns:1fr}
+/* phone: slim the nav to an icon rail so modules get the screen width back */
+body.lay-phone #sidebar{width:60px;min-width:60px;max-width:60px;padding:10px 4px 96px;gap:6px 4px}
+body.lay-phone #navResize{display:none}
+body.lay-tablet #sidebar{width:92px;min-width:92px;max-width:92px}
 body.lay-phone #chatPanel:not(.collapsed){position:fixed;top:52px;right:0;bottom:0;width:min(92vw,360px);z-index:60;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
 /* TABLET — medium */
 body.lay-tablet .metrics-row{grid-template-columns:repeat(2,1fr)}
