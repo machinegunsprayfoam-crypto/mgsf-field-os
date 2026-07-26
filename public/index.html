@@ -2858,7 +2858,6 @@ function startBootGears(){
   }
   function frame(){
     ctx.clearRect(0,0,W,H);
-    drawEngine();
     var arr=GEARS.map(function(g){return {z:proj(g.hx,g.hy,0).z,g:g};}).sort(function(p,q){return q.z-p.z;});
     arr.forEach(function(it){ drawGear(it.g); });
     rpm+=(rpmT-rpm)*0.05; if(!reduce) yaw+=0.0016;
