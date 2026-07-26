@@ -49,6 +49,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 .boot-bar{width:360px;height:3px;background:#111;border-radius:2px;margin-top:40px;overflow:hidden}
 .boot-fill{height:100%;background:linear-gradient(90deg,var(--or),var(--cy));width:0%;transition:width .1s linear;box-shadow:0 0 12px var(--or)}
 .boot-log{margin-top:20px;font-size:11px;color:var(--t2);letter-spacing:2px;min-height:20px;text-align:center}
+.boot-gears{margin-top:34px;width:210px;height:210px;display:block}
 @keyframes pulse{0%,100%{text-shadow:0 0 40px var(--or),0 0 80px rgba(249,115,22,.4)}50%{text-shadow:0 0 60px var(--or),0 0 120px rgba(249,115,22,.7)}}
 
 /* PIN OVERLAY */
@@ -580,7 +581,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
 <div id="boot">
   <div class="boot-logo">KLYFTON AI</div>
   <div class="boot-sub">MACHINE GUN SPRAY FOAM • COMMAND INTELLIGENCE SYSTEM</div>
-  <div class="boot-bar"><div class="boot-fill" id="bootFill"></div></div>
+  <canvas id="bootGears" class="boot-gears" width="300" height="300" aria-hidden="true"></canvas>
   <div class="boot-log" id="bootLog">INITIALIZING...</div>
 </div>
 
@@ -2819,14 +2820,55 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
+// Boot loader gear train — meshing gears turning (the drivetrain), in the brand colors.
+// Replaces the old progress bar. Auto-stops on boot fade-out; static if reduced-motion.
+let _bootGearRAF = null;
+function startBootGears(){
+  const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
+  const g = cv.getContext('2d'); const W = cv.width, H = cv.height, cx = W/2, cy = H/2;
+  const cs = getComputedStyle(document.documentElement);
+  const OR = (cs.getPropertyValue('--or')||'').trim() || '#F4581E';
+  const CY = (cs.getPropertyValue('--cy')||'').trim() || '#22d3ee';
+  let reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+  function gear(teeth, rOut, rIn, rHub, ox, oy, rot, color){
+    g.save(); g.translate(ox, oy); g.rotate(rot); g.beginPath();
+    for(let i=0;i<teeth;i++){
+      const a=(i/teeth)*Math.PI*2, tw=Math.PI*2/teeth;
+      const pts=[[a,rIn],[a+tw*0.22,rOut],[a+tw*0.5,rOut],[a+tw*0.72,rIn]];
+      for(let k=0;k<pts.length;k++){ const x=Math.cos(pts[k][0])*pts[k][1], y=Math.sin(pts[k][0])*pts[k][1]; (i===0&&k===0)?g.moveTo(x,y):g.lineTo(x,y); }
+    }
+    g.closePath(); g.shadowColor=color; g.shadowBlur=16; g.fillStyle=color; g.fill(); g.shadowBlur=0;
+    g.beginPath(); g.arc(0,0,rHub,0,Math.PI*2); g.fillStyle='#000'; g.fill();
+    g.lineWidth=3; g.strokeStyle=color; g.stroke(); g.restore();
+  }
+  // center "Queen" gear + two meshing satellites (opposite spin, geared ratios)
+  const G = [
+    { teeth:18, rOut:70, rIn:56, rHub:22, ang:0,    dist:0,  color:OR, dir:1,  ratio:1 },
+    { teeth:11, rOut:42, rIn:32, rHub:13, ang:-0.7, dist:99, color:CY, dir:-1, ratio:18/11 },
+    { teeth:8,  rOut:31, rIn:23, rHub:10, ang:2.5,  dist:88, color:OR, dir:-1, ratio:18/8 },
+  ];
+  let base = 0;
+  function frame(){
+    g.clearRect(0,0,W,H);
+    for(const gr of G){
+      const ox = cx + Math.cos(gr.ang)*gr.dist, oy = cy + Math.sin(gr.ang)*gr.dist;
+      gear(gr.teeth, gr.rOut, gr.rIn, gr.rHub, ox, oy, gr.dir*base*gr.ratio, gr.color);
+    }
+    if(!reduce){ base += 0.012; _bootGearRAF = requestAnimationFrame(frame); }
+  }
+  frame();
+}
+function stopBootGears(){ if(_bootGearRAF){ cancelAnimationFrame(_bootGearRAF); _bootGearRAF=null; } }
+
 function runBoot(){
-  const fill = document.getElementById('bootFill');
   const log  = document.getElementById('bootLog');
+  startBootGears();
   let step = 0;
-  
+
   function nextStep(){
     if(step>=BOOT_MSGS.length){
       setTimeout(()=>{
+        stopBootGears();
         document.getElementById('boot').classList.add('hidden');
         document.getElementById('app').classList.add('visible');
         document.getElementById('ambientBar').classList.toggle('on',appState.soundOn);
@@ -2838,7 +2880,6 @@ function runBoot(){
       return;
     }
     log.textContent = BOOT_MSGS[step];
-    fill.style.width = ((step+1)/BOOT_MSGS.length*100)+'%';
     step++;
     setTimeout(nextStep, 280+Math.random()*180);
   }
