@@ -2820,10 +2820,11 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = the 3D CONNECTION MAP spinning up: Klyfton engine (center) -> 13 department
-// gears ringed around it (real Connection-Map colors) -> each department fans out its connection
-// gears. Hand-rolled perspective projection + slow auto-orbit + RPM spool-up read as 3D.
-// Auto-stops on fade; static if reduced-motion.
+// Boot loader = a REAL 3D CONNECTION MAP: Klyfton engine (center) -> 13 department gears (real
+// Connection-Map colors) -> each fans out its connection gears. Genuine 3D extruded gear meshes
+// (front/back caps, side walls, hub + axle), a hand-rolled software renderer (per-face normals,
+// flat lighting, painter's depth sort, back-face cull), tumbling slowly on a gentle rock.
+// Auto-stops on fade; draws one static frame if reduced-motion.
 let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
@@ -2832,60 +2833,84 @@ function startBootGears(){
   let DPR=1, W=0, H=0;
   function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth||520; H=cv.clientHeight||400; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
   resize(); window.addEventListener('resize', resize);
-  const YF=0.82, DR=155, CR=286;
-  // department palette (matches the live Connection Map); n = connection gears fanned per dept
-  const DEPTS=[
-    {c:'#ffcf6b',n:4},{c:'#ff7a59',n:4},{c:'#2ca01c',n:3},{c:'#4285f4',n:4},
-    {c:'#7c5cff',n:3},{c:'#00a3a3',n:4},{c:'#ff4f00',n:2},{c:'#d3d8de',n:4},
-    {c:'#d9469b',n:3},{c:'#b06bff',n:4},{c:'#5b8def',n:3},{c:'#e0a12e',n:3},{c:'#6b7580',n:2}
-  ];
-  const GEARS=[{hx:0,hy:0,r:46,teeth:16,dir:1,kind:'engine',col:'#F4581E',spin:0}];
-  const LINES=[];
-  DEPTS.forEach(function(d,i){
-    var a=(i/DEPTS.length)*6.2832, dx=DR*Math.cos(a), dy=DR*Math.sin(a)*YF, ddir=(i%2?1:-1);
-    GEARS.push({hx:dx,hy:dy,r:25,teeth:12,dir:ddir,kind:'dept',col:d.c,spin:Math.random()*6});
-    LINES.push({ax:0,ay:0,bx:dx,by:dy,c:d.c});
-    for(var j=0;j<d.n;j++){
-      var fa=a+((j-(d.n-1)/2))*0.26, cd=CR+(j%2)*36, cx=cd*Math.cos(fa), cy=cd*Math.sin(fa)*YF;
-      GEARS.push({hx:cx,hy:cy,r:13,teeth:10,dir:-ddir,kind:'conn',col:d.c,spin:Math.random()*6});
-      LINES.push({ax:dx,ay:dy,bx:cx,by:cy,c:d.c});
-    }
-  });
-  let yaw=-0.62, pitch=-0.30, dist=900, rpm=700, rpmT=5400;
-  const ROLL=Math.PI/2;  // stand the assembly up — quarter-turn to the right
-  function rot(x,y,z){ var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch); var x1=x*cy-z*sy,z1=x*sy+z*cy,y1=y*cx-z1*sx; z1=y*sx+z1*cx; return {x:x1,y:y1,z:z1}; }
-  function proj(x,y,z){ var r=rot(x,y,z),f=560,s=f/(f+r.z+(dist-560)); if(s<0.02)s=0.02;
-    var px=r.x*s, py=r.y*s, cr=Math.cos(ROLL), sr=Math.sin(ROLL);
-    return {x:W/2+px*cr-py*sr, y:H/2+px*sr+py*cr, s:s, z:r.z}; }
-  function shaft(ax,ay,az,bx,by,bz,col,w){ var a=proj(ax,ay,az),b=proj(bx,by,bz); ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,w*((a.s+b.s)/2)); ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
-  function hexA(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
-  function drawGear(g){ var pr=proj(g.hx,g.hy,0),R=g.r*pr.s; if(R<2)return; var x=pr.x,y=pr.y; var eng=g.kind==='engine';
-    ctx.save(); ctx.translate(x,y); ctx.rotate(g.spin*g.dir); ctx.fillStyle=eng?'#F4581E':g.col; var tl=R*0.22;
-    for(var i=0;i<g.teeth;i++){ ctx.save(); ctx.rotate((i/g.teeth)*6.2832); ctx.fillRect(-R*0.11,-(R+tl),R*0.22,tl+1); ctx.restore(); } ctx.restore();
-    var grd=ctx.createRadialGradient(x-R*0.3,y-R*0.3,R*0.1,x,y,R);
-    if(eng){grd.addColorStop(0,'#ffb07a');grd.addColorStop(.5,'#F4581E');grd.addColorStop(1,'#9c2f0e');}
-    else{grd.addColorStop(0,'#dfe5ec');grd.addColorStop(.55,'#9aa4af');grd.addColorStop(1,'#454d56');}
-    ctx.beginPath(); ctx.arc(x,y,R,0,7); ctx.fillStyle=grd; ctx.fill();
-    ctx.lineWidth=Math.max(1,R*0.07); ctx.strokeStyle=eng?'#ffd9c0':g.col;
-    if(eng||g.kind==='dept'){ ctx.shadowBlur=12*pr.s; ctx.shadowColor=eng?'#F4581E':g.col; } ctx.stroke(); ctx.shadowBlur=0;
-    ctx.save(); ctx.translate(x,y); ctx.rotate(g.spin*g.dir); ctx.strokeStyle='rgba(10,12,15,.5)'; ctx.lineWidth=Math.max(1,R*0.05);
-    for(var k=0;k<3;k++){ ctx.beginPath(); ctx.rotate(2.094); ctx.moveTo(0,0); ctx.lineTo(0,-R*0.82); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(0,0,R*0.24,0,7); ctx.fillStyle=eng?'#5c1c08':'#1b2026'; ctx.fill(); ctx.restore();
+  var TAU=Math.PI*2;
+  // real 3D extruded gear mesh: front/back caps, side walls, raised hub + axle
+  function circle(z,r,seg){ var a=[]; for(var i=0;i<seg;i++){ var t=i/seg*TAU; a.push([Math.cos(t)*r,Math.sin(t)*r,z]); } return a; }
+  function buildGear(teeth,R,th){
+    var root=R*0.72, tip=R, half=Math.PI/teeth, out=[], i;
+    for(i=0;i<teeth;i++){ var b=i/teeth*TAU;
+      out.push([b-half*0.86,root]);out.push([b-half*0.46,tip]);out.push([b+half*0.46,tip]);out.push([b+half*0.86,root]); }
+    var n=out.length, V=[], t2=th/2;
+    for(i=0;i<n;i++)V.push([Math.cos(out[i][0])*out[i][1],Math.sin(out[i][0])*out[i][1], t2]);
+    for(i=0;i<n;i++)V.push([Math.cos(out[i][0])*out[i][1],Math.sin(out[i][0])*out[i][1],-t2]);
+    var F=[], f=[], bk=[];
+    for(i=0;i<n;i++)f.push(i); F.push({idx:f,t:'cap'});
+    for(i=n-1;i>=0;i--)bk.push(n+i); F.push({idx:bk,t:'cap'});
+    for(i=0;i<n;i++){ var j=(i+1)%n; F.push({idx:[i,j,n+j,n+i],t:'side'}); }
+    var seg=16, base=V.length, hp=circle(t2+R*0.03,R*0.40,seg); for(i=0;i<seg;i++)V.push(hp[i]);
+    var hf=[]; for(i=0;i<seg;i++)hf.push(base+i); F.push({idx:hf,t:'hub'});
+    var base2=V.length, ap=circle(t2+R*0.06,R*0.16,seg); for(i=0;i<seg;i++)V.push(ap[i]);
+    var af=[]; for(i=0;i<seg;i++)af.push(base2+i); F.push({idx:af,t:'axle'});
+    return {V:V,F:F};
   }
+  // department palette (matches the live Connection Map); n = connection gears per dept
+  const DEPTS=[
+    {c:'#ffcf6b',n:3},{c:'#ff7a59',n:3},{c:'#2ca01c',n:2},{c:'#4285f4',n:3},
+    {c:'#7c5cff',n:2},{c:'#00a3a3',n:3},{c:'#ff4f00',n:2},{c:'#d3d8de',n:3},
+    {c:'#d9469b',n:2},{c:'#b06bff',n:3},{c:'#5b8def',n:2},{c:'#e0a12e',n:2},{c:'#6b7580',n:2}
+  ];
+  const GEARS=[], LINES=[], DR=150, CR=270;
+  function addGear(px,py,teeth,R,th,dir,col,kind){ GEARS.push({m:buildGear(teeth,R,th),px:px,py:py,dir:dir,col:col,kind:kind,teeth:teeth,spin:Math.random()*TAU}); }
+  addGear(0,0,18,52,26,1,'#F4581E','engine');
+  DEPTS.forEach(function(d,i){
+    var a=i/DEPTS.length*TAU, dx=DR*Math.cos(a), dy=DR*Math.sin(a), dir=(i%2?1:-1);
+    addGear(dx,dy,13,30,15,dir,d.c,'dept'); LINES.push([0,0,dx,dy,d.c]);
+    for(var j=0;j<d.n;j++){ var fa=a+((j-(d.n-1)/2))*0.34, cd=CR+(j%2)*40, cx=cd*Math.cos(fa), cy=cd*Math.sin(fa);
+      addGear(cx,cy,10,17,10,-dir,d.c,'conn'); LINES.push([dx,dy,cx,cy,d.c]); }
+  });
+  var bx=0.60, by=0.0, phase=0, CAMZ=1080, FOC=1080;
+  var L=(function(v){ var m=Math.hypot(v[0],v[1],v[2]); return [v[0]/m,v[1]/m,v[2]/m]; })([-0.35,-0.5,0.8]);
+  function clamp255(x){ x=x|0; return x<0?0:x>255?255:x; }
+  function shd(hex,f){ var n=parseInt(hex.slice(1),16); return 'rgb('+clamp255(((n>>16)&255)*f)+','+clamp255(((n>>8)&255)*f)+','+clamp255((n&255)*f)+')'; }
+  function hexA(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
   function frame(){
+    var FIT=Math.min(W,H)/600;
     ctx.clearRect(0,0,W,H);
-    for(var i=0;i<LINES.length;i++){ var L=LINES[i]; shaft(L.ax,L.ay,0,L.bx,L.by,0,hexA(L.c,0.16),2); }
-    var arr=GEARS.map(function(g){return {z:proj(g.hx,g.hy,0).z,g:g};}).sort(function(p,q){return q.z-p.z;});
-    arr.forEach(function(it){ drawGear(it.g); });
-    var c0=proj(0,0,0), fs=Math.max(9,12*c0.s);
+    var cbx=Math.cos(bx),sbx=Math.sin(bx),cby=Math.cos(by),sby=Math.sin(by);
+    function xform(vx,vy,vz){ var y=vy*cbx-vz*sbx,z=vy*sbx+vz*cbx,x=vx; return [x*cby+z*sby,y,-x*sby+z*cby]; }
+    function proj(p){ var s=FOC/(CAMZ-p[2])*FIT; return [W/2+p[0]*s,H/2-p[1]*s,s]; }
+    for(var i=0;i<LINES.length;i++){ var Ln=LINES[i]; var a=proj(xform(Ln[0],Ln[1],0)),b=proj(xform(Ln[2],Ln[3],0));
+      ctx.strokeStyle=hexA(Ln[4],0.13); ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); }
+    var polys=[];
+    for(var gi=0;gi<GEARS.length;gi++){ var G=GEARS[gi],cs=Math.cos(G.spin*G.dir),sn=Math.sin(G.spin*G.dir),V=G.m.V,TV=new Array(V.length),eng=G.kind==='engine';
+      for(var vi=0;vi<V.length;vi++){ var v=V[vi]; var lx=v[0]*cs-v[1]*sn,ly=v[0]*sn+v[1]*cs,lz=v[2]; lx+=G.px; ly+=G.py; TV[vi]=xform(lx,ly,lz); }
+      var Fc=G.m.F, baseCol=eng?'#F4581E':G.col;
+      for(var fi=0;fi<Fc.length;fi++){ var face=Fc[fi],idx=face.idx,p0=TV[idx[0]],p1=TV[idx[1]],p2=TV[idx[2]];
+        var ux=p1[0]-p0[0],uy=p1[1]-p0[1],uz=p1[2]-p0[2],wx=p2[0]-p0[0],wy=p2[1]-p0[1],wz=p2[2]-p0[2];
+        var nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
+        if(nzn<=0.02) continue;
+        var diff=(nx/nl)*L[0]+(ny/nl)*L[1]+nzn*L[2]; if(diff<0)diff=0;
+        var lit=0.34+0.82*diff, col;
+        if(face.t==='axle') col=eng?shd('#7a2408',1):'#141820';
+        else if(face.t==='hub') col=shd(baseCol,lit*0.52);
+        else if(face.t==='side') col=shd(baseCol,lit*0.60);
+        else col=shd(baseCol, eng?Math.max(0.95,lit):lit);
+        var sp=[],zc=0; for(var k=0;k<idx.length;k++){ var pp=proj(TV[idx[k]]); sp.push(pp); zc+=TV[idx[k]][2]; }
+        polys.push({z:zc/idx.length,sp:sp,col:col,glow:(eng&&face.t==='cap')?7:0});
+      }
+    }
+    polys.sort(function(a,b){ return a.z-b.z; });
+    for(var pi=0;pi<polys.length;pi++){ var P=polys[pi],sp=P.sp;
+      ctx.beginPath(); ctx.moveTo(sp[0][0],sp[0][1]); for(var k=1;k<sp.length;k++)ctx.lineTo(sp[k][0],sp[k][1]); ctx.closePath();
+      if(P.glow){ ctx.shadowBlur=P.glow; ctx.shadowColor='#F4581E'; } ctx.fillStyle=P.col; ctx.fill(); ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(0,0,0,.30)'; ctx.lineWidth=0.5; ctx.stroke();
+    }
+    var c0=proj(xform(0,0,30)); var fs=Math.max(9,13*c0[2]);
     ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
     ctx.lineWidth=Math.max(3,fs*0.5); ctx.strokeStyle='rgba(5,6,8,.92)'; ctx.lineJoin='round';
-    ctx.strokeText('KLYFTON AI',c0.x,c0.y+50*c0.s); ctx.fillStyle='#ffd9c0'; ctx.shadowBlur=10; ctx.shadowColor='#F4581E';
-    ctx.fillText('KLYFTON AI',c0.x,c0.y+50*c0.s); ctx.shadowBlur=0; ctx.textBaseline='alphabetic';
-    rpm+=(rpmT-rpm)*0.05; if(!reduce) yaw+=0.0018;
-    var sf=reduce?0:(rpm/2600);
-    GEARS.forEach(function(g){ g.spin+=0.02*sf*(28/g.teeth); });
-    if(!reduce) _bootGearRAF=requestAnimationFrame(frame);
+    ctx.strokeText('KLYFTON AI',c0[0],c0[1]+fs*2.4); ctx.fillStyle='#ffd9c0';
+    ctx.fillText('KLYFTON AI',c0[0],c0[1]+fs*2.4); ctx.textBaseline='alphabetic';
+    if(!reduce){ phase+=0.005; by=0.82*Math.sin(phase); for(var g=0;g<GEARS.length;g++){ GEARS[g].spin+=0.015*(26/GEARS[g].teeth); } _bootGearRAF=requestAnimationFrame(frame); }
   }
   frame();
 }
