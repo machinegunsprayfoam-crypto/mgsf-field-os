@@ -107,6 +107,33 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
 .top-btn{background:none;border:1px solid var(--bd);color:var(--t2);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px;letter-spacing:1px;transition:all .2s}
 .top-btn:hover{border-color:var(--or);color:var(--or);box-shadow:0 0 8px rgba(249,115,22,.2)}
 .top-btn.active{border-color:var(--or);color:var(--or);background:rgba(249,115,22,.1)}
+/* device layout selector (Phone / Tablet / Desktop) */
+#layoutSeg{display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-left:8px;flex-shrink:0}
+#layoutSeg button{background:none;border:0;border-right:1px solid var(--bd);color:var(--t2);font:700 10px/1 inherit;letter-spacing:.5px;padding:6px 9px;cursor:pointer;white-space:nowrap}
+#layoutSeg button:last-child{border-right:0}
+#layoutSeg button.on{background:rgba(249,115,22,.16);color:var(--or)}
+#layoutSeg button:hover{color:var(--or)}
+/* PHONE — big touch targets, single column */
+body.lay-phone #topClock{display:none}
+body.lay-phone .btn{min-height:46px}
+body.lay-phone .nav-item{min-height:54px}
+body.lay-phone .admin-inp,body.lay-phone .inp{font-size:16px}
+body.lay-phone .metrics-row{grid-template-columns:repeat(2,1fr)}
+body.lay-phone .grid-2,body.lay-phone .grid-3{grid-template-columns:1fr}
+body.lay-phone #chatPanel:not(.collapsed){position:fixed;top:52px;right:0;bottom:0;width:min(92vw,360px);z-index:60;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
+/* TABLET — medium */
+body.lay-tablet .metrics-row{grid-template-columns:repeat(2,1fr)}
+body.lay-tablet .grid-3{grid-template-columns:1fr 1fr}
+body.lay-tablet .btn{min-height:42px}
+body.lay-tablet .admin-inp,body.lay-tablet .inp{font-size:15px}
+/* DESKTOP — dense, full columns (override the mobile @media so it holds on any screen) */
+body.lay-desktop #topClock{display:block}
+body.lay-desktop .btn{min-height:32px}
+body.lay-desktop .nav-item{min-height:48px}
+body.lay-desktop .metrics-row{grid-template-columns:repeat(4,1fr)}
+body.lay-desktop .grid-2{grid-template-columns:1fr 1fr}
+body.lay-desktop .grid-3{grid-template-columns:1fr 1fr 1fr}
+body.lay-desktop .admin-inp,body.lay-desktop .inp{font-size:13px}
 #voiceBtn.listening{border-color:var(--red);color:var(--red);background:rgba(200,16,46,.15);animation:pulseBorder .5s ease-in-out infinite}
 @keyframes pulseBorder{0%,100%{box-shadow:0 0 8px rgba(200,16,46,.3)}50%{box-shadow:0 0 16px rgba(200,16,46,.6)}}
 
@@ -666,6 +693,11 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <div class="status-dot" id="statusDot"></div>
       <span class="status-label" id="statusLabel">ONLINE</span>
     </div>
+    <div id="layoutSeg" title="Pick the layout for your device">
+      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout">📱 Phone</button>
+      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout">▭ Tablet</button>
+      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout">🖥 Desk</button>
+    </div>
     <div class="top-spacer"></div>
     <div class="top-clock" id="topClock">00:00:00 MT</div>
     <button class="top-btn active" id="soundBtn" onclick="toggleSound()">🔊 SOUND</button>
@@ -674,6 +706,15 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
     <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on">💡 HELP</button>
     <button class="top-btn" onclick="toggleChat()">💬 KLYFTON</button>
   </div>
+  <script>
+  // Device layout selector: forces Phone/Tablet/Desktop layout (body class), persisted per device,
+  // overriding the auto @media behaviour so a phone isn't stuck in desktop mode (and vice-versa).
+  window.setLayout=function(m,save){var b=document.body;b.classList.remove('lay-phone','lay-tablet','lay-desktop');b.classList.add('lay-'+m);
+    var seg=document.getElementById('layoutSeg');if(seg){[].forEach.call(seg.children,function(x){x.classList.toggle('on',x.getAttribute('data-lay')===m);});}
+    if(save){try{localStorage.setItem('mgsf_layout',m);}catch(e){}}};
+  (function(){var s=null;try{s=localStorage.getItem('mgsf_layout');}catch(e){}
+    var m=s||(innerWidth<700?'phone':innerWidth<1100?'tablet':'desktop');window.setLayout(m,false);})();
+  </script>
 
   <!-- MAIN AREA -->
   <div id="main">
