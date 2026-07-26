@@ -1,0 +1,254 @@
+<meta charset="utf-8">
+<title>Klyfton AI — The Gear Train of Connections</title>
+<style>
+  :root{
+    --bg:#070809; --ink:#e9edf2; --dim:#828a93; --faint:#4a525b;
+    --or:#F4581E; --orhi:#ffb07a;
+    --steel0:#d8dee6; --steel1:#9aa4af; --steel2:#3c434c; --steelhi:#eef2f6; --steelhub:#171b21;
+  }
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 38%,#0d1013 0%,#070809 62%,#040506 100%);overflow:hidden;color:var(--ink)}
+  #wrap{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas.drag{cursor:grabbing}
+  .lbl{position:fixed;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.13em;text-transform:uppercase;pointer-events:none;user-select:none}
+  #title{top:20px;left:24px;font-size:11px;color:var(--dim)}
+  #title b{display:block;font-size:20px;letter-spacing:.02em;color:var(--ink);margin-top:6px;font-family:-apple-system,"Segoe UI",Arial,sans-serif;font-weight:800;text-transform:none}
+  #title b span{color:var(--or)}
+  #hint{bottom:18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--faint);text-align:center;line-height:1.7}
+  #hint b{color:var(--dim);font-weight:700}
+  /* readout card */
+  #panel{position:fixed;top:20px;right:22px;width:250px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    background:linear-gradient(180deg,rgba(20,24,29,.92),rgba(12,15,19,.92));border:1px solid #232a31;border-radius:12px;
+    padding:14px 16px;color:var(--ink);pointer-events:none;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  #panel .k{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  #panel .name{font-size:16px;font-weight:800;margin:2px 0 8px;letter-spacing:.02em;font-family:-apple-system,"Segoe UI",Arial,sans-serif;text-transform:none}
+  #panel .row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-top:1px solid #1b2128;color:var(--dim)}
+  #panel .row b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+  #panel .ab{font-size:10.5px;color:var(--steel1);margin-top:8px;line-height:1.7}
+  #panel .ab i{color:var(--steelhi);font-style:normal}
+  #panel .diff{margin-top:10px;font-size:10px;color:var(--faint);line-height:1.6;border-top:1px solid #1b2128;padding-top:8px}
+  #panel .diff em{color:var(--orhi);font-style:normal}
+  .badge{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:middle}
+</style>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div class="lbl" id="title">Klyfton · Machine Gun Spray Foam<b>THE GEAR TRAIN — <span>connections & abilities</span></b></div>
+<div id="panel">
+  <div class="k">Engine</div>
+  <div class="name" id="pName">KLYFTON AI</div>
+  <div class="row"><span>Teeth (ratio)</span><b id="pTeeth">40</b></div>
+  <div class="row"><span>Driving</span><b id="pDrive">10 connections</b></div>
+  <div class="row"><span>Abilities live</span><b id="pAb">0</b></div>
+  <div class="ab" id="pList">Click any connection gear to engage its abilities.</div>
+  <div class="diff" id="pDiff"><em>Differential:</em> each connection is free to run at its own RPM — a rate-limited API can slip without stalling the engine.</div>
+</div>
+<div class="lbl" id="hint"><b>click</b> a connection to engage its ability gears · <b>drag</b> to orbit · <b>scroll</b> to zoom · every gear turns at its true tooth-ratio</div>
+<script>
+(function(){
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d"),W,H,DPR;
+  function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+  addEventListener("resize",resize);resize();
+  var reduce=false;try{reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){}
+
+  // ---- global gear "module": one tooth size for the whole meshing train ----
+  var M=6.4;                       // px of pitch diameter per tooth
+  function pr(N){return M*N/2;}    // pitch radius from tooth count
+
+  // ---- data: real MGSF connections + their real abilities (tool families) ----
+  // rim = brand accent; abilities become small meshed gears when engaged
+  var CONNS=[
+    {name:"HubSpot",       rim:"#ff7a59", teeth:22, ab:["Contacts","Deals","Companies","Search"]},
+    {name:"Google Drive",  rim:"#ffbb00", teeth:24, ab:["Search","Read","Upload","Recent"]},
+    {name:"Gmail",         rim:"#ea4335", teeth:20, ab:["Draft","Send","Label","Search"]},
+    {name:"Calendar",      rim:"#4285f4", teeth:18, ab:["Events","Create","Free/Busy"]},
+    {name:"QuickBooks",    rim:"#2ca01c", teeth:22, ab:["Invoices","Estimates","P&L"]},
+    {name:"Vercel",        rim:"#e8e8e8", teeth:18, ab:["Deploy","Logs","Errors"]},
+    {name:"GitHub",        rim:"#c9ced4", teeth:22, ab:["PRs","Commits","Actions","Repos"]},
+    {name:"Supabase",      rim:"#3ecf8e", teeth:24, ab:["Brain","Events","Memory","Odometer"]},
+    {name:"SAM · Tango",   rim:"#5b8def", teeth:20, ab:["Opps","NAICS","Awards"]},
+    {name:"Zapier",        rim:"#ff4f00", teeth:20, ab:["Zaps","Triggers","Actions"]}
+  ];
+  var SUN={name:"KLYFTON AI", rim:"#F4581E", teeth:40};
+
+  // layout: sun at origin, connections meshed around it on a ring
+  var Rs=pr(SUN.teeth);
+  CONNS.forEach(function(c,i){
+    c.ang = (i/CONNS.length)*Math.PI*2 - Math.PI/2;     // world direction from sun
+    c.rp  = pr(c.teeth);
+    c.dist= Rs + c.rp;                                    // center distance (pitch tangent)
+    c.cx  = Math.cos(c.ang)*c.dist;
+    c.cy  = Math.sin(c.ang)*c.dist;
+    c.open= false; c.grow=0;                              // ability engage animation 0..1
+    // pre-place ability gears on the outward side of the connection
+    var Na=13;                                            // uniform ability teeth (equal final-drive speed)
+    var ra=pr(Na), adist=c.rp+ra, spread=Math.min(Math.PI*0.9, 0.6+c.ab.length*0.28);
+    c.abG=c.ab.map(function(nm,k){
+      var t=c.ab.length===1?0.5:k/(c.ab.length-1);
+      var b=c.ang + (t-0.5)*spread;                       // fan outward from sun direction
+      return {name:nm, teeth:Na, ra:ra, b:b, cx:c.cx+Math.cos(b)*adist, cy:c.cy+Math.sin(b)*adist};
+    });
+  });
+
+  // ---- meshing rotation (ratio-correct, phase-seated) ----
+  // planet meshing a sun: θp = -(Ns/Np)θs + (Ns/Np+1)·α + π/Np
+  function planetAngle(theta,Ns,Np,alpha){var r=Ns/Np;return -r*theta + (r+1)*alpha + Math.PI/Np;}
+
+  // ---- camera ----
+  var yaw=0, pitch=0.9, zoom=1, tgtZoom=1;               // pitch≈tilt for a slight iso feel
+  var drag=false,lx=0,ly=0;
+  cv.addEventListener("mousedown",function(e){drag=true;lx=e.clientX;ly=e.clientY;cv.classList.add("drag");});
+  addEventListener("mouseup",function(){drag=false;cv.classList.remove("drag");});
+  addEventListener("mousemove",function(e){
+    if(drag){yaw+=(e.clientX-lx)*0.006; pitch+=(e.clientY-ly)*0.004; pitch=Math.max(0.35,Math.min(1.45,pitch)); lx=e.clientX;ly=e.clientY; moved=true;}
+  });
+  cv.addEventListener("wheel",function(e){e.preventDefault();tgtZoom*=(e.deltaY<0?1.1:0.91);tgtZoom=Math.max(0.5,Math.min(2.4,tgtZoom));},{passive:false});
+  var moved=false;
+
+  // project world (x,y on the gear plane) to screen with tilt
+  function P(x,y){
+    var cyw=Math.cos(yaw),syw=Math.sin(yaw);
+    var rx=x*cyw - y*syw, ry=x*syw + y*cyw;              // rotate in-plane (spin the whole table)
+    var sy=Math.sin(pitch);
+    return {x:W/2 + rx*zoom, y:H/2 + ry*sy*zoom, s:zoom, sy:sy};
+  }
+
+  // ---- draw one gear (flat, top-down, tilt applied via P for centre + y-scale) ----
+  function drawGear(x,y,teeth,rot,body,opt){
+    opt=opt||{};
+    var c=P(x,y), R=pr(teeth)*zoom, Ry=R*c.sy;
+    if(R<1)return c;
+    var tipH=R*0.20, root=R-R*0.10, tip=R+tipH;
+    ctx.save(); ctx.translate(c.x,c.y); ctx.scale(1,c.sy); ctx.rotate(rot);
+    // teeth
+    ctx.beginPath();
+    for(var i=0;i<teeth;i++){
+      var a0=i/teeth*Math.PI*2, a1=(i+0.5)/teeth*Math.PI*2, a2=(i+1)/teeth*Math.PI*2;
+      var w=Math.PI/teeth*0.34;
+      ctx.lineTo(Math.cos(a0-w)*root,Math.sin(a0-w)*root);
+      ctx.lineTo(Math.cos(a0-w*0.6)*tip,Math.sin(a0-w*0.6)*tip);
+      ctx.lineTo(Math.cos(a0+w*0.6)*tip,Math.sin(a0+w*0.6)*tip);
+      ctx.lineTo(Math.cos(a0+w)*root,Math.sin(a0+w)*root);
+      ctx.lineTo(Math.cos(a1)*root,Math.sin(a1)*root);
+    }
+    ctx.closePath();
+    var g=ctx.createRadialGradient(-R*0.3,-R*0.3,R*0.1,0,0,R);
+    g.addColorStop(0,body[0]);g.addColorStop(.55,body[1]);g.addColorStop(1,body[2]);
+    ctx.fillStyle=g;
+    if(opt.glow){ctx.shadowBlur=opt.glow;ctx.shadowColor=opt.rim||body[1];}
+    ctx.fill();ctx.shadowBlur=0;
+    // rim (brand accent)
+    ctx.beginPath();ctx.arc(0,0,R*0.9,0,7);
+    ctx.lineWidth=Math.max(1.2,R*0.09);ctx.strokeStyle=opt.rim||body[3];ctx.stroke();
+    // spokes + hub
+    ctx.strokeStyle="rgba(6,8,10,.6)";ctx.lineWidth=Math.max(1,R*0.05);
+    for(var k=0;k<4;k++){ctx.beginPath();ctx.rotate(Math.PI/2);ctx.moveTo(0,0);ctx.lineTo(0,-R*0.72);ctx.stroke();}
+    ctx.beginPath();ctx.arc(0,0,R*0.22,0,7);ctx.fillStyle=body[4]||"#12161b";ctx.fill();
+    ctx.restore();
+    return {sx:c.x, sy:c.y, R:R, Ry:Ry};
+  }
+
+  // labels drawn upright (unrotated) after gears
+  function label(x,y,text,color,size,dy){
+    var c=P(x,y);
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    var fs=size*zoom; if(fs<8)return;
+    ctx.font="800 "+fs+"px ui-monospace,Menlo,Consolas,monospace";
+    ctx.lineWidth=Math.max(2.5,fs*0.42);ctx.strokeStyle="rgba(6,8,10,.92)";ctx.lineJoin="round";
+    ctx.strokeText(text,c.x,c.y+(dy||0));
+    ctx.fillStyle=color;ctx.fillText(text,c.x,c.y+(dy||0));
+  }
+
+  var STEEL=["#d8dee6","#9aa4af","#3c434c","#eef2f6","#171b21"];
+  var SUNBODY=["#ffc1a0","#F4581E","#7a2408","#ffd9c0","#4a1605"];
+
+  // ---- hit test (screen space, roughly) ----
+  var hover=-1;
+  cv.addEventListener("mousemove",function(e){
+    var mx=e.clientX,my=e.clientY,best=-1,bd=1e9;
+    for(var i=0;i<CONNS.length;i++){var c=P(CONNS[i].cx,CONNS[i].cy);var d=Math.hypot(mx-c.x,my-c.y);var R=CONNS[i].rp*zoom;if(d<R*1.05&&d<bd){bd=d;best=i;}}
+    hover=best; cv.style.cursor=drag?"grabbing":(best>=0?"pointer":"grab");
+  });
+  cv.addEventListener("click",function(e){
+    if(moved){moved=false;return;}
+    if(hover>=0){CONNS[hover].open=!CONNS[hover].open; selected=CONNS[hover].open?hover:-1; updatePanel();}
+  });
+  var selected=-1;
+
+  function updatePanel(){
+    var live=0,names=[];
+    CONNS.forEach(function(c){if(c.open){live+=c.ab.length;}});
+    if(selected>=0){
+      var c=CONNS[selected];
+      document.getElementById("pName").textContent=c.name;
+      document.getElementById("pName").style.color="#fff";
+      document.querySelector("#panel .k").textContent="Connection";
+      document.getElementById("pTeeth").textContent=c.teeth;
+      document.getElementById("pDrive").textContent=(SUN.teeth/c.teeth).toFixed(2)+"× engine RPM";
+      document.getElementById("pAb").textContent=c.ab.length;
+      document.getElementById("pList").innerHTML='<span class="badge" style="background:'+c.rim+'"></span>'+c.ab.map(function(a){return "<i>"+a+"</i>";}).join(" · ");
+      document.getElementById("pDiff").innerHTML='<em>Ratio:</em> its ability gears (13T) all turn at '+(SUN.teeth/13).toFixed(2)+'× engine speed — the connection’s tooth-count sets its own pace, the differential lets it slip when its API is rate-limited.';
+    }else{
+      document.querySelector("#panel .k").textContent="Engine";
+      var n=document.getElementById("pName");n.textContent="KLYFTON AI";n.style.color="#fff";
+      document.getElementById("pTeeth").textContent=SUN.teeth;
+      document.getElementById("pDrive").textContent=CONNS.length+" connections";
+      document.getElementById("pAb").textContent=live;
+      document.getElementById("pList").textContent="Click any connection gear to engage its abilities.";
+      document.getElementById("pDiff").innerHTML='<em>Differential:</em> each connection runs at its own RPM — a rate-limited API can slip without stalling the engine.';
+    }
+  }
+  updatePanel();
+
+  // ---- animation ----
+  var theta=0, RPM=reduce?0:0.9;
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    zoom+=(tgtZoom-zoom)*0.12;
+
+    // depth sort: draw far (smaller projected y) first — use projected y of centre
+    var items=[];
+    // connections + abilities
+    CONNS.forEach(function(c,i){
+      c.grow += ((c.open?1:0)-c.grow)*0.14;
+      items.push({y:P(c.cx,c.cy).y, kind:"conn", i:i});
+    });
+    items.push({y:P(0,0).y, kind:"sun"});
+    items.sort(function(a,b){return a.y-b.y;});
+
+    // shafts from sun to each connection (draw beneath gears)
+    CONNS.forEach(function(c){
+      var a=P(0,0), b=P(c.cx,c.cy);
+      ctx.strokeStyle="rgba(120,130,140,.16)";ctx.lineWidth=2*zoom;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    });
+
+    items.forEach(function(it){
+      if(it.kind==="sun"){
+        drawGear(0,0,SUN.teeth,theta,SUNBODY,{rim:SUN.rim,glow:26});
+      }else{
+        var c=CONNS[it.i];
+        var rot=planetAngle(theta,SUN.teeth,c.teeth,c.ang);
+        var hot=(hover===it.i||c.open);
+        var body=hot?["#eef3f8","#b7c0ca","#454d57","#ffffff","#1b2027"]:STEEL;
+        // abilities first (behind), scaled up by grow
+        if(c.grow>0.02){
+          c.abG.forEach(function(ag){
+            var arot=planetAngle(rot,c.teeth,ag.teeth,ag.b);
+            // animate outward from the connection centre
+            var gx=c.cx+(ag.cx-c.cx)*c.grow, gy=c.cy+(ag.cy-c.cy)*c.grow;
+            var abody=["#c6ccd4","#828b95","#343b43","#e7ebf0","#14181d"];
+            var m=drawGear(gx,gy,ag.teeth,arot,abody,{rim:c.rim,glow:8*c.grow});
+            if(c.grow>0.6) label(gx,gy,ag.name,"#dfe5ec",9.5,0);
+          });
+        }
+        drawGear(c.cx,c.cy,c.teeth,rot,body,{rim:c.rim,glow:hot?18:9});
+        label(c.cx,c.cy,c.name.toUpperCase(),hot?"#ffffff":"#cdd4dc",10.5, (c.rp*zoom+11*zoom)*P(0,0).sy*0 + 0);
+      }
+    });
+    // sun label on top
+    label(0,0,"KLYFTON AI","#ffd9c0",13,0);
+
+    if(!reduce){theta+=0.012*RPM; }
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
