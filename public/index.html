@@ -2820,9 +2820,10 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = the 3D TRANSMISSION spinning up (adapted from the gearbox 3D model):
-// Queen router gear + 16 agent gears on inner/outer rings, engine driveline, hand-rolled
-// perspective projection, slow auto-orbit, RPM spooling up. Auto-stops on fade; static if reduced-motion.
+// Boot loader = the 3D CONNECTION MAP spinning up: Klyfton engine (center) -> 13 department
+// gears ringed around it (real Connection-Map colors) -> each department fans out its connection
+// gears. Hand-rolled perspective projection + slow auto-orbit + RPM spool-up read as 3D.
+// Auto-stops on fade; static if reduced-motion.
 let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
@@ -2831,36 +2832,54 @@ function startBootGears(){
   let DPR=1, W=0, H=0;
   function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth||520; H=cv.clientHeight||400; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
   resize(); window.addEventListener('resize', resize);
-  const ZBACK=-250, YF=0.82, IN=165, OUT=290;
-  function G(ring,ang,r,teeth,dir,driver,out){ var x=ring*Math.cos(ang), y=ring*Math.sin(ang)*YF; return {r:r,teeth:teeth,dir:dir,driver:!!driver,out:!!out,hx:x,hy:y,spin:Math.random()*6}; }
-  const GEARS=[
-    G(0,0,50,16,1,true),
-    G(IN,0.00,32,12,-1),G(IN,0.90,27,11,-1),G(IN,1.80,25,10,-1),G(IN,2.69,25,10,-1),G(IN,3.59,29,11,-1),G(IN,4.49,27,11,-1),G(IN,5.39,27,11,-1),
-    G(OUT,0.20,31,12,1),G(OUT,0.98,29,11,1,false,true),G(OUT,1.76,27,11,1),G(OUT,2.54,25,10,1,false,true),G(OUT,3.32,25,10,1),G(OUT,4.10,27,10,1),G(OUT,4.88,30,12,-1,false,true),G(OUT,5.66,26,9,1)
+  const YF=0.82, DR=155, CR=286;
+  // department palette (matches the live Connection Map); n = connection gears fanned per dept
+  const DEPTS=[
+    {c:'#ffcf6b',n:4},{c:'#ff7a59',n:4},{c:'#2ca01c',n:3},{c:'#4285f4',n:4},
+    {c:'#7c5cff',n:3},{c:'#00a3a3',n:4},{c:'#ff4f00',n:2},{c:'#d3d8de',n:4},
+    {c:'#d9469b',n:3},{c:'#b06bff',n:4},{c:'#5b8def',n:3},{c:'#e0a12e',n:3},{c:'#6b7580',n:2}
   ];
-  const ENGINE={x:0,y:150,z:ZBACK-90};
-  let yaw=-0.62, pitch=-0.28, dist=760, rpm=700, rpmT=5400;
+  const GEARS=[{hx:0,hy:0,r:46,teeth:16,dir:1,kind:'engine',col:'#F4581E',spin:0}];
+  const LINES=[];
+  DEPTS.forEach(function(d,i){
+    var a=(i/DEPTS.length)*6.2832, dx=DR*Math.cos(a), dy=DR*Math.sin(a)*YF, ddir=(i%2?1:-1);
+    GEARS.push({hx:dx,hy:dy,r:25,teeth:12,dir:ddir,kind:'dept',col:d.c,spin:Math.random()*6});
+    LINES.push({ax:0,ay:0,bx:dx,by:dy,c:d.c});
+    for(var j=0;j<d.n;j++){
+      var fa=a+((j-(d.n-1)/2))*0.26, cd=CR+(j%2)*36, cx=cd*Math.cos(fa), cy=cd*Math.sin(fa)*YF;
+      GEARS.push({hx:cx,hy:cy,r:13,teeth:10,dir:-ddir,kind:'conn',col:d.c,spin:Math.random()*6});
+      LINES.push({ax:dx,ay:dy,bx:cx,by:cy,c:d.c});
+    }
+  });
+  let yaw=-0.62, pitch=-0.30, dist=900, rpm=700, rpmT=5400;
   function rot(x,y,z){ var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch); var x1=x*cy-z*sy,z1=x*sy+z*cy,y1=y*cx-z1*sx; z1=y*sx+z1*cx; return {x:x1,y:y1,z:z1}; }
   function proj(x,y,z){ var r=rot(x,y,z),f=560,s=f/(f+r.z+(dist-560)); if(s<0.02)s=0.02; return {x:W/2+r.x*s,y:H/2+r.y*s,s:s,z:r.z}; }
   function shaft(ax,ay,az,bx,by,bz,col,w){ var a=proj(ax,ay,az),b=proj(bx,by,bz); ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,w*((a.s+b.s)/2)); ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
-  function drawEngine(){ var e=proj(ENGINE.x,ENGINE.y,ENGINE.z),R=30*e.s; shaft(ENGINE.x,ENGINE.y,ENGINE.z,0,0,0,'rgba(244,88,30,.35)',5); var rev=0.5+0.5*Math.sin(performance.now()/1000*(rpm/600)); ctx.save(); ctx.translate(e.x,e.y); ctx.beginPath(); ctx.arc(0,0,R,0,7); var gr=ctx.createRadialGradient(-R*0.3,-R*0.3,R*0.1,0,0,R); gr.addColorStop(0,'#3a2213'); gr.addColorStop(1,'#160b06'); ctx.fillStyle=gr; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(244,88,30,'+(0.4+0.5*rev)+')'; ctx.shadowBlur=16*rev; ctx.shadowColor='#F4581E'; ctx.stroke(); ctx.shadowBlur=0; ctx.restore(); }
-  function drawGear(g){ var pr=proj(g.hx,g.hy,0),R=g.r*pr.s; if(R<3)return; var x=pr.x,y=pr.y;
-    ctx.save(); ctx.translate(x,y); ctx.rotate(g.spin*g.dir); ctx.fillStyle=g.driver?'#F4581E':'#aab3bd'; var tl=R*0.22;
+  function hexA(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+  function drawGear(g){ var pr=proj(g.hx,g.hy,0),R=g.r*pr.s; if(R<2)return; var x=pr.x,y=pr.y; var eng=g.kind==='engine';
+    ctx.save(); ctx.translate(x,y); ctx.rotate(g.spin*g.dir); ctx.fillStyle=eng?'#F4581E':g.col; var tl=R*0.22;
     for(var i=0;i<g.teeth;i++){ ctx.save(); ctx.rotate((i/g.teeth)*6.2832); ctx.fillRect(-R*0.11,-(R+tl),R*0.22,tl+1); ctx.restore(); } ctx.restore();
     var grd=ctx.createRadialGradient(x-R*0.3,y-R*0.3,R*0.1,x,y,R);
-    if(g.driver){grd.addColorStop(0,'#ffb07a');grd.addColorStop(.5,'#F4581E');grd.addColorStop(1,'#9c2f0e');}
+    if(eng){grd.addColorStop(0,'#ffb07a');grd.addColorStop(.5,'#F4581E');grd.addColorStop(1,'#9c2f0e');}
     else{grd.addColorStop(0,'#dfe5ec');grd.addColorStop(.55,'#9aa4af');grd.addColorStop(1,'#454d56');}
     ctx.beginPath(); ctx.arc(x,y,R,0,7); ctx.fillStyle=grd; ctx.fill();
-    ctx.lineWidth=Math.max(1,R*0.06); ctx.strokeStyle=g.driver?'#ffd9c0':(g.out?'#ffcf6b':'#eef2f6'); ctx.stroke();
+    ctx.lineWidth=Math.max(1,R*0.07); ctx.strokeStyle=eng?'#ffd9c0':g.col;
+    if(eng||g.kind==='dept'){ ctx.shadowBlur=12*pr.s; ctx.shadowColor=eng?'#F4581E':g.col; } ctx.stroke(); ctx.shadowBlur=0;
     ctx.save(); ctx.translate(x,y); ctx.rotate(g.spin*g.dir); ctx.strokeStyle='rgba(10,12,15,.5)'; ctx.lineWidth=Math.max(1,R*0.05);
     for(var k=0;k<3;k++){ ctx.beginPath(); ctx.rotate(2.094); ctx.moveTo(0,0); ctx.lineTo(0,-R*0.82); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(0,0,R*0.24,0,7); ctx.fillStyle=g.driver?'#5c1c08':'#1b2026'; ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(0,0,R*0.24,0,7); ctx.fillStyle=eng?'#5c1c08':'#1b2026'; ctx.fill(); ctx.restore();
   }
   function frame(){
     ctx.clearRect(0,0,W,H);
+    for(var i=0;i<LINES.length;i++){ var L=LINES[i]; shaft(L.ax,L.ay,0,L.bx,L.by,0,hexA(L.c,0.16),2); }
     var arr=GEARS.map(function(g){return {z:proj(g.hx,g.hy,0).z,g:g};}).sort(function(p,q){return q.z-p.z;});
     arr.forEach(function(it){ drawGear(it.g); });
-    rpm+=(rpmT-rpm)*0.05; if(!reduce) yaw+=0.0016;
+    var c0=proj(0,0,0), fs=Math.max(9,12*c0.s);
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
+    ctx.lineWidth=Math.max(3,fs*0.5); ctx.strokeStyle='rgba(5,6,8,.92)'; ctx.lineJoin='round';
+    ctx.strokeText('KLYFTON AI',c0.x,c0.y+50*c0.s); ctx.fillStyle='#ffd9c0'; ctx.shadowBlur=10; ctx.shadowColor='#F4581E';
+    ctx.fillText('KLYFTON AI',c0.x,c0.y+50*c0.s); ctx.shadowBlur=0; ctx.textBaseline='alphabetic';
+    rpm+=(rpmT-rpm)*0.05; if(!reduce) yaw+=0.0018;
     var sf=reduce?0:(rpm/2600);
     GEARS.forEach(function(g){ g.spin+=0.02*sf*(28/g.teeth); });
     if(!reduce) _bootGearRAF=requestAnimationFrame(frame);
