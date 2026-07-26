@@ -2852,8 +2852,11 @@ function startBootGears(){
     }
   });
   let yaw=-0.62, pitch=-0.30, dist=900, rpm=700, rpmT=5400;
+  const ROLL=Math.PI/2;  // stand the assembly up — quarter-turn to the right
   function rot(x,y,z){ var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch); var x1=x*cy-z*sy,z1=x*sy+z*cy,y1=y*cx-z1*sx; z1=y*sx+z1*cx; return {x:x1,y:y1,z:z1}; }
-  function proj(x,y,z){ var r=rot(x,y,z),f=560,s=f/(f+r.z+(dist-560)); if(s<0.02)s=0.02; return {x:W/2+r.x*s,y:H/2+r.y*s,s:s,z:r.z}; }
+  function proj(x,y,z){ var r=rot(x,y,z),f=560,s=f/(f+r.z+(dist-560)); if(s<0.02)s=0.02;
+    var px=r.x*s, py=r.y*s, cr=Math.cos(ROLL), sr=Math.sin(ROLL);
+    return {x:W/2+px*cr-py*sr, y:H/2+px*sr+py*cr, s:s, z:r.z}; }
   function shaft(ax,ay,az,bx,by,bz,col,w){ var a=proj(ax,ay,az),b=proj(bx,by,bz); ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,w*((a.s+b.s)/2)); ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
   function hexA(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
   function drawGear(g){ var pr=proj(g.hx,g.hy,0),R=g.r*pr.s; if(R<2)return; var x=pr.x,y=pr.y; var eng=g.kind==='engine';
