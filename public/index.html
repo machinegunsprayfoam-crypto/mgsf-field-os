@@ -2820,11 +2820,12 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = a REAL MESHING 3D GEARBOX (hybrid). Klyfton engine (sun, center) drives 6 primary
-// gears that actually mesh it (center distance = module*(z1+z2)/2, pitch circles tangent), each
-// branching outward into department -> connection gears that mesh their parent. Gear ratio = tooth
-// ratio (small gears spin faster; meshed gears counter-rotate). Includes a compound reduction
-// (two gears on one shaft) and a right-angle bevel takeoff. Genuine 3D extruded meshes (caps, side
+// Boot loader = a REAL MESHING 3D OCTAGON ANGLE-BOX. Klyfton engine (sun, center) is the box; 8
+// output shafts come off its faces (primary gears that actually mesh it: center distance =
+// module*(z1+z2)/2, pitch circles tangent), each branching into department -> two connection gears
+// (some deeper) that mesh their parent. Gear ratio = tooth ratio (small gears spin faster; meshed
+// gears counter-rotate). Includes a compound reduction (two gears on one shaft) and two right-angle
+// bevel shafts off the box faces. Genuine 3D extruded meshes (caps, side
 // walls, hub, axle) via a hand-rolled software renderer (per-face normals, flat lighting, painter's
 // depth sort, back-face cull), gently rocking. Auto-stops on fade; one static frame if reduced-motion.
 let _bootGearRAF = null;
@@ -2857,17 +2858,19 @@ function startBootGears(){
   }
   var G={}, ORDER=[];
   function addG(id,s){ s.id=id; s.th=s.th||14; s.m=buildGear(s.N,s.th); G[id]=s; ORDER.push(id); return s; }
-  var PAL=['#ff7a59','#2ca01c','#4285f4','#d9469b','#7c5cff','#e0a12e'];
-  addG('sun',{N:30,axis:'z',col:'#F4581E',driver:null});
-  var prim=[{N:16,a:0.35,nd:2},{N:13,a:1.45,nd:1},{N:18,a:2.55,nd:2},{N:12,a:3.75,nd:1},{N:16,a:4.75,nd:2},{N:13,a:5.75,nd:1}];
-  prim.forEach(function(p,i){ var col=PAL[i%PAL.length];
-    addG('P'+i,{N:p.N,parent:'sun',absPhi:p.a,axis:'z',col:col});
-    for(var j=0;j<p.nd;j++){ var sp=p.nd===1?0:(j?0.62:-0.62);
-      addG('P'+i+'D'+j,{N:12,parent:'P'+i,spread:sp,axis:'z',col:col});
-      addG('P'+i+'D'+j+'C',{N:10,parent:'P'+i+'D'+j,spread:0,axis:'z',col:col}); } });
-  addG('P2K',{N:10,parent:'P2',compound:true,axis:'z',col:PAL[2]});
-  addG('P2Kd',{N:20,parent:'P2K',spread:0.0,axis:'z',col:PAL[2]});
-  addG('P3B',{N:13,parent:'P3',spread:0,axis:'x',bevel:true,col:'#00a3a3'});
+  var PAL=['#ff7a59','#2ca01c','#4285f4','#d9469b','#7c5cff','#e0a12e','#00a3a3','#ffcf6b'];
+  addG('sun',{N:32,axis:'z',col:'#F4581E',driver:null});              // the angle box (central drive)
+  var PN=[16,13,15,12,17,13,14,12], SUB={0:'a',3:'b',5:'a',6:'b'};    // 8 output shafts; some go deeper
+  for(var i=0;i<8;i++){ var a=i/8*6.2831853+0.20, col=PAL[i%PAL.length], P='P'+i;
+    addG(P,{N:PN[i],parent:'sun',absPhi:a,axis:'z',col:col});         // output shaft off face i
+    addG(P+'D',{N:12,parent:P,spread:0,axis:'z',col:col});            // department gear on the shaft
+    addG(P+'Da',{N:10,parent:P+'D',spread:-0.52,axis:'z',col:col});   // two connection gears, fanned
+    addG(P+'Db',{N:10,parent:P+'D',spread: 0.52,axis:'z',col:col});
+    if(SUB[i]) addG(P+'D'+SUB[i]+'s',{N:8,parent:P+'D'+SUB[i],spread:0,axis:'z',col:col}); }
+  addG('P4K',{N:10,parent:'P4',compound:true,axis:'z',col:PAL[4]});   // compound reduction
+  addG('P4Kd',{N:18,parent:'P4K',spread:0.0,axis:'z',col:PAL[4]});
+  addG('SB1',{N:13,parent:'sun',absPhi:1.20,axis:'x',bevel:true,col:'#8ff5e6'}); // right-angle shafts
+  addG('SB2',{N:13,parent:'sun',absPhi:4.35,axis:'x',bevel:true,col:'#8ff5e6'}); //  off the box faces
   function place(id){ var g=G[id];
     if(!g.parent){ g.cx=0;g.cy=0;g.cz=0;g.out=0;g.phi=0; return; }
     var p=G[g.parent];
@@ -2887,7 +2890,7 @@ function startBootGears(){
   function shd(hex,f){ var n=parseInt(hex.slice(1),16); return 'rgb('+clamp255(((n>>16)&255)*f)+','+clamp255(((n>>8)&255)*f)+','+clamp255((n&255)*f)+')'; }
   function oriented(v,axis){ if(axis==='x')return [v[2],v[1],-v[0]]; return v; }
   function frame(){
-    var FIT=Math.min(W,H)/760;
+    var FIT=Math.min(W,H)/680;
     ctx.clearRect(0,0,W,H);
     var t=phase, cbx=Math.cos(bx),sbx=Math.sin(bx),cby=Math.cos(by),sby=Math.sin(by);
     function xf(x,y,z){ var y2=y*cbx-z*sbx,z2=y*sbx+z*cbx; return [x*cby+z2*sby,y2,-x*sby+z2*cby]; }
