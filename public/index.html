@@ -12135,7 +12135,7 @@ function mgUpdate(){
         <div class="form-group" style="flex:2;min-width:150px"><label class="form-label">Outcome</label>
           <select class="inp" id="in_out"><option>First aid only (not recordable)</option><option>Other recordable</option><option>Restricted duty</option><option>Days away from work</option></select></div>
       </div>
-      <div class="form-group"><label class="form-label">What happened</label><input class="inp" id="in_desc" placeholder="Brief description"></div>
+      <div class="form-group"><label class="form-label">What happened</label><input class="inp" id="inc_desc" placeholder="Brief description"></div>
       <button class="btn btn-primary" style="width:100%" onclick="opsAddInc()">LOG INCIDENT</button>
       <div style="margin-top:10px">${incList}</div>
     </div>
@@ -12164,7 +12164,7 @@ function mgUpdate(){
   window.opsAddInc = function(){
     const emp=($('in_emp')||{}).value||''; if(!emp.trim()) return toast('Enter employee');
     const rec={ id:Date.now(), employee:emp.trim(), jobName:($('in_job')||{}).value||'', itype:($('in_type')||{}).value||'Injury',
-      date:($('in_date')||{}).value||today(), outcome:($('in_out')||{}).value||'', description:($('in_desc')||{}).value||'' };
+      date:($('in_date')||{}).value||today(), outcome:($('in_out')||{}).value||'', description:($('inc_desc')||{}).value||'' };
     appState.incidents=appState.incidents||[]; appState.incidents.push(rec); saveCol('incidents'); toast('Incident logged'); renderOps('compliance');
   };
   window.opsDelInc = function(id){ appState.incidents=(appState.incidents||[]).filter(i=>i.id!==id); saveCol('incidents'); renderOps('compliance'); };
