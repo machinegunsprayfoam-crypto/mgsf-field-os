@@ -2820,13 +2820,13 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = THE BRAIN & ITS CONNECTIONS. KLYFTON AI (gold, glowing) is the brain at centre;
-// the 13 real departments ring around it as octagon angle-boxes, each carrying its real connection
-// count of gears, wired to the brain by BLUE drive shafts. On BLACK, every gear a visible colour
-// (never black — a brightness floor keeps even shadowed faces readable). Real 3D extruded gear +
-// octagon-plate meshes on a hand-rolled software renderer (arbitrary orientation frames, per-face
-// normals, flat lighting, painter's depth sort, back-face cull), auto-fit, gentle rock so it stays
-// readable. Labels = real department name + count. Auto-stops on fade; static if reduced-motion.
+// Boot loader = THE BRAIN & ITS GEARED DEPARTMENTS. KLYFTON AI (gold, glowing) is the brain at
+// centre; the 13 real departments ring around it as big COLOUR-CODED octagon gearboxes (red/yellow/
+// orange/blue/white, spaced evenly for balance), each with brass+steel gears meshing/grinding inside
+// its housing, wired to the brain by BLUE drive shafts. On BLACK; every element a visible colour
+// (brightness floor => nothing renders black). Real 3D extruded gear + octagon-housing meshes on a
+// hand-rolled software renderer (per-face normals, flat lighting, painter's depth sort, back-face
+// cull), auto-fit, gentle rock. Labels = real department name + count. Static if reduced-motion.
 let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
@@ -2835,7 +2835,7 @@ function startBootGears(){
   let DPR=1, W=0, H=0;
   function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth||520; H=cv.clientHeight||400; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
   resize(); window.addEventListener('resize', resize);
-  var TAU=Math.PI*2, MOD=3.6;
+  var TAU=Math.PI*2, MOD=3.4;
   function PR(N){return MOD*N/2;}
   function add(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
   function sc(a,s){return[a[0]*s,a[1]*s,a[2]*s];}
@@ -2843,9 +2843,12 @@ function startBootGears(){
   function nrm(a){var m=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/m,a[1]/m,a[2]/m];}
   function comb(u,v,w,x,y,z){return[u[0]*x+v[0]*y+w[0]*z,u[1]*x+v[1]*y+w[1]*z,u[2]*x+v[2]*y+w[2]*z];}
   function circ(z,r,seg){var a=[];for(var i=0;i<seg;i++){var t=i/seg*TAU;a.push([Math.cos(t)*r,Math.sin(t)*r,z]);}return a;}
+  function clamp(x){x=x|0;return x<0?0:x>255?255:x;}
+  function mul(hex,g){var n=parseInt(hex.slice(1),16);return 'rgb('+clamp(((n>>16)&255)*g)+','+clamp(((n>>8)&255)*g)+','+clamp((n&255)*g)+')';}
+
   function gear(N,th){
-    var r=PR(N),ad=MOD*0.9,de=MOD*1.05,tip=r+ad,root=r-de,half=Math.PI/N,o=[],i;
-    for(i=0;i<N;i++){var b=i/N*TAU;o.push([b-half*0.80,root],[b-half*0.42,tip],[b+half*0.42,tip],[b+half*0.80,root]);}
+    var r=PR(N),ad=MOD*0.92,de=MOD*1.05,tip=r+ad,root=r-de,half=Math.PI/N,o=[],i;
+    for(i=0;i<N;i++){var b=i/N*TAU;o.push([b-half*0.78,root],[b-half*0.40,tip],[b+half*0.40,tip],[b+half*0.78,root]);}
     var n=o.length,V=[],t2=th/2;
     for(i=0;i<n;i++)V.push([Math.cos(o[i][0])*o[i][1],Math.sin(o[i][0])*o[i][1], t2]);
     for(i=0;i<n;i++)V.push([Math.cos(o[i][0])*o[i][1],Math.sin(o[i][0])*o[i][1],-t2]);
@@ -2866,63 +2869,58 @@ function startBootGears(){
     return {V:V,F:F};
   }
 
-  // ---- REAL data: the brain (KLYFTON AI) + 13 departments, real connection counts ----
-  var DEPT=[
-    {n:'ENGINE & BRAIN', c:'#f0cd6e', k:5},
-    {n:'CRM & LEADS',    c:'#ef9a3c', k:7},
-    {n:'MONEY',          c:'#6fbf5a', k:4},
-    {n:'COMMS & MTGS',   c:'#4a90d9', k:10},
-    {n:'CAL & TASKS',    c:'#a98cff', k:6},
-    {n:'FILES·DOCS·SIGN',c:'#3fb7a3', k:9},
-    {n:'AUTOMATION',     c:'#ef7d4e', k:3},
-    {n:'BUILD & INFRA',  c:'#cfd6de', k:15},
-    {n:'MARKETING·SEO',  c:'#e56aa6', k:7},
-    {n:'CREATIVE·MEDIA', c:'#c79bf0', k:9},
-    {n:'GOVCON·GRANTS',  c:'#6ea8e0', k:4},
-    {n:'DATA·RESEARCH',  c:'#e6c15a', k:8},
-    {n:'TRAVEL·MISC',    c:'#9fb0bd', k:5}
-  ];
-  var GOLD='#f2cf72';                                        // the brain
-  var PARTS=[], RODS=[], LBL=[];
-  function eg(pos,u,v,w,N,th,base,rate,ph){PARTS.push({k:'g',m:gear(N,th),pos:pos,u:u,v:v,w:w,base:base,rate:rate,ph:ph||0});}
-  function eb(pos,u,v,w,R,base){PARTS.push({k:'b',m:prism(8,R,6),pos:pos,u:u,v:v,w:w,base:base,rate:0,ph:0});}
+  // ---- 5-colour palette, cycled around the ring so it stays balanced both sides ----
+  var RED='#e04b3c', YEL='#eccb3f', ORA='#ef8f38', BLU='#4a90d9', WHT='#eef2f7';
+  var COLORS=[RED,YEL,ORA,BLU,WHT];
+  var GOLD='#f2cf72', BRASS='#c79a3f', STEEL='#d7dee6';
 
-  // central brain box
-  eb([0,0,0],[1,0,0],[0,1,0],[0,0,1],52,'#7a5a16');
-  eg([0,0,5],[1,0,0],[0,1,0],[0,0,1],24,11,GOLD,0.010,0);
+  // real departments (name + real connection count); colour comes from COLORS by position
+  var DEPT=[
+    {n:'ENGINE & BRAIN',k:5},{n:'CRM & LEADS',k:7},{n:'MONEY',k:4},{n:'COMMS & MTGS',k:10},
+    {n:'CAL & TASKS',k:6},{n:'FILES·DOCS·SIGN',k:9},{n:'AUTOMATION',k:3},{n:'BUILD & INFRA',k:15},
+    {n:'MARKETING·SEO',k:7},{n:'CREATIVE·MEDIA',k:9},{n:'GOVCON·GRANTS',k:4},{n:'DATA·RESEARCH',k:8},
+    {n:'TRAVEL·MISC',k:5}
+  ];
+
+  var PARTS=[], RODS=[], LBL=[];
+  function eg(pos,u,v,w,N,th,base,rate,ph,bright){PARTS.push({k:'g',m:gear(N,th),pos:pos,u:u,v:v,w:w,base:base,rate:rate,ph:ph||0,br:bright||1});}
+  function eb(pos,u,v,w,R,th,base,bright){PARTS.push({k:'b',m:prism(8,R,th),pos:pos,u:u,v:v,w:w,base:base,rate:0,ph:0,br:bright||1});}
+  // a gearbox = a big, clearly-visible COLOUR octagon housing with metal gears meshing INSIDE it
+  function gearbox(pos,u,v,w,color,driveRate,nDriven){
+    var Rp=62, Nd=9, Np=6, D=PR(Nd)+PR(Np);
+    eb(pos,u,v,w,Rp,11,color);                          // bright colour octagon plate (prominent)
+    eb(add(pos,sc(w,6.5)),u,v,w,Rp,3,color,1.18);       // raised bright rim -> reads as a housing
+    var top=add(pos,sc(w,10));
+    eg(top,u,v,w,Nd,8,BRASS,driveRate,0);               // brass drive gear (centre)
+    for(var g=0;g<nDriven;g++){
+      var a=g/nDriven*TAU + 0.30;
+      var gp=add(top,comb(u,v,w,Math.cos(a)*D,Math.sin(a)*D,0));
+      // meshing: counter-rotate at ratio, phase so teeth sit in the drive's gaps (grinding)
+      eg(gp,u,v,w,Np,7,STEEL,-driveRate*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);
+    }
+    return Rp;
+  }
+
+  // central brain (gold housing + drive + a meshing ring)
+  eb([0,0,0],[1,0,0],[0,1,0],[0,0,1],78,11,GOLD,0.66);
+  eb([0,0,6],[1,0,0],[0,1,0],[0,0,1],62,5,GOLD,0.9);
+  eg([0,0,12],[1,0,0],[0,1,0],[0,0,1],22,11,GOLD,0.012,0);
+  (function(){var Nd=22,Np=9,D=PR(Nd)+PR(Np);for(var g=0;g<6;g++){var a=g/6*TAU;
+    eg(add([0,0,12],comb([1,0,0],[0,1,0],[0,0,1],Math.cos(a)*D,Math.sin(a)*D,0)),[1,0,0],[0,1,0],[0,0,1],Np,8,BRASS,-0.012*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);}})();
 
   DEPT.forEach(function(d,i){
-    var phi=i/DEPT.length*TAU, R=205, zvar=((i%3)-1)*26;
-    var pos=[Math.cos(phi)*R, Math.sin(phi)*R, zvar];
-    // box faces the viewer (+z) but tilts outward per position -> real depth without going edge-on
-    var w=nrm([Math.cos(phi)*0.34, Math.sin(phi)*0.34, 1]);
+    var phi=i/DEPT.length*TAU, R=250;
+    var pos=[Math.cos(phi)*R, Math.sin(phi)*R, 0];
+    var w=nrm([Math.cos(phi)*0.15, Math.sin(phi)*0.15, 1]);       // face viewer (balanced), slight tilt
     var u=nrm(cross([0,1,0],w)); if(Math.hypot(u[0],u[1],u[2])<0.1)u=[1,0,0];
     var v=nrm(cross(w,u));
-    // shaft brain->box (blue)
     RODS.push([[0,0,0],pos]);
-    // department box + drive gear
-    eb(pos,u,v,w,26+d.k*1.4,mul(d.c,0.72));
-    var drN=12, drRate=0.010*(24/drN)*(i%2?1:-1);
-    eg(add(pos,sc(w,5)),u,v,w,drN,10,d.c,drRate,0);
-    // driven gears = real connection count, ringed, sized to fit
-    var K=d.k, ringR=PR(drN)+0, plateR=26+d.k*1.4;
-    ringR=plateR*0.86;
-    var maxPR=ringR*Math.sin(Math.PI/Math.max(3,K))*0.92, dnN=Math.max(6,Math.floor(2*maxPR/MOD));
-    var ring2=PR(drN)+PR(dnN);
-    for(var g=0;g<K;g++){
-      var a=g/K*TAU;
-      var gp=add(add(pos,sc(w,5)),comb(u,v,w,Math.cos(a)*ring2,Math.sin(a)*ring2,0));
-      eg(gp,u,v,w,dnN,9, tint(d.c,g), -drRate*drN/dnN, a);
-    }
-    LBL.push({pos:add(pos,sc(w,plateR+16)), t:d.n+' ·'+d.k, c:d.c});
+    var col=COLORS[i%COLORS.length];
+    var Rp=gearbox(pos,u,v,w,col, 0.012*(i%2?1:-1), Math.min(5,Math.max(3,d.k)));
+    LBL.push({pos:add(pos,sc(w,Rp+16)), t:d.n+' ·'+d.k, c:col});
   });
-  function sub(a,b){return[a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
-  function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
-  function clamp(x){x=x|0;return x<0?0:x>255?255:x;}
-  function mul(hex,g){var n=parseInt(hex.slice(1),16);return 'rgb('+clamp(((n>>16)&255)*g)+','+clamp(((n>>8)&255)*g)+','+clamp((n&255)*g)+')';}
-  function tint(hex,i){var f=[1.0,0.86,1.12,0.78,1.05][i%5];return mul(hex,f);}  // brightness variety, never black
 
-  var yaw=-0.5, pitch=0.42, CAMZ=980, FOC=980, FIT=1, phase=0;
+  var yaw=-0.35, pitch=0.40, CAMZ=1000, FOC=1000, FIT=1, phase=0;
   var LT=nrm([-0.3,-0.5,0.8]);
   var MAXR=0; PARTS.forEach(function(p){var d=Math.hypot(p.pos[0],p.pos[1],p.pos[2]);if(d>MAXR)MAXR=d;}); MAXR+=70;
 
@@ -2932,7 +2930,6 @@ function startBootGears(){
     var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch);
     function tf(p){var x=p[0]*cy-p[2]*sy,z=p[0]*sy+p[2]*cy,y=p[1]*cx-z*sx;z=p[1]*sx+z*cx;return[x,y,z];}
     function pj(p){var s=FOC/(CAMZ-p[2])*FIT;return[W/2+p[0]*s,H/2-p[1]*s,s];}
-    // blue shafts
     RODS.forEach(function(r){var a=pj(tf(r[0])),b=pj(tf(r[1]));
       ctx.strokeStyle='rgba(74,144,217,.6)';ctx.lineWidth=Math.max(2,4.4*a[2]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
       ctx.strokeStyle='rgba(150,200,255,.4)';ctx.lineWidth=Math.max(1,1.7*a[2]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
@@ -2942,12 +2939,12 @@ function startBootGears(){
         if(p.k==='g'){var rx=lx*cs-ly*sn,ry=lx*sn+ly*cs;lx=rx;ly=ry;}
         TV[i]=tf(add(comb(p.u,p.v,p.w,lx,ly,lz),p.pos));}
       for(var fi=0;fi<p.m.F.length;fi++){var F=p.m.F[fi],x=F.x,p0=TV[x[0]],p1=TV[x[1]],p2=TV[x[2]];
-        var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2],bx=p2[0]-p0[0],by=p2[1]-p0[1],bz=p2[2]-p0[2];
-        var nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
+        var axx=p1[0]-p0[0],ayy=p1[1]-p0[1],azz=p1[2]-p0[2],bxx=p2[0]-p0[0],byy=p2[1]-p0[1],bzz=p2[2]-p0[2];
+        var nx=ayy*bzz-azz*byy,ny=azz*bxx-axx*bzz,nz=axx*byy-ayy*bxx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
         if(nzn<=0.02)continue;
         var lit=(nx/nl)*LT[0]+(ny/nl)*LT[1]+nzn*LT[2];if(lit<0)lit=0;
-        var g=(F.t==='hub')?0.62:(F.t==='plate'||F.t==='pside')?(0.55+0.45*lit):(0.60+0.62*lit); // floor => never black
-        var col=mul(p.base,g);
+        var g=(F.t==='hub')?0.62:(F.t==='plate')?(0.72+0.4*lit):(F.t==='pside')?(0.5+0.4*lit):(0.62+0.62*lit); // floor => never black; bright plates
+        var col=mul(p.base,g*(p.br||1));
         var poly=[],zc=0;for(var q=0;q<x.length;q++){var pp=pj(TV[x[q]]);poly.push(pp);zc+=TV[x[q]][2];}
         polys.push({z:zc/x.length,poly:poly,col:col,glow:(p.base===GOLD&&F.t==='cap')?8:0});}
     });
@@ -2955,17 +2952,16 @@ function startBootGears(){
     for(var pi=0;pi<polys.length;pi++){var P=polys[pi],q=P.poly;
       ctx.beginPath();ctx.moveTo(q[0][0],q[0][1]);for(var j=1;j<q.length;j++)ctx.lineTo(q[j][0],q[j][1]);ctx.closePath();
       if(P.glow){ctx.shadowBlur=P.glow;ctx.shadowColor=GOLD;}ctx.fillStyle=P.col;ctx.fill();ctx.shadowBlur=0;
-      ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=0.5;ctx.stroke();}
-    // labels
+      ctx.strokeStyle='rgba(0,0,0,.28)';ctx.lineWidth=0.5;ctx.stroke();}
     LBL.forEach(function(l){var e=pj(tf(l.pos));var fs=Math.max(8,10*e[2]);
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
       ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,.92)';ctx.lineJoin='round';ctx.strokeText(l.t,e[0],e[1]);
       ctx.fillStyle=l.c;ctx.fillText(l.t,e[0],e[1]);});
-    var c0=pj(tf([0,0,24]));var fs=Math.max(10,14*c0[2]);
+    var c0=pj(tf([0,0,26]));var fs=Math.max(10,14*c0[2]);
     ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
     ctx.lineWidth=3.5;ctx.strokeStyle='rgba(0,0,0,.95)';ctx.lineJoin='round';ctx.strokeText('KLYFTON AI',c0[0],c0[1]);
     ctx.fillStyle='#ffe6a8';ctx.fillText('KLYFTON AI',c0[0],c0[1]);
-    if(!reduce){ phase+=1; yaw=-0.35+0.5*Math.sin(phase*0.004); _bootGearRAF=requestAnimationFrame(frame); }
+    if(!reduce){ phase+=1; yaw=-0.35+0.42*Math.sin(phase*0.004); _bootGearRAF=requestAnimationFrame(frame); }
   }
   frame();
 }
