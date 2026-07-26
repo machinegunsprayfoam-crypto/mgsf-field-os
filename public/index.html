@@ -11976,7 +11976,10 @@ function mgUpdate(){
           <span style="color:${active?'var(--gr)':'var(--or)'}">${active?'ACTIVE':'EXPIRED'}</span></div>
         <div style="font-size:12px;color:var(--t2)">${esc(w.wtype||'Workmanship')} · ${w.termYears||'?'} yr · start ${esc(w.start||'?')}${w.expires?' → exp '+w.expires:''}</div>
         ${w.job||w.notes?`<div style="font-size:11px;color:var(--t3)">${esc(w.job||'')}${w.job&&w.notes?' · ':''}${esc(w.notes||'')}</div>`:''}
-        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;align-self:flex-end" onclick="opsDelWarr(${w.id})">🗑</button>
+        <div style="display:flex;gap:6px;align-self:flex-end">
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="opsWarrantyCert(${w.id},this)">📄 Certificate</button>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="opsDelWarr(${w.id})">🗑</button>
+        </div>
       </div>`;
     }).join('') : '<div style="color:var(--t2);font-size:13px;padding:10px">No warranties tracked yet. Log every job&#39;s warranty so you and the customer know exactly what&#39;s covered and until when.</div>';
     return `
@@ -12004,6 +12007,28 @@ function mgUpdate(){
     toast('Warranty logged'); renderOps('warranty');
   };
   window.opsDelWarr = function(id){ appState.warranties=(appState.warranties||[]).filter(w=>w.id!==id); saveCol('warranties'); renderOps('warranty'); };
+  // Generate the real warranty-certificate PDF (via /api/warranty-cert) from a logged warranty —
+  // a document to hand/email the customer at close. States only what was entered; invents nothing.
+  window.opsWarrantyCert = async function(id, btn){
+    const w=(appState.warranties||[]).find(x=>x.id===id); if(!w){ notify('Warranty not found','alert'); return; }
+    const certNo='WC-'+String(w.start||today()).replace(/-/g,'')+'-'+String(id).slice(-4);
+    const payload={ base64:true, customer:w.customer||'', jobType:w.job||w.wtype||'spray foam / concrete work',
+      product:w.wtype||'', termYears:Number(w.termYears)||5, start:w.start||today(), coverage:w.notes||'', certNo };
+    const old=btn?btn.textContent:''; if(btn){ btn.textContent='📄 Building…'; btn.disabled=true; }
+    try{
+      const r=await fetch('/api/warranty-cert',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      const j=await r.json();
+      if(!j||!j.ok||!j.base64) throw new Error((j&&j.error)||'no_pdf');
+      const bytes=Uint8Array.from(atob(j.base64), c=>c.charCodeAt(0));
+      const blob=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href=url; a.download=j.filename||'Warranty-Certificate.pdf'; document.body.appendChild(a); a.click();
+      a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      notify('Warranty certificate downloaded — hand or email it to the customer','success');
+    }catch(e){
+      notify('Certificate service unreachable (offline?) — try again when online','info');
+    }finally{ if(btn){ btn.textContent=old; btn.disabled=false; } }
+  };
 
   // ---------- SAFETY / TRAINING ----------
   function opsTrainingHTML(){

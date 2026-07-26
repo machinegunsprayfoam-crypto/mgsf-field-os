@@ -35,13 +35,17 @@ infranodus, hubspot, command-center, pricing, capability-statement`
 
 ## Genuine gaps / overlaps (the actual findings)
 
-### 1. ⭐ Surfacing gap — Warranty certificate (SAFE, recommend acting)
+### 1. ✅ Surfacing gap — Warranty certificate (DRAFTED on branch 2026-07-26)
 - **Backend built:** `api/warranty-cert.js` generates a real, hand-to-customer warranty certificate PDF.
-- **UI today:** Ops → **Warranty** register logs/tracks warranties (localStorage) but has **no button to
-  generate the certificate** — so the existing PDF generator is unreachable from the app.
-- **Fix (draft for your OK):** add a "Generate Certificate" action in the Warranty register that POSTs
-  the logged warranty to `/api/warranty-cert` (same pattern the Proposal module already uses with
-  `/api/proposal-pdf`). Small, self-contained, high customer-facing value at job close.
+- **Was:** Ops → **Warranty** register logged/tracked warranties (localStorage) but had **no button to
+  generate the certificate** — the existing PDF generator was unreachable from the app.
+- **Done (staged, not merged):** added a **📄 Certificate** button on each row of the Warranty register
+  → new `opsWarrantyCert(id)` maps the logged warranty `{customer, job, wtype, termYears, start, notes}`
+  to the endpoint's `{customer, jobType, product, termYears, start, coverage, certNo}`, POSTs to
+  `/api/warranty-cert` with `base64:true`, and downloads the PDF — the exact pattern the Proposal
+  module uses with `/api/proposal-pdf`, incl. graceful offline fallback. Invents nothing (states only
+  what was entered; blank address/exclusions use the endpoint's own defaults). Frontend re-verified:
+  parses & boots clean. **For your review before merge.**
 
 ### 2. Overlap — Change orders exist twice
 - `api/change-order.js` (server PDF) **and** a full client-side Change-Order module (`renderCO`, saved to
