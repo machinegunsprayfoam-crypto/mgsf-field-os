@@ -35,6 +35,10 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**Gap analysis + warranty surfacing — 2026-07-26 (branch, not merged):**
+- **`FRONTEND_BACKEND_GAP_ANALYSIS.md`** (manual, since InfraNodus connector isn't in-session) — static wiring audit: UI calls 16 of 44 `api/*.js`; the other 28 are legit (8 cron, 7 infra/server-to-server, 11 headless calculators for the AI/MCP layer — `photo-estimate.js` `require()`s measure+foam-calc). Real findings: (1) **warranty-cert** built but not surfaced → **FIXED**; (2) **change-order** exists twice (server PDF + client-side localStorage module; UI uses client) — flagged for Clifton to pick a source of truth; (3) calc math lives client+server — watch for drift, keep constants in sync. All else wired clean.
+- **Warranty certificate surfaced** (`public/index.html`): added a **📄 Certificate** button per row in Ops→Warranty → `opsWarrantyCert(id)` POSTs the logged warranty to `/api/warranty-cert` (base64) and downloads the PDF, mirroring `downloadProposalPDF` (graceful offline fallback). Boot re-verified clean.
+
 **Marketing — COMPLETE (Passes 16–25 in mgsf-marketing/NIGHT_LOG.md):** crawl-space page built (SEO_GAPS P1), all internal links + sitemap + og:url + FAQ schema (9/9 service pages) + canonical/robots/alt all verified. Nothing safe left to add.
 
 ## 3. Key decisions + rationale (don't relitigate)
