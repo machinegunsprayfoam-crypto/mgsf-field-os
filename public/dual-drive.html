@@ -37,7 +37,7 @@
   // Owner (Clifton) transmission — mirror on the RIGHT end (+x)
   GEARS.push(mk(360,0,0,40,14,-1,"ow"), mk(250,0,0,31,12,1,"ow"), mk(150,0,0,24,10,-1,"ow"));
 
-  var yaw=-0.72,pitch=-0.26,dist=780,rpm=0,rpmT=5200;
+  var yaw=-0.72,pitch=-0.26,dist=780,rpm=2600,rpmT=5200;
   function rot(x,y,z){var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch);
     var x1=x*cy-z*sy,z1=x*sy+z*cy,y1=y*cx-z1*sx;z1=y*sx+z1*cx;return{x:x1,y:y1,z:z1};}
   function proj(x,y,z){var r=rot(x,y,z),f=600,s=f/(f+r.z+(dist-600));if(s<0.02)s=0.02;return{x:W/2+r.x*s,y:H/2+r.y*s,s:s,z:r.z};}
@@ -66,6 +66,16 @@
     for(var k=0;k<3;k++){ctx.beginPath();ctx.rotate(2.094);ctx.moveTo(0,0);ctx.lineTo(0,-R*0.82);ctx.stroke();}
     ctx.beginPath();ctx.arc(0,0,R*0.24,0,7);ctx.fillStyle=p[4];ctx.fill();ctx.restore();
   }
+  function drawQueenLabel(){
+    var g=GEARS[0],pr=proj(g.x,g.y,g.z),R=g.r*pr.s;
+    var x=pr.x,y=pr.y,fs=Math.max(12,15*pr.s),ly=y+R+22*pr.s;
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.font="800 "+fs+'px ui-monospace,Menlo,Consolas,monospace';
+    ctx.lineWidth=Math.max(3,fs*0.5);ctx.strokeStyle="rgba(5,6,8,.95)";ctx.lineJoin="round";
+    ctx.strokeText("KLYFTON AI",x,ly);
+    ctx.fillStyle="#ffb07a";ctx.shadowBlur=16;ctx.shadowColor="#F4581E";
+    ctx.fillText("KLYFTON AI",x,ly);ctx.shadowBlur=0;ctx.textBaseline="alphabetic";
+  }
   // energy pulses traveling each transmission's shaft into the Queen
   var pulses=[];function seed(){pulses.push({side:"ai",t:Math.random()});pulses.push({side:"ow",t:Math.random()});}
   seed();
@@ -87,10 +97,11 @@
     var arr=GEARS.map(function(g){return{z:proj(g.x,g.y,g.z).z,g:g};}).sort(function(a,b){return b.z-a.z;});
     arr.forEach(function(it){drawGear(it.g);});
     drawPulses();
+    drawQueenLabel();
     // animate
-    rpm+=(rpmT-rpm)*0.04;if(!reduce)yaw+=0.006;
+    rpm+=(rpmT-rpm)*0.04;if(!reduce)yaw+=0.004;
     var sf=reduce?0:(rpm/2600);
-    GEARS.forEach(function(g){g.spin+=0.02*sf*(26/g.teeth);});
+    GEARS.forEach(function(g){g.spin+=0.05*sf*(26/g.teeth);});
     if(!reduce)requestAnimationFrame(frame);else{ /* static: draw once */ }
   }
   frame();
