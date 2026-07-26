@@ -1,0 +1,98 @@
+<meta charset="utf-8">
+<title>Klyfton Dual Drive — Both Transmissions</title>
+<style>
+  :root{--or:#F4581E;--cy:#4ad9c4;--cyhi:#8ff5e6;--gold:#ffcf6b;--goldhi:#ffe6a8;--ink:#e9edf2;--dim:#79818b}
+  html,body{margin:0;height:100%;background:#050608;overflow:hidden}
+  #wrap{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  .lbl{position:fixed;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;user-select:none}
+  #title{top:22px;left:24px;font-size:12px;color:var(--dim)}
+  #title b{display:block;font-size:19px;letter-spacing:.06em;color:var(--ink);margin-top:5px;font-family:-apple-system,"Segoe UI",Arial,sans-serif;font-weight:800;text-transform:none}
+  #title b span{color:var(--or)}
+  #ai{left:24px;bottom:26px;font-size:12px;color:var(--cyhi);text-shadow:0 0 14px rgba(74,217,196,.6)}
+  #ow{right:24px;bottom:26px;font-size:12px;color:var(--goldhi);text-align:right;text-shadow:0 0 14px rgba(255,207,107,.5)}
+  .lbl .s{color:var(--dim);letter-spacing:.1em}
+  #hint{bottom:26px;left:50%;transform:translateX(-50%);font-size:10px;color:#4a525b}
+</style>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div class="lbl" id="title">Klyfton · Machine Gun Spray Foam<b>THE DUAL DRIVE — <span>both transmissions</span></b></div>
+<div class="lbl" id="ai">◀ Klyfton · AI transmission<div class="s">autonomous side</div></div>
+<div class="lbl" id="ow">Clifton · owner transmission ▶<div class="s">approval side</div></div>
+<div class="lbl" id="hint">two transmissions · one set of gears · gripped from both sides</div>
+<script>
+(function(){
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d"),W,H,DPR;
+  function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+  addEventListener("resize",resize);resize();
+  var reduce=false;try{reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){}
+
+  // ---- scene: central shared gears (z=0) + AI train (-z) + owner train (+z), on one axle
+  function mk(x,y,z,r,teeth,dir,kind){return{x:x,y:y,z:z,r:r,teeth:teeth,dir:dir,kind:kind,spin:Math.random()*6};}
+  var GEARS=[], RING=150;
+  GEARS.push(mk(0,0,0,46,16,1,"queen"));                       // Queen router (the shared gear both drive)
+  // agent gears ringed around the axle (in the Y-Z plane) — the shared drivetrain
+  for(var i=0;i<8;i++){var a=i/8*6.2832; GEARS.push(mk(0,Math.cos(a)*RING,Math.sin(a)*RING,25+(i%3)*4,10+(i%3),(i%2?1:-1),"agent"));}
+  // AI (Klyfton) transmission — gear train on the LEFT end of the shaft (-x)
+  GEARS.push(mk(-360,0,0,40,14,1,"ai"), mk(-250,0,0,31,12,-1,"ai"), mk(-150,0,0,24,10,1,"ai"));
+  // Owner (Clifton) transmission — mirror on the RIGHT end (+x)
+  GEARS.push(mk(360,0,0,40,14,-1,"ow"), mk(250,0,0,31,12,1,"ow"), mk(150,0,0,24,10,-1,"ow"));
+
+  var yaw=-0.72,pitch=-0.26,dist=780,rpm=0,rpmT=5200;
+  function rot(x,y,z){var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch);
+    var x1=x*cy-z*sy,z1=x*sy+z*cy,y1=y*cx-z1*sx;z1=y*sx+z1*cx;return{x:x1,y:y1,z:z1};}
+  function proj(x,y,z){var r=rot(x,y,z),f=600,s=f/(f+r.z+(dist-600));if(s<0.02)s=0.02;return{x:W/2+r.x*s,y:H/2+r.y*s,s:s,z:r.z};}
+  function shaft(ax,ay,az,bx,by,bz,col,w,glow){var a=proj(ax,ay,az),b=proj(bx,by,bz);
+    ctx.strokeStyle=col;ctx.lineWidth=Math.max(1,w*((a.s+b.s)/2));ctx.lineCap="round";
+    if(glow){ctx.shadowBlur=glow;ctx.shadowColor=col;}ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.shadowBlur=0;}
+
+  var PAL={queen:["#ffb07a","#F4581E","#9c2f0e","#ffd9c0","#5c1c08"],
+           agent:["#dfe5ec","#9aa4af","#454d56","#eef2f6","#1b2026"],
+           ai:["#c9fff4","#4ad9c4","#166b5f","#8ff5e6","#08201c"],
+           ow:["#fff0cf","#ffcf6b","#8a6410","#ffe6a8","#2a2008"]};
+  function drawGear(g){
+    var pr=proj(g.x,g.y,g.z),R=g.r*pr.s;if(R<2)return;var x=pr.x,y=pr.y,p=PAL[g.kind];
+    // teeth
+    ctx.save();ctx.translate(x,y);ctx.rotate(g.spin*g.dir);ctx.fillStyle=p[1];
+    var tl=R*0.22;for(var i=0;i<g.teeth;i++){ctx.save();ctx.rotate(i/g.teeth*6.2832);ctx.fillRect(-R*0.11,-(R+tl),R*0.22,tl+1);ctx.restore();}
+    ctx.restore();
+    // body
+    var grd=ctx.createRadialGradient(x-R*0.3,y-R*0.3,R*0.1,x,y,R);
+    grd.addColorStop(0,p[0]);grd.addColorStop(.55,p[1]);grd.addColorStop(1,p[2]);
+    ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.fillStyle=grd;ctx.fill();
+    ctx.lineWidth=Math.max(1,R*0.06);ctx.strokeStyle=p[3];
+    if(g.kind!=="agent"){ctx.shadowBlur=14*pr.s;ctx.shadowColor=p[1];}ctx.stroke();ctx.shadowBlur=0;
+    // spokes + hub
+    ctx.save();ctx.translate(x,y);ctx.rotate(g.spin*g.dir);ctx.strokeStyle="rgba(8,10,13,.55)";ctx.lineWidth=Math.max(1,R*0.05);
+    for(var k=0;k<3;k++){ctx.beginPath();ctx.rotate(2.094);ctx.moveTo(0,0);ctx.lineTo(0,-R*0.82);ctx.stroke();}
+    ctx.beginPath();ctx.arc(0,0,R*0.24,0,7);ctx.fillStyle=p[4];ctx.fill();ctx.restore();
+  }
+  // energy pulses traveling each transmission's shaft into the Queen
+  var pulses=[];function seed(){pulses.push({side:"ai",t:Math.random()});pulses.push({side:"ow",t:Math.random()});}
+  seed();
+  function drawPulses(){
+    var q=proj(0,0,0);
+    for(var i=0;i<pulses.length;i++){var p=pulses[i];
+      var x=p.side==="ai"?(-360+360*p.t):(360-360*p.t);
+      var b=proj(x,0,0),col=p.side==="ai"?"#8ff5e6":"#ffe6a8";
+      ctx.save();ctx.shadowBlur=12;ctx.shadowColor=col;ctx.fillStyle=col;ctx.beginPath();ctx.arc(b.x,b.y,Math.max(2,3.2*b.s),0,7);ctx.fill();ctx.restore();
+      p.t+=reduce?0:0.010*(0.6+rpm/6000); if(p.t>=1)p.t=0;
+    }
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    // shafts (the two transmission axles into the Queen) — drawn first
+    shaft(-360,0,0,0,0,0,"rgba(74,217,196,.5)",4,10);   // AI axle (left)
+    shaft(360,0,0,0,0,0,"rgba(255,207,107,.45)",4,9);   // owner axle (right)
+    // depth-sort gears, far to near
+    var arr=GEARS.map(function(g){return{z:proj(g.x,g.y,g.z).z,g:g};}).sort(function(a,b){return b.z-a.z;});
+    arr.forEach(function(it){drawGear(it.g);});
+    drawPulses();
+    // animate
+    rpm+=(rpmT-rpm)*0.04;if(!reduce)yaw+=0.006;
+    var sf=reduce?0:(rpm/2600);
+    GEARS.forEach(function(g){g.spin+=0.02*sf*(26/g.teeth);});
+    if(!reduce)requestAnimationFrame(frame);else{ /* static: draw once */ }
+  }
+  frame();
+})();
+</script>
