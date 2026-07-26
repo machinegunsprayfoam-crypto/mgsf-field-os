@@ -42,7 +42,7 @@
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:14px}
 
 /* BOOT SCREEN */
-#boot{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .8s}
+#boot{position:fixed;inset:0;background:radial-gradient(130% 130% at 50% 44%,#3f444b 0%,#2c2f35 68%,#232529 100%);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .8s}
 #boot.hidden{opacity:0;pointer-events:none}
 .boot-logo{font-size:52px;font-weight:900;letter-spacing:12px;color:var(--or);text-shadow:0 0 40px var(--or),0 0 80px rgba(249,115,22,.4);animation:pulse 1s ease-in-out infinite}
 .boot-sub{font-size:13px;letter-spacing:6px;color:var(--cy);margin-top:8px;opacity:.8}
@@ -2823,8 +2823,10 @@ const BOOT_MSGS = [
 // Boot loader = a BRASS-AND-STEEL 3D CLOCKWORK. KLYFTON AI is the central drive; nested OCTAGON
 // angle-boxes fan off it, each turning the drive 90 degrees onto a new shaft that ends in another
 // box driving more gears and boxes ("and so forth"). Because each child box sits perpendicular to
-// its parent, the movement genuinely occupies all three dimensions. Clock palette (brass gears,
-// steel accents, gunmetal plates) — no color coding. Real extruded gear + octagon-plate meshes on a
+// its parent, the movement genuinely occupies all three dimensions. Palette: gold/silver/brass gears
+// with orange + red-orange pops, rust octagon plates, BLUE drive shafts, on a gray field. Longer
+// shafts between boxes so it reads as one elaborate interconnected machine. Real extruded gear +
+// octagon-plate meshes on a
 // hand-rolled software renderer (arbitrary orientation frames, per-face normals, flat lighting,
 // painter's depth sort, back-face cull), auto-fit, slow orbit. Auto-stops on fade; static if reduced-motion.
 let _bootGearRAF = null;
@@ -2873,10 +2875,13 @@ function startBootGears(){
   }
 
   // ---- clock palette (brass / steel / gunmetal plate) ----
-  var BRASS={hi:'#c6a047',b:'#9a7629',lo:'#463814',hub:'#2e250c'};   // warm brass
-  var STEEL={hi:'#b8c0ca',b:'#828d99',lo:'#363c44',hub:'#1b1f25'};   // muted steel
-  var PLATE={hi:'#454c55',b:'#2f353d',lo:'#191d23',hub:'#12161b'};   // gunmetal plate
-  var GOLD ={hi:'#d8b458',b:'#b78d30',lo:'#5a4211',hub:'#332507'};   // polished brass (centre)
+  var BRASS ={hi:'#cba648',b:'#9a7629',lo:'#463814',hub:'#2e250c'};  // brass
+  var SILVER={hi:'#eef2f7',b:'#b4bdc7',lo:'#5c646d',hub:'#2a2f36'};  // silver / steel
+  var ORANGE={hi:'#f7ac52',b:'#dd7f2c',lo:'#7a4415',hub:'#3a2109'};  // orange accent
+  var RED   ={hi:'#ea6a4d',b:'#c2452f',lo:'#661e14',hub:'#360f0a'};  // red-orange (the old dark gears)
+  var PLATE ={hi:'#a05e2a',b:'#6f4018',lo:'#3c220e',hub:'#241408'};  // warm bronze/rust octagon plate
+  var GOLD  ={hi:'#f0cd6e',b:'#c99a34',lo:'#634913',hub:'#372808'};  // polished gold (centre)
+  var DRIVEN=[SILVER,BRASS,ORANGE,GOLD,SILVER,RED,BRASS];            // gold/silver/brass with orange+red pops
 
   // ---- build a tree of angle boxes: box drives K gears; some gears carry a shaft to a child box ----
   var PARTS=[];
@@ -2893,13 +2898,13 @@ function startBootGears(){
       var dir=nrm(comb(u,v,w,Math.cos(a),Math.sin(a),0));
       var gp=add(add(pos,sc(dir,ring)),sc(w,5));
       var drate=-rate*drN/dnN;                                               // meshed => counter-rotate, by ratio
-      emitGear(gp,u,v,w,dnN,10,(kk%3===0?STEEL:BRASS),drate,a);             // mostly brass, occasional steel
+      emitGear(gp,u,v,w,dnN,10,DRIVEN[(kk+depth)%DRIVEN.length],drate,a);   // gold/silver/brass + orange/red
       if(depth>0 && kk<spawn){
-        var end=add(gp,sc(dir,plateR*0.95));
+        var end=add(gp,sc(dir,plateR*1.7));                                  // longer shaft between octagons
         emitRod(add(gp,sc(w,5)),add(end,sc(w,5)));
         // child box at right angle: its axis = the shaft dir; frame u2 = parent axis w
         var w2=dir, u2=nrm(w), v2=nrm(cross(w2,u2));
-        box(end,u2,v2,w2, Math.max(12,drN-6), Math.max(8,dnN-3), plateR*0.60, depth-1, depth>1?4:3, depth>1?1:0, drate);
+        box(end,u2,v2,w2, Math.max(12,drN-6), Math.max(8,dnN-3), plateR*0.62, depth-1, depth>1?5:3, depth>1?2:0, drate);
       }
     }
   }
@@ -2925,7 +2930,9 @@ function startBootGears(){
     function pj(p){var s=FOC/(CAMZ-p[2])*FIT;return[W/2+p[0]*s,H/2-p[1]*s,s];}
     // rods first
     PARTS.forEach(function(p){if(p.k!=='r')return;var a=pj(tf(p.a)),b=pj(tf(p.b));
-      ctx.strokeStyle='rgba(150,140,120,.35)';ctx.lineWidth=Math.max(1.5,3.4*a[2]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
+      ctx.strokeStyle='rgba(74,144,217,.60)';ctx.lineWidth=Math.max(2,4.2*a[2]);ctx.lineCap='round';   // blue shafts
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+      ctx.strokeStyle='rgba(150,200,255,.35)';ctx.lineWidth=Math.max(1,1.6*a[2]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
     var polys=[];
     PARTS.forEach(function(p){if(p.k==='r')return;
       var sp=(p.rate*phase)+(p.ph||0),cs=Math.cos(sp),sn=Math.sin(sp),V=p.m.V,TV=new Array(V.length),i;
