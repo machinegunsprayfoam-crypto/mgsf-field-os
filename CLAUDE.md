@@ -1,5 +1,17 @@
 ﻿# Klyfton AI × Silvr Integration
 
+> **⚠️ STATUS CORRECTION (2026-07-26) — the "Silvr" layer below was NEVER BUILT.**
+> There is no `api/silvr.js`, no `SilvrWorker`, and no `SILVR_*` env vars in the live system —
+> per [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) (the authoritative source of truth), Silvr / "v2.0"
+> is **dead scaffolding that never existed**. Treat everything in this file that references Silvr —
+> the SilvrWorker examples, the "Silvr-Enabled" agent tasks, the `SILVR_API_KEY`/`SILVR_ENDPOINT`
+> env vars, and the Silvr deployment steps — as **historical/aspirational only; do NOT act on it.**
+> The intent Silvr described was since rebuilt in plain `fetch`: arms = `api/act.js`, parallelism =
+> the hive in `api/klyfton.js`, persistence = `agent_runs`, GovCon = `api/samgov.js`.
+> **What below IS real and current:** the ⚡ Session-Start Protocol, and the "Existing Stack"
+> (`public/index.html`, `api/klyfton.js`, Supabase, Vercel, HubSpot). For live build state, always
+> defer to `PROJECT_MEMORY.md`.
+
 Klyfton AI is a multi-agent command system built on Claude AI. This document describes how Silvr (another Claude-powered agent system) integrates as a secondary intelligence layer.
 
 ## ⚡ Session-Start Protocol (do this FIRST, every session)
