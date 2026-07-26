@@ -101,6 +101,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-
   .nav-item{min-height:48px}
   #topClock{display:none}
   .admin-inp,.inp{font-size:16px}
+  /* never clip module content off the right edge on small screens — let it scroll into reach */
+  .module:not(#mod-estimate){overflow-x:auto;-webkit-overflow-scrolling:touch}
 }
 .top-spacer{flex:1}
 .top-clock{font-size:13px;color:var(--cy);font-family:monospace;letter-spacing:2px}
@@ -134,6 +136,8 @@ body.lay-desktop .metrics-row{grid-template-columns:repeat(4,1fr)}
 body.lay-desktop .grid-2{grid-template-columns:1fr 1fr}
 body.lay-desktop .grid-3{grid-template-columns:1fr 1fr 1fr}
 body.lay-desktop .admin-inp,body.lay-desktop .inp{font-size:13px}
+/* phone/tablet layouts: modules scroll horizontally instead of clipping content off-screen */
+body.lay-phone .module:not(#mod-estimate),body.lay-tablet .module:not(#mod-estimate){overflow-x:auto;-webkit-overflow-scrolling:touch}
 #voiceBtn.listening{border-color:var(--red);color:var(--red);background:rgba(200,16,46,.15);animation:pulseBorder .5s ease-in-out infinite}
 @keyframes pulseBorder{0%,100%{box-shadow:0 0 8px rgba(200,16,46,.3)}50%{box-shadow:0 0 16px rgba(200,16,46,.6)}}
 
