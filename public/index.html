@@ -2820,13 +2820,13 @@ const BOOT_MSGS = [
   'All systems operational.',
 ];
 
-// Boot loader = THE BRAIN & ITS GEARED DEPARTMENTS. KLYFTON AI (gold, glowing) is the brain at
-// centre; the 13 real departments ring around it as big COLOUR-CODED octagon gearboxes (red/yellow/
-// orange/blue/white, spaced evenly for balance), each with brass+steel gears meshing/grinding inside
-// its housing, wired to the brain by BLUE drive shafts. On BLACK; every element a visible colour
-// (brightness floor => nothing renders black). Real 3D extruded gear + octagon-housing meshes on a
-// hand-rolled software renderer (per-face normals, flat lighting, painter's depth sort, back-face
-// cull), auto-fit, gentle rock. Labels = real department name + count. Static if reduced-motion.
+// Boot loader = THE BRAIN & ITS ANGLE-BOXES. A five-sided (PENTAGON) gold housing is the KLYFTON AI
+// brain at centre; the 13 real departments ring around it as RED octagon angle-boxes (all red),
+// each with RAINBOW gears meshing/grinding inside, linked to the brain by blue drive shafts and to
+// each other around the ring. On BLACK; no black anywhere (brightness floor). Real 3D extruded gear
+// + polygon-housing meshes on a hand-rolled software renderer (per-face normals, flat lighting,
+// painter's depth sort, back-face cull), auto-fit, gentle rock, symmetrical. Labels = department
+// name + real count. Static if reduced-motion.
 let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
@@ -2870,9 +2870,9 @@ function startBootGears(){
   }
 
   // ---- 5-colour palette, cycled around the ring so it stays balanced both sides ----
-  var RED='#e04b3c', YEL='#eccb3f', ORA='#ef8f38', BLU='#4a90d9', WHT='#eef2f7';
-  var COLORS=[RED,YEL,ORA,BLU,WHT];
-  var GOLD='#f2cf72', BRASS='#c79a3f', STEEL='#d7dee6';
+  var RED='#d8382d';                                   // EVERY angle box is red
+  var RAINBOW=['#ff9a3c','#ffd23c','#7ad84f','#3fc9c9','#4aa6ef','#9a7bff','#e368c6','#ff7ab0']; // gears: rainbow, no black/red
+  var GOLD='#f2cf72';                                  // the brain (pentagon)
 
   // real departments (name + real connection count); colour comes from COLORS by position
   var DEPT=[
@@ -2882,31 +2882,31 @@ function startBootGears(){
     {n:'TRAVEL·MISC',k:5}
   ];
 
-  var PARTS=[], RODS=[], LBL=[];
+  var PARTS=[], RODS=[], LBL=[], BOXPOS=[];
   function eg(pos,u,v,w,N,th,base,rate,ph,bright){PARTS.push({k:'g',m:gear(N,th),pos:pos,u:u,v:v,w:w,base:base,rate:rate,ph:ph||0,br:bright||1});}
-  function eb(pos,u,v,w,R,th,base,bright){PARTS.push({k:'b',m:prism(8,R,th),pos:pos,u:u,v:v,w:w,base:base,rate:0,ph:0,br:bright||1});}
+  function eb(pos,u,v,w,R,th,base,bright,sides){PARTS.push({k:'b',m:prism(sides||8,R,th),pos:pos,u:u,v:v,w:w,base:base,rate:0,ph:0,br:bright||1});}
   // a gearbox = a big, clearly-visible COLOUR octagon housing with metal gears meshing INSIDE it
   function gearbox(pos,u,v,w,color,driveRate,nDriven){
     var Rp=62, Nd=9, Np=6, D=PR(Nd)+PR(Np);
-    eb(pos,u,v,w,Rp,11,color);                          // bright colour octagon plate (prominent)
-    eb(add(pos,sc(w,6.5)),u,v,w,Rp,3,color,1.18);       // raised bright rim -> reads as a housing
+    eb(pos,u,v,w,Rp,11,color,1,8);                      // RED octagon housing (prominent), 8 sides
+    eb(add(pos,sc(w,6.5)),u,v,w,Rp,3,color,1.18,8);     // raised bright rim -> reads as a housing
     var top=add(pos,sc(w,10));
-    eg(top,u,v,w,Nd,8,BRASS,driveRate,0);               // brass drive gear (centre)
+    eg(top,u,v,w,Nd,8,RAINBOW[0],driveRate,0);          // rainbow gears grinding inside
     for(var g=0;g<nDriven;g++){
       var a=g/nDriven*TAU + 0.30;
       var gp=add(top,comb(u,v,w,Math.cos(a)*D,Math.sin(a)*D,0));
       // meshing: counter-rotate at ratio, phase so teeth sit in the drive's gaps (grinding)
-      eg(gp,u,v,w,Np,7,STEEL,-driveRate*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);
+      eg(gp,u,v,w,Np,7,RAINBOW[(g+1)%RAINBOW.length],-driveRate*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);
     }
     return Rp;
   }
 
   // central brain (gold housing + drive + a meshing ring)
-  eb([0,0,0],[1,0,0],[0,1,0],[0,0,1],78,11,GOLD,0.66);
-  eb([0,0,6],[1,0,0],[0,1,0],[0,0,1],62,5,GOLD,0.9);
-  eg([0,0,12],[1,0,0],[0,1,0],[0,0,1],22,11,GOLD,0.012,0);
-  (function(){var Nd=22,Np=9,D=PR(Nd)+PR(Np);for(var g=0;g<6;g++){var a=g/6*TAU;
-    eg(add([0,0,12],comb([1,0,0],[0,1,0],[0,0,1],Math.cos(a)*D,Math.sin(a)*D,0)),[1,0,0],[0,1,0],[0,0,1],Np,8,BRASS,-0.012*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);}})();
+  eb([0,0,0],[1,0,0],[0,1,0],[0,0,1],82,12,GOLD,0.66,5);   // PENTAGON brain housing (5 sides)
+  eb([0,0,7],[1,0,0],[0,1,0],[0,0,1],66,5,GOLD,0.95,5);
+  eg([0,0,13],[1,0,0],[0,1,0],[0,0,1],22,11,GOLD,0.012,0); // gold core gear (the brain)
+  (function(){var Nd=22,Np=9,D=PR(Nd)+PR(Np);for(var g=0;g<7;g++){var a=g/7*TAU;
+    eg(add([0,0,13],comb([1,0,0],[0,1,0],[0,0,1],Math.cos(a)*D,Math.sin(a)*D,0)),[1,0,0],[0,1,0],[0,0,1],Np,8,RAINBOW[g%RAINBOW.length],-0.012*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);}})();
 
   DEPT.forEach(function(d,i){
     var phi=i/DEPT.length*TAU, R=250;
@@ -2915,10 +2915,12 @@ function startBootGears(){
     var u=nrm(cross([0,1,0],w)); if(Math.hypot(u[0],u[1],u[2])<0.1)u=[1,0,0];
     var v=nrm(cross(w,u));
     RODS.push([[0,0,0],pos]);
-    var col=COLORS[i%COLORS.length];
-    var Rp=gearbox(pos,u,v,w,col, 0.012*(i%2?1:-1), Math.min(5,Math.max(3,d.k)));
-    LBL.push({pos:add(pos,sc(w,Rp+16)), t:d.n+' ·'+d.k, c:col});
+    BOXPOS.push(pos);
+    var Rp=gearbox(pos,u,v,w,RED, 0.012*(i%2?1:-1), Math.min(5,Math.max(3,d.k)));
+    LBL.push({pos:add(pos,sc(w,Rp+16)), t:d.n+' ·'+d.k, c:'#ffdca8'});
   });
+  // link the angle boxes to each other around the ring (a linked machine)
+  for(var b=0;b<BOXPOS.length;b++){ RODS.push([BOXPOS[b], BOXPOS[(b+1)%BOXPOS.length]]); }
 
   var yaw=-0.35, pitch=0.40, CAMZ=1000, FOC=1000, FIT=1, phase=0;
   var LT=nrm([-0.3,-0.5,0.8]);
