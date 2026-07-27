@@ -48,8 +48,10 @@ hallways"). Two parts:
 
 ## Smaller adds (in "feels like Claude" order)
 - **Use memory every turn** — pgvector recall exists; embeddings need `OPENAI_API_KEY` (keyless degrades to note-recall).
-- **Self-check / eval harness** — structural regression tests on the calculators (foam/coating/job-cost)
-  so the brain catches its own drift vs doctrine. Buildable keyless — I can do this next if you want.
+- **Self-check / eval harness** — ✅ **BUILT** (`tests/calc-invariants.js`, `node tests/calc-invariants.js`,
+  40/40 passing): asserts every calculator's internal math identities + monotonicity (foam board-feet &
+  sets, coating gallons, job-cost buildup & margin, ROI payback/horizon, roof geometry, BPI ACH50, dew
+  point). No hardcoded doctrine prices — it catches *math* regressions, exits non-zero on drift. Keyless.
 - **Vision + docs** — read job photos / plans / PDFs (photo-estimate is the seed). Needs a vision-capable key.
 - **Voice / telephony** — hands-free for the crew, inbound-call handling. Needs a telephony + STT service.
 - **Honesty calibration** — enforce "numbers before the rec, say what's uncertain, ≤2 clarifying Qs" (mostly in the owner profile already).
