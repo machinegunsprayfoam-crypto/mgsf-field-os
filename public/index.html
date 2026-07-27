@@ -573,6 +573,7 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
 
 </head>
 <body>
+<script src="brain-graph.js"></script>
 <script>
 /* ===== THEME ENGINE — selectable skins, persisted per device. Applied here early so the boot
    screen masks any flash. GRID (Tron) is the default (no data-theme attribute). ===== */
@@ -2887,139 +2888,107 @@ let _bootGearRAF = null;
 function startBootGears(){
   const cv = document.getElementById('bootGears'); if(!cv || !cv.getContext) return;
   const ctx = cv.getContext('2d');
-  let reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
-  let DPR=1, W=0, H=0;
-  function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth||520; H=cv.clientHeight||400; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
-  resize(); window.addEventListener('resize', resize);
-  var TAU=Math.PI*2, MOD=3.4;
-  function PR(N){return MOD*N/2;}
-  function add(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
-  function sc(a,s){return[a[0]*s,a[1]*s,a[2]*s];}
-  function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
-  function nrm(a){var m=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/m,a[1]/m,a[2]/m];}
-  function comb(u,v,w,x,y,z){return[u[0]*x+v[0]*y+w[0]*z,u[1]*x+v[1]*y+w[1]*z,u[2]*x+v[2]*y+w[2]*z];}
-  function circ(z,r,seg){var a=[];for(var i=0;i<seg;i++){var t=i/seg*TAU;a.push([Math.cos(t)*r,Math.sin(t)*r,z]);}return a;}
-  function clamp(x){x=x|0;return x<0?0:x>255?255:x;}
-  function mul(hex,g){var n=parseInt(hex.slice(1),16);return 'rgb('+clamp(((n>>16)&255)*g)+','+clamp(((n>>8)&255)*g)+','+clamp((n&255)*g)+')';}
+  let reduce=false; try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){}
+  var G = window.BRAIN_GRAPH;
+  if(!G || !G.nodes || !G.nodes.length) return;   // real graph required — no fabricated fallback
+  var TAU=Math.PI*2, DPR=1, W=0, H=0;
+  function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=cv.clientWidth||520;H=cv.clientHeight||400;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+  resize(); window.addEventListener('resize',resize);
+  function clamp01(x){return x<0?0:x>1?1:x;}
 
-  function gear(N,th){
-    var r=PR(N),ad=MOD*0.92,de=MOD*1.05,tip=r+ad,root=r-de,half=Math.PI/N,o=[],i;
-    for(i=0;i<N;i++){var b=i/N*TAU;o.push([b-half*0.78,root],[b-half*0.40,tip],[b+half*0.40,tip],[b+half*0.78,root]);}
-    var n=o.length,V=[],t2=th/2;
-    for(i=0;i<n;i++)V.push([Math.cos(o[i][0])*o[i][1],Math.sin(o[i][0])*o[i][1], t2]);
-    for(i=0;i<n;i++)V.push([Math.cos(o[i][0])*o[i][1],Math.sin(o[i][0])*o[i][1],-t2]);
-    var F=[],f=[],bk=[];
-    for(i=0;i<n;i++)f.push(i);F.push({x:f,t:'cap'});
-    for(i=n-1;i>=0;i--)bk.push(n+i);F.push({x:bk,t:'cap'});
-    for(i=0;i<n;i++){var j=(i+1)%n;F.push({x:[i,j,n+j,n+i],t:'side'});}
-    var seg=12,b0=V.length,hp=circ(t2+0.3,r*0.34,seg);for(i=0;i<seg;i++)V.push(hp[i]);
-    var hf=[];for(i=0;i<seg;i++)hf.push(b0+i);F.push({x:hf,t:'hub'});
-    return {V:V,F:F};
-  }
-  function prism(sides,R,th){var V=[],F=[],t2=th/2,i;
-    for(i=0;i<sides;i++){var a=(i+0.5)/sides*TAU;V.push([Math.cos(a)*R,Math.sin(a)*R, t2]);}
-    for(i=0;i<sides;i++){var a=(i+0.5)/sides*TAU;V.push([Math.cos(a)*R,Math.sin(a)*R,-t2]);}
-    var f=[],bk=[];for(i=0;i<sides;i++)f.push(i);F.push({x:f,t:'plate'});
-    for(i=sides-1;i>=0;i--)bk.push(sides+i);F.push({x:bk,t:'plate'});
-    for(i=0;i<sides;i++){var j=(i+1)%sides;F.push({x:[i,j,sides+j,sides+i],t:'pside'});}
-    return {V:V,F:F};
-  }
+  // 11 vivid cluster colours (rainbow, no black). Node fills fade to a dim-but-not-black core, then
+  // to transparent — so nothing renders as a black blob on the black boot background.
+  var CCOL=['#ff6b6b','#ffa53c','#ffd23c','#7ad84f','#3fc9c9','#4aa6ef','#9a7bff','#e368c6','#5be0b0','#ff8fab','#c0d860'];
+  function cc(i){return CCOL[((i%CCOL.length)+CCOL.length)%CCOL.length];}
 
-  // ---- 5-colour palette, cycled around the ring so it stays balanced both sides ----
-  var RED='#d8382d';                                   // EVERY angle box is red
-  var RAINBOW=['#ff9a3c','#ffd23c','#7ad84f','#3fc9c9','#4aa6ef','#9a7bff','#e368c6','#ff7ab0']; // gears: rainbow, no black/red
-  var GOLD='#f2cf72';                                  // the brain (pentagon)
+  var N=G.nodes.length;
+  var deg=new Array(N).fill(0);
+  G.edges.forEach(function(e){var s=e[0],t=e[1],w=e[2]||1; if(s<N&&t<N){deg[s]+=w;deg[t]+=w;}});
 
-  // real departments (name + real connection count); colour comes from COLORS by position
-  var DEPT=[
-    {n:'ENGINE & BRAIN',k:5},{n:'CRM & LEADS',k:7},{n:'MONEY',k:4},{n:'COMMS & MTGS',k:10},
-    {n:'CAL & TASKS',k:6},{n:'FILES·DOCS·SIGN',k:9},{n:'AUTOMATION',k:3},{n:'BUILD & INFRA',k:15},
-    {n:'MARKETING·SEO',k:7},{n:'CREATIVE·MEDIA',k:9},{n:'GOVCON·GRANTS',k:4},{n:'DATA·RESEARCH',k:8},
-    {n:'TRAVEL·MISC',k:5}
-  ];
-
-  var PARTS=[], RODS=[], LBL=[], BOXPOS=[];
-  function eg(pos,u,v,w,N,th,base,rate,ph,bright){PARTS.push({k:'g',m:gear(N,th),pos:pos,u:u,v:v,w:w,base:base,rate:rate,ph:ph||0,br:bright||1});}
-  function eb(pos,u,v,w,R,th,base,bright,sides){PARTS.push({k:'b',m:prism(sides||8,R,th),pos:pos,u:u,v:v,w:w,base:base,rate:0,ph:0,br:bright||1});}
-  // a gearbox = a big, clearly-visible COLOUR octagon housing with metal gears meshing INSIDE it
-  function gearbox(pos,u,v,w,color,driveRate,nDriven){
-    var Rp=62, Nd=9, Np=6, D=PR(Nd)+PR(Np);
-    eb(pos,u,v,w,Rp,11,color,1,8);                      // RED octagon housing (prominent), 8 sides
-    eb(add(pos,sc(w,6.5)),u,v,w,Rp,3,color,1.18,8);     // raised bright rim -> reads as a housing
-    var top=add(pos,sc(w,10));
-    eg(top,u,v,w,Nd,8,RAINBOW[0],driveRate,0);          // rainbow gears grinding inside
-    for(var g=0;g<nDriven;g++){
-      var a=g/nDriven*TAU + 0.30;
-      var gp=add(top,comb(u,v,w,Math.cos(a)*D,Math.sin(a)*D,0));
-      // meshing: counter-rotate at ratio, phase so teeth sit in the drive's gaps (grinding)
-      eg(gp,u,v,w,Np,7,RAINBOW[(g+1)%RAINBOW.length],-driveRate*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);
+  // ---- 3D force-directed layout (Fruchterman–Reingold + cluster cohesion), precomputed once.
+  //      Deterministic Fibonacci-sphere start so the brain looks the same every boot. ----
+  var P=new Array(N), GA=Math.PI*(3-Math.sqrt(5));
+  for(var i=0;i<N;i++){var t=(i+0.5)/N, ph=Math.acos(1-2*t), th=GA*i, R0=150;
+    P[i]=[Math.cos(th)*Math.sin(ph)*R0, Math.sin(th)*Math.sin(ph)*R0, Math.cos(ph)*R0];}
+  var k=44, ITER=reduce?30:140;
+  for(var it=0; it<ITER; it++){
+    var temp=26*(1-it/ITER)+1;
+    var F=new Array(N); for(var i=0;i<N;i++)F[i]=[0,0,0];
+    for(var a=0;a<N;a++)for(var b=a+1;b<N;b++){
+      var dx=P[a][0]-P[b][0],dy=P[a][1]-P[b][1],dz=P[a][2]-P[b][2];
+      var d=Math.sqrt(dx*dx+dy*dy+dz*dz)||0.01, fr=k*k/d; if(fr>60)fr=60;
+      var ux=dx/d,uy=dy/d,uz=dz/d;
+      F[a][0]+=ux*fr;F[a][1]+=uy*fr;F[a][2]+=uz*fr;
+      F[b][0]-=ux*fr;F[b][1]-=uy*fr;F[b][2]-=uz*fr;
     }
-    return Rp;
+    for(var e=0;e<G.edges.length;e++){var a=G.edges[e][0],b=G.edges[e][1],w=G.edges[e][2]||1; if(a>=N||b>=N)continue;
+      var dx=P[b][0]-P[a][0],dy=P[b][1]-P[a][1],dz=P[b][2]-P[a][2];
+      var d=Math.sqrt(dx*dx+dy*dy+dz*dz)||0.01, fa=d*d/k*(0.4+Math.min(3,w)*0.2);
+      var ux=dx/d,uy=dy/d,uz=dz/d;
+      F[a][0]+=ux*fa;F[a][1]+=uy*fa;F[a][2]+=uz*fa;
+      F[b][0]-=ux*fa;F[b][1]-=uy*fa;F[b][2]-=uz*fa;
+    }
+    // cluster cohesion — pull each node gently toward its community centroid so the 11 topical
+    // clusters resolve into distinct lobes (the "regions" of the brain)
+    var cen={},cnt={};
+    for(var i=0;i<N;i++){var c=G.nodes[i].c;if(!cen[c]){cen[c]=[0,0,0];cnt[c]=0;}cen[c][0]+=P[i][0];cen[c][1]+=P[i][1];cen[c][2]+=P[i][2];cnt[c]++;}
+    for(var c in cen){cen[c][0]/=cnt[c];cen[c][1]/=cnt[c];cen[c][2]/=cnt[c];}
+    for(var i=0;i<N;i++){var c=G.nodes[i].c;F[i][0]+=(cen[c][0]-P[i][0])*0.03;F[i][1]+=(cen[c][1]-P[i][1])*0.03;F[i][2]+=(cen[c][2]-P[i][2])*0.03;}
+    for(var i=0;i<N;i++){var m=Math.sqrt(F[i][0]*F[i][0]+F[i][1]*F[i][1]+F[i][2]*F[i][2])||1,s=Math.min(m,temp)/m;
+      P[i][0]+=F[i][0]*s;P[i][1]+=F[i][1]*s;P[i][2]+=F[i][2]*s;}
   }
+  // centre the cloud
+  (function(){var cx=0,cy=0,cz=0;for(var i=0;i<N;i++){cx+=P[i][0];cy+=P[i][1];cz+=P[i][2];}cx/=N;cy/=N;cz/=N;
+    for(var i=0;i<N;i++){P[i][0]-=cx;P[i][1]-=cy;P[i][2]-=cz;}})();
+  var MAXR=0;for(var i=0;i<N;i++){var d=Math.hypot(P[i][0],P[i][1],P[i][2]);if(d>MAXR)MAXR=d;}MAXR=MAXR+28||200;
 
-  // central brain (gold housing + drive + a meshing ring)
-  eb([0,0,0],[1,0,0],[0,1,0],[0,0,1],82,12,GOLD,0.66,5);   // PENTAGON brain housing (5 sides)
-  eb([0,0,7],[1,0,0],[0,1,0],[0,0,1],66,5,GOLD,0.95,5);
-  eg([0,0,13],[1,0,0],[0,1,0],[0,0,1],22,11,GOLD,0.012,0); // gold core gear (the brain)
-  (function(){var Nd=22,Np=9,D=PR(Nd)+PR(Np);for(var g=0;g<7;g++){var a=g/7*TAU;
-    eg(add([0,0,13],comb([1,0,0],[0,1,0],[0,0,1],Math.cos(a)*D,Math.sin(a)*D,0)),[1,0,0],[0,1,0],[0,0,1],Np,8,RAINBOW[g%RAINBOW.length],-0.012*Nd/Np,(1+Nd/Np)*a+Math.PI/Np);}})();
+  // node radii by degree (hubs read bigger)
+  var NR=new Array(N);for(var i=0;i<N;i++)NR[i]=3.0+Math.sqrt(deg[i])*1.7;
 
-  DEPT.forEach(function(d,i){
-    var phi=i/DEPT.length*TAU, R=250;
-    var pos=[Math.cos(phi)*R, Math.sin(phi)*R, 0];
-    var w=nrm([Math.cos(phi)*0.15, Math.sin(phi)*0.15, 1]);       // face viewer (balanced), slight tilt
-    var u=nrm(cross([0,1,0],w)); if(Math.hypot(u[0],u[1],u[2])<0.1)u=[1,0,0];
-    var v=nrm(cross(w,u));
-    RODS.push([[0,0,0],pos]);
-    BOXPOS.push(pos);
-    var Rp=gearbox(pos,u,v,w,RED, 0.012*(i%2?1:-1), Math.min(5,Math.max(3,d.k)));
-    LBL.push({pos:add(pos,sc(w,Rp+16)), t:d.n+' ·'+d.k, c:'#ffdca8'});
-  });
-  // link the angle boxes to each other around the ring (a linked machine)
-  for(var b=0;b<BOXPOS.length;b++){ RODS.push([BOXPOS[b], BOXPOS[(b+1)%BOXPOS.length]]); }
+  // pre-render one lit-sphere sprite per cluster colour (cheap drawImage per node each frame)
+  function makeSprite(col){var s=64,o=document.createElement('canvas');o.width=o.height=s;var g=o.getContext('2d');
+    var n=parseInt(col.slice(1),16),r=(n>>16)&255,gg=(n>>8)&255,bb=n&255;
+    function L(f){return 'rgb('+Math.min(255,(r+(255-r)*f)|0)+','+Math.min(255,(gg+(255-gg)*f)|0)+','+Math.min(255,(bb+(255-bb)*f)|0)+')';}
+    var grd=g.createRadialGradient(s*0.40,s*0.36,1,s*0.5,s*0.5,s*0.5);
+    grd.addColorStop(0,L(0.9));grd.addColorStop(0.35,col);
+    grd.addColorStop(0.82,'rgb('+((r*0.42)|0)+','+((gg*0.42)|0)+','+((bb*0.42)|0)+')');
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=grd;g.beginPath();g.arc(s/2,s/2,s/2,0,TAU);g.fill();return o;}
+  var SPR=CCOL.map(makeSprite);
 
-  var yaw=-0.35, pitch=0.40, CAMZ=1000, FOC=1000, FIT=1, phase=0;
-  var LT=nrm([-0.3,-0.5,0.8]);
-  var MAXR=0; PARTS.forEach(function(p){var d=Math.hypot(p.pos[0],p.pos[1],p.pos[2]);if(d>MAXR)MAXR=d;}); MAXR+=70;
+  var yaw=-0.35, pitch=0.30, CAMZ=1000, FOC=1000, FIT=1, phase=0;
 
   function frame(){
-    FIT=Math.min(W,H)*0.46/MAXR;
+    FIT=Math.min(W,H)*0.60/MAXR;
     ctx.clearRect(0,0,W,H);
-    var cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch);
-    function tf(p){var x=p[0]*cy-p[2]*sy,z=p[0]*sy+p[2]*cy,y=p[1]*cx-z*sx;z=p[1]*sx+z*cx;return[x,y,z];}
-    function pj(p){var s=FOC/(CAMZ-p[2])*FIT;return[W/2+p[0]*s,H/2-p[1]*s,s];}
-    RODS.forEach(function(r){var a=pj(tf(r[0])),b=pj(tf(r[1]));
-      ctx.strokeStyle='rgba(74,144,217,.6)';ctx.lineWidth=Math.max(2,4.4*a[2]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
-      ctx.strokeStyle='rgba(150,200,255,.4)';ctx.lineWidth=Math.max(1,1.7*a[2]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
-    var polys=[];
-    PARTS.forEach(function(p){var sp=(p.rate*phase)+(p.ph||0),cs=Math.cos(sp),sn=Math.sin(sp),V=p.m.V,TV=new Array(V.length),i;
-      for(i=0;i<V.length;i++){var lx=V[i][0],ly=V[i][1],lz=V[i][2];
-        if(p.k==='g'){var rx=lx*cs-ly*sn,ry=lx*sn+ly*cs;lx=rx;ly=ry;}
-        TV[i]=tf(add(comb(p.u,p.v,p.w,lx,ly,lz),p.pos));}
-      for(var fi=0;fi<p.m.F.length;fi++){var F=p.m.F[fi],x=F.x,p0=TV[x[0]],p1=TV[x[1]],p2=TV[x[2]];
-        var axx=p1[0]-p0[0],ayy=p1[1]-p0[1],azz=p1[2]-p0[2],bxx=p2[0]-p0[0],byy=p2[1]-p0[1],bzz=p2[2]-p0[2];
-        var nx=ayy*bzz-azz*byy,ny=azz*bxx-axx*bzz,nz=axx*byy-ayy*bxx,nl=Math.hypot(nx,ny,nz)||1,nzn=nz/nl;
-        if(nzn<=0.02)continue;
-        var lit=(nx/nl)*LT[0]+(ny/nl)*LT[1]+nzn*LT[2];if(lit<0)lit=0;
-        var g=(F.t==='hub')?0.62:(F.t==='plate')?(0.72+0.4*lit):(F.t==='pside')?(0.5+0.4*lit):(0.62+0.62*lit); // floor => never black; bright plates
-        var col=mul(p.base,g*(p.br||1));
-        var poly=[],zc=0;for(var q=0;q<x.length;q++){var pp=pj(TV[x[q]]);poly.push(pp);zc+=TV[x[q]][2];}
-        polys.push({z:zc/x.length,poly:poly,col:col,glow:(p.base===GOLD&&F.t==='cap')?8:0});}
-    });
-    polys.sort(function(a,b){return a.z-b.z;});
-    for(var pi=0;pi<polys.length;pi++){var P=polys[pi],q=P.poly;
-      ctx.beginPath();ctx.moveTo(q[0][0],q[0][1]);for(var j=1;j<q.length;j++)ctx.lineTo(q[j][0],q[j][1]);ctx.closePath();
-      if(P.glow){ctx.shadowBlur=P.glow;ctx.shadowColor=GOLD;}ctx.fillStyle=P.col;ctx.fill();ctx.shadowBlur=0;
-      ctx.strokeStyle='rgba(0,0,0,.28)';ctx.lineWidth=0.5;ctx.stroke();}
-    LBL.forEach(function(l){var e=pj(tf(l.pos));var fs=Math.max(8,10*e[2]);
+    var cyw=Math.cos(yaw),syw=Math.sin(yaw),cpt=Math.cos(pitch),spt=Math.sin(pitch);
+    function tf(p){var x=p[0]*cyw-p[2]*syw,z=p[0]*syw+p[2]*cyw,y=p[1]*cpt-z*spt;z=p[1]*spt+z*cpt;return[x,y,z];}
+    function pj(p){var s=FOC/(CAMZ-p[2])*FIT;return[W/2+p[0]*s,H/2-p[1]*s,s,p[2]];}
+    var Q=new Array(N);for(var i=0;i<N;i++)Q[i]=pj(tf(P[i]));
+    // edges first (behind the nodes), depth-shaded so the graph reads as 3-D
+    for(var e=0;e<G.edges.length;e++){var s=G.edges[e][0],t=G.edges[e][1];if(s>=N||t>=N)continue;
+      var A=Q[s],B=Q[t],sc=(A[2]+B[2])/2,al=0.05+0.18*clamp01((sc-0.4)/1.1);
+      ctx.strokeStyle='rgba(120,170,235,'+al.toFixed(3)+')';ctx.lineWidth=Math.max(0.4,sc*0.85);
+      ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();}
+    // nodes far-to-near (painter's depth), dimmer when far
+    var order=[];for(var i=0;i<N;i++)order.push(i);order.sort(function(a,b){return Q[a][3]-Q[b][3];});
+    for(var oi=0;oi<order.length;oi++){var i=order[oi],q=Q[i],r=NR[i]*q[2];if(r<1)r=1;
+      ctx.globalAlpha=0.45+0.55*clamp01((q[3]+MAXR)/(2*MAXR));
+      ctx.drawImage(SPR[((G.nodes[i].c%11)+11)%11], q[0]-r, q[1]-r, r*2, r*2);}
+    ctx.globalAlpha=1;
+    // cluster names at their centroids — the labelled "regions" of the brain
+    var cen={},cnt={};for(var i=0;i<N;i++){var c=G.nodes[i].c;if(!cen[c]){cen[c]=[0,0,0];cnt[c]=0;}cen[c][0]+=P[i][0];cen[c][1]+=P[i][1];cen[c][2]+=P[i][2];cnt[c]++;}
+    for(var c in cen){cen[c][0]/=cnt[c];cen[c][1]/=cnt[c];cen[c][2]/=cnt[c];}
+    G.clusters.forEach(function(cl){if(cen[cl.id]===undefined)return;var ep=pj(tf(cen[cl.id]));var fs=Math.max(8,10*ep[2]);
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
-      ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,.92)';ctx.lineJoin='round';ctx.strokeText(l.t,e[0],e[1]);
-      ctx.fillStyle=l.c;ctx.fillText(l.t,e[0],e[1]);});
-    var c0=pj(tf([0,0,26]));var fs=Math.max(10,14*c0[2]);
-    ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
-    ctx.lineWidth=3.5;ctx.strokeStyle='rgba(0,0,0,.95)';ctx.lineJoin='round';ctx.strokeText('KLYFTON AI',c0[0],c0[1]);
-    ctx.fillStyle='#ffe6a8';ctx.fillText('KLYFTON AI',c0[0],c0[1]);
-    if(!reduce){ phase+=1; yaw=-0.35+0.42*Math.sin(phase*0.004); _bootGearRAF=requestAnimationFrame(frame); }
+      ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,.9)';ctx.lineJoin='round';ctx.strokeText(cl.name,ep[0],ep[1]);
+      ctx.fillStyle=cc(cl.id);ctx.fillText(cl.name,ep[0],ep[1]);});
+    // title
+    var fs=Math.max(12,Math.min(W,H)*0.055);
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.font='800 '+fs+'px ui-monospace,Menlo,Consolas,monospace';
+    ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.95)';ctx.lineJoin='round';ctx.strokeText('KLYFTON AI',W/2,H-14);
+    ctx.fillStyle='#ffe6a8';ctx.fillText('KLYFTON AI',W/2,H-14);
+    if(!reduce){phase+=1; yaw+=0.006; pitch=0.30+0.12*Math.sin(phase*0.006); _bootGearRAF=requestAnimationFrame(frame);}
   }
   frame();
 }
