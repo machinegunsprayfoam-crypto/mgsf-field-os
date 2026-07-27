@@ -41,9 +41,12 @@ Make it answer from your real numbers, not just doctrine: *"3 leads went cold, 2
   gated `gather()`; 2.5s fetch timeouts so it can never stall an answer. Endpoint `/api/brain-context`.
   **Gated & non-fabricating:** no KV + no HubSpot → `{configured:false, context:""}` (brain adds nothing);
   reports only counts/values that actually exist. Tests: `tests/brain-context.js` 13/13.
-- **Remaining (needs you):** (1) set `HUBSPOT_TOKEN` and/or attach Vercel KV; (2) then I wire
-  `gather().context` into klyfton.js's ctx (one line, best-effort like the memory recall) and
-  smoke-test the live path with the key present. QBO (AR/P&L) waits on the subscription.
+- **WIRED LIVE (2026-07-27, code):** `HUBSPOT_TOKEN` is set in Vercel (owner confirmed working).
+  `brainContext.gather()` is now folded into klyfton.js's `ctx` — best-effort, 2.5s-timeout-guarded,
+  and only fired when the question is about the pipeline (leads/jobs/estimates/money regex) so pure
+  technical questions don't hit the CRM. Feeds BOTH prompt builders via `ctx`. All 4 test suites green;
+  klyfton.js loads clean. **Goes live when field-os merges to main; then smoke-test `/api/brain-context`
+  on the deployed app to confirm `configured:true` + real counts.** QBO (AR/P&L) waits on the subscription.
 
 ## 🔧 #3 — Wire the layers + go proactive (bigger build)
 The graph's structural gaps = **technical → action → guardrail are siloed** ("good rooms, missing

@@ -14,6 +14,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // with no network call, so this adds zero cost until it's turned on. See api/memory.js.
 const semanticMemory = require("./memory");
 const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
+const brainContext = require("./brain-context"); // live-data grounding: real pipeline (KV + HubSpot) -> "situation" the brain reasons over
 
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
 // Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
@@ -1542,7 +1543,16 @@ module.exports = async (req, res) => {
       }
     } catch (e) { /* fall back to client-sent memory */ }
   }
-  const ctx = contextBlock(body.context, memList);
+  // Live-data grounding — when the question is about the pipeline (leads/jobs/estimates/money), pull a
+  // compact REAL "situation" from brain-context (KV + HubSpot). Best-effort + gated: ~zero cost and a
+  // no-op when unconfigured, 2.5s timeout-guarded, and never blocks the answer on failure.
+  let liveCtx = "";
+  if (userText && !isTrivial(userText, attachments) &&
+      /\b(lead|leads|customer|client|job|jobs|pipeline|estimate|estimates|quote|proposal|invoice|revenue|money|sales|follow[- ]?up|cold|deal|contact|schedule|how many|status|AR)\b/i.test(userText)) {
+    try { const g = await brainContext.gather({}); if (g && g.configured && g.context) liveCtx = "\n\n" + g.context; }
+    catch (e) { /* live data is best-effort — never block the answer */ }
+  }
+  const ctx = contextBlock(body.context, memList) + liveCtx;
 
   // The router is text-only; give it a hint when a message is just an attachment.
   const routeText = userText || "[user attached " + attachments.length + " " +
