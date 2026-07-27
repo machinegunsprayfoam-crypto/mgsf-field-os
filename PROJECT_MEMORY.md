@@ -14,6 +14,7 @@ _Last updated: 2026-07-26._
 - Work branch (all three): **`claude/klyfton-ai-problems-ynhx9f`**. **Never merge to main without Clifton's OK.**
 
 ## 2. Current build state
+**★ DEPLOYED TO MAIN 2026-07-27 (Clifton's go):** field-os branch fast-forward-merged to main + live on Vercel (prod deploy READY, commit ad06190). LIVE now: 3D brain-graph boot screen, GraphRAG block-selection in the brain (both builders, safe full-brain fallback), live-data grounding (brainContext, pipeline-gated), warranty-cert button, + all prior staged subsystems (Command Center, ATS, axle, gearbox, memory, act.js[inert until ALERTS_WEBHOOK_URL], crons now on their Mon-Sat schedule). HUBSPOT_TOKEN + KV set in Vercel. Smoke test `/api/brain-context` = {configured:true, source:kv, 12 open leads / 11 cold}. **Hardening flag:** read endpoints (`/api/brain-context`, `/api/command-center`) return aggregate pipeline data UNAUTHENTICATED (noindex, but public) — existing app posture; consider gating behind CREW_CODE.
 **Klyfton backend (field-os) — shipped to branch, not merged:**
 - `agent_runs` telemetry table + KPI views (Command Center **Phase 1**). Owner step to activate: re-run `db/schema.sql` in Supabase + confirm `SUPABASE_URL`/service-role key in Vercel.
 - Command Center **Phase C** ✅ — live drivetrain strip in the app (recent gear-turns from `events`).
