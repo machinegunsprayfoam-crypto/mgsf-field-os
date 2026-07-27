@@ -1038,6 +1038,33 @@ Guardrails: accounting & tax are GUIDANCE ONLY — a CPA signs the returns/finan
 targets, and entity status defer to DOCTRINE + the accountant (ProTax); QuickBooks is the system of record;
 never fabricate financials; nothing customer-facing (invoices, quotes) sends without Clifton's approval.`;
 
+// ---- GraphRAG brain assembly: load only the knowledge blocks relevant to THIS question, via
+// retrieval over the real InfraNodus brain graph (api/brain-graph-retrieve.js). Identity, doctrine,
+// operating principles, the action contract and the expert-library citation router are ALWAYS present;
+// only the heavy DOMAIN blocks (STEM/HVAC/ACCOUNTING/PROCUREMENT/EQUIPMENT/… ) are selected per query.
+// Any failure, empty result, or trivial input -> the FULL brain (never worse than before). ----
+const brainRetrieve = require("./brain-graph-retrieve.js");
+const BRAIN_BLOCKS = {
+  BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
+  STEM_FOUNDATIONS, HVAC_ENGINEERING, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
+  SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
+  PLATFORM, ACTIONS, EXPERT_LIBRARY,
+};
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
+function assembleBrainBlocks(userText) {
+  const all = () => BRAIN_ORDER.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
+  try {
+    if (!userText || String(userText).trim().length < 3) return all();
+    const r = brainRetrieve.retrieve(userText, { topClusters: 6 });
+    if (!r || !Array.isArray(r.blocks) || !r.blocks.length) return all();
+    const want = new Set(r.blocks.map((b) => (b === "base_voice" ? "BASE_VOICE" : b)));
+    const chosen = BRAIN_ORDER.filter((k) => BRAIN_CORE.has(k) || want.has(k));
+    if (chosen.length < BRAIN_CORE.size) return all();          // selection collapsed -> full brain
+    return chosen.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
+  } catch (e) { return all(); }                                  // never break the brain on retrieval error
+}
+
 // The specialist castes of the hive. Each is the smart model with a focused charter.
 const SPECIALISTS = {
   estimator: {
@@ -1307,7 +1334,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.`;
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${COMPETITIVE_EDGE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}\n\n${spec.focus}${ctx}`;
+  const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
@@ -1525,7 +1552,7 @@ module.exports = async (req, res) => {
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
   // The synthesizer prompt is the same whether we stream it or not.
-  const buildSynthSys = () => `${BASE_VOICE}\n\n${MASTERY}\n\n${BUSINESS}\n\n${DOCTRINE}\n\n${SUPPLIERS}\n\n${PROCUREMENT}\n\n${EQUIPMENT}\n\n${FEDERAL}\n\n${FOAM_SPECS}\n\n${STEM_FOUNDATIONS}\n\n${HVAC_ENGINEERING}\n\n${ROI_GUIDE}\n\n${ACCOUNTING_FINANCE}\n\n${BUSINESS_SYSTEM}\n\n${SERVICE_ARCHITECTURE}\n\n${REVENUE_LAYER}\n\n${KNOWLEDGE_BRIDGES}\n\n${GAP_BRIDGES}\n\n${COMPETITIVE_EDGE}\n\n${PLATFORM}\n\n${ACTIONS}\n\n${EXPERT_LIBRARY}${ctx}
+  const buildSynthSys = () => `${assembleBrainBlocks(userText)}${ctx}
 
 You are the SYNTHESIZER and CRITIC of the hive. Below are answers from specialist minds for the
 same question. Merge them into ONE answer in the owner's voice. Your job as critic:
@@ -1716,3 +1743,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     }
   }
 };
+
+// Exposed for the brain-assembly test harness (tests/brain-assembly.js). No runtime effect on the handler.
+module.exports.assembleBrainBlocks = assembleBrainBlocks;
+module.exports._BRAIN_ORDER = BRAIN_ORDER;

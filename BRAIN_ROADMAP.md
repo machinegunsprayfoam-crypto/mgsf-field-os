@@ -22,11 +22,15 @@ keys or are bigger builds — laid out below with honest effort + what only you 
   ACCOUNTING, HVAC, EQUIPMENT); *"too cold to spray?"* → Spray + Safety; *"SDVOSB on SAM.gov"* →
   Procurement (FEDERAL); *"draft a proposal for approval"* → Action Approval (ACTIONS, PLATFORM).
 
-**Ready-to-flip (your call — it changes tuned brain output + token usage, so validate first):**
-wire `retrieve(query).blocks` into klyfton.js's prompt assembly (BOTH builders) to include only the
-selected blocks. **Recommended:** run it in *shadow* first — log what it *would* load on real questions,
-eyeball the routing for a day, then flip to actually select. That's the safe path; I didn't touch the
-live brain unprompted.
+**WIRED LIVE (2026-07-27):** `assembleBrainBlocks(userText)` now feeds BOTH prompt builders in
+klyfton.js (`runMind` + `buildSynthSys`). Identity, doctrine, operating principles, the ACTIONS
+contract and the EXPERT_LIBRARY router are **always** included; only the heavy domain blocks
+(STEM/HVAC/ACCOUNTING/PROCUREMENT/EQUIPMENT/FEDERAL/…) are selected per question. Safe by
+construction: trivial input, empty result, or any error → the **full brain** (never worse than before).
+Verified — trivial → full (77.7k chars); narrow "too cold to spray?" → trimmed (~54k) but keeps
+FOAM_SPECS + doctrine + voice; broad multi-domain queries still load everything. Tests: `tests/
+brain-assembly.js` 28/28 + `tests/brain-retrieve.js` 19/19. **Live once field-os is merged to main
+(your deploy call).**
 
 ## 🔑 #2 — Live-data grounding (needs your keys)
 Make it answer from your real numbers, not just doctrine: *"AR is $X, these 3 leads went cold, this
