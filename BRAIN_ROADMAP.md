@@ -32,14 +32,18 @@ FOAM_SPECS + doctrine + voice; broad multi-domain queries still load everything.
 brain-assembly.js` 28/28 + `tests/brain-retrieve.js` 19/19. **Live once field-os is merged to main
 (your deploy call).**
 
-## 🔑 #2 — Live-data grounding (needs your keys)
-Make it answer from your real numbers, not just doctrine: *"AR is $X, these 3 leads went cold, this
-customer paid $Y last time."* The graph flagged this exact gap (assistant ↔ CRM/jobs/money is siloed).
-- Build: a read-context aggregator that pulls HubSpot (leads), the KV job/estimate sync, and QBO
-  (AR/P&L) into a compact "situation" the brain sees each turn.
-- **Blocked on:** HubSpot key (live), Vercel KV binding, QBO (subscription lapsed). I can build the
-  gated module scaffolding now (returns `not_configured` until keyed) if you want it staged — say so.
-- Effort: medium once keyed.
+## 🔑 #2 — Live-data grounding: MODULE BUILT (gated) — lights up when you set the key
+Make it answer from your real numbers, not just doctrine: *"3 leads went cold, 2 unsold estimates
+= $20k on the table, 2 active jobs."* The graph flagged this exact gap (assistant ↔ CRM/jobs/money siloed).
+- **Built:** `api/brain-context.js` — reads the app's own synced pipeline from Vercel KV
+  (`mgsf:leads/jobs/estimates`) and, if a HubSpot token is set, a small recent-contacts read; turns it
+  into a one-line "SITUATION (live pipeline)" the brain can ground on. Pure `summarize()` core +
+  gated `gather()`; 2.5s fetch timeouts so it can never stall an answer. Endpoint `/api/brain-context`.
+  **Gated & non-fabricating:** no KV + no HubSpot → `{configured:false, context:""}` (brain adds nothing);
+  reports only counts/values that actually exist. Tests: `tests/brain-context.js` 13/13.
+- **Remaining (needs you):** (1) set `HUBSPOT_TOKEN` and/or attach Vercel KV; (2) then I wire
+  `gather().context` into klyfton.js's ctx (one line, best-effort like the memory recall) and
+  smoke-test the live path with the key present. QBO (AR/P&L) waits on the subscription.
 
 ## 🔧 #3 — Wire the layers + go proactive (bigger build)
 The graph's structural gaps = **technical → action → guardrail are siloed** ("good rooms, missing
