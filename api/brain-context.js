@@ -91,6 +91,11 @@ async function gather(opts) {
 }
 
 module.exports = async (req, res) => {
+  // Crew-code gate (only bites when CREW_CODE is set). The brain uses gather() server-side directly,
+  // so this HTTP handler is just for owner/diagnostics — safe to lock behind the crew code.
+  if (process.env.CREW_CODE && ((req.query && req.query.code) || "") !== process.env.CREW_CODE) {
+    res.status(401).json({ ok: false, error: "crew_code_required" }); return;
+  }
   try { const g = await gather({}); res.status(200).json(g); }
   catch (e) { res.status(200).json({ ok: false, configured: KV_ON || !!HS_TOKEN, error: String(e).slice(0, 160), context: "" }); }
 };

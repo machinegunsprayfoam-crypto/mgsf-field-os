@@ -46,6 +46,11 @@ const EMPTY_KPIS = { tasks_7d: 0, active_agents_7d: 0, success_pct_7d: null, avg
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") { res.status(405).json({ error: "method_not_allowed" }); return; }
+  // Crew-code gate (only bites when CREW_CODE is set in Vercel) — this endpoint returns aggregate
+  // pipeline/KPI data, so don't serve it to anonymous callers when the owner has locked the app.
+  if (process.env.CREW_CODE && ((req.query && req.query.code) || "") !== process.env.CREW_CODE) {
+    res.status(401).json({ ok: false, error: "crew_code_required" }); return;
+  }
   const stamp = new Date().toISOString();
   if (!SB_ON) {
     res.status(200).json({ ok: true, configured: false, kpis: EMPTY_KPIS, leaderboard: [], roster: ROSTER, drivetrain: [],

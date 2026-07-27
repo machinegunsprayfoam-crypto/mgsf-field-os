@@ -12605,7 +12605,7 @@ window.renderCommand = async function(){
   var set = function(id,html){var el=document.getElementById(id); if(el) el.innerHTML=html;};
   set('ccKpis','<div class="metric-card"><div class="metric-val">…</div><div class="metric-lbl">loading</div></div>');
   try{
-    var r = await fetch('/api/command-center'); var d = await r.json();
+    var r = await fetch('/api/command-center?code='+encodeURIComponent(typeof klyftonCode==='function'?klyftonCode():'')); var d = await r.json();
     var k = d.kpis||{};
     var tiles = [
       ['Tasks · 7d', (k.tasks_7d!=null?k.tasks_7d:0)],
