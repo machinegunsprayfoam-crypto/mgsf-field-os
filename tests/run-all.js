@@ -10,6 +10,7 @@ const SUITES = [
   ["brain-retrieve", "GraphRAG routing"],
   ["brain-assembly", "brain block selection (live wiring)"],
   ["brain-context", "live-data grounding (gated)"],
+  ["missed-call", "speed-to-lead / missed-call recovery"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
