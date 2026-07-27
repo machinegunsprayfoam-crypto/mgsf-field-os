@@ -18,9 +18,10 @@ Every integration is **gated + graceful**: if a key is absent, that feature is s
 | `ANTHROPIC_API_KEY` | The hive engine (all answers) | console.anthropic.com |
 | `SUPABASE_URL` | The brain (memory, events, odometer) | Supabase project → API settings |
 | `SUPABASE_SERVICE_ROLE_KEY` | Brain write access | Supabase project → API settings |
-| `CREW_CODE` | App PIN gate (pick any code; if unset, no PIN) | you choose |
+| `CREW_CODE` | **Security gate — pick any code.** Locks Klyfton AI **and** the data endpoints (`/api/command-center`, `/api/brain-context`) to the crew. **⚠ If unset, they're OPEN to anyone with the URL** (verified 2026-07-27: unset = data served without a code). Crew types it once in the app. | you choose |
 
 > Run `db/schema.sql` once in the Supabase SQL editor first, so the brain tables/views exist.
+> **Set `CREW_CODE` before real go-live** — the AI + read endpoints are unauthenticated until you do.
 
 ### CORE FEATURES — turn the business functions on
 | Var | Unlocks |
