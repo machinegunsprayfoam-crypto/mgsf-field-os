@@ -7,6 +7,7 @@ const path = require("path");
 
 const SUITES = [
   ["calc-invariants", "estimator math invariants"],
+  ["calc-money", "commission / payment-schedule / unit-convert math"],
   ["brain-retrieve", "GraphRAG routing"],
   ["brain-assembly", "brain block selection (live wiring)"],
   ["brain-context", "live-data grounding (gated)"],
