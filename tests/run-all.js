@@ -23,6 +23,8 @@ const SUITES = [
   ["bpi-calc", "blower-door tightness bands + ASHRAE 62.2 target"],
   ["roi", "financing cash-flow decision + savings clamps"],
   ["measure", "roof/wall takeoff: wall path, mode routing, clamps"],
+  ["ats", "budget throttle: fuel→battery transfer thresholds + plan downshift"],
+  ["memory", "semantic memory: gated behavior + backfill/schema-check"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
