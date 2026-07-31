@@ -10287,9 +10287,9 @@ ${s.sig?`<img class="sig" src="${e(s.sig)}" alt="signature">`:'<div class="sub">
       +'Stockman, financials + 8832 from ProTax, SBA VetCert). Numbers-first, decision-ready, one screen, no fluff. If a spray '
       +'job is on deck, factor the weather GO/NO-GO. Never put work on a Sunday.\n\n'
       +'TODAY: '+jobs.length+' active job(s), '+leads.length+' open lead(s), '+stale.length+' quiet 7+ days. Weather: '+(wx||'n/a');
-    fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:(typeof _brainKey==='function'?_brainKey():'')||undefined})})
-      .then(function(r){return r.json();})
+    const payload={message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:(typeof _brainKey==='function'?_brainKey():'')||undefined};
+    // Stream the plan so it writes into the card live instead of blocking on one big response.
+    klyftonStream(payload, undefined, function(preview){ box.innerHTML=planHTML(preview); })
       .then(function(d){
         if(d&&d.configured===false){ box.innerHTML='<div style="font-size:12px;color:var(--yw)">⚙️ Add your Anthropic key in Admin → API Keys to get AI daily plans.</div>'; return; }
         if(d&&d.capped){ box.innerHTML='<div style="font-size:12px;color:var(--yw)">🧯 Month’s AI budget reached — plan paused. The brief above still works.</div>'; return; }
@@ -11211,9 +11211,11 @@ function roiRun(prompt){
   const out=document.getElementById('roi_out'), st=document.getElementById('roi_status');
   if(st) st.textContent='Klyfton is crunching the numbers…';
   if(out) out.innerHTML='';
-  fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined})})
-  .then(function(r){return r.json();})
+  const payload={message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined};
+  // Stream so a long ROI writeup fills in live instead of blocking on one big response.
+  klyftonStream(payload, undefined, function(preview){
+    if(out) out.innerHTML='<div class="msg-bubble ai" style="white-space:pre-wrap;font-size:13px;line-height:1.5">'+esc(preview)+'</div>';
+  })
   .then(function(d){
     if(typeof klyftonLocked==='function' && klyftonLocked(d&&d.text)){ if(typeof klyftonPromptCode==='function'&&klyftonPromptCode()){ roiRun(prompt); return; } }
     const text=(d&&d.text)||"Klyfton didn't return an ROI — try again.";
@@ -11337,9 +11339,12 @@ function growGenerate(prompt){
   const out=document.getElementById('grow_out'), st=document.getElementById('grow_status');
   if(st) st.textContent='Klyfton is working…';
   if(out) out.innerHTML='';
-  fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined})})
-  .then(function(r){return r.json();})
+  const payload={message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined};
+  // Stream the hive so a long generation fills in live instead of blocking on one big response.
+  // onDelta shows a plain preview bubble while it writes; on finish we swap in the copy/schedule box.
+  klyftonStream(payload, undefined, function(preview){
+    if(out) out.innerHTML='<div class="msg-bubble ai" style="white-space:pre-wrap;font-size:13px;line-height:1.5">'+esc(preview)+'</div>';
+  })
   .then(function(d){
     if(typeof klyftonLocked==='function' && klyftonLocked(d&&d.text)){ if(klyftonPromptCode()){ growGenerate(prompt); return; } }
     const text=(d&&d.text)||"Klyfton didn't return anything — try again."; if(out) out.innerHTML=growResultBox(text); if(st) st.textContent=(d&&d.configured===false)?'⚙️ Turn on ANTHROPIC_API_KEY in Vercel to use this.':''; })
