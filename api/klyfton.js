@@ -17,6 +17,7 @@ const redact = require("./redact"); // strip secrets (API keys/SSN/cards) from u
 const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
 const brainContext = require("./brain-context"); // live-data grounding: real pipeline (KV + HubSpot) -> "situation" the brain reasons over
 const toolBag = require("./tools"); // self-describing capability catalog -> the brain knows which tools are LIVE vs dark
+const wiki = require("./wiki"); // editable knowledge base -> retrieve relevant SOPs/playbooks to ground the answer
 
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
 // Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
@@ -1610,7 +1611,21 @@ module.exports = async (req, res) => {
     try { const g = await brainContext.gather({}); if (g && g.configured && g.context) liveCtx = "\n\n" + g.context; }
     catch (e) { /* live data is best-effort — never block the answer */ }
   }
-  const ctx = contextBlock(body.context, memList) + liveCtx + toolBagBlock();
+  // Knowledge-base grounding — pull the most relevant wiki articles (SOPs/playbooks) for this
+  // question. Best-effort + gated: no-op with zero cost when the wiki (Supabase) isn't attached,
+  // 2.5s-safe, never blocks the answer. Truth order is stated so a wiki article never overrides
+  // locked doctrine.
+  let wikiCtx = "";
+  if (userText && !isTrivial(userText, attachments)) {
+    try {
+      const w = await wiki.retrieve(userText, 3);
+      if (w && w.configured && Array.isArray(w.results) && w.results.length) {
+        wikiCtx = "\n\nKNOWLEDGE BASE (wiki — company SOPs/playbooks; use these, but LOCKED DOCTRINE still wins over anything here):\n" +
+          w.results.map((r) => "• " + r.title + ": " + r.snippet).join("\n");
+      }
+    } catch (e) { /* wiki is best-effort — never block the answer */ }
+  }
+  const ctx = contextBlock(body.context, memList) + liveCtx + wikiCtx + toolBagBlock();
 
   // The router is text-only; give it a hint when a message is just an attachment.
   const routeText = userText || "[user attached " + attachments.length + " " +
