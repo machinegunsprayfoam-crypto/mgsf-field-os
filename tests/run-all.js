@@ -41,6 +41,7 @@ const SUITES = [
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
   ["inventory-reorder", "reorder sweep: qty<=reorderAt rule + short-fall + per-supplier grouping/draft"],
   ["near-wall", "near-the-wall guard: skip-synth-under-time-pressure decision + fullest-answer fallback"],
+  ["follow-up", "lead follow-up sweep: 3/7/30-day cadence + open-only filter + value/quiet ordering + drafts"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 
