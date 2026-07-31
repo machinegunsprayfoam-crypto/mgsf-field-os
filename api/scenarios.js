@@ -102,6 +102,62 @@ async function draft(nl, env) {
   return { configured: true, source: "keyword-suggest", scenario: s, validation: v };
 }
 
+// ---- DEPLOY: turn a validated scenario into a LIVE, queryable automation (closes validate≠install) ----
+function _env(re) { for (const k of Object.keys(process.env)) { if (re.test(k) && process.env[k]) return process.env[k]; } return undefined; }
+const SB_URL = (_env(/SUPABASE_URL$/i) || "").replace(/\/$/, "");
+const SB_KEY = _env(/SERVICE_ROLE_KEY$/i) || _env(/SUPABASE_SECRET/i);
+const SB_ON = !!(SB_URL && SB_KEY);
+async function sbFetch(pathStr, opts) {
+  return fetch(SB_URL + pathStr, { ...opts, headers: { apikey: SB_KEY, authorization: "Bearer " + SB_KEY, "content-type": "application/json", ...(opts && opts.headers) } });
+}
+
+// Persist a scenario as an enabled automation. Validated first; OWNER-gated (approved); gated store.
+async function deploy(scenario, opts) {
+  const o = opts || {};
+  const v = validateScenario(scenario, process.env);
+  if (!v.ok) return { ok: false, error: "invalid_scenario", warnings: v.warnings };
+  if (o.approved !== true) return { ok: true, status: "needs_approval", preview: "Deploy: on " + v.trigger.name + " → " + v.steps.map((s) => s.tool).join(", "),
+    note: "Automation — will only install when re-sent with approved:true." };
+  if (!SB_ON) return { ok: false, configured: false, error: "not_configured", note: "attach Supabase + run db/scenarios.sql" };
+  try {
+    const row = { name: clean(o.name || scenario.name || (v.trigger.name + "-automation"), 80),
+      trigger_kind: v.trigger.kind, trigger_name: v.trigger.name, steps: (scenario.steps || []).map((s) => ({ tool: clean(s.tool, 40), op: clean(s.op, 60) })),
+      status: "enabled", created_by: clean(o.actor, 60) || "owner" };
+    const r = await sbFetch("/rest/v1/scenarios", { method: "POST", headers: { prefer: "return=minimal" }, body: JSON.stringify(row) });
+    return { ok: r.ok, status: r.ok ? "deployed" : "error", name: row.name };
+  } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
+}
+
+// List enabled deployed scenarios (gated read).
+async function installed(env) {
+  if (!SB_ON) return { configured: false, results: [] };
+  try {
+    const r = await sbFetch("/rest/v1/scenarios?select=name,trigger_kind,trigger_name,steps&status=eq.enabled&limit=200");
+    if (!r.ok) return { configured: true, ok: false, results: [] };
+    const rows = await r.json();
+    return { configured: true, ok: true, results: Array.isArray(rows) ? rows : [] };
+  } catch (e) { return { configured: true, ok: false, results: [], error: String(e).slice(0, 120) }; }
+}
+
+// PURE: which installed scenarios fire on a given trigger. This is what a runner (gearbox/axle/
+// webhook) calls when an event or schedule fires. Deterministic.
+function matching(scenarios, trigger) {
+  const kind = clean(trigger && trigger.kind, 20), name = clean(trigger && trigger.name, 60);
+  return (Array.isArray(scenarios) ? scenarios : []).filter((s) => s && s.trigger_kind === kind && s.trigger_name === name);
+}
+
+// When a trigger fires: find matching installed scenarios and return the plan to run (each step
+// still dispatches through the arms, approval-gated — same safety as agents). `installedList` is
+// injectable for tests. Does NOT send here; surfaces the matched automations + their steps.
+async function fire(trigger, env, opts) {
+  const o = opts || {};
+  const list = Array.isArray(o.installed) ? o.installed : (await installed(env)).results;
+  const matched = matching(list, trigger);
+  return { ok: true, trigger, matched: matched.length,
+    automations: matched.map((s) => ({ name: s.name, steps: s.steps, validation: validateScenario({ trigger: { kind: s.trigger_kind, name: s.trigger_name }, steps: s.steps }, env || process.env) })),
+    note: matched.length ? "Matched automations — steps dispatch through the arms, approval-gated." : "No installed scenario fires on this trigger." };
+}
+
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ service: "klyfton-scenario-builder", triggers: { events: EVENTS, schedules: CADENCES },
@@ -117,12 +173,19 @@ module.exports = async (req, res) => {
     if (body.action === "validate") { res.status(200).json(validateScenario(body.scenario, process.env)); return; }
     if (body.action === "suggest") { res.status(200).json(suggest(body.request || body.nl)); return; }
     if (body.action === "draft") { res.status(200).json(await draft(body.request || body.nl, process.env)); return; }
-    res.status(400).json({ error: "unknown_action", supported: ["validate", "suggest", "draft"] });
+    if (body.action === "deploy") { res.status(200).json(await deploy(body.scenario, { approved: body.approved === true, actor: body.actor, name: body.name })); return; }
+    if (body.action === "installed") { res.status(200).json(await installed(process.env)); return; }
+    if (body.action === "fire") { res.status(200).json(await fire(body.trigger, process.env)); return; }
+    res.status(400).json({ error: "unknown_action", supported: ["validate", "suggest", "draft", "deploy", "installed", "fire"] });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
 };
 
 module.exports.validateScenario = validateScenario;
 module.exports.suggest = suggest;
 module.exports.draft = draft;
+module.exports.deploy = deploy;
+module.exports.installed = installed;
+module.exports.matching = matching;
+module.exports.fire = fire;
 module.exports._events = () => EVENTS;
 module.exports._cadences = () => CADENCES;

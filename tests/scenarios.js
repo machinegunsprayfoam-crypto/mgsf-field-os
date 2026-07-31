@@ -51,5 +51,34 @@ ok("suggest maps 'text' → sms and 'HubSpot' → crm", sug.steps.some((s) => s.
 const sugV = S.validateScenario(sug, {});
 ok("a suggested scenario passes structural validation", sugV.ok === true, JSON.stringify(sugV.warnings));
 
-console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
-process.exit(fail ? 1 : 0);
+// ---- DEPLOY / INSTALL / MATCH / FIRE (closes validate ≠ install) ----
+(async () => {
+  // deploy is owner-gated + validates first
+  const dNoApprove = await S.deploy({ trigger: { kind: "event", name: realEvent }, steps: [{ tool: "reviews" }] }, {});
+  ok("deploy without approval ⇒ needs_approval (not installed)", dNoApprove.ok && dNoApprove.status === "needs_approval");
+  const dInvalid = await S.deploy({ trigger: { kind: "event", name: "bogus.event" }, steps: [{ tool: "reviews" }] }, { approved: true });
+  ok("deploy of an invalid scenario ⇒ rejected", dInvalid.ok === false && dInvalid.error === "invalid_scenario");
+  const dGated = await S.deploy({ trigger: { kind: "event", name: realEvent }, steps: [{ tool: "reviews" }] }, { approved: true });
+  ok("deploy approved but no store ⇒ not_configured (no fabrication)", dGated.ok === false && dGated.configured === false);
+
+  // matching is pure — which installed scenarios fire on a trigger
+  const installedRows = [
+    { name: "reheat", trigger_kind: "event", trigger_name: realEvent, steps: [{ tool: "reviews" }] },
+    { name: "daily-brief-auto", trigger_kind: "schedule", trigger_name: "daily", steps: [{ tool: "daily-brief" }] },
+  ];
+  ok("matching finds the scenario for a fired event", S.matching(installedRows, { kind: "event", name: realEvent }).length === 1);
+  ok("matching ignores non-matching triggers", S.matching(installedRows, { kind: "event", name: "other.event" }).length === 0);
+  ok("matching separates events from schedules", S.matching(installedRows, { kind: "schedule", name: "daily" })[0].name === "daily-brief-auto");
+
+  // fire uses injected installed list → returns matched automations + their validation
+  const fired = await S.fire({ kind: "event", name: realEvent }, {}, { installed: installedRows });
+  ok("fire returns the matched automation for the trigger", fired.matched === 1 && fired.automations[0].name === "reheat");
+  ok("fire re-validates each matched automation's steps", fired.automations[0].validation && typeof fired.automations[0].validation.ok === "boolean");
+  const firedNone = await S.fire({ kind: "event", name: "nothing.here" }, {}, { installed: installedRows });
+  ok("fire on an unmatched trigger ⇒ 0 automations", firedNone.matched === 0);
+
+  ok("installed unconfigured ⇒ configured:false", (await S.installed({})).configured === false);
+
+  console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
+  process.exit(fail ? 1 : 0);
+})();
