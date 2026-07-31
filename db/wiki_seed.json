@@ -1,0 +1,66 @@
+[
+  {
+    "slug": "cold-weather-spray-sop",
+    "title": "Cold-Weather Spray SOP",
+    "category": "safety",
+    "tags": ["dew point", "winter", "substrate", "application"],
+    "body": "Before every cold-weather spray, check drum, hose, and substrate temperatures to spec and confirm the substrate is at least 5°F above the dew point. NO-GO if the spread is under 5°F — you risk condensation under the foam. Spray to the manufacturer's max lift thickness in multiple passes; over-thick lifts trap exothermic heat, which causes scorching, degraded cell structure, and extra off-gassing. Northern Plains winters do not stop the work when these checks pass. Source: spray-foam-spec + doctrine; any locked number in mgsf-core wins over this article.",
+    "status": "published"
+  },
+  {
+    "slug": "open-vs-closed-cell",
+    "title": "Open-Cell vs Closed-Cell — Which to Use",
+    "category": "building-science",
+    "tags": ["closed-cell", "open-cell", "r-value", "moisture"],
+    "body": "Closed-cell (~R-6.5 to R-7 per inch) is dense and rigid, acts as an air and vapor barrier, and adds racking stiffness — the pick for metal buildings, shops, crawlspaces, rim joists, roofs, and anywhere moisture control or high R in a tight space matters. Open-cell (~R-3.7 per inch) is lighter, vapor-permeable, and good at sound control — a cost-effective fit for interior walls and large attics where there is depth to fill and vapor movement is fine. Neither is 'better'; match the foam to the job. Source: types-of-spray-foam + doctrine; mgsf-core numbers win.",
+    "status": "published"
+  },
+  {
+    "slug": "metal-building-playbook",
+    "title": "Metal Building Insulation Playbook",
+    "category": "application",
+    "tags": ["metal", "pole barn", "closed-cell", "condensation"],
+    "body": "For metal shops, pole barns, and steel buildings, closed-cell foam is the go-to: it seals the metal, stops condensation and fastener/seam leaks, holds temperature, and adds rigidity to the assembly. It is a big share of MGSF's work in this region. Confirm substrate temperature and dew point before spraying (see the Cold-Weather Spray SOP). Source: spray-foam-insulation page + doctrine.",
+    "status": "published"
+  },
+  {
+    "slug": "flash-and-fill-hybrid",
+    "title": "Flash-and-Fill Hybrid Assembly",
+    "category": "application",
+    "tags": ["flash and fill", "hybrid", "walls", "r-target"],
+    "body": "When a GC wants foam-grade sealing without foaming the whole cavity depth, run a flash-and-fill hybrid: 1.5–2 inches of closed-cell direct to the sheathing for continuous air and vapor control (plus racking stiffness), then fill the remaining cavity with fiberglass or dense-pack cellulose to reach the assembly R-target. Result: foam-grade air sealing and structure at batt-grade cost on the balance of the R. Source: spray-foam-spec.",
+    "status": "published"
+  },
+  {
+    "slug": "code-barriers-basics",
+    "title": "Thermal & Ignition Barrier Basics",
+    "category": "code",
+    "tags": ["thermal barrier", "ignition barrier", "code", "AHJ"],
+    "body": "Exposed foam in occupied space needs a 15-minute thermal barrier — 1/2-inch gypsum or an approved coating such as DC315 (IRC R316.4 / IBC 2603.4). In attics and crawlspaces without regular access, an ignition barrier or approved coating applies (IRC R316.5). Section numbers renumber between code editions, so always verify the adopted edition plus any local amendments with the AHJ before putting a code number in writing. Source: spray-foam-spec; never recite a code number from memory.",
+    "status": "published"
+  },
+  {
+    "slug": "spray-ppe",
+    "title": "PPE for Spray Application",
+    "category": "safety",
+    "tags": ["ppe", "respirator", "isocyanate", "re-occupancy"],
+    "body": "SPF chemistry (MDI isocyanate + amine catalyst + blowing agent) is hazardous during spray and cure. For interior high-pressure spraying use a supplied-air respirator (SAR); a cartridge APR (organic-vapor + P100) only where an exposure assessment and ventilation support it. Wear a full-coverage suit and hood, nitrile gloves, and sealed goggles — MDI is a skin and respiratory sensitizer. Ventilate during and after, and honor the product's re-entry/re-occupancy time per the TDS before other trades return. Source: spray-foam-spec.",
+    "status": "published"
+  },
+  {
+    "slug": "spf-roof-recoat",
+    "title": "SPF Roof: Recoat, Don't Tear Off",
+    "category": "roofing",
+    "tags": ["spf roofing", "recoat", "coating", "over existing"],
+    "body": "A spray-foam roof goes on as one seamless, fully-adhered layer with no seams, fasteners, or flashing joints for water to find. The protective coating is the wear layer — at the end of the coating's service life you recoat the same surface instead of tearing off, and the foam underneath keeps going. In many cases SPF can be applied right over a sound, prepped existing low-slope roof, saving a tear-off; if the existing roof is wet or failing, that is dealt with first. Source: spf-roofing / seamless-spf-roofing.",
+    "status": "published"
+  },
+  {
+    "slug": "concrete-lifting-vs-mudjacking",
+    "title": "Concrete Lifting vs Mudjacking",
+    "category": "concrete",
+    "tags": ["concrete lifting", "polyurethane", "void fill", "soil stabilization"],
+    "body": "MGSF lifts sunken slabs with polyurethane foam through dime-sized holes: it is lightweight, waterproof, won't wash out like old mudjacking slurry, cures fast (often same-day use), and flows into voids slurry can't reach. Lifting raises a slab that has already sunk; void filling fills the gaps underneath so it stays put; soil stabilization treats the cause by firming weak or washed-out soil. If a slab is badly cracked or failed, recommend replacement instead. Source: concrete / soil-stabilization pages.",
+    "status": "published"
+  }
+]

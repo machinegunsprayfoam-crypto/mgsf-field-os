@@ -18,6 +18,12 @@ ok("pick: case-insensitive", P.pickProvider("OpenAI").id === "openai");
 ok("pick: unknown ⇒ null", P.pickProvider("nope") === null);
 ok("pick: registry has claude+openai+grok+groq+mistral+local",
    ["claude","openai","grok","groq","mistral","local"].every((k) => !!P._PROVIDERS[k]));
+ok("pick: free-tier models registered (gemini/openrouter/cerebras/together)",
+   ["gemini","openrouter","cerebras","together"].every((k) => !!P._PROVIDERS[k]));
+ok("free model builds an OpenAI-style request (gemini)", (() => {
+   const r = P.buildRequest(P._PROVIDERS.gemini, "GKEY", { user: "hi" });
+   return /\/chat\/completions$/.test(r.url) && r.headers.authorization === "Bearer GKEY";
+})());
 
 // ---- buildRequest: anthropic style ----
 (() => {
@@ -78,7 +84,7 @@ ok("parse: garbage ⇒ empty string (no throw)", P.parseResponse("openai", null)
   if (had === undefined) delete process.env.XAI_API_KEY; else process.env.XAI_API_KEY = had;
   ok("gate: unknown provider ⇒ false", P.isConfigured("nope") === false);
   const list = P.listProviders();
-  ok("list: returns all 6 providers with configured flags", list.length === 6 && list.every((p) => typeof p.configured === "boolean"));
+  ok("list: returns every registered provider with configured flags", list.length === Object.keys(P._PROVIDERS).length && list.length >= 10 && list.every((p) => typeof p.configured === "boolean"));
 })();
 
 // ---- chat() gating (no network hit when unconfigured) ----

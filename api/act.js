@@ -24,6 +24,9 @@ function _kvEnv(suffixRe, excludeRe) {
 const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
 const SECRET = process.env.WEBHOOK_SECRET || process.env.ALERTS_WEBHOOK_SECRET || "";
 
+let idempotency = null;
+try { idempotency = require("./idempotency"); } catch (e) {}
+
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 300); }
 
 // The arms. Every one is outward/irreversible/costs money => all require approval. `preview` builds
@@ -58,6 +61,20 @@ const ARMS = {
     event: "arm_place_material_order",
     fields: ["supplier", "items", "job"],
     preview: (a) => `Order from ${clean(a.supplier, 60) || "?"} for ${clean(a.job, 40) || "stock"}`,
+  },
+  // THE UNIVERSAL BUS — one arm to reach any of Zapier's 9,000+ apps through the SAME owner
+  // webhook. A single "Catch Hook" zap on the owner's side fans out by app+op (Google Sheets,
+  // Calendar, Slack, QuickBooks, Meta, …). This is how Klyfton reaches a tool it has no dedicated
+  // arm for. Still outward => approval-gated, still inert until ALERTS_WEBHOOK_URL is set, still
+  // audited. `params` (optional object) carries the app-specific fields; `summary` labels the card.
+  zap: {
+    event: "arm_zap",
+    fields: ["app", "op"],
+    preview: (a) => {
+      const n = a.params && typeof a.params === "object" ? Object.keys(a.params).length : 0;
+      return `Zapier → ${clean(a.app, 40) || "?"}: ${clean(a.op, 60) || "run"}` +
+        (a.summary ? ` — ${clean(a.summary, 80)}` : (n ? ` (${n} field${n === 1 ? "" : "s"})` : ""));
+    },
   },
 };
 
@@ -98,7 +115,24 @@ async function execute(action, opts) {
       note: "Outward action — will only dispatch when re-sent with approved:true." };
   }
 
+  // Idempotency: don't re-send the same approved action. Check BEFORE dispatch; commit only AFTER a
+  // successful send (a failed send isn't recorded, so retry still works). Injectable for tests;
+  // gated no-op without a store. `day` scopes the key so the same action tomorrow is legitimately new.
+  const idem = o.idem || idempotency;
+  let idemKey = null;
+  if (idem && typeof idem.key === "function") {
+    try {
+      idemKey = idem.key(action, new Date().toISOString().slice(0, 10));
+      if (await idem.check(idemKey)) {
+        return { ok: true, status: "duplicate_skipped", type: c.type,
+          note: "Identical action already dispatched today — not re-sent (idempotency).",
+          audit: { type: c.type, preview: c.preview, dispatched: false, duplicate: true } };
+      }
+    } catch (e) { /* idempotency is best-effort — never block a send on it */ }
+  }
+
   const d = await dispatch(c.event, action, o.actor);
+  if (d.dispatched && idem && idemKey) { try { await idem.commit(idemKey, { type: c.type, at: new Date().toISOString() }); } catch (e) {} }
   const audit = { type: c.type, preview: c.preview, approvedBy: clean(o.actor, 60) || "owner", at: new Date().toISOString(), dispatched: d.dispatched };
   if (!d.dispatched) {
     return { ok: false, status: "blocked", type: c.type,
@@ -115,6 +149,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       ok: true, configured: true, dispatchReady: !!WEBHOOK,
       arms: Object.fromEntries(Object.entries(ARMS).map(([k, v]) => [k, v.fields])),
+      universalBus: "The 'zap' arm reaches any of Zapier's 9,000+ apps via one Catch Hook — send { type:'zap', app, op, params:{...} }. Same approval gate + webhook as every other arm.",
       safety: "All arms are outward/cost money → require approved:true, and dispatch only through your ALERTS_WEBHOOK_URL. Inert until you wire it. Nothing sends silently.",
     });
     return;

@@ -25,6 +25,21 @@ const SUITES = [
   ["measure", "roof/wall takeoff: wall path, mode routing, clamps"],
   ["ats", "budget throttle: fuel→battery transfer thresholds + plan downshift"],
   ["memory", "semantic memory: gated behavior + backfill/schema-check"],
+  ["curriculum", "learning curriculum: bank integrity + grader + guardrail enforcement + eval wiring"],
+  ["tools", "tool bag: self-describing capability catalog + honest live-status (sourced from health)"],
+  ["act", "arms: outward-action classify + approval gate + universal Zapier bus"],
+  ["wiki", "knowledge base: pure retrieval ranking + gated/graceful store + owner-gated writes"],
+  ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
+  ["cmdb", "AI-augmented CMDB: dependency graph + root-cause + blast-radius + biggest-unlock"],
+  ["wiki-seed", "wiki starter articles: valid + hard-rule-clean + retrievable"],
+  ["scenarios", "AI scenario builder: validate against real triggers/tools + approval + dark-tool guard"],
+  ["rag", "unified RAG: fan-out across brain/wiki/memory + merge/dedupe/rank + truth-order context"],
+  ["agents", "agents runtime: goal-driven job selection + planning + approval/dark-tool guards"],
+  ["boot", "boot manifest: live self-map (components/deps/tools/brain/agents) computed from env"],
+  ["guard", "access guard: dormant-safe CREW_CODE gate (no lockout until set, then enforced)"],
+  ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
+  ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
+  ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;

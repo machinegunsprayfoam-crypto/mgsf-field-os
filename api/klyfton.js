@@ -16,6 +16,8 @@ const semanticMemory = require("./memory");
 const redact = require("./redact"); // strip secrets (API keys/SSN/cards) from user text before the model
 const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
 const brainContext = require("./brain-context"); // live-data grounding: real pipeline (KV + HubSpot) -> "situation" the brain reasons over
+const toolBag = require("./tools"); // self-describing capability catalog -> the brain knows which tools are LIVE vs dark
+const wiki = require("./wiki"); // editable knowledge base -> retrieve relevant SOPs/playbooks to ground the answer
 
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
 // Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
@@ -1312,6 +1314,42 @@ function contextBlock(context, memory) {
   return parts.length ? "\n\n" + parts.join("\n\n") : "";
 }
 
+// Fold the live TOOL BAG into the brain's grounding so the minds offer only capabilities that are
+// actually wired right now — and never claim a dark (unconfigured) tool ran or invent its output.
+// Best-effort: a bad/empty catalog returns "" and never blocks a message. Live-status is sourced
+// from the tool bag (which sources health.js), so this can't drift from what's really switched on.
+function toolBagBlock() {
+  try {
+    const cat = toolBag.catalog(process.env);
+    if (!cat || !Array.isArray(cat.tools) || !cat.tools.length) return "";
+    const live = cat.tools.filter((t) => t.live).map((t) => t.id);
+    const dark = cat.tools.filter((t) => !t.live).map((t) => t.id);
+    const lines = ["KLYFTON TOOLBOX — your real, CURRENT capabilities (from the live tool bag). Offer only what is " +
+      "LIVE; for anything OFF, say it needs switching on in Vercel — never pretend a dark tool ran or invent its output."];
+    if (live.length) lines.push("LIVE now: " + live.join(", "));
+    if (dark.length) lines.push("OFF (needs a key/config — don't offer these as working): " + dark.join(", "));
+    return "\n\n" + lines.join("\n");
+  } catch (e) { return ""; }
+}
+
+// Compact capability hint for the ROUTER (the Queen). Teaches it to prefer recruiting minds whose
+// supporting tools are LIVE and not to spin up extra minds that depend on a dark tool. Best-effort:
+// returns "" if the catalog is unavailable so routing is never blocked.
+function routerToolHint() {
+  try {
+    const cat = toolBag.catalog(process.env);
+    if (!cat || !Array.isArray(cat.tools) || !cat.tools.length) return "";
+    const live = cat.tools.filter((t) => t.live).map((t) => t.id);
+    const off = cat.tools.filter((t) => !t.live).map((t) => t.id);
+    let s = "\nCAPABILITY STATUS — prefer recruiting minds whose supporting tools are LIVE. If the ask needs a tool " +
+      "that's OFF, still route one mind to answer (it will note the tool needs switching on), but do NOT add extra " +
+      "minds that depend on an OFF tool.";
+    if (live.length) s += "\nLIVE: " + live.join(", ");
+    if (off.length) s += "\nOFF: " + off.join(", ");
+    return s;
+  } catch (e) { return ""; }
+}
+
 // The Queen: cheap classifier that decides which minds to recruit and how big the job is.
 async function route(key, userText, history, meter) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
@@ -1322,7 +1360,7 @@ jobs, opportunities, or gov solicitations.
 Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
 Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
-If unsure, {"minds":["general"],"complexity":"simple"}.`;
+If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
   const recent = (history || [])
     .slice(-4)
     .map((m) => (m.role === "user" ? "U: " : "A: ") + String(m.content).slice(0, 200))
@@ -1573,7 +1611,21 @@ module.exports = async (req, res) => {
     try { const g = await brainContext.gather({}); if (g && g.configured && g.context) liveCtx = "\n\n" + g.context; }
     catch (e) { /* live data is best-effort — never block the answer */ }
   }
-  const ctx = contextBlock(body.context, memList) + liveCtx;
+  // Knowledge-base grounding — pull the most relevant wiki articles (SOPs/playbooks) for this
+  // question. Best-effort + gated: no-op with zero cost when the wiki (Supabase) isn't attached,
+  // 2.5s-safe, never blocks the answer. Truth order is stated so a wiki article never overrides
+  // locked doctrine.
+  let wikiCtx = "";
+  if (userText && !isTrivial(userText, attachments)) {
+    try {
+      const w = await wiki.retrieve(userText, 3);
+      if (w && w.configured && Array.isArray(w.results) && w.results.length) {
+        wikiCtx = "\n\nKNOWLEDGE BASE (wiki — company SOPs/playbooks; use these, but LOCKED DOCTRINE still wins over anything here):\n" +
+          w.results.map((r) => "• " + r.title + ": " + r.snippet).join("\n");
+      }
+    } catch (e) { /* wiki is best-effort — never block the answer */ }
+  }
+  const ctx = contextBlock(body.context, memList) + liveCtx + wikiCtx + toolBagBlock();
 
   // The router is text-only; give it a hint when a message is just an attachment.
   const routeText = userText || "[user attached " + attachments.length + " " +
@@ -1784,3 +1836,5 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 // Exposed for the brain-assembly test harness (tests/brain-assembly.js). No runtime effect on the handler.
 module.exports.assembleBrainBlocks = assembleBrainBlocks;
 module.exports._BRAIN_ORDER = BRAIN_ORDER;
+module.exports.toolBagBlock = toolBagBlock;
+module.exports.routerToolHint = routerToolHint;

@@ -766,6 +766,18 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <div class="nav-item" onclick="switchModule('skills')" id="nav-skills">
         <div class="nav-icon">🔌</div><div class="nav-label">SKILLS</div>
       </div>
+      <div class="nav-item" onclick="switchModule('system');renderSystem()" id="nav-system">
+        <div class="nav-icon">🩺</div><div class="nav-label">SYS</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('agents');renderAgents()" id="nav-agents">
+        <div class="nav-icon">🐝</div><div class="nav-label">AGENTS</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('wiki');renderWiki()" id="nav-wiki">
+        <div class="nav-icon">📚</div><div class="nav-label">WIKI</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('scenarios');renderScenarios()" id="nav-scenarios">
+        <div class="nav-icon">⚙️</div><div class="nav-label">AUTO</div>
+      </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
       </div>
@@ -2012,6 +2024,27 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="cal_body"></div>
       </div>
+      <div id="mod-system" class="module">
+        <div class="mod-head"><h2>🩺 System — Live Self-Map</h2>
+          <button class="btn btn-ghost" onclick="renderSystem()">↻ Refresh</button>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="system_body"><div style="opacity:.6;padding:16px">Loading system map…</div></div>
+      </div>
+      <div id="mod-agents" class="module">
+        <div class="mod-head"><h2>🐝 Agents — Goal Runners</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="agents_body"></div>
+      </div>
+      <div id="mod-wiki" class="module">
+        <div class="mod-head"><h2>📚 Wiki — Knowledge Base</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="wiki_body"></div>
+      </div>
+      <div id="mod-scenarios" class="module">
+        <div class="mod-head"><h2>⚙️ Automations — Scenario Builder</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="scenarios_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -3026,6 +3059,176 @@ function getTimeOfDay(){
   if(h<17) return 'afternoon';
   return 'evening';
 }
+
+// ---- System panel: read-only live self-map (boot + health + telemetry). Additive; no app deps. ----
+window.renderSystem = async function(){
+  const body = document.getElementById('system_body');
+  if(!body) return;
+  const e = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const card = (title, inner) => '<div class="card" style="margin-bottom:12px"><div class="card-title">'+e(title)+'</div>'+inner+'</div>';
+  const tile = (label, val) => '<div style="min-width:110px"><div style="font-size:11px;opacity:.6;text-transform:uppercase">'+e(label)+'</div><div style="font-size:18px;font-weight:600">'+e(String(val))+'</div></div>';
+  body.innerHTML = '<div style="opacity:.6;padding:16px">Loading system map…</div>';
+  async function get(url){ try{ const r=await fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}); if(r.status===401) return {__gated:true}; if(!r.ok) return {__err:r.status}; return await r.json(); }catch(err){ return {__err:String(err).slice(0,80)}; } }
+  const [boot, health, tele] = await Promise.all([get('/api/boot'), get('/api/health'), get('/api/telemetry')]);
+  let html = '';
+
+  if(boot && boot.__gated){
+    html += card('Access gated', '<div style="opacity:.8">CREW_CODE is set — this panel needs the crew code to load the map.</div>');
+  } else if(boot && !boot.__err && boot.summary){
+    const s = boot.summary;
+    html += card('Klyfton — live map',
+      '<div class="metric-row" style="display:flex;gap:18px;flex-wrap:wrap">'
+      + tile('Components', (s.live!=null?s.live:'?')+' / '+(s.components!=null?s.components:'?')+' live')
+      + tile('Capabilities', (s.capabilitiesUp!=null?s.capabilitiesUp:'?')+' / '+(s.capabilities!=null?s.capabilities:'?')+' up')
+      + tile('Tools', s.tools!=null?s.tools:'?')
+      + tile('Agents', s.agents!=null?s.agents:'?')
+      + tile('Brain clusters', s.brainClusters!=null?s.brainClusters:'?')
+      + tile('Curriculum', s.curriculumScenarios!=null?s.curriculumScenarios:'?')
+      + '</div>');
+    if(boot.biggestUnlock){
+      html += card('▶ Biggest unlock (do this first)',
+        '<div><b>'+e(boot.biggestUnlock.arm||'')+'</b> → lights '+e(String(boot.biggestUnlock.unlocks||0))+' tools'
+        + ((boot.biggestUnlock.tools&&boot.biggestUnlock.tools.length)?'<div style="opacity:.7;margin-top:4px;font-size:12px">'+e(boot.biggestUnlock.tools.join(', '))+'</div>':'')
+        + '</div>');
+    }
+  } else {
+    html += card('Klyfton — live map', '<div style="opacity:.7">Map unavailable ('+e((boot&&boot.__err)||'no data')+'). Loads once the app is deployed with the endpoints live.</div>');
+  }
+
+  if(health && !health.__err && Array.isArray(health.subsystems)){
+    const rows = health.subsystems.map(x=>{
+      const dot = x.status==='on'?'🟢':(x.status==='partial'?'🟡':'⚪');
+      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>'+dot+' '+e(x.label||x.id)+'</span><span style="opacity:.55;font-size:12px">'+e(x.status||'')+'</span></div>';
+    }).join('');
+    html += card('Subsystems', rows || '<div style="opacity:.6">none reported</div>');
+  }
+
+  if(tele && !tele.__gated && !tele.__err && tele.rollup){
+    if(tele.configured===false){
+      html += card('Agent activity', '<div style="opacity:.7">No run history yet — attach Supabase + run db/agent_runs.sql; agents log runs here.</div>');
+    } else {
+      const r = tele.rollup, byo = r.byOutcome||{};
+      html += card('Agent activity',
+        '<div>Total runs: '+e(String(r.total||0))+'</div>'
+        + '<div style="opacity:.7;font-size:12px;margin-top:4px">'+Object.keys(byo).map(k=>e(k)+': '+e(String(byo[k]))).join(' · ')+'</div>');
+    }
+  }
+
+  html += '<div style="opacity:.5;font-size:11px;margin-top:8px">Read-only self-map · /api/boot · /api/health · /api/telemetry</div>';
+  body.innerHTML = html;
+};
+
+// ---- shared helpers for the interactive panels (additive; no app deps) ----
+window.sysEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function _sysGet(url){ return fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+function _sysPost(url,body){ return fetch(url,{method:'POST',headers:{'content-type':'application/json','x-crew-code':(window.appCrewCode||'')},body:JSON.stringify(body)}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+
+// ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
+window.renderAgents = function(){
+  const b=document.getElementById('agents_body'); if(!b) return;
+  const roster=[['pm','Project Manager'],['collector','Collector'],['bid-chaser','Bid Chaser'],['lead-closer','Lead Closer']];
+  b.innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+roster.map(r=>'<button class="btn btn-ghost" onclick="runAgent(\''+r[0]+'\')">'+sysEsc(r[1])+'</button>').join('')+'</div><div id="agents_out" style="opacity:.6">Pick an agent to preview its plan against your current jobs. Draft only — nothing sends without your approval.</div>';
+};
+window.runAgent = async function(id){
+  const out=document.getElementById('agents_out'); if(!out) return;
+  out.innerHTML='Running '+sysEsc(id)+'…';
+  const jobs=(window.appState&&Array.isArray(appState.jobs))?appState.jobs:[];
+  const d=await _sysPost('/api/agents',{agent:id,jobs:jobs,now:new Date().toISOString()});
+  if(d.__gated){ out.innerHTML='Access gated — CREW_CODE required.'; return; }
+  if(d.__err||!d.ok){ out.innerHTML='<div style="opacity:.7">Unavailable ('+sysEsc(String(d.__err||d.error||'?'))+'). Loads once the app is deployed.</div>'; return; }
+  const steps=d.results||[];
+  let h='<div style="margin-bottom:6px"><b>'+sysEsc(d.label||id)+'</b> — '+sysEsc(d.goal||'')+'</div>';
+  h+='<div style="opacity:.7;font-size:12px;margin-bottom:8px">'+sysEsc(String(d.count||0))+' steps · '+sysEsc(String(d.dispatched||0))+' dispatched · '+sysEsc(String(d.drafts||0))+' drafts · '+sysEsc(String(d.blocked||0))+' blocked · '+sysEsc(String(d.skipped||0))+' skipped</div>';
+  h+=(steps.length?steps.map(s=>{const st=s.step||{};const oc=s.outcome||'';const dot=oc==='blocked'?'⚪':(oc==='skipped'?'⏭️':'📝');return '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+dot+' <b>'+sysEsc(st.who||'')+'</b> ['+sysEsc(st.stage||'')+'] '+sysEsc(st.action||'')+' <span style="opacity:.5;font-size:11px">'+sysEsc(st.tool||'')+(oc?(' · '+sysEsc(oc)):'')+'</span></div>';}).join(''):'<div style="opacity:.6">No open jobs match this agent right now.</div>');
+  h+='<div style="opacity:.5;font-size:11px;margin-top:8px">Preview — outward steps dispatch through the arms only on your approval.</div>';
+  out.innerHTML=h;
+};
+
+// ---- Wiki page: list / search / add articles (writes are owner-approved) ----
+window.renderWiki = function(){
+  const b=document.getElementById('wiki_body'); if(!b) return;
+  b.innerHTML='<div style="display:flex;gap:8px;margin-bottom:12px"><input id="wiki_q" class="inp" placeholder="search the knowledge base…" style="flex:1"><button class="btn btn-ghost" onclick="wikiSearch()">Search</button></div>'
+    +'<div id="wiki_list" style="opacity:.6">Loading…</div>'
+    +'<div class="card" style="margin-top:16px"><div class="card-title">Add article</div>'
+    +'<input id="wiki_t" class="inp" placeholder="Title" style="width:100%;margin-bottom:6px">'
+    +'<input id="wiki_tags" class="inp" placeholder="tags, comma, separated" style="width:100%;margin-bottom:6px">'
+    +'<textarea id="wiki_bd" class="inp" placeholder="Body" style="width:100%;min-height:110px;margin-bottom:6px"></textarea>'
+    +'<button class="btn btn-primary" onclick="wikiSave()">Save article</button>'
+    +'<div id="wiki_msg" style="opacity:.7;font-size:12px;margin-top:6px"></div></div>';
+  wikiList();
+};
+window.wikiList = async function(){
+  const el=document.getElementById('wiki_list'); if(!el) return;
+  const d=await _sysGet('/api/wiki');
+  if(d.__gated){ el.innerHTML='Access gated.'; return; }
+  if(d.__err){ el.innerHTML='<div style="opacity:.7">Unavailable — attach Supabase + run db/wiki_schema.sql.</div>'; return; }
+  const arts=d.articles||[];
+  el.innerHTML=arts.length?arts.map(a=>'<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)"><b>'+sysEsc(a.title||a.slug||'')+'</b> <span style="opacity:.5;font-size:11px">'+sysEsc(a.category||'')+'</span></div>').join(''):'<div style="opacity:.6">No articles yet — add one below, or load db/wiki_seed.json.</div>';
+};
+window.wikiSearch = async function(){
+  const q=(document.getElementById('wiki_q')||{}).value||''; const el=document.getElementById('wiki_list'); if(!el) return;
+  if(!q){ wikiList(); return; }
+  el.innerHTML='Searching…';
+  const d=await _sysPost('/api/wiki',{query:q});
+  if(d.__gated){ el.innerHTML='Access gated.'; return; }
+  if(d.__err){ el.innerHTML='<div style="opacity:.7">Unavailable.</div>'; return; }
+  const res=d.results||[];
+  el.innerHTML=res.length?res.map(a=>'<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)"><b>'+sysEsc(a.title||'')+'</b><div style="opacity:.7;font-size:12px">'+sysEsc(a.snippet||'')+'</div></div>').join(''):'<div style="opacity:.6">No matches.</div>';
+};
+window.wikiSave = async function(){
+  const t=(document.getElementById('wiki_t')||{}).value||''; const tags=(document.getElementById('wiki_tags')||{}).value||''; const bd=(document.getElementById('wiki_bd')||{}).value||''; const msg=document.getElementById('wiki_msg');
+  if(!t||!bd){ if(msg) msg.textContent='Title and body are required.'; return; }
+  if(msg) msg.textContent='Saving…';
+  const article={title:t,tags:tags.split(',').map(s=>s.trim()).filter(Boolean),body:bd};
+  const d=await _sysPost('/api/wiki',{action:'save',article:article,approved:true});
+  if(d.__gated){ if(msg) msg.textContent='Access gated.'; return; }
+  if(d.ok){ if(msg) msg.textContent='Saved.'; const ti=document.getElementById('wiki_t'),ta=document.getElementById('wiki_tags'),bo=document.getElementById('wiki_bd'); if(ti)ti.value='';if(ta)ta.value='';if(bo)bo.value=''; wikiList(); }
+  else { if(msg) msg.textContent='Not saved: '+sysEsc(String(d.error||d.note||d.__err||'needs Supabase')); }
+};
+
+// ---- Automations page: describe → build+validate → deploy (owner-approved) + list installed ----
+window._scnLast=null;
+window.renderScenarios = function(){
+  const b=document.getElementById('scenarios_body'); if(!b) return;
+  b.innerHTML='<div class="card"><div class="card-title">Describe an automation</div>'
+    +'<input id="scn_nl" class="inp" placeholder="e.g. when an estimate is sent, text the customer and update HubSpot" style="width:100%;margin-bottom:6px">'
+    +'<button class="btn btn-ghost" onclick="scnSuggest()">Build + validate</button> <button class="btn btn-primary" onclick="scnDeploy()">Deploy</button>'
+    +'<div id="scn_out" style="margin-top:10px;opacity:.8"></div></div>'
+    +'<div class="card" style="margin-top:16px"><div class="card-title">Installed automations</div><div id="scn_installed" style="opacity:.6">Loading…</div></div>';
+  scnInstalled();
+};
+window.scnSuggest = async function(){
+  const nl=(document.getElementById('scn_nl')||{}).value||''; const out=document.getElementById('scn_out'); if(!out) return;
+  if(!nl){ out.textContent='Describe the automation first.'; return; }
+  out.innerHTML='Building…';
+  const sug=await _sysPost('/api/scenarios',{action:'suggest',request:nl});
+  if(sug.__gated){ out.innerHTML='Access gated.'; return; }
+  if(sug.__err){ out.innerHTML='<div style="opacity:.7">Unavailable. Loads once deployed.</div>'; return; }
+  const val=await _sysPost('/api/scenarios',{action:'validate',scenario:sug});
+  window._scnLast=sug;
+  let h='<div>Trigger: <b>'+sysEsc((sug.trigger&&sug.trigger.name)||'(none)')+'</b> <span style="opacity:.6">'+sysEsc((sug.trigger&&sug.trigger.kind)||'')+'</span></div>';
+  h+='<div>Steps: '+sysEsc((sug.steps||[]).map(s=>s.tool).join(', ')||'none')+'</div>';
+  if(val&&!val.__err){ h+='<div style="margin-top:4px">'+(val.ok?'✓ valid':'✗ invalid')+(val.runnable?' · runnable now':' · some tools dark')+'</div>'; if(val.warnings&&val.warnings.length) h+='<div style="opacity:.7;font-size:12px">'+sysEsc(val.warnings.join(' · '))+'</div>'; }
+  out.innerHTML=h;
+};
+window.scnDeploy = async function(){
+  const out=document.getElementById('scn_out'); if(!out) return;
+  if(!window._scnLast){ out.innerHTML='Build it first.'; return; }
+  const d=await _sysPost('/api/scenarios',{action:'deploy',scenario:window._scnLast,approved:true});
+  if(d.__gated){ out.innerHTML+='<div>Access gated.</div>'; return; }
+  if(d.ok&&d.status==='deployed'){ out.innerHTML+='<div>✓ Deployed.</div>'; scnInstalled(); }
+  else if(d.status==='needs_approval'){ out.innerHTML+='<div>Needs approval — click Deploy again.</div>'; }
+  else { out.innerHTML+='<div>Not deployed: '+sysEsc(String(d.error||d.note||d.__err||'needs Supabase'))+'</div>'; }
+};
+window.scnInstalled = async function(){
+  const el=document.getElementById('scn_installed'); if(!el) return;
+  const d=await _sysPost('/api/scenarios',{action:'installed'});
+  if(d.__gated){ el.innerHTML='Access gated.'; return; }
+  if(d.__err){ el.innerHTML='<div style="opacity:.7">Unavailable.</div>'; return; }
+  if(d.configured===false){ el.innerHTML='<div style="opacity:.7">None — attach Supabase + run db/scenarios.sql.</div>'; return; }
+  const rows=d.results||[];
+  el.innerHTML=rows.length?rows.map(s=>'<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)"><b>'+sysEsc(s.name||'')+'</b> <span style="opacity:.5;font-size:11px">on '+sysEsc(s.trigger_name||'')+'</span></div>').join(''):'<div style="opacity:.6">No automations installed yet.</div>';
+};
 </script>
 <script>
 // ============================================================
