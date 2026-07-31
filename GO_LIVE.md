@@ -18,9 +18,10 @@ Every integration is **gated + graceful**: if a key is absent, that feature is s
 | `ANTHROPIC_API_KEY` | The hive engine (all answers) | console.anthropic.com |
 | `SUPABASE_URL` | The brain (memory, events, odometer) | Supabase project → API settings |
 | `SUPABASE_SERVICE_ROLE_KEY` | Brain write access | Supabase project → API settings |
-| `CREW_CODE` | App PIN gate (pick any code; if unset, no PIN) | you choose |
+| `CREW_CODE` | **Security gate — pick any code.** Locks Klyfton AI **and** the data endpoints (`/api/command-center`, `/api/brain-context`) to the crew. **⚠ If unset, they're OPEN to anyone with the URL** (verified 2026-07-27: unset = data served without a code). Crew types it once in the app. | you choose |
 
 > Run `db/schema.sql` once in the Supabase SQL editor first, so the brain tables/views exist.
+> **Set `CREW_CODE` before real go-live** — the AI + read endpoints are unauthenticated until you do.
 
 ### CORE FEATURES — turn the business functions on
 | Var | Unlocks |
@@ -29,6 +30,20 @@ Every integration is **gated + graceful**: if a key is absent, that feature is s
 | `HUBSPOT_TOKEN` (or `HUBSPOT_API_KEY`) | CRM: leads / jobs |
 | `SAM_API_KEY` | GovCon: SAM.gov daily bid scan (free key at sam.gov) |
 | `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_FROM` + `OWNER_SMS` | SMS alerts to the field / to you |
+
+### ⚡ SPEED-TO-LEAD (missed-call recovery) — highest-ROI switch to flip
+Contractors miss 60–80% of calls; a text back within ~1 min converts far better. `api/missed-call.js`
+is **already built and tested** (`tests/missed-call.js`, 24 checks) — it only drafts the text and fires
+an event; **it never texts a customer on its own** (golden rule). To make it live, wire the send once:
+1. Set `ALERTS_WEBHOOK_URL` (your Zapier/Make/n8n hook that actually sends the SMS) — and
+   `WEBHOOK_SECRET` to sign it. Without these it stays inert (safe default).
+2. In Twilio, on your business line set the **"No Answer / missed call"** action to call
+   `GET https://app.machinegunsprayfoam.info/api/missed-call?event=1&phone={{From}}&caller={{CallerName}}`.
+   The endpoint drafts the speed-to-lead SMS (business-hours/Sunday aware) + an owner alert and POSTs
+   them to your `ALERTS_WEBHOOK_URL`; your flow sends the SMS from `TWILIO_FROM`.
+3. (Optional) point the same flow at HubSpot to open a "call back within 5 min" task automatically.
+Test: `GET /api/missed-call` (no query) returns the shape; `?event=1&phone=...` returns the draft +
+`notified:true` once the webhook is set.
 
 ### OPTIONAL — nice-to-have, safe defaults if omitted
 | Var | Unlocks / default |

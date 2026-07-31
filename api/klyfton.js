@@ -13,6 +13,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // each message. Gated + graceful: if pgvector memory isn't configured, recall() returns instantly
 // with no network call, so this adds zero cost until it's turned on. See api/memory.js.
 const semanticMemory = require("./memory");
+const redact = require("./redact"); // strip secrets (API keys/SSN/cards) from user text before the model
 const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
 const brainContext = require("./brain-context"); // live-data grounding: real pipeline (KV + HubSpot) -> "situation" the brain reasons over
 
@@ -593,8 +594,8 @@ OFFERED (owner-activated), but pricing is still PENDING — scope the job, mark 
 OWNER INPUT REQUIRED, and do NOT quote a final price until Clifton sets the rate · Seawall stabilization
 = OFFERED (owner-activated), pricing PENDING — same rule · Protective coatings $3.00/SF silicone /
 $2.25/SF acrylic are PROPOSED, not confirmed — label internal-only, don't quote as final.
-(mgsf-core.skill still lists soil stabilization as BLOCKED — flag to Clifton that the skill + the SEO
-launch pack need updating to match this activation.)
+(mgsf-core reconciled 2026-07-31: it now lists soil stabilization as OFFERED, pricing PENDING — matches
+this block. The canonical Drive mgsf-core.skill package + the SEO launch pack still need the same edit.)
 COST CONSTANTS (INTERNAL — never show a customer): OC $0.122/BF · CC HFO 2.8# $0.982/BF · SPF roofing
 3.0# $0.680/BF · labor installer $80/hr, helper $48/hr. BF = sqft × inches (NEVER sqft×thickness/12).
 (These are core's fixed constants; when a newer-dated pricing CSV is in context, that per-set pricing is
@@ -1051,7 +1052,12 @@ const BRAIN_BLOCKS = {
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
   PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
+// BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
+// (never retrieval order) so the composed system prompt is deterministic — stable prompt =
+// stable prompt-caching + consistent behavior.
 const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+// BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
+// (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
 function assembleBrainBlocks(userText) {
   const all = () => BRAIN_ORDER.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
@@ -1059,7 +1065,9 @@ function assembleBrainBlocks(userText) {
     if (!userText || String(userText).trim().length < 3) return all();
     const r = brainRetrieve.retrieve(userText, { topClusters: 6 });
     if (!r || !Array.isArray(r.blocks) || !r.blocks.length) return all();
+    // The retriever emits block keys; normalize its lowercase "base_voice" to the BRAIN_BLOCKS key.
     const want = new Set(r.blocks.map((b) => (b === "base_voice" ? "BASE_VOICE" : b)));
+    // Keep every CORE block + any retrieval-selected block, emitted in the canonical BRAIN_ORDER.
     const chosen = BRAIN_ORDER.filter((k) => BRAIN_CORE.has(k) || want.has(k));
     if (chosen.length < BRAIN_CORE.size) return all();          // selection collapsed -> full brain
     return chosen.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
@@ -1517,7 +1525,13 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const userText = (body.message || "").toString().trim();
+  let userText = (body.message || "").toString().trim();
+  // Guardrail: never let a pasted secret (API key/SSN/card) reach the model or logs.
+  // Secrets-only — legitimate contact info (phone/email) is left intact. No-op on normal text.
+  try {
+    const _san = redact.sanitizeForModel(userText);
+    if (_san.redacted) { userText = _san.text; console.log("[klyfton] redacted secrets from input: " + _san.found.map((f) => f.type).join(",")); }
+  } catch (e) { /* redaction must never block a message */ }
 
   // Photos / PDFs the crew attached — capped so one message can't blow the payload.
   const attachments = (Array.isArray(body.attachments) ? body.attachments : [])

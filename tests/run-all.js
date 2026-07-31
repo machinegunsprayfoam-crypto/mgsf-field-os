@@ -7,9 +7,22 @@ const path = require("path");
 
 const SUITES = [
   ["calc-invariants", "estimator math invariants"],
+  ["calc-money", "commission / payment-schedule / unit-convert math"],
   ["brain-retrieve", "GraphRAG routing"],
   ["brain-assembly", "brain block selection (live wiring)"],
   ["brain-context", "live-data grounding (gated)"],
+  ["missed-call", "speed-to-lead / missed-call recovery"],
+  ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
+  ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
+  ["lead-score", "deterministic lead prioritization"],
+  ["hubspot-score", "call-list scoring integration"],
+  ["health", "Mechanic self-check (subsystem status)"],
+  ["redact", "secret/PII redaction guardrail"],
+  ["geo", "mobilization-by-distance (locked doctrine tiers)"],
+  ["dew-point", "spray-safety GO/CAUTION/NO-GO flag + 5°F margin"],
+  ["bpi-calc", "blower-door tightness bands + ASHRAE 62.2 target"],
+  ["roi", "financing cash-flow decision + savings clamps"],
+  ["measure", "roof/wall takeoff: wall path, mode routing, clamps"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
