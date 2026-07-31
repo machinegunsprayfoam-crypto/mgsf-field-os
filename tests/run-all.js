@@ -20,6 +20,7 @@ const SUITES = [
   ["redact", "secret/PII redaction guardrail"],
   ["geo", "mobilization-by-distance (locked doctrine tiers)"],
   ["dew-point", "spray-safety GO/CAUTION/NO-GO flag + 5°F margin"],
+  ["bpi-calc", "blower-door tightness bands + ASHRAE 62.2 target"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
