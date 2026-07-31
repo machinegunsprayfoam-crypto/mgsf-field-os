@@ -46,6 +46,7 @@ const LOCAL_TOOLS = [
   { id: "unit-convert",     category: "estimator", kind: "compute", does: "trade unit conversions", module: "api/unit-convert.js" },
   { id: "job-cost",         category: "finance",   kind: "compute", does: "job-cost roll-up vs estimate", module: "api/job-cost.js" },
   { id: "curriculum",       category: "learning",  kind: "compute", does: "graded exam that scores Klyfton's knowledge (the eval loop)", module: "api/curriculum.js" },
+  { id: "projects",         category: "pm",        kind: "compute", does: "job-lifecycle tracker — where each job is, what's next, what's overdue", module: "api/projects.js" },
   // keyless document + draft generators (produce a doc/message for approval — no external key)
   { id: "proposal-pdf",     category: "documents", kind: "compute", does: "turn an estimate into a branded, emailable proposal PDF", module: "api/proposal-pdf.js" },
   { id: "warranty-cert",    category: "documents", kind: "compute", does: "warranty certificate PDF to hand over at job close", module: "api/warranty-cert.js" },

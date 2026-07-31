@@ -29,6 +29,7 @@ const SUITES = [
   ["tools", "tool bag: self-describing capability catalog + honest live-status (sourced from health)"],
   ["act", "arms: outward-action classify + approval gate + universal Zapier bus"],
   ["wiki", "knowledge base: pure retrieval ranking + gated/graceful store + owner-gated writes"],
+  ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
