@@ -1358,7 +1358,7 @@ Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, gen
 Use "marketing" for social posts / content / captions / ads. Use "hunter" for finding new leads,
 jobs, opportunities, or gov solicitations.
 Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
-Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
+Rules: 1-3 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
 If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
   const recent = (history || [])
@@ -1376,7 +1376,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
     const parsed = j ? JSON.parse(j[0]) : null;
     let minds = (parsed && Array.isArray(parsed.minds) ? parsed.minds : [])
       .filter((k) => SPECIALISTS[k])
-      .slice(0, 4);
+      .slice(0, 3); // hive cap: at most 3 minds — bounds worker fan-out (latency/timeout control)
     if (!minds.length) minds = ["general"];
     const complexity = parsed && parsed.complexity === "complex" ? "complex" : "simple";
     return { minds: complexity === "simple" ? [minds[0]] : minds, complexity };
@@ -1589,6 +1589,20 @@ module.exports = async (req, res) => {
   }
 
   const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
+
+  // The router is text-only; give it a hint when a message is just an attachment.
+  const routeText = userText || "[user attached " + attachments.length + " " +
+    (attachments.some((a) => a.kind === "pdf") ? "file(s)" : "photo(s)") + " with no caption]";
+  // Per-request cost meter — every model call adds its dollar cost here.
+  const meter = { usd: 0 };
+  // Kick off routing CONCURRENTLY with the grounding lookups below. The router needs neither the
+  // grounding context nor the ATS state, so overlap its Haiku call under the grounding wall instead
+  // of running it afterward (saves ~1-2s off every non-trivial turn). route() self-catches to a
+  // safe {general,simple} default, so this promise never rejects — safe to leave in flight.
+  const routeP = isTrivial(userText, attachments)
+    ? Promise.resolve({ minds: ["general"], complexity: "simple" })
+    : route(key, routeText, history, meter);
+
   // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
   // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
   // backend can't stack latency or eat the 60s function budget. Previously these three awaited
@@ -1626,10 +1640,6 @@ module.exports = async (req, res) => {
   }
   const ctx = contextBlock(body.context, memList) + liveCtx + wikiCtx + toolBagBlock();
 
-  // The router is text-only; give it a hint when a message is just an attachment.
-  const routeText = userText || "[user attached " + attachments.length + " " +
-    (attachments.some((a) => a.kind === "pdf") ? "file(s)" : "photo(s)") + " with no caption]";
-
   // Client opts into token streaming with { stream:true } (or an SSE Accept header).
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
 
@@ -1644,9 +1654,6 @@ same question. Merge them into ONE answer in the owner's voice. Your job as crit
 - One screen. Do not mention "minds", "agents", or this process — just answer the owner.
 If there are durable facts worth remembering across sessions (a customer preference, a confirmed
 price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
-
-  // Per-request cost meter — every model call adds its dollar cost here.
-  const meter = { usd: 0 };
 
   // Monthly cost cap (opt-in): needs KV attached AND KLYFTON_MONTHLY_BUDGET_USD set.
   // Over budget → refuse new AI work with a friendly note. The estimator, JSA drafts,
@@ -1680,9 +1687,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   if (wantStream) {
     sseInit(res);
     try {
-      let plan = isTrivial(userText, attachments)
-        ? { minds: ["general"], complexity: "simple" }
-        : await route(key, routeText, history, meter);
+      let plan = await routeP; // routing already in flight (started concurrently with grounding)
       plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
@@ -1751,10 +1756,8 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
   // ---- Non-streaming path (JSON) — used by GROW tools and as the fallback ----
   try {
-    // 1) Queen recruits the minds (skipped for trivial greetings/acks).
-    let plan = isTrivial(userText, attachments)
-      ? { minds: ["general"], complexity: "simple" }
-      : await route(key, routeText, history, meter);
+    // 1) Queen recruits the minds — routing already in flight (started concurrently with grounding).
+    let plan = await routeP;
     plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
 
     // 2) Simple job → one mind answers directly (fast + cheap).
