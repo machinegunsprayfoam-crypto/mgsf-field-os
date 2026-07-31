@@ -13,6 +13,8 @@ const SUITES = [
   ["brain-context", "live-data grounding (gated)"],
   ["missed-call", "speed-to-lead / missed-call recovery"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
+  ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
+  ["lead-score", "deterministic lead prioritization"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
