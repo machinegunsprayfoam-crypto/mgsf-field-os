@@ -46,6 +46,7 @@ const LOCAL_TOOLS = [
   { id: "unit-convert",     category: "estimator", kind: "compute", does: "trade unit conversions", module: "api/unit-convert.js" },
   { id: "job-cost",         category: "finance",   kind: "compute", does: "job-cost roll-up vs estimate", module: "api/job-cost.js" },
   { id: "curriculum",       category: "learning",  kind: "compute", does: "graded exam that scores Klyfton's knowledge (the eval loop)", module: "api/curriculum.js" },
+  { id: "rag",              category: "knowledge", kind: "compute", does: "unified retrieval — fans out across brain graph + wiki + memory, merged + ranked (doctrine wins)", module: "api/rag.js" },
   { id: "projects",         category: "pm",        kind: "compute", does: "job-lifecycle tracker — where each job is, what's next, what's overdue", module: "api/projects.js" },
   { id: "cmdb",             category: "infra",     kind: "compute", does: "self-map: component dependency graph, why-is-X-dark root cause, biggest-unlock", module: "api/cmdb.js" },
   { id: "scenarios",        category: "automation", kind: "compute", does: "AI scenario builder — turn 'when X do Y' into a validated, safe automation (real triggers/tools)", module: "api/scenarios.js" },

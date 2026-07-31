@@ -33,6 +33,7 @@ const SUITES = [
   ["cmdb", "AI-augmented CMDB: dependency graph + root-cause + blast-radius + biggest-unlock"],
   ["wiki-seed", "wiki starter articles: valid + hard-rule-clean + retrievable"],
   ["scenarios", "AI scenario builder: validate against real triggers/tools + approval + dark-tool guard"],
+  ["rag", "unified RAG: fan-out across brain/wiki/memory + merge/dedupe/rank + truth-order context"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
