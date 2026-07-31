@@ -31,6 +31,7 @@ const SUITES = [
   ["wiki", "knowledge base: pure retrieval ranking + gated/graceful store + owner-gated writes"],
   ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
   ["cmdb", "AI-augmented CMDB: dependency graph + root-cause + blast-radius + biggest-unlock"],
+  ["wiki-seed", "wiki starter articles: valid + hard-rule-clean + retrievable"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
