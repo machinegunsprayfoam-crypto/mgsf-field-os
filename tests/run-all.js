@@ -39,6 +39,7 @@ const SUITES = [
   ["guard", "access guard: dormant-safe CREW_CODE gate (no lockout until set, then enforced)"],
   ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
+  ["inventory-reorder", "reorder sweep: qty<=reorderAt rule + short-fall + per-supplier grouping/draft"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 
