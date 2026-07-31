@@ -32,6 +32,7 @@ const SUITES = [
   ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
   ["cmdb", "AI-augmented CMDB: dependency graph + root-cause + blast-radius + biggest-unlock"],
   ["wiki-seed", "wiki starter articles: valid + hard-rule-clean + retrievable"],
+  ["scenarios", "AI scenario builder: validate against real triggers/tools + approval + dark-tool guard"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
