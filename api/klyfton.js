@@ -593,8 +593,8 @@ OFFERED (owner-activated), but pricing is still PENDING — scope the job, mark 
 OWNER INPUT REQUIRED, and do NOT quote a final price until Clifton sets the rate · Seawall stabilization
 = OFFERED (owner-activated), pricing PENDING — same rule · Protective coatings $3.00/SF silicone /
 $2.25/SF acrylic are PROPOSED, not confirmed — label internal-only, don't quote as final.
-(mgsf-core.skill still lists soil stabilization as BLOCKED — flag to Clifton that the skill + the SEO
-launch pack need updating to match this activation.)
+(mgsf-core reconciled 2026-07-31: it now lists soil stabilization as OFFERED, pricing PENDING — matches
+this block. The canonical Drive mgsf-core.skill package + the SEO launch pack still need the same edit.)
 COST CONSTANTS (INTERNAL — never show a customer): OC $0.122/BF · CC HFO 2.8# $0.982/BF · SPF roofing
 3.0# $0.680/BF · labor installer $80/hr, helper $48/hr. BF = sqft × inches (NEVER sqft×thickness/12).
 (These are core's fixed constants; when a newer-dated pricing CSV is in context, that per-set pricing is
