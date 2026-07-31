@@ -69,6 +69,7 @@ function boot(env) {
 
 module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; } // dormant until CREW_CODE set
   try { res.status(200).json(boot(process.env)); }
   catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 160) }); }
 };

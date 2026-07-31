@@ -36,6 +36,7 @@ const SUITES = [
   ["rag", "unified RAG: fan-out across brain/wiki/memory + merge/dedupe/rank + truth-order context"],
   ["agents", "agents runtime: goal-driven job selection + planning + approval/dark-tool guards"],
   ["boot", "boot manifest: live self-map (components/deps/tools/brain/agents) computed from env"],
+  ["guard", "access guard: dormant-safe CREW_CODE gate (no lockout until set, then enforced)"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;

@@ -174,6 +174,7 @@ module.exports = { catalog, find, validate, LOCAL_TOOLS, SUBSYS_META };
 
 // HTTP: GET /api/tools -> the live catalog (read-only, safe to expose; no secrets, no keys).
 module.exports.handler = function (req, res) {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.setHeader && res.setHeader("Content-Type", "application/json"); res.statusCode = 401; res.end(JSON.stringify(guard.denied())); return guard.denied(); } // dormant until CREW_CODE set
   const c = catalog(process.env);
   const body = JSON.stringify({ service: "klyfton-tool-bag", ...c }, null, 2);
   if (res && typeof res.setHeader === "function") {
