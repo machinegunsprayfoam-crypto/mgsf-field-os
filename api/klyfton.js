@@ -13,6 +13,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // each message. Gated + graceful: if pgvector memory isn't configured, recall() returns instantly
 // with no network call, so this adds zero cost until it's turned on. See api/memory.js.
 const semanticMemory = require("./memory");
+const redact = require("./redact"); // strip secrets (API keys/SSN/cards) from user text before the model
 const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
 const brainContext = require("./brain-context"); // live-data grounding: real pipeline (KV + HubSpot) -> "situation" the brain reasons over
 
@@ -1517,7 +1518,13 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const userText = (body.message || "").toString().trim();
+  let userText = (body.message || "").toString().trim();
+  // Guardrail: never let a pasted secret (API key/SSN/card) reach the model or logs.
+  // Secrets-only — legitimate contact info (phone/email) is left intact. No-op on normal text.
+  try {
+    const _san = redact.sanitizeForModel(userText);
+    if (_san.redacted) { userText = _san.text; console.log("[klyfton] redacted secrets from input: " + _san.found.map((f) => f.type).join(",")); }
+  } catch (e) { /* redaction must never block a message */ }
 
   // Photos / PDFs the crew attached — capped so one message can't blow the payload.
   const attachments = (Array.isArray(body.attachments) ? body.attachments : [])

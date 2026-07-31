@@ -17,6 +17,7 @@ const SUITES = [
   ["lead-score", "deterministic lead prioritization"],
   ["hubspot-score", "call-list scoring integration"],
   ["health", "Mechanic self-check (subsystem status)"],
+  ["redact", "secret/PII redaction guardrail"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
