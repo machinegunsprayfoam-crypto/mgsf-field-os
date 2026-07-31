@@ -99,10 +99,52 @@ async function recall(query, k) {
   } catch (e) { return { ok: false, error: String(e).slice(0, 140), results: [] }; }
 }
 
+// Verify the pgvector schema is actually applied (the `embedding` column exists) — not just that
+// the env vars are present. This is what makes the status report HONEST: env can be set while the
+// one-time SEMANTIC MEMORY block was never run. PostgREST returns 400 selecting a missing column.
+async function schemaReady() {
+  if (!SB_ON) return false;
+  try {
+    const r = await sbFetch("/rest/v1/memory?select=embedding&limit=1", { method: "GET" });
+    return r.ok;
+  } catch (e) { return false; }
+}
+
+// Re-embed stored notes that have no embedding yet (rows created before the key/schema existed).
+// Resumable: embeds up to `limit` null-embedding rows per call; call again while `more` is true.
+// Server-side only (needs the OpenAI key). Never throws; never fabricates.
+async function backfill(limit) {
+  if (!SB_ON) return { ok: false, configured: false, reason: "supabase_not_configured" };
+  if (!EMBED_ON) return { ok: false, reason: "no_embedding_key" };
+  const cap = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+  try {
+    const r = await sbFetch("/rest/v1/memory?select=id,note&embedding=is.null&limit=" + cap, { method: "GET" });
+    if (!r.ok) return { ok: false, error: "select_" + r.status };
+    const rows = await r.json();
+    const list = Array.isArray(rows) ? rows : [];
+    let embedded = 0, failed = 0;
+    for (const row of list) {
+      const vec = await embed(row.note);
+      if (!vec) { failed++; continue; }
+      const up = await sbFetch("/rest/v1/memory?id=eq." + encodeURIComponent(row.id), {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ embedding: vecLiteral(vec), updated_at: new Date().toISOString() }),
+      });
+      if (up.ok) embedded++; else failed++;
+    }
+    return { ok: true, scanned: list.length, embedded, failed, more: list.length === cap };
+  } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
+}
+
 module.exports = async (req, res) => {
   if (req.method === "GET") {
-    res.status(200).json({ ok: true, configured: SB_ON, semantic: SB_ON && EMBED_ON, embedModel: EMBED_ON ? EMBED_MODEL : null,
-      note: "POST {action:'remember',note} or {action:'recall',query,k}. Gated on Supabase + OPENAI_API_KEY; run the SEMANTIC MEMORY block in db/schema.sql once." });
+    const schema = await schemaReady();
+    const semantic = SB_ON && EMBED_ON && schema;
+    res.status(200).json({ ok: true, configured: SB_ON, semantic, schemaReady: schema,
+      embedModel: EMBED_ON ? EMBED_MODEL : null,
+      note: (SB_ON && EMBED_ON && !schema)
+        ? "env is set but the pgvector schema is MISSING — run the SEMANTIC MEMORY block in db/schema.sql once."
+        : "POST {action:'remember',note}, {action:'recall',query,k}, or {action:'backfill',limit}. Gated on Supabase + OPENAI_API_KEY." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -113,12 +155,15 @@ module.exports = async (req, res) => {
     const action = clean(body.action, 20);
     if (action === "remember") { res.status(200).json(await remember(body.note)); return; }
     if (action === "recall") { res.status(200).json(await recall(body.query, body.k)); return; }
-    res.status(200).json({ ok: false, error: "unknown_action", supported: ["remember", "recall"] });
+    if (action === "backfill") { res.status(200).json(await backfill(body.limit)); return; }
+    res.status(200).json({ ok: false, error: "unknown_action", supported: ["remember", "recall", "backfill"] });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
 };
 
 module.exports.remember = remember;
 module.exports.recall = recall;
 module.exports.charge = charge;
+module.exports.backfill = backfill;
+module.exports.schemaReady = schemaReady;
 module.exports.embed = embed;
 module.exports._vecLiteral = vecLiteral;
