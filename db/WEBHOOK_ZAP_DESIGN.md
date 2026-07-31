@@ -1,8 +1,27 @@
-# Klyfton alerts webhook — the Zapier "catch & route" Zap (ALERTS_WEBHOOK_URL)
+# Klyfton alerts dispatch — two ways to route approved actions to real sends
 
-Klyfton's arms (`api/act.js`) POST **already-approved** outward actions to `ALERTS_WEBHOOK_URL`.
-This doc is the owner-side Zap that receives them and routes each to a real send. Klyfton only
-dispatches after the owner approves, so the Zap just executes — it never decides.
+Klyfton's arms (`api/act.js`) approve outward actions. This doc covers the two ways to actually
+send them. Klyfton only dispatches after the owner approves, so the send layer never decides —
+it just executes.
+
+## Which one you have
+
+- **Option B — the `klyfton dispatch` Zapier skill (LIVE, wired 2026-07-31).** In-session routing:
+  hand an approved payload to the skill and it fires Gmail / HubSpot / QuickBooks / Google Calendar
+  through the Zapier connector. Fires when a session is running (you + me, or a scheduled interactive
+  run) — NOT unattended. Verified end-to-end with a Gmail self-test. This is the current dispatch path.
+- **Option A — the Catch-Hook Zap below (owner builds if/when you want unattended sending).** A real
+  HTTPS URL the deployed Vercel app POSTs to 24/7 with no session running. Build this only if you need
+  Klyfton to send fully autonomously; the multi-step Zap can't be built through the MCP, so it's on you.
+
+The routing logic is identical in both — the table below is the spec for either one.
+
+---
+
+## Option A — the Zapier "catch & route" Zap (ALERTS_WEBHOOK_URL)
+
+Klyfton's arms POST **already-approved** outward actions to `ALERTS_WEBHOOK_URL`.
+This is the owner-side Zap that receives them and routes each to a real send.
 
 ## The exact payload Klyfton sends
 ```json
