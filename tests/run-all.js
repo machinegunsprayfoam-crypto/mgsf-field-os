@@ -43,6 +43,7 @@ const SUITES = [
   ["near-wall", "near-the-wall guard: skip-synth-under-time-pressure decision + fullest-answer fallback"],
   ["follow-up", "lead follow-up sweep: 3/7/30-day cadence + open-only filter + value/quiet ordering + drafts"],
   ["estimate-followup", "estimate reheat sweep: 2/7/21-day cadence + closed/won filter + total ordering + drafts"],
+  ["roof-maintenance", "roof upkeep schedule/sweep: base-date + inspection/re-coat cadence + due windows + order"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 
