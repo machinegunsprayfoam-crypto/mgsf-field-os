@@ -90,6 +90,34 @@ ok("parse: garbage ⇒ empty string (no throw)", P.parseResponse("openai", null)
   const u = await P.chat({ provider: "bogus", user: "hi" });
   ok("chat: unknown provider ⇒ ok:false", u.ok === false && u.reason === "unknown_provider");
 
+  // ---- fallbackChain ordering (pure) ----
+  ok("chain: preferred first", P.fallbackChain("grok")[0] === "grok");
+  ok("chain: includes all providers, de-duped", P.fallbackChain("grok").length === Object.keys(P._PROVIDERS).length);
+  ok("chain: array preferred honored", P.fallbackChain(["local", "grok"]).slice(0, 2).join(",") === "local,grok");
+
+  // ---- chatWithFallback: injected chat + configured predicate (no network) ----
+  const allConf = () => true;
+  // claude fails, grok succeeds ⇒ returns grok, tried shows the claude miss first
+  const scripted = (o) => Promise.resolve(o.provider === "claude" ? { ok: false, reason: "http_529" } : { ok: true, text: "hi from " + o.provider, model: "m" });
+  const r1 = await P.chatWithFallback({ provider: "claude", user: "x", _chat: scripted, _isConfigured: allConf });
+  ok("fallback: falls through to a working provider", r1.ok === true && r1.provider !== "claude", JSON.stringify(r1.provider));
+  ok("fallback: records what it tried", r1.tried[0].provider === "claude" && r1.tried[0].ok === false);
+
+  // first success short-circuits (claude ok ⇒ no further tries)
+  const okAll = (o) => Promise.resolve({ ok: true, text: "ok", model: "m", provider: o.provider });
+  const r2 = await P.chatWithFallback({ provider: "claude", user: "x", _chat: okAll, _isConfigured: allConf });
+  ok("fallback: first success short-circuits", r2.provider === "claude" && r2.tried.length === 1);
+
+  // all fail ⇒ ok:false with the full tried list
+  const allFail = () => Promise.resolve({ ok: false, reason: "http_500" });
+  const r3 = await P.chatWithFallback({ provider: "claude", user: "x", _chat: allFail, _isConfigured: allConf });
+  ok("fallback: all fail ⇒ ok:false", r3.ok === false && r3.reason === "all_failed");
+  ok("fallback: a throwing provider doesn't crash the chain", (await P.chatWithFallback({ provider: "claude", user: "x", _chat: () => { throw new Error("boom"); }, _isConfigured: allConf })).ok === false);
+
+  // none configured ⇒ explicit reason
+  const r4 = await P.chatWithFallback({ provider: "claude", user: "x", _chat: okAll, _isConfigured: () => false });
+  ok("fallback: none configured ⇒ no_configured_provider", r4.ok === false && r4.reason === "no_configured_provider");
+
   console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

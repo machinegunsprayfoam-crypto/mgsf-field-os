@@ -127,6 +127,38 @@ async function chat(opts) {
   }
 }
 
+// --- FALLBACK (resilience: try the next configured model if one fails) ----------
+
+// Deterministic ordering: preferred provider(s) first, then the rest of the registry,
+// de-duped. Pure — testable without env.
+function fallbackChain(preferred) {
+  const order = [];
+  const push = (id) => { if (id && PROVIDERS[id] && order.indexOf(id) < 0) order.push(id); };
+  (Array.isArray(preferred) ? preferred : [preferred]).forEach(push);
+  Object.keys(PROVIDERS).forEach(push);
+  return order;
+}
+
+// Try each configured provider in order until one returns usable text. Injectable
+// (`_chat`, `_isConfigured`) so the loop is fully unit-tested without a network. Returns
+// { ok, text, provider, model, tried:[{provider,ok}] } or { ok:false, reason, tried }.
+async function chatWithFallback(opts) {
+  opts = opts || {};
+  const chatFn = opts._chat || chat;
+  const isConf = opts._isConfigured || isConfigured;
+  const chain = fallbackChain(opts.provider || "claude").filter(isConf);
+  if (!chain.length) return { ok: false, reason: "no_configured_provider", tried: [] };
+  const tried = [];
+  for (const id of chain) {
+    let r;
+    try { r = await chatFn({ ...opts, provider: id }); }
+    catch (e) { r = { ok: false, reason: "error", detail: (e && e.message) || "err" }; }
+    tried.push({ provider: id, ok: !!(r && r.ok && r.text) });
+    if (r && r.ok && r.text) return { ok: true, text: r.text, provider: id, model: r.model, tried };
+  }
+  return { ok: false, reason: "all_failed", tried };
+}
+
 // --- HTTP HANDLER (additive endpoint) -------------------------------------------
 
 module.exports = async (req, res) => {
@@ -138,8 +170,10 @@ module.exports = async (req, res) => {
     }
     if (req.method !== "POST") return res.status(405).json({ ok: false, reason: "method" });
     const body = req.body || {};
-    if (!body.provider) return res.status(400).json({ ok: false, reason: "no_provider", providers: listProviders() });
     if (!clean(body.user)) return res.status(400).json({ ok: false, reason: "no_user" });
+    // fallback:true ⇒ try the preferred model, then auto-retry the next configured one.
+    if (body.fallback) return res.status(200).json(await chatWithFallback(body));
+    if (!body.provider) return res.status(400).json({ ok: false, reason: "no_provider", providers: listProviders() });
     const result = await chat(body);
     return res.status(200).json(result);
   } catch (e) {
@@ -154,4 +188,6 @@ module.exports.pickProvider = pickProvider;
 module.exports.isConfigured = isConfigured;
 module.exports.listProviders = listProviders;
 module.exports.chat = chat;
+module.exports.fallbackChain = fallbackChain;
+module.exports.chatWithFallback = chatWithFallback;
 module.exports._PROVIDERS = PROVIDERS;
