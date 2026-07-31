@@ -22,6 +22,7 @@ const SUITES = [
   ["dew-point", "spray-safety GO/CAUTION/NO-GO flag + 5°F margin"],
   ["bpi-calc", "blower-door tightness bands + ASHRAE 62.2 target"],
   ["roi", "financing cash-flow decision + savings clamps"],
+  ["measure", "roof/wall takeoff: wall path, mode routing, clamps"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
