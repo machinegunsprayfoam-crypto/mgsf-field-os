@@ -54,6 +54,13 @@ CHECKS = [
     ("multiplier SD",         r"SD\s*[×x]\s*(\d+\.\d+)"),
     ("multiplier WY",         r"WY\s*[×x]\s*(\d+\.\d+)"),
     ("job minimum $",         r"job min(?:imum)?[^$0-9\n]{0,10}\$?(\d[\d,]*)"),
+    # mobilization tiers — api/geo.js hardcodes these, so drift between mgsf-core and the
+    # DOCTRINE block must be caught. Each value sits on one line (50+ wraps in DOCTRINE but
+    # its own line is intact). "25–50" may use an en/em dash or hyphen.
+    ("mobilization <25mi $",  r"<\s*25\s*mi[^$\n]{0,4}\$(\d+)"),
+    ("mobilization 25-50mi $", r"25\s*[–—-]\s*50\s*mi[^$\n]{0,4}\$(\d+)"),
+    ("mobilization 50+mi $",  r"50\+\s*mi[^$\n]{0,4}\$(\d+)"),
+    ("mobilization $/mi>100", r"\$(\d+\.\d+)\s*/\s*mi"),
     # [\s\S] (not [^\n]) so a line-wrapped "= \nOFFERED" is still captured.
     ("soil-stab status",      r"soil stab[a-z]*[\s\S]{0,40}?(BLOCKED|OFFERED|PENDING)"),
 ]
