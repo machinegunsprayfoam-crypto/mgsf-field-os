@@ -325,7 +325,34 @@ async function runEval(answerFn, opts) {
   };
 }
 
-module.exports = { BANK, grade, validateBank, runEval };
+// LLM-JUDGE grading — real semantic judgment instead of keyword matching, which can be fooled
+// (a wrong answer with the right words passes; a right answer phrased differently fails). Uses an
+// injected askFn(prompt)->Promise<string> (a model call) when available; falls back to the keyword
+// grade() when there's no model (offline/no key) so it never breaks. The judge is told the banned
+// claims so it enforces the hard rules semantically too.
+async function judge(answer, item, askFn) {
+  const kw = grade(answer, item);
+  if (typeof askFn !== "function") return { ...kw, mode: "keyword" };
+  try {
+    const prompt =
+      "You are grading a spray-foam field assistant's answer. Be strict and fair.\n" +
+      "QUESTION: " + item.q + "\n" +
+      "REFERENCE (the correct basis): " + item.ref + "\n" +
+      "ANSWER: " + String(answer == null ? "" : answer) + "\n" +
+      "Pass ONLY if the answer is correct per the reference AND contains no banned claim " +
+      "(guaranteed savings, mold elimination, invented job/price/data). " +
+      'Reply strictly as JSON: {"pass":true|false,"reason":"short"}.';
+    const raw = await askFn(prompt);
+    const m = String(raw == null ? "" : raw).match(/\{[\s\S]*\}/);
+    const j = m ? JSON.parse(m[0]) : null;
+    if (j && typeof j.pass === "boolean") {
+      return { id: item.id, module: item.module, pass: j.pass, reason: String(j.reason || "").slice(0, 200), mode: "judge" };
+    }
+    return { ...kw, mode: "keyword", note: "judge parse failed — used keyword" };
+  } catch (e) { return { ...kw, mode: "keyword", note: "judge error — used keyword" }; }
+}
+
+module.exports = { BANK, grade, validateBank, runEval, judge };
 
 // Direct run: print bank stats (no model needed). `node api/curriculum.js`
 if (require.main === module) {

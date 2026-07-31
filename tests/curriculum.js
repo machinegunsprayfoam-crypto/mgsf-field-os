@@ -70,6 +70,17 @@ async function main() {
   ok("blank mock ⇒ 0 passed", blank.passed === 0);
   ok("blank mock ⇒ every item is a failure/gap", blank.failures.length === blank.total);
 
+  // ---- LLM-judge grading (semantic; graceful keyword fallback offline) ----
+  const dewItem = C.BANK.find((i) => i.id === "bs-dewpoint");
+  const jPass = await C.judge("anything", dewItem, () => Promise.resolve('{"pass":true,"reason":"correct"}'));
+  ok("judge with a model ⇒ uses the judge verdict (pass)", jPass.pass === true && jPass.mode === "judge");
+  const jFail = await C.judge("mentions dew point and 5 but is actually wrong", dewItem, () => Promise.resolve('{"pass":false,"reason":"wrong"}'));
+  ok("judge can FAIL an answer keywords would pass (catches gaming)", jFail.pass === false && jFail.mode === "judge");
+  const jNo = await C.judge("no-go under a 5 degree dew point spread — wait", dewItem);
+  ok("judge with NO model ⇒ graceful keyword fallback", jNo.mode === "keyword");
+  const jBad = await C.judge("x", dewItem, () => Promise.resolve("not json at all"));
+  ok("judge with malformed model output ⇒ safe keyword fallback", jBad.mode === "keyword");
+
   console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 }
