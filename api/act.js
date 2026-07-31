@@ -24,6 +24,9 @@ function _kvEnv(suffixRe, excludeRe) {
 const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
 const SECRET = process.env.WEBHOOK_SECRET || process.env.ALERTS_WEBHOOK_SECRET || "";
 
+let idempotency = null;
+try { idempotency = require("./idempotency"); } catch (e) {}
+
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 300); }
 
 // The arms. Every one is outward/irreversible/costs money => all require approval. `preview` builds
@@ -112,7 +115,24 @@ async function execute(action, opts) {
       note: "Outward action — will only dispatch when re-sent with approved:true." };
   }
 
+  // Idempotency: don't re-send the same approved action. Check BEFORE dispatch; commit only AFTER a
+  // successful send (a failed send isn't recorded, so retry still works). Injectable for tests;
+  // gated no-op without a store. `day` scopes the key so the same action tomorrow is legitimately new.
+  const idem = o.idem || idempotency;
+  let idemKey = null;
+  if (idem && typeof idem.key === "function") {
+    try {
+      idemKey = idem.key(action, new Date().toISOString().slice(0, 10));
+      if (await idem.check(idemKey)) {
+        return { ok: true, status: "duplicate_skipped", type: c.type,
+          note: "Identical action already dispatched today — not re-sent (idempotency).",
+          audit: { type: c.type, preview: c.preview, dispatched: false, duplicate: true } };
+      }
+    } catch (e) { /* idempotency is best-effort — never block a send on it */ }
+  }
+
   const d = await dispatch(c.event, action, o.actor);
+  if (d.dispatched && idem && idemKey) { try { await idem.commit(idemKey, { type: c.type, at: new Date().toISOString() }); } catch (e) {} }
   const audit = { type: c.type, preview: c.preview, approvedBy: clean(o.actor, 60) || "owner", at: new Date().toISOString(), dispatched: d.dispatched };
   if (!d.dispatched) {
     return { ok: false, status: "blocked", type: c.type,

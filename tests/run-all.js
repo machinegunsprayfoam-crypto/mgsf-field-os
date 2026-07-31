@@ -37,6 +37,7 @@ const SUITES = [
   ["agents", "agents runtime: goal-driven job selection + planning + approval/dark-tool guards"],
   ["boot", "boot manifest: live self-map (components/deps/tools/brain/agents) computed from env"],
   ["guard", "access guard: dormant-safe CREW_CODE gate (no lockout until set, then enforced)"],
+  ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
