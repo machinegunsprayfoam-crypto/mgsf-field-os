@@ -66,6 +66,17 @@ console.log("Health / Mechanic self-check invariants\n");
   ok("openai reported off", r.providers.list.find((p) => p.id === "openai").status === "off");
 })();
 
+// ---- misnamed-key detector (the open_ai trap) ----
+(() => {
+  const bad = H.buildReport({ open_ai: "x", ANTHROPIC_API_KEY: "a" });
+  ok("flags misnamed OpenAI key (open_ai)", bad.warnings.some((w) => w.expected === "OPENAI_API_KEY" && w.found.indexOf("open_ai") >= 0), JSON.stringify(bad.warnings));
+  const good = H.buildReport({ OPENAI_API_KEY: "x" });
+  ok("no warning when correctly named", !good.warnings.some((w) => w.expected === "OPENAI_API_KEY"));
+  const sibling = H.buildReport({ OPENAI_API_KEY: "x", OPENAI_COMPAT_URL: "http://y", OPENAI_TTS_MODEL: "z" });
+  ok("legit OPENAI_* siblings are not flagged", sibling.warnings.length === 0, JSON.stringify(sibling.warnings));
+  ok("misnamedWarnings exported + pure", typeof H.misnamedWarnings === "function" && H.misnamedWarnings({}).length === 0);
+})();
+
 // ---- CREW_CODE gating ----
 ok("no CREW_CODE ⇒ open", H.isAuthorized({}, "") === true);
 ok("CREW_CODE set + right code ⇒ authorized", H.isAuthorized({ CREW_CODE: "1978" }, "1978") === true);

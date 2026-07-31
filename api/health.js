@@ -65,6 +65,33 @@ const PROVIDERS = [
   { id: "local", label: "Local/free model", on: (e) => has(e, "OPENAI_COMPAT_URL") },
 ];
 
+// Likely-misnamed critical keys: the code reads these EXACT names. If the canonical is
+// absent but a lookalike var exists (e.g. "open_ai" instead of OPENAI_API_KEY), flag it —
+// this is the trap that silently leaves memory/TTS off. `allow` = legit sibling vars that
+// contain the token but are NOT misnamings.
+const CANON_KEYS = [
+  { canon: "OPENAI_API_KEY", token: "OPENAI",
+    allow: ["OPENAI_COMPAT_URL", "OPENAI_COMPAT_KEY", "OPENAI_COMPAT_MODEL", "OPENAI_TTS_MODEL"] },
+  { canon: "ANTHROPIC_API_KEY", token: "ANTHROPIC", allow: [] },
+];
+const _norm = (n) => String(n).toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+function misnamedWarnings(env) {
+  const names = Object.keys(env || {});
+  const out = [];
+  for (const c of CANON_KEYS) {
+    if (env[c.canon]) continue; // canonical present ⇒ fine
+    const allow = c.allow.map(_norm);
+    const suspects = names.filter((n) =>
+      _norm(n).indexOf(c.token) >= 0 && _norm(n) !== _norm(c.canon) && allow.indexOf(_norm(n)) < 0);
+    if (suspects.length) {
+      out.push({ expected: c.canon, found: suspects,
+        hint: "possible misnamed env var — the code reads " + c.canon + " exactly; rename it and redeploy" });
+    }
+  }
+  return out;
+}
+
 // Pure core: deterministic report from an env-like object. No time, no network.
 function buildReport(env) {
   env = env || {};
@@ -82,12 +109,14 @@ function buildReport(env) {
   const coreDown = subsystems.filter((s) => s.core && s.status !== "on").map((s) => s.id);
   const providersOn = providers.filter((p) => p.status === "on").length;
   const health = coreDown.length ? "degraded" : (off > 0 ? "online (some subsystems inert)" : "fully wired");
+  const warnings = misnamedWarnings(env);
   return {
     ok: true,
     health,
     subsystems,
     providers: { configured: providersOn, list: providers },
-    summary: { on, partial, off, coreDown, providersConfigured: providersOn },
+    warnings, // e.g. a likely-misnamed OPENAI_API_KEY (the open_ai trap)
+    summary: { on, partial, off, coreDown, providersConfigured: providersOn, warnings: warnings.length },
   };
 }
 
@@ -117,5 +146,6 @@ module.exports = async (req, res) => {
 
 // Pure exports for the test harness.
 module.exports.buildReport = buildReport;
+module.exports.misnamedWarnings = misnamedWarnings;
 module.exports.isAuthorized = isAuthorized;
 module.exports._SUBSYSTEMS = SUBSYSTEMS;

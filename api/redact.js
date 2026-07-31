@@ -31,8 +31,10 @@ function luhnValid(num) {
 // run always; contact rules only when opts.contact. Order matters (keys before generic).
 const SECRET_RULES = [
   { type: "private_key", re: /-----BEGIN[A-Z ]*PRIVATE KEY-----[\s\S]*?-----END[A-Z ]*PRIVATE KEY-----/g },
-  { type: "api_key", re: /\b(?:sk|pat|rk|ghp|gho|xoxb|xoxp|AKIA|ASIA)[-_][A-Za-z0-9\-_]{10,}\b/g },
+  { type: "api_key", re: /\b(?:sk|pat|rk|ghp|gho|ghu|ghs|xoxb|xoxp|AKIA|ASIA)[-_][A-Za-z0-9\-_]{10,}\b/g },
   { type: "api_key", re: /\bAKIA[0-9A-Z]{16}\b/g },
+  { type: "api_key", re: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g }, // GitHub fine-grained PAT
+  { type: "api_key", re: /\bglpat-[A-Za-z0-9\-_]{16,}\b/g },    // GitLab PAT
   { type: "bearer", re: /\bBearer\s+[A-Za-z0-9\-._~+/]{16,}=*/g },
   { type: "ssn", re: /\b\d{3}-\d{2}-\d{4}\b/g },
   { type: "credit_card", re: /\b(?:\d[ -]?){13,19}\b/g, validate: (m) => luhnValid(m) },

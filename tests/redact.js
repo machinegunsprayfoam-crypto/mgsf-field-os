@@ -17,7 +17,9 @@ console.log("Redact guardrail invariants\n");
   ok("redacted flag set", r.redacted === true);
 })();
 ok("AWS key masked", R.redact("AKIAIOSFODNN7EXAMPLE").text.indexOf("AKIA") === -1);
-ok("github token masked", R.redact("ghp_16charslongtoken1234").text.indexOf("ghp_") === -1);
+ok("github classic token masked", R.redact("ghp_" + "16charslongtoken1234").text.indexOf("ghp_") === -1);
+ok("github fine-grained PAT masked", has(R.redact("token " + "github_pat_" + "11ABCDE0123456789abcdefXYZ"), "api_key"));
+ok("gitlab PAT masked", has(R.redact("token " + "glpat-" + "abc123DEF456ghi789"), "api_key"));
 ok("SSN masked", has(R.redact("SSN 123-45-6789"), "ssn"));
 ok("Bearer token masked", has(R.redact("Authorization: Bearer abcdef0123456789ABCDEF"), "bearer"));
 (() => {
