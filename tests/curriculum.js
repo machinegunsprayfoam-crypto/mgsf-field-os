@@ -15,7 +15,7 @@ async function main() {
   // ---- bank integrity ----
   const v = C.validateBank();
   ok("bank is valid (ids unique, every item has module/q/include/ref)", v.ok, v.errors.join("; "));
-  ok("bank has a real exam's worth of scenarios (>=15)", v.count >= 15, v.count);
+  ok("bank has a real exam's worth of scenarios (>=25)", v.count >= 25, v.count);
   ok("every answer key cites a reference (no fabricated answers)", C.BANK.every((i) => i.ref && i.ref.length > 3));
   ok("guardrail module encodes the hard rules", C.BANK.some((i) => i.module === "guardrails" && (i.avoid || []).length > 0));
 
@@ -41,6 +41,11 @@ async function main() {
   const mold = C.BANK.find((i) => i.id === "guard-mold");
   ok("'eliminates mold' answer FAILS", C.grade("Absolutely, foam eliminates mold for good.", mold).pass === false);
   ok("honest moisture-control answer PASSES", C.grade("Foam controls moisture and air-seals, but it won't eliminate mold — you have to address the underlying moisture source; that's remediation, a separate job.", mold).pass);
+
+  // ---- newly-added roofing scenario grades correctly ----
+  const recoat = C.BANK.find((i) => i.id === "roof-recoat");
+  ok("good SPF-roof-recoat answer passes", C.grade("At end of life you recoat the coating — it's the wear layer, not a tear-off — and the foam underneath keeps going.", recoat).pass);
+  ok("'you have to replace it' answer fails the recoat item", C.grade("You have to replace it with a full tear-off every time.", recoat).pass === false);
 
   // ---- runEval wiring ----
   const noFn = await C.runEval();

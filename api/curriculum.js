@@ -157,6 +157,75 @@ const BANK = [
     avoid: ["let me make up", "approximately your quote was", "i remember your job"],
     ref: "HARD RULE: never invent/assume a lead, job, or customer — only reference exact records on file",
   },
+  // ---- roofing ----
+  {
+    id: "roof-recoat", module: "roofing",
+    q: "How does an SPF roof get renewed at the end of its life?",
+    include: [["recoat", "re-coat", "coating"], ["not a tear-off", "no tear-off", "instead of tearing", "renew", "wear layer"], ["foam", "keeps going", "underneath"]],
+    avoid: ["full tear-off every time", "you have to replace it"],
+    ref: "spf-roofing: the coating is the wear layer — recoat it (not tear off); the foam underneath keeps going",
+  },
+  {
+    id: "roof-leak-locate", module: "roofing",
+    q: "A fully-adhered foam roof gets punctured. Why is that easier to deal with than a membrane roof?",
+    include: [["fully-adhered", "fully adhered", "bonded", "no seams"], ["can't track", "cant track", "won't travel", "wont travel", "right where", "where the damage"]],
+    avoid: [],
+    ref: "seamless-spf-roofing: bonded foam means water can't track under it — a leak shows up where the damage is",
+  },
+  {
+    id: "roof-over-existing", module: "roofing",
+    q: "Customer asks if we can spray a foam roof right over their existing roof.",
+    include: [["often", "usually", "many cases", "can", "after prep", "prepped"], ["wet", "failing", "sound", "dry", "inspect", "assess"]],
+    avoid: ["always, no matter what", "never over an existing roof"],
+    ref: "spf-roof-benefits: SPF bonds over most sound, prepped low-slope roofs; if it's wet/failing that's dealt with first",
+  },
+  // ---- code ----
+  {
+    id: "code-uplift", module: "code",
+    q: "A GC wants a wind-uplift rating for the foam roof put in writing. How do you handle it?",
+    include: [["engineer", "engineered"], ["tested assembly", "tested", "rated assembly", "rating"], ["can't promise", "won't promise", "verify", "don't put a number"]],
+    avoid: ["i'll give you a number", "guarantee the uplift"],
+    ref: "spray-foam-spec: wind-uplift ratings require an engineer + a tested assembly — don't promise a number from memory",
+  },
+  // ---- safety ----
+  {
+    id: "safe-reoccupancy", module: "safety",
+    q: "When can other trades and the occupants come back after we spray foam?",
+    include: [["ventilate", "ventilation", "air out"], ["re-entry", "re-occupancy", "reoccupancy", "re-occupy"], ["manufacturer", "tds", "per the product", "spec"]],
+    avoid: ["right away, no wait", "immediately, it's fine"],
+    ref: "spray-foam-spec: ventilate during/after and honor the product's re-entry time per the TDS before others return",
+  },
+  // ---- application / QC ----
+  {
+    id: "app-thickness-verify", module: "application",
+    q: "How do you actually prove the installed R-value and quality on a job?",
+    include: [["thickness", "depth check", "cores", "core"], ["blower", "ach50", "air seal", "air-seal"], ["install quality", "rated r", "realized r"]],
+    avoid: ["you can't verify it", "just trust the label"],
+    ref: "spray-foam-spec: realized R = rated R × install quality — verify installed thickness (depth checks/cores) + blower-door ACH50",
+  },
+  // ---- building science ----
+  {
+    id: "bs-crawlspace", module: "building-science",
+    q: "A vented crawl space keeps getting damp and cold. What's the approach?",
+    include: [["seal", "encapsulate", "encapsulation", "close"], ["closed-cell", "closed cell", "moisture", "air"], ["control", "condensation", "vapor"]],
+    avoid: ["add more vents", "leave it vented and open"],
+    ref: "crawl-space-encapsulation / DOCTRINE: seal + closed-cell for crawlspaces — control air and moisture",
+  },
+  // ---- concrete / soil ----
+  {
+    id: "con-voidfill", module: "concrete",
+    q: "What's void fill, and how is it different from just lifting the slab?",
+    include: [["void", "gaps", "cavities", "underneath"], ["fill", "fills"], ["stays put", "stays level", "so it doesn't", "keep it"]],
+    avoid: [],
+    ref: "concrete/soil-stabilization: lifting raises the slab; void fill fills the gaps underneath so it stays put",
+  },
+  {
+    id: "con-seawall", module: "concrete",
+    q: "Does the foam hold up behind a seawall where water is the whole problem?",
+    include: [["closed-cell", "closed cell", "polyurethane"], ["hydrophobic", "seals in wet", "cure in wet", "water", "waterproof"]],
+    avoid: ["foam breaks down in water", "not for wet conditions"],
+    ref: "seawall-stabilization: closed-cell polyurethane is hydrophobic — designed to cure and seal in wet conditions",
+  },
 ];
 
 // Synonym groups: pass if ANY listed variant appears. Deterministic substring match, case-insensitive.
