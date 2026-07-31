@@ -53,3 +53,23 @@ module keeps the gated-live pattern and does NOT touch the live klyfton.js pipel
 
 *No fabricated numbers or claims introduced. Doctrine (mgsf-core) remains the source of
 truth. Nothing merged to main.*
+
+---
+
+## Autonomous queue (later same day, staged on branch)
+
+On "go — start on the queue, finish everything you can," worked the module queue —
+each additive, tested, committed; nothing merged to main:
+
+1. **Lead-score wired into the HubSpot call list** (`api/hubspot.js`) — every lead gets
+   a priority score/band and the list sorts hot-first. Activates the built module in a
+   real path. +7 tests.
+2. **Health / Mechanic** (`api/health.js`) — read-only `/api/health` self-check;
+   subsystem on/off/partial from env presence only (no secrets, no data), CREW_CODE-gated
+   when set. Replaces retired mcp-diag. +22 tests.
+3. **Provider auto-fallback** (`api/provider.js`) — `chatWithFallback()` retries the next
+   configured model on failure (Claude 529/500 → Grok/ChatGPT/local); `/api/provider
+   {fallback:true}`. +9 tests.
+
+Test gate now **11 suites / 278 checks, all green**. Docs updated (PROJECT_MEMORY +
+mgsf-ai-platform skill). Still staged-only — flip switches / merge when ready.
