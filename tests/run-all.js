@@ -30,6 +30,7 @@ const SUITES = [
   ["act", "arms: outward-action classify + approval gate + universal Zapier bus"],
   ["wiki", "knowledge base: pure retrieval ranking + gated/graceful store + owner-gated writes"],
   ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
+  ["cmdb", "AI-augmented CMDB: dependency graph + root-cause + blast-radius + biggest-unlock"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
