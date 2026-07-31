@@ -26,6 +26,7 @@ const SUITES = [
   ["ats", "budget throttle: fuel→battery transfer thresholds + plan downshift"],
   ["memory", "semantic memory: gated behavior + backfill/schema-check"],
   ["curriculum", "learning curriculum: bank integrity + grader + guardrail enforcement + eval wiring"],
+  ["tools", "tool bag: self-describing capability catalog + honest live-status (sourced from health)"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
