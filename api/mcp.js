@@ -21,7 +21,7 @@ function _kvEnv(suffixRe, excludeRe) {
   return undefined;
 }
 const KV_URL = _kvEnv(/KV_REST_API_URL$/i) || _kvEnv(/REST_API_URL$/i) || _kvEnv(/UPSTASH_REDIS_REST_URL$/i);
-const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i, /READ_ONLY/i) || _kvEnv(/REST_API_TOKEN$/i, /READ_ONLY/i);
+const KV_TOKEN = _kvEnv(/KV_REST_API_TOKEN$/i) || _kvEnv(/REST_API_TOKEN$/i) || _kvEnv(/UPSTASH_REDIS_REST_API_TOKEN$/i);
 
 // Bearer token resolver — tolerant of key misspellings (MCP_BEARER_TOKEN, MCPBEARERTOKEN,
 // MCP-BEARER-TOKEN, any case) and of pasted whitespace in the value. Fail-closed if absent.
@@ -180,6 +180,28 @@ const TOOLS = {
 const PROTOCOL = "2025-06-18";
 function rpcResult(id, result) { return { jsonrpc: "2.0", id, result }; }
 function rpcError(id, code, message) { return { jsonrpc: "2.0", id, error: { code, message } }; }
+function _setCors(res) {
+  if (!res || typeof res.setHeader !== "function") return;
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "content-type,authorization,x-mcp-bearer-token,x-api-key");
+}
+function _header(req, name) {
+  const h = (req && req.headers) || {};
+  const want = String(name || "").toLowerCase();
+  for (const k of Object.keys(h)) if (String(k).toLowerCase() === want) return h[k];
+  return "";
+}
+function _requestToken(req) {
+  const auth = String(_header(req, "authorization") || "").trim();
+  if (auth) {
+    const m = auth.match(/^Bearer\s+(.+)$/i);
+    if (m && m[1]) return String(m[1]).trim();
+    // Some clients pass the raw token with no auth scheme.
+    if (!/\s/.test(auth)) return auth;
+  }
+  return String(_header(req, "x-mcp-bearer-token") || _header(req, "x-api-key") || "").trim();
+}
 
 async function handleRpc(msg) {
   const { id, method, params } = msg || {};
@@ -211,9 +233,12 @@ async function handleRpc(msg) {
 }
 
 module.exports = async (req, res) => {
+  _setCors(res);
+  if (req.method === "OPTIONS") { res.status(204).end(); return; }
+
   // Status probe (no data): confirms the route exists and whether storage + auth are configured.
   if (req.method === "GET") {
-    res.status(200).json({ ok: true, server: "klyfton-field-os", phase: 1, transport: "mcp-streamable-http/json", kv: KV_ON, auth_required: true });
+    res.status(200).json({ ok: true, server: "klyfton-field-os", phase: 1, transport: "mcp-streamable-http/json", kv: KV_ON, auth_required: true, token_configured: !!_bearerToken() });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -221,10 +246,9 @@ module.exports = async (req, res) => {
   // Bearer gate. 401 on any mismatch; no token configured = closed, not open.
   // Accepts the token under MCP_BEARER_TOKEN or common misspellings (underscores/dashes
   // dropped by dashboard entry, any case), value trimmed to survive paste whitespace.
-  const auth = String(req.headers["authorization"] || "");
   const token = _bearerToken();
-  const expected = "Bearer " + (token || "");
-  if (!token || auth !== expected) { res.status(401).json({ error: "unauthorized" }); return; }
+  const got = _requestToken(req);
+  if (!token || !got || got !== token) { res.status(401).json({ error: "unauthorized", hint: "send MCP_BEARER_TOKEN in the authorization header (or x-mcp-bearer-token/x-api-key)" }); return; }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
