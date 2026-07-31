@@ -50,5 +50,20 @@ ok("trivial input ('') -> FULL brain", FULL.length > 60000, FULL.length);
 ok("deterministic: same query -> identical assembly",
    A("foam roof coating for a pole barn") === A("foam roof coating for a pole barn"));
 
+// ---- tool bag wired into the brain: minds are told their real, current toolkit ----
+(() => {
+  const savedA = process.env.ANTHROPIC_API_KEY, savedH = process.env.HUBSPOT_TOKEN;
+  delete process.env.ANTHROPIC_API_KEY; delete process.env.HUBSPOT_TOKEN;
+  const off = m.toolBagBlock();
+  ok("toolBagBlock returns a TOOLBOX grounding block", off.includes("KLYFTON TOOLBOX"));
+  ok("keyless compute tools show as LIVE even with no keys", off.includes("LIVE now:") && off.includes("curriculum"));
+  ok("unconfigured tools listed as OFF (won't be offered as working)", off.includes("OFF (needs") && /crm|arms/.test(off));
+  process.env.ANTHROPIC_API_KEY = "sk-test";
+  ok("setting a key moves that tool into LIVE", /LIVE now:[^\n]*hive/.test(m.toolBagBlock()));
+  // restore env so nothing leaks to other suites
+  if (savedA === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = savedA;
+  if (savedH === undefined) delete process.env.HUBSPOT_TOKEN; else process.env.HUBSPOT_TOKEN = savedH;
+})();
+
 console.log("\n" + pass + " passed, " + fail + " failed.");
 process.exit(fail ? 1 : 0);

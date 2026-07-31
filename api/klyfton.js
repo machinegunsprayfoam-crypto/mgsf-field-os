@@ -16,6 +16,7 @@ const semanticMemory = require("./memory");
 const redact = require("./redact"); // strip secrets (API keys/SSN/cards) from user text before the model
 const ats = require("./ats"); // automatic transfer switch: fuel (fresh inference) -> battery (memory) when low
 const brainContext = require("./brain-context"); // live-data grounding: real pipeline (KV + HubSpot) -> "situation" the brain reasons over
+const toolBag = require("./tools"); // self-describing capability catalog -> the brain knows which tools are LIVE vs dark
 
 // Model roles. Router is a cheap/fast classifier; the workers + critic are the smart tier.
 // Tuned for cost: Sonnet workers/critic (~60-80% cheaper than Opus, still sharp).
@@ -1312,6 +1313,24 @@ function contextBlock(context, memory) {
   return parts.length ? "\n\n" + parts.join("\n\n") : "";
 }
 
+// Fold the live TOOL BAG into the brain's grounding so the minds offer only capabilities that are
+// actually wired right now — and never claim a dark (unconfigured) tool ran or invent its output.
+// Best-effort: a bad/empty catalog returns "" and never blocks a message. Live-status is sourced
+// from the tool bag (which sources health.js), so this can't drift from what's really switched on.
+function toolBagBlock() {
+  try {
+    const cat = toolBag.catalog(process.env);
+    if (!cat || !Array.isArray(cat.tools) || !cat.tools.length) return "";
+    const live = cat.tools.filter((t) => t.live).map((t) => t.id);
+    const dark = cat.tools.filter((t) => !t.live).map((t) => t.id);
+    const lines = ["KLYFTON TOOLBOX — your real, CURRENT capabilities (from the live tool bag). Offer only what is " +
+      "LIVE; for anything OFF, say it needs switching on in Vercel — never pretend a dark tool ran or invent its output."];
+    if (live.length) lines.push("LIVE now: " + live.join(", "));
+    if (dark.length) lines.push("OFF (needs a key/config — don't offer these as working): " + dark.join(", "));
+    return "\n\n" + lines.join("\n");
+  } catch (e) { return ""; }
+}
+
 // The Queen: cheap classifier that decides which minds to recruit and how big the job is.
 async function route(key, userText, history, meter) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
@@ -1573,7 +1592,7 @@ module.exports = async (req, res) => {
     try { const g = await brainContext.gather({}); if (g && g.configured && g.context) liveCtx = "\n\n" + g.context; }
     catch (e) { /* live data is best-effort — never block the answer */ }
   }
-  const ctx = contextBlock(body.context, memList) + liveCtx;
+  const ctx = contextBlock(body.context, memList) + liveCtx + toolBagBlock();
 
   // The router is text-only; give it a hint when a message is just an attachment.
   const routeText = userText || "[user attached " + attachments.length + " " +
@@ -1784,3 +1803,4 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 // Exposed for the brain-assembly test harness (tests/brain-assembly.js). No runtime effect on the handler.
 module.exports.assembleBrainBlocks = assembleBrainBlocks;
 module.exports._BRAIN_ORDER = BRAIN_ORDER;
+module.exports.toolBagBlock = toolBagBlock;
