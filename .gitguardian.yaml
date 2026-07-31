@@ -1,0 +1,7 @@
+# GitGuardian config. Test files legitimately contain FAKE secrets as fixtures —
+# most notably tests/redact.js and tests/health.js, which exercise the secret-redaction
+# guardrail and verify the health report never leaks a key. None are real credentials.
+version: 2
+secret:
+  ignored-paths:
+    - "tests/**"

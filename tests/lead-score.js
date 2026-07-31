@@ -28,6 +28,9 @@ const base = { name: "Test", phone: "406-555-1234", email: "a@b.com", state: "MT
   const outFL = L.score({ ...base, state: "FL" }).score;
   ok("in-territory > out-of-territory", inMT > outFL, inMT + " vs " + outFL);
   ok("out-of-area penalty noted", L.score({ ...base, state: "FL" }).reasons.some((x) => /outside/.test(x.signal)));
+  // full state name must map to the code, not truncate ("Montana" -> "MT", not "MO"/Missouri)
+  ok("full name 'Montana' credited in-territory (MT)", L.score({ ...base, state: "Montana" }).reasons.some((x) => /in service territory \(MT\)/.test(x.signal)));
+  ok("full name 'Montana' scores same as 'MT'", L.score({ ...base, state: "Montana" }).score === L.score({ ...base, state: "MT" }).score);
 })();
 
 // ---- reachability matters ----

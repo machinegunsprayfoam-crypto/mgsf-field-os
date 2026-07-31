@@ -22,14 +22,27 @@ const SERVICES = [
   "pole barn", "flash and batt", "flash-and-batt",
 ];
 const DEAD = /won|lost|unqualif|closed|dead|complete|cancel|not interested/i;
+// Full state names → USPS code, so "Montana" isn't truncated to "MO" (Missouri) and
+// wrongly penalized. Territory + neighbors are what matter for scoring; others pass
+// through as their 2-letter code if given.
+const STATE_CODE = {
+  montana: "MT", "north dakota": "ND", "south dakota": "SD", wyoming: "WY",
+  idaho: "ID", minnesota: "MN", nebraska: "NE", colorado: "CO", utah: "UT",
+};
 
 function s(v) { return String(v == null ? "" : v).trim(); }
 function digits(v) { return s(v).replace(/[^0-9]/g, ""); }
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
 function stateOf(lead) {
-  const st = s(lead.state).toUpperCase();
-  if (st) return st.slice(0, 2);
+  const raw = s(lead.state);
+  if (raw) {
+    const up = raw.toUpperCase();
+    if (/^[A-Z]{2}$/.test(up)) return up;            // already a 2-letter code
+    const mapped = STATE_CODE[raw.toLowerCase()];    // full name -> code
+    if (mapped) return mapped;
+    return up.slice(0, 2);                            // unknown full name — last resort
+  }
   // try to sniff a 2-letter state out of a city/address string
   const hay = (s(lead.city) + " " + s(lead.address)).toUpperCase();
   for (const t of TERRITORY) if (new RegExp("\\b" + t + "\\b").test(hay)) return t;
