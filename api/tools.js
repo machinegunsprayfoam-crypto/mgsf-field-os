@@ -171,10 +171,11 @@ function validate(env) {
   return { ok: errors.length === 0, count: c.tools.length, errors };
 }
 
-module.exports = { catalog, find, validate, LOCAL_TOOLS, SUBSYS_META };
-
 // HTTP: GET /api/tools -> the live catalog (read-only, safe to expose; no secrets, no keys).
-module.exports.handler = function (req, res) {
+// The handler is the DEFAULT export (Vercel routes api/tools.js -> /api/tools and needs a function,
+// not an object). The pure helpers hang off it as properties so `require("./tools").catalog(...)`
+// still works everywhere internally (cmdb, boot, klyfton, scenarios).
+function handler(req, res) {
   const guard = require("./guard"); if (!guard.ok(req)) { res.setHeader && res.setHeader("Content-Type", "application/json"); res.statusCode = 401; res.end(JSON.stringify(guard.denied())); return guard.denied(); } // dormant until CREW_CODE set
   const c = catalog(process.env);
   const body = JSON.stringify({ service: "klyfton-tool-bag", ...c }, null, 2);
@@ -184,7 +185,14 @@ module.exports.handler = function (req, res) {
     res.end(body);
   }
   return c;
-};
+}
+module.exports = handler;              // default export = the Vercel handler (was an object → /api/tools was broken)
+module.exports.handler = handler;     // back-compat for callers using .handler
+module.exports.catalog = catalog;
+module.exports.find = find;
+module.exports.validate = validate;
+module.exports.LOCAL_TOOLS = LOCAL_TOOLS;
+module.exports.SUBSYS_META = SUBSYS_META;
 
 // Direct run: print the catalog against the current env. `node api/tools.js`
 if (require.main === module) {
