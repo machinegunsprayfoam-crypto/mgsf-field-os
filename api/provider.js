@@ -35,6 +35,17 @@ const PROVIDERS = {
              url: "https://api.groq.com/openai/v1/chat/completions", defaultModel: "llama-3.3-70b-versatile" },
   mistral: { label: "Mistral",            style: "openai",   key: "MISTRAL_API_KEY",
              url: "https://api.mistral.ai/v1/chat/completions", defaultModel: "mistral-large-latest" },
+  // FREE / free-tier models — all OpenAI-compatible, so they slot into the same adapter (one hub,
+  // many backends — NOT one module per model). Each is inert until its key is set; models are
+  // overridable per call. groq (above) + local (below) are also free.
+  gemini:  { label: "Google Gemini (free tier)", style: "openai", key: "GEMINI_API_KEY",
+             url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", defaultModel: "gemini-1.5-flash" },
+  openrouter: { label: "OpenRouter (free models)", style: "openai", key: "OPENROUTER_API_KEY",
+             url: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "meta-llama/llama-3.3-70b-instruct:free" },
+  cerebras: { label: "Cerebras (free tier)", style: "openai", key: "CEREBRAS_API_KEY",
+             url: "https://api.cerebras.ai/v1/chat/completions", defaultModel: "llama-3.3-70b" },
+  together: { label: "Together AI (free tier)", style: "openai", key: "TOGETHER_API_KEY",
+             url: "https://api.together.xyz/v1/chat/completions", defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" },
   // Free/downloaded model reachable over an OpenAI-compatible URL (Ollama, LM Studio, …).
   // Key optional (local runners usually need none) — set OPENAI_COMPAT_URL to activate.
   local:   { label: "Local / free (OpenAI-compatible)", style: "openai", key: "OPENAI_COMPAT_KEY",

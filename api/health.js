@@ -66,8 +66,12 @@ const SUBSYSTEMS = [
 const PROVIDERS = [
   { id: "openai", label: "ChatGPT", on: (e) => has(e, "OPENAI_API_KEY") },
   { id: "grok", label: "Grok (xAI)", on: (e) => has(e, "XAI_API_KEY") },
-  { id: "groq", label: "Groq", on: (e) => has(e, "GROQ_API_KEY") },
+  { id: "groq", label: "Groq (free tier)", on: (e) => has(e, "GROQ_API_KEY") },
   { id: "mistral", label: "Mistral", on: (e) => has(e, "MISTRAL_API_KEY") },
+  { id: "gemini", label: "Google Gemini (free tier)", on: (e) => has(e, "GEMINI_API_KEY") },
+  { id: "openrouter", label: "OpenRouter (free models)", on: (e) => has(e, "OPENROUTER_API_KEY") },
+  { id: "cerebras", label: "Cerebras (free tier)", on: (e) => has(e, "CEREBRAS_API_KEY") },
+  { id: "together", label: "Together AI (free tier)", on: (e) => has(e, "TOGETHER_API_KEY") },
   { id: "local", label: "Local/free model", on: (e) => has(e, "OPENAI_COMPAT_URL") },
 ];
 
