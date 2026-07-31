@@ -27,6 +27,7 @@ const SUITES = [
   ["memory", "semantic memory: gated behavior + backfill/schema-check"],
   ["curriculum", "learning curriculum: bank integrity + grader + guardrail enforcement + eval wiring"],
   ["tools", "tool bag: self-describing capability catalog + honest live-status (sourced from health)"],
+  ["act", "arms: outward-action classify + approval gate + universal Zapier bus"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;

@@ -59,6 +59,20 @@ const ARMS = {
     fields: ["supplier", "items", "job"],
     preview: (a) => `Order from ${clean(a.supplier, 60) || "?"} for ${clean(a.job, 40) || "stock"}`,
   },
+  // THE UNIVERSAL BUS — one arm to reach any of Zapier's 9,000+ apps through the SAME owner
+  // webhook. A single "Catch Hook" zap on the owner's side fans out by app+op (Google Sheets,
+  // Calendar, Slack, QuickBooks, Meta, …). This is how Klyfton reaches a tool it has no dedicated
+  // arm for. Still outward => approval-gated, still inert until ALERTS_WEBHOOK_URL is set, still
+  // audited. `params` (optional object) carries the app-specific fields; `summary` labels the card.
+  zap: {
+    event: "arm_zap",
+    fields: ["app", "op"],
+    preview: (a) => {
+      const n = a.params && typeof a.params === "object" ? Object.keys(a.params).length : 0;
+      return `Zapier → ${clean(a.app, 40) || "?"}: ${clean(a.op, 60) || "run"}` +
+        (a.summary ? ` — ${clean(a.summary, 80)}` : (n ? ` (${n} field${n === 1 ? "" : "s"})` : ""));
+    },
+  },
 };
 
 // No arm here is reversible+zero-dollar, so ALL require approval. Kept as a function so the policy
@@ -115,6 +129,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       ok: true, configured: true, dispatchReady: !!WEBHOOK,
       arms: Object.fromEntries(Object.entries(ARMS).map(([k, v]) => [k, v.fields])),
+      universalBus: "The 'zap' arm reaches any of Zapier's 9,000+ apps via one Catch Hook — send { type:'zap', app, op, params:{...} }. Same approval gate + webhook as every other arm.",
       safety: "All arms are outward/cost money → require approved:true, and dispatch only through your ALERTS_WEBHOOK_URL. Inert until you wire it. Nothing sends silently.",
     });
     return;

@@ -61,6 +61,7 @@ const LOCAL_TOOLS = [
 //   { subsystem:"id" } reuse a health.js subsystem's own predicate (single source of truth).
 const WEBHOOK = { anyOf: ["ALERTS_WEBHOOK_URL", "NOTIFY_WEBHOOK_URL"] }; // the outward bridge
 const GATED_TOOLS = [
+  { id: "zapier-bus",      category: "action",  kind: "outward", does: "UNIVERSAL BUS — reach 9,000+ apps (Sheets/Calendar/Slack/QuickBooks/Meta…) via one approval-gated webhook", module: "api/act.js", gate: WEBHOOK, arm: "set ALERTS_WEBHOOK_URL (a Zapier Catch Hook)" },
   { id: "notify",          category: "comms",   kind: "outward", does: "universal event webhook — the bridge out of the app", module: "api/notify.js", gate: WEBHOOK, arm: "set ALERTS_WEBHOOK_URL or NOTIFY_WEBHOOK_URL" },
   { id: "missed-call",     category: "comms",   kind: "outward", does: "missed-call auto text-back (speed-to-lead recovery)", module: "api/missed-call.js", gate: WEBHOOK, arm: "set a webhook (+ Twilio for SMS)" },
   { id: "daily-brief",     category: "ops",     kind: "outward", does: "server-side morning brief pushed from app data", module: "api/daily-brief.js", gate: WEBHOOK, arm: "set a webhook to deliver it" },
