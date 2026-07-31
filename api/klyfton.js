@@ -1052,7 +1052,12 @@ const BRAIN_BLOCKS = {
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
   PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
+// BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
+// (never retrieval order) so the composed system prompt is deterministic — stable prompt =
+// stable prompt-caching + consistent behavior.
 const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+// BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
+// (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
 function assembleBrainBlocks(userText) {
   const all = () => BRAIN_ORDER.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
@@ -1060,7 +1065,9 @@ function assembleBrainBlocks(userText) {
     if (!userText || String(userText).trim().length < 3) return all();
     const r = brainRetrieve.retrieve(userText, { topClusters: 6 });
     if (!r || !Array.isArray(r.blocks) || !r.blocks.length) return all();
+    // The retriever emits block keys; normalize its lowercase "base_voice" to the BRAIN_BLOCKS key.
     const want = new Set(r.blocks.map((b) => (b === "base_voice" ? "BASE_VOICE" : b)));
+    // Keep every CORE block + any retrieval-selected block, emitted in the canonical BRAIN_ORDER.
     const chosen = BRAIN_ORDER.filter((k) => BRAIN_CORE.has(k) || want.has(k));
     if (chosen.length < BRAIN_CORE.size) return all();          // selection collapsed -> full brain
     return chosen.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
