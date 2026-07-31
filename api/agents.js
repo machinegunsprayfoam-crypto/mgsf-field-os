@@ -3,7 +3,7 @@
 // produces an ordered PLAN of next actions — each routed to a real tool, checked against live
 // status, and marked approval-required for anything outward. It never sends on its own: outward
 // steps dispatch through the arms (api/act.js) only on the owner's approval, and the whole run is
-// budget-capped by the ATS. This is the "Silvr" idea finally done safely.
+// budget-capped by the ATS — the doer layer on top of projects + tool bag + arms.
 //
 // Agent #1 is the Project Manager / Job Runner. Others: Collector (aging invoices), Bid Chaser
 // (stale bids), Lead Closer (speed-to-lead). Each is a thin policy over the projects engine.

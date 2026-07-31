@@ -176,7 +176,7 @@ function validate(env) {
 // not an object). The pure helpers hang off it as properties so `require("./tools").catalog(...)`
 // still works everywhere internally (cmdb, boot, klyfton, scenarios).
 function handler(req, res) {
-  const guard = require("./guard"); if (!guard.ok(req)) { res.setHeader && res.setHeader("Content-Type", "application/json"); res.statusCode = 401; res.end(JSON.stringify(guard.denied())); return guard.denied(); } // dormant until CREW_CODE set
+  const guard = require("./guard"); if (!guard.ok(req)) { if (res && res.setHeader) { res.setHeader("Content-Type", "application/json"); res.statusCode = 401; res.end(JSON.stringify(guard.denied())); } return guard.denied(); } // dormant until CREW_CODE set; safe when res is null (CLI/test)
   const c = catalog(process.env);
   const body = JSON.stringify({ service: "klyfton-tool-bag", ...c }, null, 2);
   if (res && typeof res.setHeader === "function") {

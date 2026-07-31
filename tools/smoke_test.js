@@ -16,7 +16,7 @@ function storageOn(e) { return suffix(e, /SUPABASE_URL$/i) && (suffix(e, /SERVIC
 // Each check: is it configured (keys present), and a live probe to run when it is.
 const CHECKS = [
   { id: "supabase", label: "Supabase storage", configured: (e) => storageOn(e),
-    run: async () => { const M = require("../api/memory.js"); const ready = await M.schemaReady(); return { ok: ready === true || ready === false, detail: "schemaReady=" + ready }; } },
+    run: async () => { const M = require("../api/memory.js"); const ready = await M.schemaReady(); return { ok: ready === true, detail: ready === true ? "schema ready" : "schema NOT ready (run db/schema.sql pgvector block)" }; } },
   { id: "embed", label: "OpenAI embeddings", configured: (e) => has(e, "OPENAI_API_KEY"),
     run: async () => { const M = require("../api/memory.js"); const v = await M.embed("smoke test"); return { ok: Array.isArray(v) && v.length > 0, detail: v ? v.length + "-dim" : "null" }; } },
   { id: "anthropic", label: "Claude (hive)", configured: (e) => has(e, "ANTHROPIC_API_KEY"),

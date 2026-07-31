@@ -20,7 +20,17 @@ function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max |
 function key(action, dayStr) {
   const a = action || {};
   const day = dayStr || ""; // caller passes the day; empty = date-agnostic key
-  const parts = [clean(a.type, 40), clean(a.to || a.customer, 120), clean(a.subject, 120), clean(a.body || a.items || a.amount, 300), day];
+  // Include arm-specific fields so distinct actions get distinct keys — esp. the universal bus
+  // (type:"zap"), which has no to/subject/body but IS distinguished by app/op/params. Without these,
+  // every zap in a day would collapse to one key and get skipped as a duplicate.
+  const parts = [
+    clean(a.type, 40),
+    clean(a.to || a.customer || a.app, 120),
+    clean(a.subject || a.op, 120),
+    clean(a.body || a.items || a.amount, 300),
+    a.params && typeof a.params === "object" ? JSON.stringify(a.params).slice(0, 400) : "",
+    day,
+  ];
   return crypto.createHash("sha1").update(parts.join("|")).digest("hex");
 }
 

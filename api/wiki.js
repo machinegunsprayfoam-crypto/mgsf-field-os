@@ -172,6 +172,7 @@ async function save(article, opts) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; } // dormant until CREW_CODE set; blocks anon article writes
   if (req.method === "GET") {
     const q = (req.query && (req.query.q || req.query.query)) || "";
     if (q) { res.status(200).json(await retrieve(q, 5)); return; }

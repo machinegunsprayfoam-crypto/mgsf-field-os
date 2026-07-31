@@ -17,6 +17,13 @@ async function main() {
   ok("key differs by day (tomorrow is a new send)", I.key(a, "2026-08-01") !== I.key(a, "2026-08-02"));
   ok("key differs by content", I.key(a, "2026-08-01") !== I.key({ ...a, body: "different" }, "2026-08-01"));
   ok("key differs by recipient", I.key(a, "2026-08-01") !== I.key({ ...a, to: "z@y.com" }, "2026-08-01"));
+  // universal-bus (zap) actions must be distinguished by app/op/params, not collapse to one key
+  const z1 = { type: "zap", app: "Google Sheets", op: "add row", params: { row: [1] } };
+  const z2 = { type: "zap", app: "Google Sheets", op: "add row", params: { row: [2] } };
+  const z3 = { type: "zap", app: "Slack", op: "post message" };
+  ok("two zaps differing by params get different keys (no false-duplicate)", I.key(z1, "D") !== I.key(z2, "D"));
+  ok("two zaps differing by app/op get different keys", I.key(z1, "D") !== I.key(z3, "D"));
+  ok("identical zaps still share a key (real duplicate)", I.key(z1, "D") === I.key({ type: "zap", app: "Google Sheets", op: "add row", params: { row: [1] } }, "D"));
 
   // ---- gated store: no Supabase ⇒ check false (not a dup), commit no-op, no throw ----
   ok("check unconfigured ⇒ false (best-effort, honest)", (await I.check("somekey")) === false);
