@@ -1589,41 +1589,40 @@ module.exports = async (req, res) => {
   }
 
   const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
-  // Merge the client-sent memory with a SEMANTIC recall of the most relevant long-term facts for
-  // this specific message (top-K by embedding similarity). Best-effort + gated: no-op with zero
-  // network cost when pgvector memory isn't configured, and never blocks the answer on failure.
+  // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
+  // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
+  // backend can't stack latency or eat the 60s function budget. Previously these three awaited
+  // one-after-another, ADDING their times together on every non-trivial turn (and memory/wiki had
+  // no timeout at all — only brain-context self-aborts at 2.5s). Same inputs, same resulting
+  // context and same assembly order; just overlapped and time-bounded. On timeout/failure a source
+  // resolves null and is simply skipped — grounding is optional, never blocks the answer.
   let memList = Array.isArray(body.memory) ? body.memory.slice() : [];
-  if (userText && !isTrivial(userText, attachments)) {
-    try {
-      const rec = await semanticMemory.recall(userText, 6);
-      if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
-        const hits = rec.results.map((x) => x && x.note).filter(Boolean);
-        memList = Array.from(new Set(hits.concat(memList))); // relevant recalls first, de-duped
-      }
-    } catch (e) { /* fall back to client-sent memory */ }
-  }
-  // Live-data grounding — when the question is about the pipeline (leads/jobs/estimates/money), pull a
-  // compact REAL "situation" from brain-context (KV + HubSpot). Best-effort + gated: ~zero cost and a
-  // no-op when unconfigured, 2.5s timeout-guarded, and never blocks the answer on failure.
   let liveCtx = "";
-  if (userText && !isTrivial(userText, attachments) &&
-      /\b(lead|leads|customer|client|job|jobs|pipeline|estimate|estimates|quote|proposal|invoice|revenue|money|sales|follow[- ]?up|cold|deal|contact|schedule|how many|status|AR)\b/i.test(userText)) {
-    try { const g = await brainContext.gather({}); if (g && g.configured && g.context) liveCtx = "\n\n" + g.context; }
-    catch (e) { /* live data is best-effort — never block the answer */ }
-  }
-  // Knowledge-base grounding — pull the most relevant wiki articles (SOPs/playbooks) for this
-  // question. Best-effort + gated: no-op with zero cost when the wiki (Supabase) isn't attached,
-  // 2.5s-safe, never blocks the answer. Truth order is stated so a wiki article never overrides
-  // locked doctrine.
   let wikiCtx = "";
   if (userText && !isTrivial(userText, attachments)) {
-    try {
-      const w = await wiki.retrieve(userText, 3);
-      if (w && w.configured && Array.isArray(w.results) && w.results.length) {
-        wikiCtx = "\n\nKNOWLEDGE BASE (wiki — company SOPs/playbooks; use these, but LOCKED DOCTRINE still wins over anything here):\n" +
-          w.results.map((r) => "• " + r.title + ": " + r.snippet).join("\n");
-      }
-    } catch (e) { /* wiki is best-effort — never block the answer */ }
+    const cap = (p, ms) => Promise.race([
+      Promise.resolve(p).catch(() => null),
+      new Promise((resolve) => setTimeout(() => resolve(null), ms)),
+    ]);
+    // Live pipeline data only matters for pipeline/money questions — same gate as before.
+    const wantsLive = /\b(lead|leads|customer|client|job|jobs|pipeline|estimate|estimates|quote|proposal|invoice|revenue|money|sales|follow[- ]?up|cold|deal|contact|schedule|how many|status|AR)\b/i.test(userText);
+    const [rec, g, w] = await Promise.all([
+      cap(semanticMemory.recall(userText, 6), 2500),
+      wantsLive ? cap(brainContext.gather({}), 2600) : Promise.resolve(null),
+      cap(wiki.retrieve(userText, 3), 2500),
+    ]);
+    // Semantic memory: relevant recalls first, de-duped ahead of client-sent memory.
+    if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
+      const hits = rec.results.map((x) => x && x.note).filter(Boolean);
+      memList = Array.from(new Set(hits.concat(memList)));
+    }
+    // Live "situation" — compact REAL pipeline snapshot; gated + null when unconfigured/slow.
+    if (g && g.configured && g.context) liveCtx = "\n\n" + g.context;
+    // Wiki SOPs/playbooks — LOCKED DOCTRINE still wins over anything here.
+    if (w && w.configured && Array.isArray(w.results) && w.results.length) {
+      wikiCtx = "\n\nKNOWLEDGE BASE (wiki — company SOPs/playbooks; use these, but LOCKED DOCTRINE still wins over anything here):\n" +
+        w.results.map((r) => "• " + r.title + ": " + r.snippet).join("\n");
+    }
   }
   const ctx = contextBlock(body.context, memList) + liveCtx + wikiCtx + toolBagBlock();
 
