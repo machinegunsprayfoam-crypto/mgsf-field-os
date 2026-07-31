@@ -1192,6 +1192,13 @@ function splitMemory(raw) {
   return { text, remember };
 }
 
+// Persist facts before responding so semantic recall has the same durable knowledge as client sync.
+// Storage failures remain non-blocking for the chat response.
+async function persistSemanticMemory(facts) {
+  if (!Array.isArray(facts) || !facts.length) return;
+  try { await Promise.all(facts.map((fact) => semanticMemory.remember(fact))); } catch (e) {}
+}
+
 // One Anthropic call, resuming through pause_turn so server-side web search can finish.
 // `meter` (optional {usd}) accumulates the dollar cost of the call for the monthly cap.
 async function callClaude(key, payload, meter) {
@@ -1631,6 +1638,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
         const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
+        await persistSemanticMemory(remember);
         run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [only.mind], model: only.model, power: atsState.source });
         res.end();
@@ -1650,6 +1658,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       }
       if (answers.length === 1) {
         const { text, remember } = splitMemory(answers[0].text);
+        await persistSemanticMemory(remember);
         run.mode = "single"; run.minds = [answers[0].mind]; run.status = "ok";
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
         res.end();
@@ -1674,6 +1683,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       );
       run.mode = "hive"; run.minds = answers.map((a) => a.mind); run.model = model || CRITIC_MODEL; run.status = "ok";
       const { text, remember } = splitMemory(raw || answers[0].text);
+      await persistSemanticMemory(remember);
       sseSend(res, { done: true, text, remember, configured: true, mode: "hive", minds: answers.map((a) => a.mind), model: model || CRITIC_MODEL });
       res.end();
     } catch (e) {
@@ -1700,6 +1710,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
       const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
+      await persistSemanticMemory(remember);
       run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
       res.status(200).json({
         text,
@@ -1725,6 +1736,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     }
     if (answers.length === 1) {
       const { text, remember } = splitMemory(answers[0].text);
+      await persistSemanticMemory(remember);
       run.mode = "single"; run.minds = [answers[0].mind]; run.status = "ok";
       res.status(200).json({ text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
       return;
@@ -1743,6 +1755,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     }, meter);
     run.mode = "hive"; run.minds = answers.map((a) => a.mind); run.model = synth.model || CRITIC_MODEL; run.status = "ok";
     const { text, remember } = splitMemory(textFrom(synth.content) || answers[0].text);
+    await persistSemanticMemory(remember);
     res.status(200).json({
       text,
       remember,
