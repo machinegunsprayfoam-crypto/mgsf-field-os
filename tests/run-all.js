@@ -19,6 +19,7 @@ const SUITES = [
   ["health", "Mechanic self-check (subsystem status)"],
   ["redact", "secret/PII redaction guardrail"],
   ["geo", "mobilization-by-distance (locked doctrine tiers)"],
+  ["dew-point", "spray-safety GO/CAUTION/NO-GO flag + 5°F margin"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
