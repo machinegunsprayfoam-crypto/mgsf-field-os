@@ -16,6 +16,7 @@ const SUITES = [
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
   ["hubspot-score", "call-list scoring integration"],
+  ["health", "Mechanic self-check (subsystem status)"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
