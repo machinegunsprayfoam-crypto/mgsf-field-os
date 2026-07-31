@@ -50,6 +50,13 @@ console.log("Health / Mechanic self-check invariants\n");
   ok("storage on with supabase pair", get(r, "storage").status === "on");
 })();
 
+// ---- prefixed integration var names (Vercel Supabase integration) must still register ----
+(() => {
+  const r = H.buildReport({ MYPROJECT_SUPABASE_URL: "https://x.supabase.co", MYPROJECT_SUPABASE_SERVICE_ROLE_KEY: "k" });
+  ok("storage on with PREFIXED supabase vars", get(r, "storage").status === "on", get(r, "storage").status);
+  ok("memory partial with PREFIXED supabase vars", get(r, "memory").status === "partial", get(r, "memory").status);
+})();
+
 // ---- Twilio partial vs full ----
 (() => {
   const partial = H.buildReport({ TWILIO_ACCOUNT_SID: "AC" });

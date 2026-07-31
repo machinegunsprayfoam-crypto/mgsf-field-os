@@ -14,14 +14,20 @@
 const has = (env, k) => !!(env && env[k] && String(env[k]).trim());
 const hasAny = (env, ks) => ks.some((k) => has(env, k));
 const hasAll = (env, ks) => ks.every((k) => has(env, k));
+// Suffix-tolerant match, mirroring memory.js/_kvEnv — Vercel integrations often inject a
+// PREFIXED var name (e.g. a "…_SUPABASE_URL"), which an exact-key check silently misses,
+// making health report storage/memory OFF while memory.js already sees it ON.
+const hasSuffix = (env, re) => Object.keys(env || {}).some((k) => re.test(k) && String(env[k]).trim());
+const supabaseOn = (e) => hasSuffix(e, /SUPABASE_URL$/i) &&
+  (hasSuffix(e, /SUPABASE_SERVICE_ROLE_KEY$/i) || hasSuffix(e, /SERVICE_ROLE_KEY$/i) || hasSuffix(e, /SUPABASE_SECRET/i));
 
 const SUBSYSTEMS = [
   { id: "hive", label: "Hive (Claude brain)", core: true,
     on: (e) => has(e, "ANTHROPIC_API_KEY"),
     note: "set ANTHROPIC_API_KEY" },
   { id: "memory", label: "Memory (pgvector recall)",
-    on: (e) => hasAny(e, ["SUPABASE_URL"]) && hasAny(e, ["SUPABASE_SERVICE_ROLE_KEY", "SERVICE_ROLE_KEY", "SUPABASE_SECRET"]) && has(e, "OPENAI_API_KEY"),
-    partial: (e) => hasAny(e, ["SUPABASE_URL"]) && hasAny(e, ["SUPABASE_SERVICE_ROLE_KEY", "SERVICE_ROLE_KEY", "SUPABASE_SECRET"]),
+    on: (e) => supabaseOn(e) && has(e, "OPENAI_API_KEY"),
+    partial: (e) => supabaseOn(e),
     note: "note-only until OPENAI_API_KEY is set (needs Supabase + embed key for semantic recall)" },
   { id: "arms", label: "Arms (email/SMS/CRM/invoice executor)",
     on: (e) => has(e, "ALERTS_WEBHOOK_URL"),
@@ -40,7 +46,7 @@ const SUBSYSTEMS = [
     on: (e) => hasAny(e, ["SAM_API_KEY", "SAMGOV_API_KEY"]),
     note: "set SAM_API_KEY (free)" },
   { id: "storage", label: "Storage / event spine (Supabase)",
-    on: (e) => hasAny(e, ["SUPABASE_URL"]) && hasAny(e, ["SUPABASE_SERVICE_ROLE_KEY", "SERVICE_ROLE_KEY", "SUPABASE_SECRET"]),
+    on: (e) => supabaseOn(e),
     note: "set SUPABASE_URL + a service-role key, then run db/schema.sql" },
   { id: "maps", label: "Maps / geo (geocoding + drive distance)",
     on: (e) => hasAny(e, ["GOOGLE_MAPS_API_KEY", "MAPS_API_KEY"]),
