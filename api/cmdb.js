@@ -39,7 +39,7 @@ const CAPS = {
 const DEPS = {
   hive: ["anthropic"],
   memory: ["storage", "embed"],
-  wiki: ["storage"], photo: ["storage"], sync: ["storage"], "command-center": ["storage"], "mcp-server": ["storage"],
+  wiki: ["storage"], photo: ["storage"], sync: ["storage"], "command-center": ["storage"], "mcp-server": ["storage"], telemetry: ["storage"],
   crm: ["hubspot"], sms: ["twilio"], govcon: ["sam"], maps: ["maps"], tts: ["ttskey"], drive: ["drive"],
   arms: ["webhook"], "zapier-bus": ["webhook"], notify: ["webhook"], "missed-call": ["webhook"],
   "daily-brief": ["webhook"], "follow-up": ["webhook"], "estimate-followup": ["webhook"],

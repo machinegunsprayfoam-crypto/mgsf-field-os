@@ -82,6 +82,7 @@ const GATED_TOOLS = [
   { id: "photo",           category: "infra",   kind: "read",    does: "job-photo storage on the shared data backbone", module: "api/photo.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
   { id: "sync",            category: "infra",   kind: "read",    does: "multi-device sync backbone (every crew phone in step)", module: "api/sync.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
   { id: "command-center",  category: "ops",     kind: "read",    does: "ops dashboard read API — the real live numbers", module: "api/command-center.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
+  { id: "telemetry",       category: "infra",   kind: "read",    does: "runtime observability — agent runs rolled up by agent/outcome/day", module: "api/telemetry.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase) — agents log to agent_runs" },
   { id: "mcp-server",      category: "infra",   kind: "read",    does: "Klyfton's own MCP server (read-only data tools for the brain)", module: "api/mcp.js", gate: { subsystem: "storage" }, arm: "attach storage + set MCP_BEARER_TOKEN" },
 ];
 
