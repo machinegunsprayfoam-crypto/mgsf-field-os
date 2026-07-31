@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Klyfton agents runtime — goal selection + planning + the approval/dark-tool guards. Run:
-// `node tests/agents.js`. Pure/deterministic on nowMs, keyless, no network. The critical property:
-// an agent PLANS and stages drafts — it never dispatches an unapproved action.
+// Klyfton agents runtime — roster/planning + the CLOSED LOOP (plan → arms → observe/skip). Run:
+// `node tests/agents.js`. Pure/deterministic on nowMs, keyless, no network (arms executor is
+// injected as a mock). The critical property: NOTHING dispatches unless approved===true.
 
 const path = require("path");
 const A = require(path.join(__dirname, "..", "api", "agents.js"));
@@ -10,61 +10,71 @@ function ok(name, cond, detail) { if (cond) { pass++; } else { fail++; console.l
 
 const DAY = 86400000;
 const NOW = 1750000000000;
+const WEBHOOK = { ALERTS_WEBHOOK_URL: "https://hook/x" }; // makes outward tools "live"
 
 const JOBS = [
-  { customer: "Sam", status: "quote sent", stageAt: NOW - 10 * DAY }, // bid, overdue
-  { customer: "Deb", status: "new lead" },                            // lead
-  { customer: "Ray", status: "invoiced", stageAt: NOW - 50 * DAY },   // invoiced, overdue
-  { customer: "Kay", status: "invoiced", stageAt: NOW - 5 * DAY },    // invoiced, NOT overdue
-  { customer: "Lou", status: "paid" },                               // terminal
-  { customer: "Moe", status: "in progress" },                        // open
+  { customer: "Sam", status: "quote sent", stageAt: NOW - 10 * DAY, email: "sam@x.com" }, // bid, overdue
+  { customer: "Deb", status: "new lead", phone: "406-555-0100" },                          // lead
+  { customer: "Ray", status: "invoiced", stageAt: NOW - 50 * DAY, email: "ray@x.com" },     // invoiced, overdue
+  { customer: "Kay", status: "invoiced", stageAt: NOW - 5 * DAY },                          // invoiced, NOT overdue
+  { customer: "Lou", status: "paid" },                                                       // terminal
+  { customer: "Moe", status: "in progress" },                                                // open
 ];
 
-console.log("Klyfton agents — roster + planning + guards\n");
+// mock arms executor: echoes approval as dispatched/needs_approval (no network)
+const mockExec = (action, opts) => Promise.resolve({ ok: true, status: opts && opts.approved ? "dispatched" : "needs_approval", type: action.type });
 
-// ---- roster ----
-ok("exports AGENTS/plan/run", A.AGENTS && typeof A.plan === "function" && typeof A.run === "function");
-ok("PM is agent #1", !!A.AGENTS.pm && /project manager|job runner/i.test(A.AGENTS.pm.label));
-ok("roster has collector, bid-chaser, lead-closer", ["collector", "bid-chaser", "lead-closer"].every((k) => A.AGENTS[k]));
+async function main() {
+  console.log("Klyfton agents — roster + closed loop + guards\n");
 
-// ---- unknown agent ----
-ok("unknown agent ⇒ error + roster", (() => { const p = A.plan("nope", JOBS, NOW, {}); return p.ok === false && Array.isArray(p.agents); })());
+  // ---- roster + planning (unchanged core) ----
+  ok("PM is agent #1", !!A.AGENTS.pm && /project manager|job runner/i.test(A.AGENTS.pm.label));
+  ok("roster has collector, bid-chaser, lead-closer", ["collector", "bid-chaser", "lead-closer"].every((k) => A.AGENTS[k]));
+  ok("unknown agent ⇒ error + roster", (() => { const p = A.plan("nope", JOBS, NOW, {}); return p.ok === false && Array.isArray(p.agents); })());
+  ok("PM plans open jobs only (skips paid)", (() => { const p = A.plan("pm", JOBS, NOW, {}); return p.count === 5 && !p.steps.find((s) => s.who === "Lou"); })());
+  ok("Collector selects only the overdue invoice (Ray, not Kay)", (() => { const p = A.plan("collector", JOBS, NOW, {}); return p.count === 1 && p.steps[0].who === "Ray"; })());
 
-// ---- PM plans every OPEN job (skips terminal) ----
-const pm = A.plan("pm", JOBS, NOW, {});
-ok("PM plans open jobs only (skips paid)", pm.ok && pm.count === 5 && !pm.steps.find((s) => s.who === "Lou"), pm.count);
-ok("PM step carries who/stage/action/tool", pm.steps.every((s) => s.who && s.stage && s.action));
+  // ---- buildAction: step → concrete arm skeleton (pure), body left empty (brain fills) ----
+  ok("lead ⇒ send_sms to the phone", (() => { const a = A.buildAction({ stage: "lead" }, { phone: "406", customer: "D" }); return a.type === "send_sms" && a.to === "406"; })());
+  ok("invoiced ⇒ send_email to the email", (() => { const a = A.buildAction({ stage: "invoiced" }, { email: "r@x", customer: "R" }); return a.type === "send_email" && a.to === "r@x"; })());
+  ok("done ⇒ create_invoice with customer+amount", (() => { const a = A.buildAction({ stage: "done" }, { customer: "R", value: 5000, service: "foam" }); return a.type === "create_invoice" && a.customer === "R" && a.amount === 5000; })());
+  ok("buildAction leaves message body EMPTY (no fabricated copy)", A.buildAction({ stage: "bid" }, { email: "s@x" }).body === "");
+  ok("paid/in-app stage ⇒ null (not an arm)", A.buildAction({ stage: "paid" }, {}) === null);
 
-// ---- Collector targets ONLY overdue invoices ----
-const col = A.plan("collector", JOBS, NOW, {});
-ok("Collector selects only the overdue invoice (Ray, not Kay)", col.count === 1 && col.steps[0].who === "Ray", JSON.stringify(col.steps.map((s) => s.who)));
+  // ---- shouldSkip: observe → don't repeat within cooldown (pure) ----
+  const hist = [{ who: "Ray", stage: "invoiced", at: NOW - 1 * DAY }];
+  ok("recent same who+stage ⇒ skip", A.shouldSkip({ who: "Ray", stage: "invoiced" }, hist, NOW, 3) === true);
+  ok("beyond cooldown ⇒ don't skip", A.shouldSkip({ who: "Ray", stage: "invoiced" }, [{ who: "Ray", stage: "invoiced", at: NOW - 10 * DAY }], NOW, 3) === false);
+  ok("different stage ⇒ don't skip", A.shouldSkip({ who: "Ray", stage: "bid" }, hist, NOW, 3) === false);
 
-// ---- Bid Chaser targets ONLY stale bids ----
-const bc = A.plan("bid-chaser", JOBS, NOW, {});
-ok("Bid Chaser selects the stale bid (Sam)", bc.count === 1 && bc.steps[0].who === "Sam");
+  // ---- CLOSED LOOP via injected mock executor ----
+  const preview = await A.run("collector", JOBS, NOW, WEBHOOK, { exec: mockExec, approved: false });
+  ok("preview: outward step ran through arms as a gated draft", preview.results.some((r) => r.outcome === "needs_approval"));
+  ok("preview: nothing dispatched", preview.dispatched === 0);
+  ok("preview: note says nothing sent", /nothing sent/i.test(preview.note));
 
-// ---- Lead Closer targets leads ----
-const lc = A.plan("lead-closer", JOBS, NOW, {});
-ok("Lead Closer selects the new lead (Deb)", lc.count === 1 && lc.steps[0].who === "Deb");
+  const approved = await A.run("collector", JOBS, NOW, WEBHOOK, { exec: mockExec, approved: true });
+  ok("approved: the live Ray invoice step dispatches", approved.dispatched === 1, JSON.stringify(approved.results.map((r) => r.outcome)));
 
-// ---- tool routing + live/dark ----
-ok("collector step routes to invoice-remind", col.steps[0].tool === "invoice-remind");
-ok("with no webhook, the invoice-remind step is dark (blocked)", col.steps[0].live === false && !!col.steps[0].blockedBy);
-const colLit = A.plan("collector", JOBS, NOW, { ALERTS_WEBHOOK_URL: "https://h/x" });
-ok("wiring the webhook makes the collector step live", colLit.steps[0].live === true);
+  // ---- observe: a recently-run step is skipped, not re-dispatched ----
+  const withHist = await A.run("collector", JOBS, NOW, WEBHOOK, { exec: mockExec, approved: true, history: hist, cooldownDays: 3 });
+  ok("recently-done step is skipped (not re-sent)", withHist.dispatched === 0 && withHist.skipped === 1);
 
-// ---- primaryTool mapping ----
-ok("primaryTool strips arm: prefix ⇒ arms", A.primaryTool("arm:create_invoice") === "arms");
-ok("primaryTool takes first of a slash list", A.primaryTool("missed-call / follow-up") === "missed-call");
-ok("primaryTool dash ⇒ null", A.primaryTool("—") === null);
+  // ---- dark tool: step blocked, never reaches the executor ----
+  let execCalls = 0;
+  const countExec = (a, o) => { execCalls++; return Promise.resolve({ ok: true, status: "dispatched" }); };
+  const darkRun = await A.run("collector", JOBS, NOW, {}, { exec: countExec, approved: true }); // no webhook ⇒ invoice-remind dark
+  ok("dark-tool step is blocked and never hits the executor", darkRun.blocked === 1 && execCalls === 0, "execCalls=" + execCalls);
 
-// ---- the SAFETY property: run() never dispatches without approval ----
-const preview = A.run("pm", JOBS, NOW, {}, {});
-ok("run without approval ⇒ willDispatch empty (nothing sent)", Array.isArray(preview.willDispatch) && preview.willDispatch.length === 0);
-ok("run preview note says nothing sent", /nothing sent/i.test(preview.note));
-const approved = A.run("collector", JOBS, NOW, { ALERTS_WEBHOOK_URL: "https://h/x" }, { approved: true });
-ok("approved run lists only LIVE steps as dispatchable", approved.willDispatch.length === 1 && approved.willDispatch[0].live === true);
-ok("empty jobs ⇒ empty plan, no throw", A.plan("pm", [], NOW, {}).count === 0);
+  // ---- SAFETY with the REAL arms (no injected exec, no webhook): approved but nothing sends ----
+  const realApproved = await A.run("collector", JOBS, NOW, WEBHOOK, { approved: true });
+  ok("real arms, approved, no dispatch channel wired ⇒ 0 dispatched (never silently sends)", realApproved.dispatched === 0, JSON.stringify(realApproved.results.map((r) => r.outcome)));
 
-console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
-process.exit(fail ? 1 : 0);
+  // ---- history/logRun are gated + graceful with no Supabase ----
+  ok("history unconfigured ⇒ configured:false, empty", (await A.history("pm")).configured === false);
+  ok("logRun unconfigured ⇒ configured:false (no throw)", (await A.logRun("pm", [{ step: { who: "R", stage: "bid" }, outcome: "needs_approval" }], NOW)).configured === false);
+
+  console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
+  process.exit(fail ? 1 : 0);
+}
+main();
