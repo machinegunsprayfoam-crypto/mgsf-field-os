@@ -1331,6 +1331,24 @@ function toolBagBlock() {
   } catch (e) { return ""; }
 }
 
+// Compact capability hint for the ROUTER (the Queen). Teaches it to prefer recruiting minds whose
+// supporting tools are LIVE and not to spin up extra minds that depend on a dark tool. Best-effort:
+// returns "" if the catalog is unavailable so routing is never blocked.
+function routerToolHint() {
+  try {
+    const cat = toolBag.catalog(process.env);
+    if (!cat || !Array.isArray(cat.tools) || !cat.tools.length) return "";
+    const live = cat.tools.filter((t) => t.live).map((t) => t.id);
+    const off = cat.tools.filter((t) => !t.live).map((t) => t.id);
+    let s = "\nCAPABILITY STATUS — prefer recruiting minds whose supporting tools are LIVE. If the ask needs a tool " +
+      "that's OFF, still route one mind to answer (it will note the tool needs switching on), but do NOT add extra " +
+      "minds that depend on an OFF tool.";
+    if (live.length) s += "\nLIVE: " + live.join(", ");
+    if (off.length) s += "\nOFF: " + off.join(", ");
+    return s;
+  } catch (e) { return ""; }
+}
+
 // The Queen: cheap classifier that decides which minds to recruit and how big the job is.
 async function route(key, userText, history, meter) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
@@ -1341,7 +1359,7 @@ jobs, opportunities, or gov solicitations.
 Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
 Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
-If unsure, {"minds":["general"],"complexity":"simple"}.`;
+If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
   const recent = (history || [])
     .slice(-4)
     .map((m) => (m.role === "user" ? "U: " : "A: ") + String(m.content).slice(0, 200))
@@ -1804,3 +1822,4 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 module.exports.assembleBrainBlocks = assembleBrainBlocks;
 module.exports._BRAIN_ORDER = BRAIN_ORDER;
 module.exports.toolBagBlock = toolBagBlock;
+module.exports.routerToolHint = routerToolHint;

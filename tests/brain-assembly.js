@@ -65,5 +65,18 @@ ok("deterministic: same query -> identical assembly",
   if (savedH === undefined) delete process.env.HUBSPOT_TOKEN; else process.env.HUBSPOT_TOKEN = savedH;
 })();
 
+// ---- router is taught to prefer live tools ----
+(() => {
+  const savedW = process.env.ALERTS_WEBHOOK_URL;
+  delete process.env.ALERTS_WEBHOOK_URL;
+  const hint = m.routerToolHint();
+  ok("routerToolHint gives the Queen a CAPABILITY STATUS rule", hint.includes("CAPABILITY STATUS") && /prefer recruiting minds/.test(hint));
+  ok("router hint separates LIVE from OFF tools", hint.includes("LIVE:") && hint.includes("OFF:"));
+  ok("webhook-gated tool (notify) shows OFF with no webhook", /OFF:[^]*notify/.test(hint));
+  process.env.ALERTS_WEBHOOK_URL = "https://hook.example/x";
+  ok("setting the webhook moves notify to LIVE for the router", /LIVE:[^]*notify/.test(m.routerToolHint()));
+  if (savedW === undefined) delete process.env.ALERTS_WEBHOOK_URL; else process.env.ALERTS_WEBHOOK_URL = savedW;
+})();
+
 console.log("\n" + pass + " passed, " + fail + " failed.");
 process.exit(fail ? 1 : 0);

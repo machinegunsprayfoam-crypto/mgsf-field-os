@@ -46,6 +46,35 @@ const LOCAL_TOOLS = [
   { id: "unit-convert",     category: "estimator", kind: "compute", does: "trade unit conversions", module: "api/unit-convert.js" },
   { id: "job-cost",         category: "finance",   kind: "compute", does: "job-cost roll-up vs estimate", module: "api/job-cost.js" },
   { id: "curriculum",       category: "learning",  kind: "compute", does: "graded exam that scores Klyfton's knowledge (the eval loop)", module: "api/curriculum.js" },
+  // keyless document + draft generators (produce a doc/message for approval — no external key)
+  { id: "proposal-pdf",     category: "documents", kind: "compute", does: "turn an estimate into a branded, emailable proposal PDF", module: "api/proposal-pdf.js" },
+  { id: "warranty-cert",    category: "documents", kind: "compute", does: "warranty certificate PDF to hand over at job close", module: "api/warranty-cert.js" },
+  { id: "capability-statement", category: "govcon", kind: "compute", does: "one-page SDVOSB capability statement for federal buyers", module: "api/capability-statement.js" },
+  { id: "change-order",     category: "documents", kind: "compute", does: "mid-job scope/price change-order doc to sign", module: "api/change-order.js" },
+  { id: "reviews",          category: "comms",     kind: "compute", does: "draft the post-job 'how'd we do?' review request", module: "api/reviews.js" },
+  { id: "photo-estimate",   category: "estimator", kind: "compute", does: "draft an estimate from a field photo + a few measurements", module: "api/photo-estimate.js" },
+  { id: "weather",          category: "ops",       kind: "compute", does: "spray-window go/no-go conditions for a job address", module: "api/weather.js" },
+];
+
+// Real modules that DO need a key/config to work — each with an honest gate. `gate` is one of:
+//   { anyOf:[...] } live if ANY listed env var is set · { allOf:[...] } live if ALL set ·
+//   { subsystem:"id" } reuse a health.js subsystem's own predicate (single source of truth).
+const WEBHOOK = { anyOf: ["ALERTS_WEBHOOK_URL", "NOTIFY_WEBHOOK_URL"] }; // the outward bridge
+const GATED_TOOLS = [
+  { id: "notify",          category: "comms",   kind: "outward", does: "universal event webhook — the bridge out of the app", module: "api/notify.js", gate: WEBHOOK, arm: "set ALERTS_WEBHOOK_URL or NOTIFY_WEBHOOK_URL" },
+  { id: "missed-call",     category: "comms",   kind: "outward", does: "missed-call auto text-back (speed-to-lead recovery)", module: "api/missed-call.js", gate: WEBHOOK, arm: "set a webhook (+ Twilio for SMS)" },
+  { id: "daily-brief",     category: "ops",     kind: "outward", does: "server-side morning brief pushed from app data", module: "api/daily-brief.js", gate: WEBHOOK, arm: "set a webhook to deliver it" },
+  { id: "follow-up",       category: "comms",   kind: "outward", does: "no-lead-goes-cold follow-up sequencer", module: "api/follow-up.js", gate: WEBHOOK, arm: "set a webhook" },
+  { id: "estimate-followup", category: "comms", kind: "outward", does: "reheat unsold estimates that never closed", module: "api/estimate-followup.js", gate: WEBHOOK, arm: "set a webhook" },
+  { id: "invoice-remind",  category: "finance", kind: "outward", does: "draft reminders for due/overdue invoices", module: "api/invoice-remind.js", gate: WEBHOOK, arm: "set a webhook" },
+  { id: "inventory-reorder", category: "ops",   kind: "outward", does: "what to reorder and from whom (reorder sweep)", module: "api/inventory-reorder.js", gate: WEBHOOK, arm: "set a webhook" },
+  { id: "roof-maintenance", category: "revenue", kind: "outward", does: "recurring roof-maintenance program outreach", module: "api/roof-maintenance.js", gate: WEBHOOK, arm: "set a webhook" },
+  { id: "tts",             category: "comms",   kind: "outward", does: "text-to-speech — Klyfton's replies as natural voice", module: "api/tts.js", gate: { anyOf: ["ELEVENLABS_API_KEY", "OPENAI_API_KEY"] }, arm: "set ELEVENLABS_API_KEY or OPENAI_API_KEY" },
+  { id: "drive",           category: "infra",   kind: "outward", does: "Google Drive CSV + job-photo backup", module: "api/drive.js", gate: { anyOf: ["GDRIVE_WEBAPP_URL", "GOOGLE_APPS_SCRIPT_URL", "GDRIVE_TOKEN"] }, arm: "set GDRIVE_WEBAPP_URL (+ token)" },
+  { id: "photo",           category: "infra",   kind: "read",    does: "job-photo storage on the shared data backbone", module: "api/photo.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
+  { id: "sync",            category: "infra",   kind: "read",    does: "multi-device sync backbone (every crew phone in step)", module: "api/sync.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
+  { id: "command-center",  category: "ops",     kind: "read",    does: "ops dashboard read API — the real live numbers", module: "api/command-center.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
+  { id: "mcp-server",      category: "infra",   kind: "read",    does: "Klyfton's own MCP server (read-only data tools for the brain)", module: "api/mcp.js", gate: { subsystem: "storage" }, arm: "attach storage + set MCP_BEARER_TOKEN" },
 ];
 
 function statusOf(sub, env) {
@@ -54,6 +83,21 @@ function statusOf(sub, env) {
     if (typeof sub.partial === "function" && sub.partial(env)) return "partial";
   } catch (e) { /* a bad predicate must not crash the catalog */ }
   return "dark";
+}
+
+function _has(env, k) { return !!(env && env[k]); }
+// Resolve a GATED_TOOLS gate spec against env. anyOf / allOf on env keys, or reuse a health subsystem.
+function gateLive(gate, env) {
+  try {
+    if (!gate) return false;
+    if (gate.anyOf) return gate.anyOf.some((k) => _has(env, k));
+    if (gate.allOf) return gate.allOf.every((k) => _has(env, k));
+    if (gate.subsystem) {
+      const sub = SUBSYS.find((s) => s.id === gate.subsystem);
+      return !!(sub && typeof sub.on === "function" && sub.on(env));
+    }
+  } catch (e) { /* never crash the catalog on a bad gate */ }
+  return false;
 }
 
 // Build the full catalog against an env-like object. Deterministic, no network, no time.
@@ -73,7 +117,14 @@ function catalog(env) {
     id: t.id, name: t.id, category: t.category, kind: t.kind, does: t.does, module: t.module,
     gated: false, gatedBy: "none", status: "live", live: true,
   }));
-  const tools = gated.concat(local);
+  const extra = GATED_TOOLS.map((t) => {
+    const live = gateLive(t.gate, env);
+    return {
+      id: t.id, name: t.id, category: t.category, kind: t.kind, does: t.does, module: t.module,
+      gated: true, gatedBy: t.arm || "(needs config)", status: live ? "live" : "dark", live,
+    };
+  });
+  const tools = gated.concat(local, extra);
   const live = tools.filter((t) => t.live);
   const dark = tools.filter((t) => t.status === "dark");
   const byCategory = {};
