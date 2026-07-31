@@ -18,7 +18,7 @@ const strong = H.mapContact({ id: "1", properties: {
 ok("attaches numeric score", typeof strong.score === "number", strong.score);
 ok("attaches band", typeof strong.band === "string", strong.band);
 ok("in-territory reachable ⇒ warm/hot", strong.score >= 55, strong.score);
-ok("preserves the lead shape (name/phone/url)", !!strong.name && strong.phone === "4065551234" || strong.phone === "406-555-1234");
+ok("preserves the lead shape (name/phone/url)", !!strong.name && (strong.phone === "4065551234" || strong.phone === "406-555-1234"));
 
 const weak = H.mapContact({ id: "2", properties: {
   firstname: "Out", lastname: "Ofarea", state: "FL", hs_lead_status: "NEW" } });

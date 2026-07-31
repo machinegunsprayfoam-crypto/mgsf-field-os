@@ -21,9 +21,9 @@ Exit 0 = every checked constant matches. Exit 1 = a real mismatch or a value pre
 in one body but not the other. Exit 2 = a file/parse problem. It never edits —
 mgsf-core is the source of truth; a human reconciles flagged items.
 
-KNOWN drift (documented in klyfton.js itself): soil-stab status — klyfton has it
-OFFERED (owner-activated), core still says BLOCKED. The tool flags it on purpose so
-it stays visible until Clifton updates mgsf-core.
+As of 2026-07-31 mgsf-core and the DOCTRINE block are reconciled (soil-stab = OFFERED,
+owner-activated, pricing PENDING in both), so every checked constant should read "ok".
+A soil-stab MISMATCH now is a real regression, not expected drift — fix it, don't ignore it.
 """
 import os
 import re
@@ -65,9 +65,9 @@ CHECKS = [
     ("soil-stab status",      r"soil stab[a-z]*[\s\S]{0,40}?(BLOCKED|OFFERED|PENDING)"),
 ]
 
-# soil-stab is a known, in-code-documented drift — annotate it so a red row here is
-# understood, not alarming, until Clifton reconciles mgsf-core.
-KNOWN = {"soil-stab status": "known: klyfton OFFERED (owner-activated) vs core BLOCKED — update mgsf-core"}
+# No expected drift: mgsf-core and the DOCTRINE block are reconciled (soil-stab OFFERED
+# in both as of 2026-07-31). Any MISMATCH here is a real regression to fix, not noise.
+KNOWN = {}
 
 
 def grab(text, rx):
@@ -90,10 +90,18 @@ def main():
     core = CORE_DEFAULT
     here = os.path.dirname(os.path.abspath(__file__))
     kly = os.path.join(os.path.dirname(here), "api", "klyfton.js")
-    if "--core" in args:
-        core = args[args.index("--core") + 1]
-    if "--klyfton" in args:
-        kly = args[args.index("--klyfton") + 1]
+    def flag_value(flag, default):
+        # A present flag with no following path (or followed by another flag) is a user
+        # error → exit 2 (the documented file/parse code), NOT an IndexError stack trace.
+        if flag not in args:
+            return default
+        i = args.index(flag) + 1
+        if i >= len(args) or args[i].startswith("--"):
+            print("ERROR: %s requires a path argument" % flag, file=sys.stderr)
+            sys.exit(2)
+        return args[i]
+    core = flag_value("--core", core)
+    kly = flag_value("--klyfton", kly)
 
     if not os.path.isfile(kly):
         print("ERROR: klyfton.js not found: %s" % kly, file=sys.stderr); return 2

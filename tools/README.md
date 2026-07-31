@@ -26,9 +26,9 @@ python3 tools/doctrine_reconcile.py --core /path/to/mgsf-core/SKILL.md --klyfton
   **2** = a file/parse problem (CI-friendly). It **never edits** — mgsf-core wins; a
   human reconciles flagged items.
 
-**Known, documented drift it will flag:** soil-stab status — klyfton has it `OFFERED`
-(owner-activated), mgsf-core still says `BLOCKED`. That's expected and tracked as an
-owner to-do (update mgsf-core); every other constant should read `ok`.
+**As of 2026-07-31, mgsf-core and the DOCTRINE block are reconciled** — soil-stab is
+`OFFERED` (owner-activated, pricing `PENDING`) in both, so every checked constant should
+read `ok`. A soil-stab `MISMATCH` now means a real regression, not expected drift.
 
 Run it after touching either the DOCTRINE block or mgsf-core, and before merging a
 pricing/doctrine change.

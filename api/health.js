@@ -141,8 +141,10 @@ module.exports = async (req, res) => {
     if (!code && req && req.url) { const m = req.url.match(/[?&]code=([^&]+)/); if (m) code = decodeURIComponent(m[1]); }
     if (!isAuthorized(env, code)) {
       // minimal, non-sensitive response when a code is required but wrong/absent
+      // Fully non-informative when a code is required but wrong/absent — do NOT reveal
+      // whether the core hive is configured (avoids an information leak to the unauthorized).
       return res.status(200).json({ ok: true, health: "restricted",
-        note: "CREW_CODE required for the detailed self-check", core: has(env, "ANTHROPIC_API_KEY") ? "on" : "off" });
+        note: "CREW_CODE required for the detailed self-check" });
     }
     return res.status(200).json(buildReport(env));
   } catch (e) {
