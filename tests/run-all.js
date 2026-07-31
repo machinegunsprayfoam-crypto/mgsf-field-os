@@ -18,6 +18,7 @@ const SUITES = [
   ["hubspot-score", "call-list scoring integration"],
   ["health", "Mechanic self-check (subsystem status)"],
   ["redact", "secret/PII redaction guardrail"],
+  ["geo", "mobilization-by-distance (locked doctrine tiers)"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
