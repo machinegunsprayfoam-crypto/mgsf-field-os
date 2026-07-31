@@ -38,6 +38,17 @@ async function main() {
   ok("valid article passes", W.validateArticle({ title: "T", body: "B" }).ok);
   ok("missing title/body flagged", (() => { const v = W.validateArticle({ title: "" }); return v.ok === false && v.errors.length >= 1; })());
 
+  // ---- semantic vector ranking (pure core; used when embeddings are present) ----
+  ok("cosineSim identical ⇒ 1", Math.abs(W.cosineSim([1, 0, 1], [1, 0, 1]) - 1) < 1e-9);
+  ok("cosineSim orthogonal ⇒ 0", W.cosineSim([1, 0], [0, 1]) === 0);
+  ok("cosineSim length mismatch ⇒ 0 (safe)", W.cosineSim([1, 2, 3], [1, 2]) === 0);
+  ok("parseVec parses a pgvector string", JSON.stringify(W.parseVec("[0.1,0.2,0.3]")) === JSON.stringify([0.1, 0.2, 0.3]));
+  ok("vecRank picks the nearest article to the query vector", (() => {
+    const arts = [{ slug: "far", embedding: [0, 1] }, { slug: "near", embedding: [1, 0.1] }];
+    return (W.vecRank(arts, [1, 0], 1)[0] || {}).slug === "near";
+  })());
+  ok("vecRank ignores articles with no embedding (score 0)", W.vecRank([{ slug: "x" }], [1, 0], 3).length === 0);
+
   // ---- gated + graceful (no Supabase in sandbox) — never throws, never fabricates ----
   const rec = await W.retrieve("metal shop foam", 3);
   ok("retrieve unconfigured ⇒ configured:false, empty, no throw", rec.configured === false && Array.isArray(rec.results) && rec.results.length === 0);

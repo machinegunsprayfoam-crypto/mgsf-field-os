@@ -26,6 +26,28 @@ function _kvEnv(suffixRe, excludeRe) {
 const SB_URL = _kvEnv(/SUPABASE_URL$/i);
 const SB_KEY = _kvEnv(/SUPABASE_SERVICE_ROLE_KEY$/i) || _kvEnv(/SERVICE_ROLE_KEY$/i) || _kvEnv(/SUPABASE_SECRET/i);
 const SB_ON = !!(SB_URL && SB_KEY);
+// Embeddings for SEMANTIC retrieval (reuses the same embed() as memory). Gated on OPENAI_API_KEY;
+// with no key the wiki falls back to keyword ranking (still works, just less paraphrase-tolerant).
+let _embed = null; try { _embed = require("./memory").embed; } catch (e) {}
+const EMBED_ON = !!process.env.OPENAI_API_KEY;
+function vecLiteral(arr) { return "[" + arr.map((x) => (Number.isFinite(x) ? x : 0)).join(",") + "]"; }
+function parseVec(s) { if (Array.isArray(s)) return s; try { return String(s || "").replace(/^\[|\]$/g, "").split(",").map(Number).filter((n) => Number.isFinite(n)); } catch (e) { return []; } }
+function cosineSim(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || !a.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return na && nb ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+}
+// PURE: rank articles (each with a parseable `embedding`) by cosine similarity to the query vector.
+function vecRank(articles, queryEmb, k) {
+  const kk = k || 3;
+  return (Array.isArray(articles) ? articles : [])
+    .map((a) => ({ a, s: cosineSim(parseVec(a.embedding), queryEmb) }))
+    .filter((x) => x.s > 0)
+    .sort((x, y) => y.s - x.s)
+    .slice(0, kk)
+    .map((x) => x.a);
+}
 
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 20000); }
 function slugify(title) {
@@ -102,16 +124,22 @@ async function list(limit) {
   } catch (e) { return { configured: true, ok: false, results: [], error: String(e).slice(0, 120) }; }
 }
 
-// The brain-facing call: pull the most relevant published articles for a question.
+// The brain-facing call: pull the most relevant published articles. SEMANTIC (embeddings) when the
+// embed key is set AND articles carry embeddings; otherwise KEYWORD ranking. Reports which mode ran.
 async function retrieve(query, k) {
   if (!SB_ON) return { configured: false, results: [] };
   if (!clean(query, 500)) return { configured: true, results: [] };
   try {
-    const r = await sbFetch("/rest/v1/wiki_articles?select=slug,title,category,tags,body&status=eq.published&limit=500");
+    const r = await sbFetch("/rest/v1/wiki_articles?select=slug,title,category,tags,body,embedding&status=eq.published&limit=500");
     if (!r.ok) return { configured: true, ok: false, results: [], status: r.status };
     const rows = await r.json();
-    const top = rank(rows, query, k || 3);
-    return { configured: true, ok: true, results: top.map((a) => ({ slug: a.slug, title: a.title, snippet: snippet(a.body) })) };
+    let top = [], mode = "keyword";
+    if (EMBED_ON && _embed && rows.some((a) => a && a.embedding)) {
+      const qEmb = await _embed(query);
+      if (Array.isArray(qEmb) && qEmb.length) { top = vecRank(rows.filter((a) => a.embedding), qEmb, k || 3); mode = "semantic"; }
+    }
+    if (!top.length) top = rank(rows, query, k || 3); // fall back to keyword (also when no embeddings yet)
+    return { configured: true, ok: true, mode, results: top.map((a) => ({ slug: a.slug, title: a.title, snippet: snippet(a.body) })) };
   } catch (e) { return { configured: true, ok: false, results: [], error: String(e).slice(0, 120) }; }
 }
 
@@ -134,6 +162,8 @@ async function save(article, opts) {
       body: clean(article.body, 20000), status: clean(article.status, 20) || "published",
       source: clean(o.actor, 60) || "owner", updated_at: new Date().toISOString(),
     };
+    // Compute + store the article embedding so retrieval can be semantic (best-effort; keyword still works without it).
+    if (EMBED_ON && _embed) { try { const v = await _embed(row.title + " " + (row.tags || []).join(" ") + " " + row.body); if (Array.isArray(v) && v.length) row.embedding = vecLiteral(v); } catch (e) {} }
     const r = await sbFetch("/rest/v1/wiki_articles?on_conflict=id", {
       method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row),
     });
@@ -170,3 +200,6 @@ module.exports.scoreArticle = scoreArticle;
 module.exports.validateArticle = validateArticle;
 module.exports.slugify = slugify;
 module.exports._tokens = tokens;
+module.exports.cosineSim = cosineSim;
+module.exports.vecRank = vecRank;
+module.exports.parseVec = parseVec;

@@ -3,6 +3,9 @@
 -- The brain retrieves the most relevant published articles for a question via api/wiki.js.
 -- Truth order stays: mgsf-core doctrine > wiki article > semantic memory.
 
+-- pgvector powers SEMANTIC wiki retrieval (same extension as memory). Safe if already enabled.
+create extension if not exists vector;
+
 create table if not exists wiki_articles (
   id          text primary key,               -- sha1(slug) — stable upsert key
   slug        text unique not null,
@@ -12,9 +15,12 @@ create table if not exists wiki_articles (
   body        text not null,
   status      text default 'published',        -- 'published' | 'draft' | 'archived'
   source      text default 'owner',
+  embedding   vector(1536),                    -- set when OPENAI_API_KEY is present; NULL ⇒ keyword ranking
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
+-- If the table pre-existed without the column:
+alter table wiki_articles add column if not exists embedding vector(1536);
 
 -- retrieval reads published rows; index the common filters
 create index if not exists wiki_status_idx   on wiki_articles (status);
