@@ -15,6 +15,7 @@ const SUITES = [
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
+  ["hubspot-score", "call-list scoring integration"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;

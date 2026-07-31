@@ -13,6 +13,10 @@ const HUBSPOT_BASE = 'https://api.hubapi.com';
 const PORTAL_ID = '246088810'; // MGSF HubSpot portal (used to build record URLs)
 const MAX_BODY_BYTES = 8 * 1024 * 1024; // ~8MB cap on body
 
+// Deterministic, keyless lead prioritization (api/lead-score.js). Attaching a score to
+// every call-list lead is safe: pure computation, no outward action, no fabrication.
+const { score: scoreLead } = require('./lead-score');
+
 // --- CORS: allow same-origin; reflect origin only for our known domains ---
 function allowOrigin(origin) {
   if (!origin) return null; // same-origin / non-CORS requests have no Origin header
@@ -89,7 +93,7 @@ function mapContact(c) {
   if (!name) name = (p.email || '').trim();
   if (!name) name = 'Unknown contact';
   const phone = (p.phone && String(p.phone).trim()) || (p.mobilephone && String(p.mobilephone).trim()) || '';
-  return {
+  const lead = {
     id: c.id,
     name: name,
     phone: phone,
@@ -104,6 +108,9 @@ function mapContact(c) {
       ? ('https://app.hubspot.com/contacts/' + PORTAL_ID + '/record/0-1/' + c.id)
       : ''
   };
+  // Priority score so the crew calls the best leads first (hot ≥75 / warm / cool / cold).
+  try { const s = scoreLead(lead); lead.score = s.score; lead.band = s.band; } catch (e) { /* never break the call list */ }
+  return lead;
 }
 
 module.exports = async (req, res) => {
@@ -146,7 +153,10 @@ module.exports = async (req, res) => {
       };
       const data = await callHubSpot(token, '/crm/v3/objects/contacts/search', search);
       const results = Array.isArray(data && data.results) ? data.results : [];
-      const leads = results.map(mapContact);
+      // Prioritize the call list: hottest leads first (stable — keeps HubSpot's
+      // recency order among equal scores). Non-fabricating; score is deterministic.
+      const leads = results.map(mapContact)
+        .sort((a, b) => (b.score || 0) - (a.score || 0));
       sendJson(res, 200, { ok: true, leads: leads });
       return;
     }
@@ -252,3 +262,6 @@ module.exports = async (req, res) => {
     sendJson(res, 200, { ok: false, error: 'HUBSPOT_ERROR', detail: 'unexpected' });
   }
 };
+
+// Exported for the test harness (pure mapping helper).
+module.exports.mapContact = mapContact;
