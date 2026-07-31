@@ -26,13 +26,15 @@ const ROUTER_MODEL = "claude-haiku-4-5";
 const WORKER_MODEL = "claude-sonnet-5";
 const CRITIC_MODEL = "claude-sonnet-5";
 
-// Near-the-wall guard — a serverless function is HARD-KILLED at its platform limit (60s on Vercel
-// Hobby; up to the vercel.json maxDuration on Pro). The synthesizer is the last and most expensive
-// step; if the workers already ate most of the budget, STARTING a synth we can't finish just gets
-// the whole turn killed mid-write (a truncated/lost answer). Instead: when too little time remains,
-// skip the synth and return the fullest specialist answer we already have — a complete real reply
-// beats a dead one. Tunable via env: on Pro, raise KLYFTON_WALL_MS toward maxDuration*1000.
-const WALL_MS = parseInt(process.env.KLYFTON_WALL_MS, 10) || 55000;                   // effective function wall
+// Near-the-wall guard — a serverless function is HARD-KILLED at its platform limit. This account is
+// Vercel PRO, and vercel.json sets `maxDuration: 300`, so the real wall is ~300s. The synthesizer is
+// the last and most expensive step; if the workers already ate most of the budget, STARTING a synth
+// we can't finish just gets the whole turn killed mid-write (a truncated/lost answer). Instead: when
+// too little time remains, skip the synth and return the fullest specialist answer we already have —
+// a complete real reply beats a dead one. Default wall = 290s (10s headroom under the 300s Pro cap);
+// almost never fires on a normal turn, only as a genuine backstop. Tunable via env: if this ever
+// runs on Hobby (60s cap) set KLYFTON_WALL_MS=55000; if Fluid Compute lifts the cap, raise it.
+const WALL_MS = parseInt(process.env.KLYFTON_WALL_MS, 10) || 290000;                  // effective function wall (Pro/300s)
 const SYNTH_RESERVE_MS = parseInt(process.env.KLYFTON_SYNTH_RESERVE_MS, 10) || 14000; // time a synth+send needs
 // PURE (testable): have we burned enough of the budget that we shouldn't start the synth?
 function shouldSkipSynth(elapsedMs, wallMs, reserveMs) {
@@ -1417,9 +1419,9 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
     model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
     // and fast (the synth writes the full final answer). Big worker budgets + adaptive
-    // thinking were pushing complex, multi-mind asks past the 60s function limit and
+    // thinking were pushing complex, multi-mind asks toward the function time limit and
     // making Klyfton time out ("ran long"). 4000 leaves room for thinking + a focused
-    // answer without the latency blow-up.
+    // answer without the latency blow-up (kept tight even on Pro/300s — latency, not just the cap).
     max_tokens: 4000,
     system,
     thinking: { type: "adaptive" },
@@ -1431,7 +1433,7 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
 
 // Self-healing worker (adopted from the field's auto-retry/self-healing pattern, e.g. Beam): a
 // transient failure — a thrown error or an EMPTY answer — gets ONE bounded retry before we give up.
-// Capped at a single extra call so we never blow the function's 60s time / cost budget. The
+// Capped at a single extra call so we never blow the function's time / cost budget. The
 // synthesizer+critic still catches fabrication and doctrine-gate failures downstream; this layer
 // only recovers flaky/empty runs so one hiccup doesn't silently drop a mind from the hive.
 async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
@@ -1625,7 +1627,7 @@ module.exports = async (req, res) => {
 
   // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
   // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
-  // backend can't stack latency or eat the 60s function budget. Previously these three awaited
+  // backend can't stack latency or eat into the function time budget. Previously these three awaited
   // one-after-another, ADDING their times together on every non-trivial turn (and memory/wiki had
   // no timeout at all — only brain-context self-aborts at 2.5s). Same inputs, same resulting
   // context and same assembly order; just overlapped and time-bounded. On timeout/failure a source

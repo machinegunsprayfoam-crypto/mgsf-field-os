@@ -8002,9 +8002,10 @@ function sendChat(){
     const ac = new AbortController();
     let timedOut = false;
     // Client-side deadline, generous because the answer streams in (you see tokens as they
-    // arrive, so it's never dead air). Sits under the function's maxDuration so a genuinely
-    // stuck call still ends cleanly instead of hanging forever.
-    const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 240000);
+    // arrive, so it's never dead air). Sits just under the function's maxDuration (Pro = 300s) so a
+    // genuinely stuck call still ends cleanly instead of hanging forever, but a legit long turn
+    // isn't cut short before the server's own near-the-wall guard returns.
+    const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 290000);
 
     return klyftonStream({
       message:text,
