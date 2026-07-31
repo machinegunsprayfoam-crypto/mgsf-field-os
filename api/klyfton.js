@@ -26,6 +26,26 @@ const ROUTER_MODEL = "claude-haiku-4-5";
 const WORKER_MODEL = "claude-sonnet-5";
 const CRITIC_MODEL = "claude-sonnet-5";
 
+// Near-the-wall guard — a serverless function is HARD-KILLED at its platform limit (60s on Vercel
+// Hobby; up to the vercel.json maxDuration on Pro). The synthesizer is the last and most expensive
+// step; if the workers already ate most of the budget, STARTING a synth we can't finish just gets
+// the whole turn killed mid-write (a truncated/lost answer). Instead: when too little time remains,
+// skip the synth and return the fullest specialist answer we already have — a complete real reply
+// beats a dead one. Tunable via env: on Pro, raise KLYFTON_WALL_MS toward maxDuration*1000.
+const WALL_MS = parseInt(process.env.KLYFTON_WALL_MS, 10) || 55000;                   // effective function wall
+const SYNTH_RESERVE_MS = parseInt(process.env.KLYFTON_SYNTH_RESERVE_MS, 10) || 14000; // time a synth+send needs
+// PURE (testable): have we burned enough of the budget that we shouldn't start the synth?
+function shouldSkipSynth(elapsedMs, wallMs, reserveMs) {
+  return Number(elapsedMs) > Number(wallMs) - Number(reserveMs);
+}
+// PURE (testable): the fullest non-empty worker answer — the most complete standalone reply.
+function bestAnswer(answers) {
+  return (Array.isArray(answers) ? answers : [])
+    .filter((a) => a && a.text)
+    .slice()
+    .sort((a, b) => b.text.length - a.text.length)[0] || null;
+}
+
 // ---- Monthly cost cap (opt-in) ------------------------------------------------
 // Reuses the same Vercel KV / Upstash the sync module uses. Dormant unless KV is
 // attached AND KLYFTON_MONTHLY_BUDGET_USD is set. Spend is tracked per calendar
@@ -1721,6 +1741,18 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
         return;
       }
 
+      // Near-the-wall guard: if too little time remains to run the synth safely, skip it and send
+      // back the fullest worker answer rather than risk the function being killed mid-synth.
+      if (shouldSkipSynth(Date.now() - startedAt, WALL_MS, SYNTH_RESERVE_MS)) {
+        const best = bestAnswer(answers);
+        const { text, remember } = splitMemory(best.text);
+        await persistSemanticMemory(remember);
+        run.mode = "hive-guarded"; run.minds = answers.map((a) => a.mind); run.model = best.model; run.status = "ok";
+        sseSend(res, { done: true, text, remember, configured: true, mode: "hive-guarded", minds: answers.map((a) => a.mind), model: best.model });
+        res.end();
+        return;
+      }
+
       const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
       const emit = makeEmitter(res);
       const { text: raw, model } = await callClaudeStream(
@@ -1796,6 +1828,17 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       return;
     }
 
+    // Near-the-wall guard: if too little time remains to run the synth safely, skip it and return
+    // the fullest worker answer rather than risk the function being killed mid-synth.
+    if (shouldSkipSynth(Date.now() - startedAt, WALL_MS, SYNTH_RESERVE_MS)) {
+      const best = bestAnswer(answers);
+      const { text, remember } = splitMemory(best.text);
+      await persistSemanticMemory(remember);
+      run.mode = "hive-guarded"; run.minds = answers.map((a) => a.mind); run.model = best.model; run.status = "ok";
+      res.status(200).json({ text, remember, configured: true, mode: "hive-guarded", minds: answers.map((a) => a.mind), model: best.model });
+      return;
+    }
+
     // 4) Synthesizer + critic: merge the minds, kill contradictions/fabrication, one answer out.
     const panel = answers.map((a) => `### ${a.mind} mind:\n${a.text}`).join("\n\n");
     const synth = await callClaude(key, {
@@ -1840,3 +1883,5 @@ module.exports.assembleBrainBlocks = assembleBrainBlocks;
 module.exports._BRAIN_ORDER = BRAIN_ORDER;
 module.exports.toolBagBlock = toolBagBlock;
 module.exports.routerToolHint = routerToolHint;
+module.exports.shouldSkipSynth = shouldSkipSynth;
+module.exports.bestAnswer = bestAnswer;

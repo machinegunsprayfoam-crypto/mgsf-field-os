@@ -40,6 +40,7 @@ const SUITES = [
   ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
   ["inventory-reorder", "reorder sweep: qty<=reorderAt rule + short-fall + per-supplier grouping/draft"],
+  ["near-wall", "near-the-wall guard: skip-synth-under-time-pressure decision + fullest-answer fallback"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 
