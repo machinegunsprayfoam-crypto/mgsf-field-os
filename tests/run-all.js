@@ -55,6 +55,7 @@ const SUITES = [
   ["concrete-calc", "concrete lifting/void/seawall quantity engine: void geometry → cured pounds (×density) → sets (only w/ set weight), waste clamp, soil blocked — ESTIMATE, price deferred"],
   ["sub-bid", "subcontractor bid leveling: scope baseline (required/union), gap detection, low/high/spread, cheapest-but-incomplete trap, mixed-trade/missing-amount warnings — advisory, never auto-accepts"],
   ["prime-assembler", "GC prime rollup: self-perform (doctrine-deferred) + leveled sub bids + suggested choice + compliance gate + subs subtotal + owner-vs-deferred markup + proposal skeleton — never fabricates MGSF price, never auto-awards"],
+  ["change-order", "change-order doc build: delta = sum of changes (incl. credits), new total = original + delta, OWNER-INPUT markers, negative-$ format, optional sections — amounts caller-supplied, no doctrine pricing"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
