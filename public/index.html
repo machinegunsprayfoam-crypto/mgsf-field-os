@@ -3622,6 +3622,10 @@ function calcOpenEstimate(tradeId, seed){
   const form=document.getElementById('calc_form'); if(!form) return; const t=(window._calcTrades||[]).find(x=>x.id===tradeId);
   form.innerHTML=`<div class="jsa-card"><h4 style="margin:0 0 4px">💵 Estimate — ${_cE((t&&t.name)||tradeId||'trade')} <span style="font-size:11px;color:var(--t2)">(your rates)</span></h4>`+
     `<div style="font-size:11px;color:var(--yw);margin-bottom:6px">DRAFT. Enter YOUR material costs + labor — nothing is priced for you. Add markup + tax. Review before it goes to a customer.</div>`+
+    `<input class="admin-inp" id="est_cust" placeholder="Customer name (for proposal, optional)" style="width:100%;margin-bottom:6px">`+
+    `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="calcApplyRates('${_cE(tradeId||'')}')">⤓ Load my saved rates</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="calcSaveRates('${_cE(tradeId||'')}')">💾 Save these rates</button></div>`+
+    `<div id="est_ratemsg" style="font-size:11px;color:var(--cy);margin-bottom:6px"></div>`+
     `<div id="est_lines"></div>`+
     `<button class="btn btn-ghost" style="font-size:12px" onclick="calcAddLine()">+ Add line</button>`+
     `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">`+
@@ -3632,16 +3636,45 @@ function calcOpenEstimate(tradeId, seed){
   calcAddLine(seed); if(!seed) calcAddLine();
 }
 function calcAddLine(seed){ const c=document.getElementById('est_lines'); if(!c) return; seed=seed||{};
+  const v=x=>(x!=null&&x!=='')?_cE(x):'';
   const d=document.createElement('div'); d.className='est-line'; d.style.cssText='border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px;margin-bottom:6px';
-  d.innerHTML=`<input class="admin-inp est-desc" placeholder="Description" value="${_cE(seed.desc||'')}" style="width:100%;margin-bottom:4px">`+
+  d.innerHTML=`<input class="admin-inp est-desc" placeholder="Description" value="${v(seed.desc)}" style="width:100%;margin-bottom:4px">`+
     `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">`+
-    `<input class="admin-inp est-qty" inputmode="decimal" placeholder="Qty" value="${_cE(seed.qty!=null?seed.qty:'')}">`+
-    `<input class="admin-inp est-unit" placeholder="Unit" value="${_cE(seed.unit||'')}">`+
-    `<input class="admin-inp est-cost" inputmode="decimal" placeholder="$/unit">`+
-    `<input class="admin-inp est-lh" inputmode="decimal" placeholder="Labor hrs">`+
-    `<input class="admin-inp est-lr" inputmode="decimal" placeholder="$/hr">`+
+    `<input class="admin-inp est-qty" inputmode="decimal" placeholder="Qty" value="${v(seed.qty)}">`+
+    `<input class="admin-inp est-unit" placeholder="Unit" value="${v(seed.unit)}">`+
+    `<input class="admin-inp est-cost" inputmode="decimal" placeholder="$/unit" value="${v(seed.unitCost)}">`+
+    `<input class="admin-inp est-lh" inputmode="decimal" placeholder="Labor hrs" value="${v(seed.laborHours)}">`+
+    `<input class="admin-inp est-lr" inputmode="decimal" placeholder="$/hr" value="${v(seed.laborRate)}">`+
     `<button class="btn btn-ghost" style="font-size:12px" onclick="this.closest('.est-line').remove()">✕</button></div>`;
   c.appendChild(d);
+}
+function _estGatherLines(){ const lines=[]; document.querySelectorAll('#est_lines .est-line').forEach(row=>{ const g=s=>((row.querySelector(s)||{}).value||'').trim();
+  const li={desc:g('.est-desc'),qty:g('.est-qty'),unit:g('.est-unit'),unitCost:g('.est-cost'),laborHours:g('.est-lh'),laborRate:g('.est-lr')};
+  if(li.desc||li.qty||li.unitCost||li.laborHours) lines.push(li); }); return lines; }
+async function calcApplyRates(tradeId){ const msg=document.getElementById('est_ratemsg');
+  const d=await _sysPost('/api/trade-rates',{action:'apply',trade:tradeId,lineItems:_estGatherLines()});
+  if(!d){ if(msg) msg.textContent='Rate lookup failed.'; return; }
+  if(d.configured===false){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Rate memory needs Supabase (see db/SETUP.md).'; } return; }
+  const c=document.getElementById('est_lines'); if(c&&Array.isArray(d.lineItems)){ c.innerHTML=''; d.lineItems.forEach(li=>calcAddLine(li)); if(!d.lineItems.length) calcAddLine(); }
+  if(msg){ msg.style.color='var(--gr)'; msg.textContent=_cE(d.note||('Filled '+(d.filled||0)+' rate(s).')); }
+}
+async function calcSaveRates(tradeId){ const msg=document.getElementById('est_ratemsg');
+  const d=await _sysPost('/api/trade-rates',{action:'save',trade:tradeId,rates:_estGatherLines(),approved:true});
+  if(!d){ if(msg) msg.textContent='Save failed.'; return; }
+  if(d.configured===false){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Rate memory needs Supabase to save.'; } return; }
+  if(msg){ msg.style.color=d.ok?'var(--gr)':'var(--yw)'; msg.textContent=d.ok?('Saved '+d.saved+' rate(s) for next time.'):_cE(d.note||d.reason||'Nothing saved.'); }
+}
+async function calcEstimateProposal(tradeId){ const out=document.getElementById('est_out'); if(!out) return;
+  const lineItems=_estGatherLines(); if(!lineItems.length){ out.innerHTML='<span style="color:var(--yw)">Add a line first.</span>'; return; }
+  const body={action:'proposal',trade:tradeId,lineItems:lineItems,proposal:{customer:{name:((document.getElementById('est_cust')||{}).value||'').trim()}}};
+  const mk=((document.getElementById('est_markup')||{}).value||'').trim(),tx=((document.getElementById('est_tax')||{}).value||'').trim();
+  if(mk!=='') body.markupPct=mk; if(tx!=='') body.taxPct=tx;
+  const p=await _sysPost('/api/trade-estimate',body);
+  if(!p||!p.ok||!p.proposal){ out.innerHTML='<span style="color:var(--red)">Couldn\'t build the proposal.</span>'; return; }
+  const pdf=await _sysPost('/api/proposal-pdf',Object.assign({},p.proposal,{base64:true}));
+  if(!pdf||!pdf.base64){ out.innerHTML='<span style="color:var(--red)">Proposal PDF unavailable (loads once deployed).</span>'; return; }
+  try{ const a=document.createElement('a'); a.href='data:application/pdf;base64,'+pdf.base64; a.download=(pdf.filename||'Proposal.pdf'); document.body.appendChild(a); a.click(); a.remove();
+    out.innerHTML='<span style="color:var(--gr)">Proposal PDF downloaded — review before sending.</span>'; }catch(e){ out.innerHTML='<span style="color:var(--yw)">PDF ready but download blocked by the browser.</span>'; }
 }
 async function calcRunEstimate(tradeId){
   const out=document.getElementById('est_out'); if(!out) return;
@@ -3662,6 +3695,7 @@ async function calcRunEstimate(tradeId){
   if(d.warning) h+=`<br><span style="color:var(--yw)">⚠ ${_cE(d.warning)}</span>`;
   if(d.doctrineNote) h+=`<br><span style="color:var(--cy)">${_cE(d.doctrineNote)}</span>`;
   h+=`<div style="font-size:10px;color:var(--t2);margin-top:6px">DRAFT — your rates. Review before sending.</div>`;
+  h+=`<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="calcEstimateProposal('${_cE(tradeId||'')}')">📄 Save as proposal PDF</button>`;
   out.innerHTML=h;
 }
 window.calcOpenEstimate = calcOpenEstimate;

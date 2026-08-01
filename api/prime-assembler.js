@@ -16,6 +16,7 @@
 const construction = require("./construction");
 const subBid = require("./sub-bid");
 const subs = require("./subs");
+const tradeEstimate = require("./trade-estimate");
 
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 120); }
@@ -82,10 +83,23 @@ function assemble(body) {
   const primeMarkup = markupPct != null && markupPct >= 0
     ? { pct: round(markupPct, 2), amount: round(subsSubtotal * markupPct / 100), source: "owner-entered" }
     : { deferred: true, how: "Prime markup / OH&P on subs is set per doctrine — not invented here." };
+  // ---- owner-rate trade estimates (electrical/plumbing/HVAC/carpentry, etc.) rolled into the bid ----
+  const teIn = (body.tradeEstimates && typeof body.tradeEstimates === "object") ? body.tradeEstimates : {};
+  const tradeEstimates = Object.keys(teIn).map((tid) => {
+    const spec = teIn[tid] || {};
+    const est = tradeEstimate.estimate({ trade: tid, lineItems: spec.lineItems, markupPct: spec.markupPct, taxPct: spec.taxPct });
+    if (!est.ok) return { trade: tid, ok: false, error: est.error };
+    return { trade: tid, total: est.total, totalLabel: est.totalLabel, subtotal: est.subtotal, unpricedLines: est.unpricedLines, doctrineNote: est.doctrineNote };
+  });
+  const tradeEstTotal = round(tradeEstimates.filter((t) => t.ok !== false).reduce((s, t) => s + (t.total || 0), 0));
+
+  const knownTotal = round(subsSubtotal + (primeMarkup.amount || 0) + tradeEstTotal);
   const totals = {
     subsSubtotal, subsSubtotalLabel: money(subsSubtotal),
     primeMarkup, selfPerformPricing: "deferred to doctrine",
-    grand: { deferred: true, note: "No grand customer price is generated here. Known: chosen sub quotes" + (primeMarkup.amount != null ? " + owner markup" : "") + ". Deferred: MGSF self-perform pricing (via mgsf-estimator) + prime markup" + (primeMarkup.amount != null ? "" : "") + "." },
+    tradeEstimatesTotal: tradeEstTotal, tradeEstimatesTotalLabel: money(tradeEstTotal),
+    knownSubtotal: knownTotal, knownSubtotalLabel: money(knownTotal),
+    grand: { deferred: true, note: "Known so far: " + money(knownTotal) + " (chosen sub quotes" + (primeMarkup.amount != null ? " + owner markup" : "") + (tradeEstTotal ? " + owner-rate trade estimates" : "") + "). STILL DEFERRED: MGSF self-perform pricing (via mgsf-estimator doctrine)" + (primeMarkup.amount == null ? " + prime markup" : "") + ". Not a final customer price." },
   };
 
   const compliance = {
@@ -104,7 +118,7 @@ function assemble(body) {
 
   return {
     ok: true, label: "PRIME BID — DRAFT (owner prices self-perform + markup via doctrine, then approves)",
-    job, selfPerform, subs: subRows, totals, compliance, proposal, warnings,
+    job, selfPerform, subs: subRows, tradeEstimates, totals, compliance, proposal, warnings,
     verify: ["Level every sub's scope before comparing/awarding.", "Confirm each awarded sub is compliance-cleared (COI/license) before it works.", "Price MGSF self-perform + prime markup via mgsf-estimator doctrine — nothing here is a customer price."],
     disclaimer: "DRAFT rollup. Sub amounts are the subs' own quotes (owner-entered). MGSF pricing + markup are deferred to doctrine and never fabricated. Never auto-awards a sub.",
   };

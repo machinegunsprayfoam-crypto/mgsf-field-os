@@ -65,7 +65,8 @@ const SUITES = [
   ["plumbing-calc", "plumbing: IPC fixture units → drain/supply sizing + water-heater sizing — ESTIMATE/licensed-plumber+AHJ, no pricing"],
   ["hvac-load", "HVAC: Zone 6/7 rule-of-thumb load + tonnage/CFM + ASHRAE 62.2 ventilation — NOT a Manual J, no pricing"],
   ["framing-calc", "carpentry: stud/plate/sheathing + joist/rafter takeoff + board-feet — spans deferred to IRC tables, no pricing"],
-  ["trade-estimate", "per-trade estimator: line-item material (qty×cost) + labor (hrs×rate) from OWNER rates, owner markup/tax, unpriced-line handling, MGSF-doctrine deferral — never fabricates a rate, DRAFT"],
+  ["trade-estimate", "per-trade estimator: line-item material (qty×cost) + labor (hrs×rate) from OWNER rates, owner markup/tax, unpriced-line handling, MGSF-doctrine deferral, proposal transform — never fabricates a rate, DRAFT"],
+  ["trade-rates", "per-trade rate memory: rate map + applyRates fills MISSING rates only (never overrides owner input), trade-scoped — owner-entered, nothing fabricated"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];

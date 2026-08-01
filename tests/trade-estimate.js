@@ -52,5 +52,13 @@ ok("note says nothing fabricated", /OWNER-ENTERED/.test(e.note) && /fabricated/i
 ok("no line items ⇒ error", A.estimate({}).ok === false);
 ok("rates only from input — empty estimate has no invented dollars", (() => { const z = A.estimate({ lineItems: [{ desc: "x" }] }); return z.subtotal === 0 && z.total === 0; })());
 
+// ---- toProposal: estimate → proposal-pdf payload ----
+const prop = A.toProposal(e, { customer: { name: "Acme" } });
+ok("proposal items include priced lines", prop.items.some((i) => i.desc === "wire" && i.amount === 765));
+ok("markup + tax become their own line items", prop.items.some((i) => /Markup/.test(i.desc)) && prop.items.some((i) => /Tax/.test(i.desc)));
+ok("proposal item amounts sum to the estimate total", Math.abs(prop.items.reduce((s, i) => s + (i.amount || 0), 0) - e.total) < 0.01);
+ok("carries customer + 3-day cancellation term", prop.customer.name === "Acme" && /3-day right of cancellation/.test(prop.terms));
+ok("unpriced lines excluded from proposal items", A.toProposal(A.estimate({ lineItems: [{ desc: "priced", qty: 1, unitCost: 10 }, { desc: "blank" }] }), {}).items.length === 1);
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

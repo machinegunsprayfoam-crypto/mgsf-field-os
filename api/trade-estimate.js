@@ -74,6 +74,27 @@ function estimate(body) {
   return out;
 }
 
+// Turn a computed estimate into the proposal-pdf payload shape ({items:[{desc,qty,unit,amount}]}).
+// Priced lines become items; owner markup + tax become their own line items so the PDF total matches.
+// Pure — no fabricated dollars, no Date() (proposal-pdf defaults the date).
+function toProposal(est, opts) {
+  opts = opts || {};
+  const items = [];
+  for (const l of (est.lineItems || [])) { if (l.priced) items.push({ desc: l.desc, qty: l.qty, unit: l.unit, amount: l.lineTotal }); }
+  if (est.markup && est.markup.amount != null) items.push({ desc: "Markup / OH&P (" + est.markup.pct + "%)", amount: est.markup.amount });
+  if (est.tax && est.tax.amount != null) items.push({ desc: "Tax (" + est.tax.pct + "% materials)", amount: est.tax.amount });
+  const cust = opts.customer || {};
+  return {
+    customer: { name: clean(cust.name, 80), address: clean(cust.address, 120), cityStateZip: clean(cust.cityStateZip, 80), email: clean(cust.email, 120), phone: clean(cust.phone, 40) },
+    proposalNo: clean(opts.proposalNo, 24) || undefined, date: /^\d{4}-\d{2}-\d{2}$/.test(opts.date || "") ? opts.date : undefined,
+    items,
+    notes: clean(opts.notes, 600) || (est.trade ? (est.trade + " — estimate at the rates provided.") : "Estimate at the rates provided."),
+    terms: clean(opts.terms, 600) || "This is a DRAFT proposal at the rates entered. Prices valid for the stated period. Buyer has a 3-day right of cancellation. Scope excludes anything not listed above.",
+    validDays: num(opts.validDays, 30),
+    _meta: { total: est.total, unpricedLines: est.unpricedLines, note: "Send to /api/proposal-pdf. Owner reviews before it goes to a customer." },
+  };
+}
+
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ ok: true, service: "trade-estimate", pure: true, ownerPriced: true,
@@ -83,10 +104,19 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-  try { res.status(200).json(estimate(body || {})); }
-  catch (e) { res.status(200).json({ ok: false, error: String((e && e.message) || e).slice(0, 140) }); }
+  body = body || {};
+  try {
+    const est = estimate(body);
+    if (clean(body.action, 12) === "proposal") {
+      if (!est.ok) { res.status(200).json(est); return; }
+      res.status(200).json({ ok: true, proposal: toProposal(est, body.proposal || body), estimate: { total: est.total, totalLabel: est.totalLabel } });
+      return;
+    }
+    res.status(200).json(est);
+  } catch (e) { res.status(200).json({ ok: false, error: String((e && e.message) || e).slice(0, 140) }); }
 };
 
 module.exports.priceLine = priceLine;
 module.exports.estimate = estimate;
+module.exports.toProposal = toProposal;
 module.exports.isMgsfSelfPerform = isMgsfSelfPerform;

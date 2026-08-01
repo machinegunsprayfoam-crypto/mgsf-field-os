@@ -55,6 +55,16 @@ const rMarkup = A.assemble(Object.assign({}, base, { markupPct: 10 }));
 ok("owner markup applied when entered (10% of 14000)", rMarkup.totals.primeMarkup.amount === 1400 && rMarkup.totals.primeMarkup.source === "owner-entered");
 ok("grand total is deferred (never fabricated)", r.totals.grand.deferred === true);
 
+// ---- owner-rate trade estimates rolled into the bid ----
+const rTE = A.assemble(Object.assign({}, base, { tradeEstimates: {
+  electrical: { lineItems: [{ desc: "wire", qty: 500, unitCost: 0.65, laborHours: 8, laborRate: 55 }], markupPct: 15 }, // (325+440)*1.15 = 879.75
+} }));
+ok("tradeEstimates rolled in with totals", Array.isArray(rTE.tradeEstimates) && rTE.tradeEstimates[0].trade === "electrical" && rTE.tradeEstimates[0].total > 0);
+ok("tradeEstimatesTotal summed into totals", rTE.totals.tradeEstimatesTotal === rTE.tradeEstimates[0].total);
+ok("knownSubtotal = subs subtotal + trade estimates", rTE.totals.knownSubtotal === rTE.totals.subsSubtotal + rTE.totals.tradeEstimatesTotal);
+ok("grand still deferred (self-perform pricing outstanding)", rTE.totals.grand.deferred === true && /DEFERRED/.test(rTE.totals.grand.note));
+ok("no trade estimates ⇒ tradeEstimatesTotal 0", r.totals.tradeEstimatesTotal === 0);
+
 // ---- scope from blueprint (no explicit trades) ----
 const fromScope = A.assemble({ scope: [{ trade: "spray foam" }, { trade: "electrical" }], subBids: {}, nowMs: NOW });
 ok("derives trades from blueprint scope[]", fromScope.ok === true && fromScope.selfPerform.some((s) => s.trade === "spray-foam"));
