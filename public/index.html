@@ -3311,6 +3311,12 @@ function bpiRenderResult(d){
         `${eq.verified?' <span style="color:var(--gr);font-size:10px">✓</span>':' <span style="color:var(--yw);font-size:10px">unverified</span>'}`+
         (sp?`<br><span style="color:var(--t2)">${sp}</span>`:'')+(eq.combustion?`<br><span style="color:var(--red)">⚠ combustion — CAZ before air-sealing</span>`:'')+`</div>`; });
     html+=`</div>`; }
+  if(d.sizing){ const s=d.sizing; html+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Right-sizing after the work (ESTIMATE)</h4><div style="font-size:12px;line-height:1.6">`+
+    `Est. current heating load: <b>${E(s.currentLoadBtu.low)}–${E(s.currentLoadBtu.high)} BTU/hr</b> <span style="color:var(--t2)">(${E(s.basis)})</span><br>`+
+    `After ${E(s.reductionAppliedPct)}% envelope improvement: <b>${E(s.postRetrofitLoadBtu.low)}–${E(s.postRetrofitLoadBtu.high)} BTU/hr</b><br>`+
+    `Suggested new furnace: <b>${E(s.recommendedFurnaceInputMBH)}k BTU input</b>`+(s.recommendedCoolingTons?` · cooling <b>${E(s.recommendedCoolingTons)} tons</b>`:'')+`</div>`+
+    `<div style="margin-top:4px">`+(s.options||[]).map(o=>`<div style="font-size:12px;color:var(--t2)">• ${E(o)}</div>`).join('')+`</div>`+
+    `<div style="font-size:11px;color:var(--yw);margin-top:4px">${E(s.note)}</div></div>`; }
   if(d.measures&&d.measures.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Measures (ranked by cost-effectiveness)</h4>`;
     d.measures.forEach(m=>{ html+=`<div style="font-size:12px;margin-bottom:4px;display:flex;justify-content:space-between;gap:8px"><span>${E(m.rank)}. ${E(m.name)}${m.mgsf?' <span style="color:var(--or)">•MGSF</span>':''}</span>`+
       `<span style="color:var(--t2)">$${E(m.cost)} − $${E(m.incentive)} = <b>$${E(m.netCost)}</b>${m.costPerUnitSaved!=null?' · $'+E(m.costPerUnitSaved)+'/unit':''}</span></div>`; });

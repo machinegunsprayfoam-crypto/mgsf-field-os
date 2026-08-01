@@ -132,6 +132,52 @@ function geometry(building) {
   return out;
 }
 
+// Right-sizing AFTER the retrofit. A tighter, better-insulated envelope needs a SMALLER heating/
+// cooling unit — oversizing short-cycles and hurts comfort + efficiency, and most existing homes are
+// already oversized 25–50%. This is a SALES-GRADE ESTIMATE, not an ACCA Manual J: it always defers to
+// a real Manual J load calc before purchase, and it never guarantees a size, a bill, or a saving.
+const STD_FURNACE_MBH_IN = [40, 60, 80, 100, 120];             // nominal furnace INPUT (kBtu/hr)
+const STD_COOL_TONS = [1.5, 2, 2.5, 3, 3.5, 4, 5];             // nominal cooling tons
+const LOAD_BTU_PER_SF = { tight: 22, typical: 30, leaky: 40 }; // cold-climate (Zone 6/7) existing-home design heating load — RANGE, ESTIMATE
+function snapUp(v, arr) { for (const s of arr) { if (s >= v) return s; } return arr[arr.length - 1]; }
+function suggestSizing(opts) {
+  opts = opts || {};
+  const area = num(opts.floorArea, 0);
+  const curOut = num(opts.currentOutputBtu, 0);
+  const reduction = Math.max(0, Math.min(0.5, num(opts.reductionPct, 0) / 100)); // clamp 0–50%
+  let loadLo, loadHi, basis;
+  if (curOut > 0) { loadLo = curOut * 0.6; loadHi = curOut * 0.9; basis = "anchored on the installed unit's output (existing homes typically oversized 15–40%)"; }
+  else if (area > 0) { loadLo = area * LOAD_BTU_PER_SF.tight; loadHi = area * LOAD_BTU_PER_SF.leaky; basis = "floor-area × cold-climate factor (Zone 6/7)"; }
+  else return null;
+  const postLo = Math.round(loadLo * (1 - reduction)), postHi = Math.round(loadHi * (1 - reduction));
+  // Size the new furnace so a 95%-AFUE condensing unit still covers the high end of the post-retrofit load.
+  const recInputMBH = snapUp((postHi / 0.95) / 1000, STD_FURNACE_MBH_IN);
+  const out = {
+    label: "ESTIMATE", basis, reductionAppliedPct: Math.round(reduction * 100),
+    currentLoadBtu: { low: Math.round(loadLo), high: Math.round(loadHi) },
+    postRetrofitLoadBtu: { low: postLo, high: postHi },
+    recommendedFurnaceInputMBH: recInputMBH,
+    options: [
+      "High-efficiency condensing furnace (≥95% AFUE), right-sized to the reduced load — option to price",
+      "Cold-climate heat pump sized to the reduced load, existing furnace kept as design-temp backup — option to price",
+    ],
+    note: "Right-sizing ESTIMATE — NOT a Manual J. A tighter home needs a SMALLER unit; oversizing short-cycles and hurts comfort. Confirm with an ACCA Manual J load calc before buying. Not a guarantee.",
+  };
+  if (opts.hasCooling) out.recommendedCoolingTons = snapUp(postHi / 12000, STD_COOL_TONS);
+  return out;
+}
+// Pull a heating unit's output BTU (or derive from input×AFUE) + whether any cooling is present.
+function equipHeatOutput(list) {
+  if (!Array.isArray(list)) return { output: 0, hasCooling: false };
+  let output = 0, hasCooling = false;
+  for (const e of list) {
+    const t = String((e && e.type) || ""); const sp = (e && e.specs) || {};
+    if (/furnace|boiler/i.test(t)) { const o = num(sp.outputBtu, 0) || (num(sp.inputBtu, 0) * num(sp.afue, 0) / 100); if (o > output) output = o; }
+    if (/ac|heat_pump|mini_split/i.test(t)) hasCooling = true;
+  }
+  return { output: Math.round(output), hasCooling };
+}
+
 // Homeowner concerns → recommended MGSF measures. Keyword-matched, grounded in our services +
 // building science. Combustion/CO is a SAFETY item (CAZ testing), never a foam upsell. Moisture is
 // "manage/control", NEVER a mold-elimination claim. An unmatched concern returns "assessment needed"
@@ -275,6 +321,15 @@ function analyze(body) {
     out.measuresTotal = tot;
   }
   if (b.equipment) { const eq = summarizeEquipment(b.equipment); if (eq.list.length) { out.equipment = eq.list; out.hasCombustion = eq.hasCombustion; } }
+  // Post-retrofit right-sizing — only when there's a retrofit in play (a reduction %, recommended
+  // measures, or priced measures) AND an anchor (floor area or an installed heating unit).
+  const workPlanned = num(b.reductionPct, 0) > 0 || (out.recommendations && out.recommendations.length) || (out.measures && out.measures.length);
+  const heat = equipHeatOutput(out.equipment);
+  const area = out.geometry ? num((b.building || {}).conditionedArea != null ? (b.building || {}).conditionedArea : (b.building || {}).area, 0) : 0;
+  if (workPlanned && (heat.output > 0 || area > 0)) {
+    const sizing = suggestSizing({ floorArea: area, currentOutputBtu: heat.output, reductionPct: b.reductionPct, hasCooling: heat.hasCooling });
+    if (sizing) out.sizing = sizing;
+  }
   const combustionConcern = (out.recommendations && out.recommendations.some((r) => r.hasSafety)) || out.hasCombustion;
   if (combustionConcern)
     out.safetyFlag = "Combustion-safety (CAZ) testing required before air-sealing — see recommendations.";
@@ -309,6 +364,8 @@ module.exports.siteEnergyMMBtu = siteEnergyMMBtu;
 module.exports.geometry = geometry;
 module.exports.concernsToMeasures = concernsToMeasures;
 module.exports.summarizeEquipment = summarizeEquipment;
+module.exports.suggestSizing = suggestSizing;
+module.exports.equipHeatOutput = equipHeatOutput;
 module.exports.MEASURE_CATALOG = MEASURE_CATALOG;
 module.exports.catalogFor = catalogFor;
 module.exports.applyIncentive = applyIncentive;

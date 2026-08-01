@@ -156,5 +156,25 @@ const eqRes = A.analyze({ equipment: [{ type: "furnace", make: "Lennox", model: 
 ok("equipment alone is valid input", eqRes.ok === true && Array.isArray(eqRes.equipment) && eqRes.equipment.length === 1);
 ok("combustion equipment raises CAZ safety flag", /CAZ/.test(eqRes.safetyFlag || ""));
 
+// ---- suggestSizing(): post-retrofit right-sizing, ESTIMATE, never a guarantee ----
+const sz = A.suggestSizing({ currentOutputBtu: 76000, reductionPct: 25, hasCooling: true });
+ok("sizing anchors on installed output", /installed unit/.test(sz.basis));
+ok("reduction applied to load", sz.reductionAppliedPct === 25 && sz.postRetrofitLoadBtu.high < sz.currentLoadBtu.high);
+ok("recommends a standard furnace input size", [40, 60, 80, 100, 120].includes(sz.recommendedFurnaceInputMBH), sz.recommendedFurnaceInputMBH);
+ok("recommends standard cooling tons when cooling present", [1.5, 2, 2.5, 3, 3.5, 4, 5].includes(sz.recommendedCoolingTons));
+ok("sizing is ESTIMATE + Manual J caveat + no guarantee", sz.label === "ESTIMATE" && /Manual J/.test(sz.note) && /[Nn]ot a guarantee/.test(sz.note));
+ok("reduction clamped ≤50%", A.suggestSizing({ currentOutputBtu: 80000, reductionPct: 999 }).reductionAppliedPct === 50);
+const szArea = A.suggestSizing({ floorArea: 2000, reductionPct: 30 });
+ok("sizing falls back to floor-area × climate factor", /floor-area/.test(szArea.basis) && szArea.postRetrofitLoadBtu.high > 0);
+ok("no anchor ⇒ null sizing", A.suggestSizing({ reductionPct: 30 }) === null);
+// equipHeatOutput: pull heating output, detect cooling
+const eho = A.equipHeatOutput([{ type: "furnace", specs: { inputBtu: 80000, afue: 95 } }, { type: "ac", specs: { tons: 3 } }]);
+ok("equipHeatOutput derives output + flags cooling", eho.output === 76000 && eho.hasCooling === true);
+// analyze wiring: sizing appears only with a retrofit signal + an anchor
+const szRes = A.analyze({ building: { conditionedArea: 2000 }, reductionPct: 25, concerns: [{ summary: "drafty, no wall insulation" }] });
+ok("analyze emits sizing when work planned + anchor present", szRes.sizing && szRes.sizing.label === "ESTIMATE");
+const noWork = A.analyze({ building: { conditionedArea: 2000 } });
+ok("no retrofit signal ⇒ no sizing", noWork.sizing === undefined);
+
 console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
