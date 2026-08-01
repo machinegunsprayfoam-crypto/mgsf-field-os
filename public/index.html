@@ -784,6 +784,9 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <div class="nav-item" onclick="switchModule('subs');renderSubs()" id="nav-subs">
         <div class="nav-icon">👷</div><div class="nav-label">SUBS</div>
       </div>
+      <div class="nav-item" onclick="switchModule('blueprint');renderBlueprint()" id="nav-blueprint">
+        <div class="nav-icon">📐</div><div class="nav-label">PLANS</div>
+      </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
       </div>
@@ -2061,6 +2064,11 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="subs_body"></div>
       </div>
+      <div id="mod-blueprint" class="module">
+        <div class="mod-head"><h2>📐 Plans — Blueprint Reader</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="blueprint_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -2890,6 +2898,7 @@ function switchModule(id){
   if(id==='compliance'){ if(window.renderCompliance) renderCompliance(); }
   if(id==='bpi'){ if(window.renderBpi) renderBpi(); }
   if(id==='subs'){ if(window.renderSubs) renderSubs(); }
+  if(id==='blueprint'){ if(window.renderBlueprint) renderBlueprint(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -3436,6 +3445,52 @@ async function subsSave(){
   renderSubs();
 }
 window.renderSubs = renderSubs;
+
+// ---- Blueprint reader: upload a plan sheet → read title block / legend / scope (vision) ----
+function renderBlueprint(){
+  const b=document.getElementById('blueprint_body'); if(!b) return;
+  b.innerHTML=`<div class="jsa-card"><div style="font-size:12px;color:var(--t2);margin-bottom:8px">Upload a plan sheet (image or PDF). Klyfton reads the title block, legend/key, and scope of work, and maps the trades. It is NOT a measurement tool — measure to scale in Bluebeam; nothing here is a price.</div>`+
+    `<input type="file" id="bp_file" accept="image/*,application/pdf" class="admin-inp" style="width:100%">`+
+    `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="blueprintRun()">Read the plan</button>`+
+    `<div id="bp_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>`+
+    `<div id="bp_out"></div>`;
+}
+async function blueprintRun(){
+  const f=(document.getElementById('bp_file')||{}).files; const st=document.getElementById('bp_status'), out=document.getElementById('bp_out');
+  if(!f || !f.length){ if(st){ st.style.color='var(--yw)'; st.textContent='Pick a plan file first.'; } return; }
+  const file=f[0];
+  if(file.size>10*1024*1024){ if(st){ st.style.color='var(--yw)'; st.textContent='File is large (>10MB) — a single sheet reads best.'; } }
+  if(st){ st.style.color='var(--cy)'; st.textContent='Reading the plan…'; }
+  const dataUrl=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }).catch(()=>null);
+  if(!dataUrl){ if(st){ st.style.color='var(--red)'; st.textContent='Could not read the file.'; } return; }
+  const d=await _sysPost('/api/blueprint',{image:String(dataUrl),mediaType:file.type||'image/png'});
+  if(st) st.textContent='';
+  if(!d || d.__err){ if(out) out.innerHTML='<p style="color:var(--red);font-size:13px">Read failed ('+((d&&d.__err)||'error')+').</p>'; return; }
+  if(d.configured===false){ if(out) out.innerHTML='<p style="color:var(--yw);font-size:13px">🔒 Vision not configured (ANTHROPIC_API_KEY).</p>'; return; }
+  blueprintRender(d);
+}
+function blueprintRender(d){
+  const out=document.getElementById('bp_out'); if(!out) return; const E=window.sysEsc;
+  if(d.error){ out.innerHTML='<p style="color:var(--red);font-size:13px">'+E(d.note||d.error)+'</p>'; return; }
+  let h='';
+  if(d.readable===false){ h+='<div class="jsa-card" style="border-left:3px solid var(--yw)">Sheet or scale unreadable — upload a clearer single sheet.</div>'; }
+  const tb=d.titleBlock||{};
+  if(Object.keys(tb).some(k=>tb[k])){ h+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Title block</h4><div style="font-size:13px;line-height:1.6">`+
+    (tb.project?`Project: <b>${E(tb.project)}</b><br>`:'')+(tb.address?`Address: ${E(tb.address)}<br>`:'')+
+    (tb.sheet?`Sheet: ${E(tb.sheet)}`:'')+(tb.scale?` · Scale: <b>${E(tb.scale)}</b>`:'')+(tb.date?` · ${E(tb.date)}`:'')+
+    (tb.drawnBy?`<br>By: ${E(tb.drawnBy)}`:'')+`</div></div>`; }
+  if(d.legend&&d.legend.length){ h+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Legend / key</h4><div style="font-size:12px;line-height:1.6">`+
+    d.legend.map(l=>`<b>${E(l.symbol||'')}</b> — ${E(l.meaning||'')}`).join('<br>')+`</div></div>`; }
+  if(d.scope&&d.scope.length){ h+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Scope of work</h4>`+
+    d.scope.map(s=>`<div style="font-size:12px;margin-bottom:3px">• ${E(s.item||'')} ${s.role?`<span style="color:${/self/.test(s.role)?'var(--or)':'var(--cy)'};font-size:10px">[${E(s.role)}${s.division?(' · Div '+E(s.division)):''}]</span>`:''}</div>`).join('')+`</div>`; }
+  if(d.structure && d.structure.subs && d.structure.subs.length){ h+=`<div class="jsa-card" style="font-size:12px">Subs needed: <b>${E(d.structure.subs.map(s=>s.name).join(', '))}</b> — each needs its compliance packet (see 👷 SUBS).</div>`; }
+  if(d.dimensionsStated&&d.dimensionsStated.length){ h+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Dimensions printed on the sheet</h4><div style="font-size:12px;line-height:1.6">`+
+    d.dimensionsStated.map(x=>`${E(x.label||'')}: <b>${E(x.value||'')}</b>`).join('<br>')+`<div style="color:var(--yw);margin-top:4px">Verify to scale — measure in Bluebeam before quoting.</div></div></div>`; }
+  if(d.note) h+=`<div class="jsa-card" style="font-size:12px;color:var(--t2)">${E(d.note)}</div>`;
+  h+=`<div style="font-size:11px;color:var(--t2);margin-top:6px">${E(d.label||'READING')} — ${E((d.verify||[]).join(' '))}</div>`;
+  out.innerHTML=h;
+}
+window.renderBlueprint = renderBlueprint;
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){

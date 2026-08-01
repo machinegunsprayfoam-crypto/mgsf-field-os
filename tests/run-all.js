@@ -50,6 +50,7 @@ const SUITES = [
   ["gov-programs", "state-gov + workforce helper: MT/ND/SD/WY registration + preference, Davis-Bacon/state prevailing-wage applicability, WOTC/OJT/apprenticeship — GUIDANCE w/ verify pointers"],
   ["construction", "GC/prime-with-subs: CSI MasterFormat trade taxonomy, self-perform vs sub split, sub compliance packet (COI/license/lien/bond/prevailing-wage flow-down) — GUIDANCE, no pricing"],
   ["subs", "subcontractor roster: per-doc + overall compliance readiness (ready/expiring/blocked), COI/license expiry boundaries, expiring-sweep ordering — required set derived from construction packet"],
+  ["blueprint", "blueprint reader (vision): title-block/legend/scope extraction, scope→CSI-trade + prime/sub routing, dimensions-only-as-printed, unreadable path — never fabricates a measurement, not a measurement tool"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
