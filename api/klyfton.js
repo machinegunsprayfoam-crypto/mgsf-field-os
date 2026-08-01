@@ -206,6 +206,12 @@ as MT. MT contractor/business license BOI-3RD-LIC-000309 (issued 2026-03-18). TA
 taxed as a CORPORATION was intended — CONFIRM with the accountant whether it was actually filed/accepted
 (it changes which return the surety needs and how SAM should read). Credentials for the capability statement:
 BPI Building Analyst + Building Science Principles (ID 5073450), SPFA member (2025), ProFoam-certified.
+OSHA OPERATOR/SAFETY CERTS (Clifton, Liftoff Certifications, all issued 2025-03-14): Fall Protection —
+General & Construction (OSHA 1926 Subpart M / 1910 Subpart D, ANSI/ASSP Z359.2; EXPIRES 2027-03-14 —
+renews FIRST, flag a renewal reminder ~60-90 days prior); MEWP aerial & scissor lifts (OSHA 1926.453,
+ANSI/SAIA A92.22/A92.24; expires 2028-03-14); Forklift classes 1-7 (OSHA 1910.178, ANSI B56.1-2020;
+expires 2028-03-14). Use them as safety differentiators on bids/GovCon; also filed in Drive
+(Legal_and_Certificates).
 
 INSURANCE — verified on file: General Liability (Midvale Indemnity, policy CP00147824, $1M/$2M, eff 2026-04-11,
 EXPIRES 2027-04-11 — flag a renewal reminder); Workers' Comp MT (Montana State Fund, policy 03-612989-4, eff
