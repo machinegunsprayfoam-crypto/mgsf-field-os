@@ -59,6 +59,7 @@ const LOCAL_TOOLS = [
   { id: "warranty-cert",    category: "documents", kind: "compute", does: "warranty certificate PDF to hand over at job close", module: "api/warranty-cert.js" },
   { id: "capability-statement", category: "govcon", kind: "compute", does: "one-page SDVOSB capability statement for federal buyers", module: "api/capability-statement.js" },
   { id: "gov-programs",     category: "govcon", kind: "compute", does: "state-gov + workforce/labor helper: MT/ND/SD/WY vendor registration + bid preference, Davis-Bacon/state prevailing-wage applicability, WOTC/OJT/apprenticeship incentives (GUIDANCE, verify pointers, never fabricated)", module: "api/gov-programs.js" },
+  { id: "construction",     category: "estimator", kind: "compute", does: "GC/prime-with-subs layer: CSI MasterFormat trade taxonomy (branches of each trade), MGSF self-perform vs subcontract split, and the subcontractor compliance packet (COI/additional-insured, license, lien waivers, bond, prevailing-wage flow-down) — GUIDANCE, grounded, no pricing", module: "api/construction.js" },
   { id: "change-order",     category: "documents", kind: "compute", does: "mid-job scope/price change-order doc to sign", module: "api/change-order.js" },
   { id: "reviews",          category: "comms",     kind: "compute", does: "draft the post-job 'how'd we do?' review request", module: "api/reviews.js" },
   { id: "photo-estimate",   category: "estimator", kind: "compute", does: "draft an estimate from a field photo + a few measurements", module: "api/photo-estimate.js" },
