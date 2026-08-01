@@ -146,3 +146,9 @@ body{
 ::-webkit-scrollbar-thumb:hover{background:var(--or)}
 .job-card,.pipe-card{border-radius:var(--rmd);transition:transform .16s ease,box-shadow .2s ease,border-color .2s ease}
 .job-card:hover,.pipe-card:hover{transform:translateY(-2px);box-shadow:var(--el2)}
+
+/* ---- 12. Accessibility: honor reduced-motion (calmer in the field / for sensitive users) ---- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
+  #tronFloor::before,#ambientBar{animation:none !important}
+}

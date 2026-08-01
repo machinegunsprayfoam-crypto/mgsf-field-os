@@ -59,7 +59,15 @@ _Last updated: 2026-07-26._
 - **CSS extracted** from the two inline `<style>` blocks (was index.html lines 12–572) into **`public/app.css`** (linked in `<head>`). Zero visual change — verified pixel-identical via headless Chromium before/after. This is the Option-2 maintainability win (index.html 13,579→13,021 lines). The 3 remaining `<style>` blocks in index.html are the embedded proposal/invoice/cert PRINT templates (JS template literals) — left as-is (print-specific, white paper).
 - **`public/theme-2026.css`** ("APEX" refit, loaded AFTER app.css) — additive/override ONLY: refined design tokens (deeper cool surface, elevation scale, larger radii, modern font stack), frosted HUD topbar, premium nav rail (active pill + accent bar), elevated cards, gradient metric numbers (theme-adaptive via `var(--tx)→var(--or)`), depth buttons, premium inputs, cleaner chat/tables. **Renames no class, moves no hook, changes no layout** → all JS wiring + all ~17 `data-theme` skins still work (verified default/synthwave/aeon + admin module headless). Remove the one `<link>` to fully revert.
 - Verification harness (local, not committed): tiny static server + Playwright screenshot scripts in scratchpad; app loads via `file://` (API fetches 404 → shell still renders). Chromium at `/opt/pw-browsers`, playwright global at `/opt/node22`.
-- **Next (owner review):** confirm the look on the branch; then optional phase 2 = extract the ~11k-line inline JS into per-module files (bigger, riskier — do incrementally with the same screenshot harness).
+- **QA VERIFIED (autonomous, 2026-08-01):** headless sweep of ALL 38 modules under the new theme —
+  zero page-level horizontal overflow anywhere (only 3 benign flags = wide inner tables that scroll
+  inside their own panel, pre-existing). Verified phone (390px) + tablet (820px) + desktop layouts
+  (0 overflow) and default/synthwave/aeon themes. Money screens (invoice/pricebook/admin) render
+  clean behind the normal PIN access-gate. Added **reduced-motion** support to theme-2026.css
+  (calms animations for prefers-reduced-motion / field use). Reusable QA harness committed:
+  `tools/ui/qa-sweep.js` (38-module layout + console-error sweep) + `tools/ui/ui-preview.html` +
+  `tools/ui/shot-preview.js` (component preview). Use these after ANY future CSS/layout change.
+- **Next (owner review):** confirm the look on the branch; then optional phase 2 = extract the ~11k-line inline JS into per-module files (bigger, riskier — do incrementally with the same screenshot harness). NOTE: did NOT attempt JS extraction autonomously — it needs the live backend + owner verification to be safe.
 
 **Gap analysis + warranty surfacing — 2026-07-26 (branch, not merged):**
 - **`FRONTEND_BACKEND_GAP_ANALYSIS.md`** (manual, since InfraNodus connector isn't in-session) — static wiring audit: UI calls 16 of 44 `api/*.js`; the other 28 are legit (8 cron, 7 infra/server-to-server, 11 headless calculators for the AI/MCP layer — `photo-estimate.js` `require()`s measure+foam-calc). Real findings: (1) **warranty-cert** built but not surfaced → **FIXED**; (2) **change-order** exists twice (server PDF + client-side localStorage module; UI uses client) — flagged for Clifton to pick a source of truth; (3) calc math lives client+server — watch for drift, keep constants in sync. All else wired clean.
