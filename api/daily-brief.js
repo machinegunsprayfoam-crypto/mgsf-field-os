@@ -75,17 +75,30 @@ function compose(data) {
   if (cold.length) lines.push(`Cold leads: ${cold.length} quiet 7d+${coldVal ? ` — ${money(coldVal)} at risk` : ""}`);
   lines.push(`Pipeline: ${money(pipe)} (${leads.length} leads + ${jobs.length} jobs)`);
 
+  // Top audit findings (injected by the handler from business-audit's pure audit()). Only the
+  // red/amber ones, top 3 — so the brief surfaces "what needs action" without opening OPS.
+  const findings = Array.isArray(data.findings) ? data.findings : [];
+  const hot = findings.filter((f) => f && /high|medium/i.test(String(f.severity || ""))).slice(0, 3);
+  if (hot.length) {
+    lines.push("");
+    lines.push("Needs attention:");
+    hot.forEach((f) => lines.push(`- ${f.title || f.area}${f.action ? ` → ${f.action}` : ""}`));
+  }
+
   return {
     text: lines.join("\n"),
-    stats: { today: today.length, week, overdue, ar, arLate, invoices: inv.length, cold: cold.length, coldVal, pipeline: pipe },
+    stats: { today: today.length, week, overdue, ar, arLate, invoices: inv.length, cold: cold.length, coldVal, pipeline: pipe, findings: hot.length },
   };
 }
 
 module.exports = async (req, res) => {
   if (!KV_ON) { res.status(200).json({ configured: false, note: "Attach Vercel KV to enable the daily brief." }); return; }
   try {
-    const [jobs, leads, invoices] = await Promise.all([kvGet("jobs"), kvGet("leads"), kvGet("invoices")]);
-    const brief = compose({ jobs, leads, invoices });
+    const [jobs, leads, invoices, estimates, certs] = await Promise.all([kvGet("jobs"), kvGet("leads"), kvGet("invoices"), kvGet("estimates"), kvGet("certs")]);
+    // Fold the top business-audit findings into the brief (pure audit — degrades to none on any error).
+    let findings = [];
+    try { const a = require("./business-audit").audit({ leads, jobs, estimates, invoices, certs }, { asOfMs: Date.now() }); findings = (a && a.findings) || []; } catch (e) {}
+    const brief = compose({ jobs, leads, invoices, findings });
 
     const wantSend = req.query && String(req.query.send) === "1";
     // Never fire on Sundays — owner boundary (family day). Preview still works any day.

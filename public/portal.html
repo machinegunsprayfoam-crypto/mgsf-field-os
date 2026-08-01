@@ -56,10 +56,26 @@
       v.awaitingSignature.forEach(function(d){ docs+='<div class="doc">✍️ '+E(d)+'</div>'; });
       docs+='</div>';
     }
+    // "Accept this quote" — only offered when there's a quote and the job isn't already booked/complete.
+    var st=String(v.status||"").toLowerCase();
+    var canAccept = (v.quote!=null) && !/scheduled|underway|progress|complete|paid|booked/.test(st);
+    var accept = canAccept ? '<button class="cta" id="acceptBtn" onclick="acceptQuote()">✓ Accept this quote</button>'+
+      '<div class="foot" style="margin-top:6px">Accepting lets us know you\'re ready — we\'ll call to confirm and schedule. Nothing is booked automatically.</div>' : '';
     document.getElementById("out").innerHTML=
       '<div class="card"><div class="row"><span class="k">Customer</span><span class="v">'+E(v.customer)+'</span></div>'+rows+'</div>'+
-      quote+docs+
-      '<a class="cta" href="tel:+14069398301">Call about my project</a>';
+      quote+docs+accept+
+      '<a class="cta" href="tel:+14069398301" style="'+(canAccept?'background:transparent;color:var(--or);border:1px solid var(--or)':'')+'">Call about my project</a>';
+  }
+  function acceptQuote(){
+    var t=param("token")||param("t"); var btn=document.getElementById("acceptBtn");
+    if(btn){ btn.disabled=true; btn.textContent="Sending…"; }
+    fetch("/api/portal",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"accept",token:t})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d.ok&&d.accepted){ document.getElementById("out").innerHTML='<div class="msg"><div class="big">✅</div><div><b>Thank you'+(d.customer?(", "+E(d.customer)):"")+"!</b><br>We got it — we\'ll call to confirm and schedule your job.</div></div>"; }
+        else { if(btn){ btn.disabled=false; btn.textContent="✓ Accept this quote"; } alert("Sorry, that didn\'t go through. Please call us at 406-939-8301."); }
+      })
+      .catch(function(){ if(btn){ btn.disabled=false; btn.textContent="✓ Accept this quote"; } alert("Something went wrong. Please call us at 406-939-8301."); });
   }
   function fail(msg){ document.getElementById("out").innerHTML='<div class="msg"><div class="big">🔒</div><div>'+E(msg)+'</div></div>'; }
   (function(){

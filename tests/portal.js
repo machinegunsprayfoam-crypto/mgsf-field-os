@@ -81,6 +81,19 @@ ok("status: empty → sensible default", P.statusLabel("") === "In progress");
   ok("matchByToken returns null for empty token", P.matchByToken(recs, "", SECRET) === null);
 })();
 
+// ---- acceptEvent: the inbound customer-accept signal (owner reviews; books nothing) ----
+(() => {
+  const ev = P.acceptEvent({ id: 7, customer: "Dane Oasis", service: "SPF roofing", value: 118500,
+    material: 35682, margin: 0.55, notes: "internal" }, "2026-08-01T12:00:00Z");
+  ok("acceptEvent type is portal_accept", ev.type === "portal_accept");
+  ok("acceptEvent carries customer + quote + recordId + timestamp", ev.customer === "Dane Oasis" && ev.quote === 118500 && ev.recordId === 7 && ev.at === "2026-08-01T12:00:00Z");
+  ok("acceptEvent makes clear it books nothing", /nothing was scheduled/i.test(ev.note));
+  // security: the accept event must NOT carry internal cost/margin/notes either
+  const blob = JSON.stringify(ev).toLowerCase();
+  ["35682", "margin", "0.55", "internal"].forEach((leak) => ok("acceptEvent does not leak \"" + leak + "\"", blob.indexOf(leak) < 0));
+  ok("acceptEvent quote is sell value, not a cost", ev.quote === 118500);
+})();
+
 // ---- linkFor builds a shareable url with the token ----
 (() => {
   const l = P.linkFor(101, SECRET, "https://app.example.com");

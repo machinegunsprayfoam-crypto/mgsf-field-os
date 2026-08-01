@@ -64,6 +64,21 @@ ok("empty data ⇒ 0 invoices, 0 cold", empty.stats.invoices === 0 && empty.stat
 ok("empty data ⇒ 'nothing scheduled' today line", /Today: nothing scheduled/.test(empty.text));
 ok("missing arrays default safely", B.compose({ jobs: null, leads: undefined }).stats.pipeline === 0);
 
+// ---- audit findings folded in (injected by the handler; optional + backward-compatible) ----
+(() => {
+  const withF = B.compose(Object.assign({}, data, { findings: [
+    { severity: "high", title: "Stale bid: Black Hills", action: "Follow up today" },
+    { severity: "medium", area: "AR aging", action: "Send reminder" },
+    { severity: "low", title: "Minor thing", action: "later" },
+    { severity: "high", title: "Fourth", action: "x" },
+  ] }));
+  ok("brief adds a 'Needs attention' section when findings present", /Needs attention:/.test(withF.text));
+  ok("only red/amber findings shown, capped at 3", withF.stats.findings === 3, "n=" + withF.stats.findings);
+  ok("low-severity finding excluded", !/Minor thing/.test(withF.text));
+  ok("finding renders title → action", /Stale bid: Black Hills → Follow up today/.test(withF.text));
+  ok("no findings ⇒ no 'Needs attention' section (backward-compatible)", !/Needs attention/.test(B.compose(data).text) && B.compose(data).stats.findings === 0);
+})();
+
 // ---- isolated threshold check ----
 ok("invoice owed exactly > 0.5 is included", B.compose({ invoices: [{ amt: 100, dep: 99 }] }).stats.invoices === 1);
 ok("invoice fully paid by deposit (0 owed) excluded", B.compose({ invoices: [{ amt: 100, dep: 100 }] }).stats.invoices === 0);

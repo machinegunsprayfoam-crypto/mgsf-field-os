@@ -5272,6 +5272,12 @@ function calculateBid(){
   const blendedGM  = totalSell>0?totalGP/totalSell:0;
   const gm         = MGSF.gmTargets[market]||0.50;
   const projectGO  = blendedGM>=gm-0.001;
+  // For the "vs past jobs" predictive sanity-check: total sqft across scopes + a service label from the
+  // primary scope type (predictive-cost fuzzy-matches service; an unmatched label honestly returns "thin").
+  const bidTotalSqft = scopeItems.reduce((s,si)=>s+(parseFloat((document.getElementById('si'+si.id+'_sqft')||{}).value)||0),0);
+  const _svcMap = {wall:'spray foam',attic:'spray foam',lid:'spray foam',crawl:'spray foam',roof:'spf roofing',roofing:'spf roofing',coat:'coating',coating:'coating',lift:'concrete lifting',lifting:'concrete lifting',slab:'concrete lifting',void:'void fill'};
+  const _pt = (scopeItems[0]&&String(scopeItems[0].type||'').toLowerCase())||'';
+  const bidPrimarySvc = _svcMap[Object.keys(_svcMap).find(k=>_pt.indexOf(k)>=0)]||_pt;
 
   // Auto prep & time — crew-hours + days from production rates, foam sets to order,
   // and a masking estimate (9ft×200ft roll = 1800 sq ft). All labeled as estimates.
@@ -5340,10 +5346,12 @@ function calculateBid(){
   <div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
     ⚠️ DRAFT ONLY — Clifton approves all numbers before any bid is sent. Unsigned change orders are a hard closeout block.
   </div>
-  <div style="margin-top:8px;display:flex;gap:8px">
+  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-primary" onclick="saveEstimate(${Math.round(totalSell)},'${custName.replace(/'/g,"\\'")}',${(blendedGM||0).toFixed(4)})">💾 SAVE ESTIMATE</button>
     <button class="btn btn-ghost" onclick="createLeadFromEstimate('${custName.replace(/'/g,"\\'")}',${Math.round(totalSell)})">→ CREATE LEAD</button>
-  </div>`;
+    <button class="btn btn-ghost" onclick="calcComparePast('${(bidPrimarySvc||'').replace(/'/g,"\\'")}',${Math.round(bidTotalSqft)},${Math.round(totalDirect)})" title="Sanity-check this bid's cost against what similar past jobs actually cost">🔮 vs past jobs</button>
+  </div>
+  <div id="bidPredictOut" style="margin-top:8px;font-size:12px;line-height:1.5"></div>`;
 
   document.getElementById('bidResult').innerHTML=html;
   speak(`Bid calculated. Total: ${formatSpeakDollar(totalSell)} for ${custName}.`);
@@ -5525,6 +5533,28 @@ function upsertLeadFromEstimate(name, val, opts){
   if(opts.switchToCrm) switchModule('crm');
   return {lead, action};
 }
+// Predictive sanity-check: what did similar past jobs actually cost? Compares the prediction (from YOUR
+// completed-job history) to THIS bid's own direct cost. Advisory — never changes the bid or the price.
+async function calcComparePast(service, sqft, directCost){
+  const out=document.getElementById('bidPredictOut'); if(!out) return;
+  if(!(sqft>0)){ out.innerHTML='<span style="color:var(--t2)">Add a sq-ft scope to compare against past jobs.</span>'; return; }
+  out.innerHTML='<span style="color:var(--t2)">Checking your job history…</span>';
+  const d=await _sysPost('/api/predictive-cost',{service:service,size:sqft});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">History check unavailable.</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS) to compare.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">Turn on the data spine (Vercel KV) to compare against job history.</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--t2)">Not enough history yet ('+(d.samples||0)+'/'+(d.needed||3)+' similar completed jobs) — this builds as you log job costs.</span>'; return; }
+  const p=d.prediction||{}; const pred=Math.round(p.predicted||0);
+  const conf={high:'✅ high',medium:'⚠️ medium',low:'❌ low'}[p.confidence]||p.confidence||'';
+  const delta=directCost-pred; const dir=delta>=0?'above':'below';
+  const col=Math.abs(delta)<=pred*0.15?'var(--gr)':'var(--yw)';
+  out.innerHTML='<div style="background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);border-radius:6px;padding:8px">'+
+    '<b style="color:var(--cy)">🔮 vs '+p.samples+' past '+_cE(service||'job')+' job'+(p.samples===1?'':'s')+'</b> <span style="font-size:11px;color:var(--t2)">('+_cE(conf)+' confidence)</span><br>'+
+    'History predicts a cost near <b>$'+pred.toLocaleString()+'</b> for ~'+Math.round(sqft).toLocaleString()+' sq ft.<br>'+
+    'This bid\'s direct cost is <b>$'+Math.round(directCost).toLocaleString()+'</b> — <span style="color:'+col+'">$'+Math.abs(delta).toLocaleString()+' '+dir+'</span> the historical trend.'+
+    '<div style="font-size:10px;color:var(--t2);margin-top:4px">Advisory sanity-check from your own logged jobs — not a quote; doctrine still sets price.</div></div>';
+}
+window.calcComparePast = calcComparePast;
 function createLeadFromEstimate(name, val){
   const r = upsertLeadFromEstimate(name, val, {switchToCrm:true, announce:true});
   if(r) notify('Lead '+r.action+' for '+name+' → Estimate Sent');

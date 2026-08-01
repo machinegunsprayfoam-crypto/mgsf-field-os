@@ -90,6 +90,22 @@ function matchByToken(records, token, secret) {
 }
 function linkFor(id, secret, base) { const t = tokenFor(id, secret); return t ? { token: t, url: (base || SITE).replace(/\/$/, "") + "/portal.html?token=" + t } : null; }
 
+// ---- PURE: build the inbound "customer accepted the quote" event (owner reviews; never auto-books) ----
+// This is an INBOUND customer signal (like a lead form), not an outward Klyfton action — recording it
+// for the owner is allowed; it books nothing. Timestamp is injected (no Date.now in the pure core).
+function acceptEvent(record, atISO) {
+  record = record || {};
+  return {
+    type: "portal_accept",
+    at: atISO || null,
+    recordId: record.id != null ? record.id : null,
+    customer: String(record.customer || record.name || "Customer").slice(0, 80),
+    service: String(record.service || record.type || "").slice(0, 60) || null,
+    quote: money(record.value != null ? record.value : record.lastEstimate),
+    note: "Customer tapped Accept on their portal — confirm and book. Nothing was scheduled automatically.",
+  };
+}
+
 // ---- GATED LIVE handler -----------------------------------------------------------------------------
 async function kvGet(col) {
   try {
@@ -99,17 +115,53 @@ async function kvGet(col) {
     return Array.isArray(v) ? v : [];
   } catch (e) { return []; }
 }
+// Append an event to a KV list (newest first, capped) — records the inbound customer signal for the owner.
+async function kvAppend(col, ev, cap) {
+  try {
+    const list = await kvGet(col);
+    list.unshift(ev);
+    const trimmed = list.slice(0, cap || 200);
+    await fetch(`${KV_URL}/set/mgsf:${col}`, { method: "POST", headers: { Authorization: `Bearer ${KV_TOKEN}`, "content-type": "application/json" }, body: JSON.stringify(trimmed) });
+    return true;
+  } catch (e) { return false; }
+}
+// Best-effort owner notification (same webhook the daily brief uses). Never throws.
+async function fireAlert(ev) {
+  const url = process.env.ALERTS_WEBHOOK_URL; if (!url) return false;
+  try {
+    await fetch(url, { method: "POST", headers: Object.assign({ "content-type": "application/json" }, process.env.ALERTS_WEBHOOK_SECRET ? { "x-webhook-secret": process.env.ALERTS_WEBHOOK_SECRET } : {}),
+      body: JSON.stringify({ event: "portal_accept", message: `✅ ${ev.customer} accepted their quote${ev.quote ? " ($" + ev.quote.toLocaleString() + ")" : ""} — confirm and book.`, data: ev }) });
+    return true;
+  } catch (e) { return false; }
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
   if (!SECRET || !KV_ON) { res.status(200).json({ configured: false, reason: "not_configured", note: "Set PORTAL_SECRET + KV to enable the customer portal." }); return; }
 
-  // OWNER generate-link mode — crew-gated (never expose link generation to the public)
   if (req.method === "POST") {
+    let b = req.body; if (typeof b === "string") { try { b = JSON.parse(b); } catch { b = {}; } } b = b || {};
+    const action = String(b.action || "link").toLowerCase();
+
+    // CUSTOMER accept mode — TOKEN-gated (not crew-gated): the customer taps Accept on their portal.
+    // Records an inbound signal + notifies the owner. Books NOTHING (owner confirms).
+    if (action === "accept") {
+      const token = b.token || (req.query && req.query.token) || "";
+      if (!token) { res.status(200).json({ ok: false, reason: "token_required" }); return; }
+      const [leads, jobs] = await Promise.all([kvGet("leads"), kvGet("jobs")]);
+      const rec = matchByToken(jobs, token, SECRET) || matchByToken(leads, token, SECRET);
+      if (!rec) { res.status(200).json({ ok: false, reason: "not_found" }); return; }
+      const ev = acceptEvent(rec, new Date().toISOString());
+      await kvAppend("portal_events", ev);
+      fireAlert(ev);   // best-effort, don't block the customer's confirmation on it
+      res.status(200).json({ ok: true, accepted: true, customer: ev.customer });
+      return;
+    }
+
+    // OWNER generate-link mode — CREW_CODE-gated (never expose link generation to the public)
     const guard = require("./guard");
     if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
-    let b = req.body; if (typeof b === "string") { try { b = JSON.parse(b); } catch { b = {}; } }
-    const id = b && (b.id != null ? b.id : b.recordId);
+    const id = b.id != null ? b.id : b.recordId;
     if (id == null || id === "") { res.status(200).json({ ok: false, reason: "id_required" }); return; }
     res.status(200).json({ ok: true, ...linkFor(id, SECRET, SITE) });
     return;
@@ -132,3 +184,4 @@ module.exports.statusLabel = statusLabel;
 module.exports.safeView = safeView;
 module.exports.matchByToken = matchByToken;
 module.exports.linkFor = linkFor;
+module.exports.acceptEvent = acceptEvent;
