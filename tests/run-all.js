@@ -47,6 +47,7 @@ const SUITES = [
   ["invoice-remind", "AR reminders: overdue tone ladder + settled/unpaid filter (paid-substring guard) + ordering"],
   ["energy-audit", "utility-bill baseline: annualize + base/seasonal disaggregation + gated normalize/savings (ESTIMATE, no $)"],
   ["equipment-lookup", "AI make/model → specs: grounded (forced web_search), verified-only-with-source, never-guess, vintage ESTIMATE fallback"],
+  ["gov-programs", "state-gov + workforce helper: MT/ND/SD/WY registration + preference, Davis-Bacon/state prevailing-wage applicability, WOTC/OJT/apprenticeship — GUIDANCE w/ verify pointers"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];

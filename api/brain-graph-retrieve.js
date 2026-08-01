@@ -39,6 +39,8 @@ const STOP = new Set(("the a an and or of to in on for with is are be do i we yo
 const ALIAS = {
   sdvosb: ["federal", "govcon"], samgov: ["federal", "govcon"], sam: ["federal", "govcon"],
   bid: ["federal", "govcon"], contract: ["federal", "govcon"], grant: ["federal", "govcon"], veteran: ["federal"],
+  prevailing: ["federal", "govcon"], davis: ["federal", "govcon"], apprentice: ["federal", "govcon"], apprenticeship: ["federal", "govcon"],
+  workforce: ["federal", "govcon"], wotc: ["federal", "govcon"], payroll: ["federal"], emacs: ["federal", "govcon"], procurement: ["federal", "govcon"],
   margin: ["cost"], profit: ["cost", "money"], markup: ["cost"], gm: ["cost"], price: ["cost"], pricing: ["cost"], quote: ["cost", "estimate"],
   substrate: ["condition", "spray"], dewpoint: ["condition"], condensation: ["condition", "spray"], humidity: ["condition"],
   temperature: ["condition"], weather: ["condition"], cold: ["condition"], hot: ["condition"], window: ["condition"],

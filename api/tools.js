@@ -58,6 +58,7 @@ const LOCAL_TOOLS = [
   { id: "proposal-pdf",     category: "documents", kind: "compute", does: "turn an estimate into a branded, emailable proposal PDF", module: "api/proposal-pdf.js" },
   { id: "warranty-cert",    category: "documents", kind: "compute", does: "warranty certificate PDF to hand over at job close", module: "api/warranty-cert.js" },
   { id: "capability-statement", category: "govcon", kind: "compute", does: "one-page SDVOSB capability statement for federal buyers", module: "api/capability-statement.js" },
+  { id: "gov-programs",     category: "govcon", kind: "compute", does: "state-gov + workforce/labor helper: MT/ND/SD/WY vendor registration + bid preference, Davis-Bacon/state prevailing-wage applicability, WOTC/OJT/apprenticeship incentives (GUIDANCE, verify pointers, never fabricated)", module: "api/gov-programs.js" },
   { id: "change-order",     category: "documents", kind: "compute", does: "mid-job scope/price change-order doc to sign", module: "api/change-order.js" },
   { id: "reviews",          category: "comms",     kind: "compute", does: "draft the post-job 'how'd we do?' review request", module: "api/reviews.js" },
   { id: "photo-estimate",   category: "estimator", kind: "compute", does: "draft an estimate from a field photo + a few measurements", module: "api/photo-estimate.js" },

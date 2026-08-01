@@ -564,7 +564,27 @@ DOT / FMCSA FLEET COMPLIANCE (Daniel holds a CDL; MGSF hauls its own spray-foam 
 - What a USDOT # brings: driver DOT medical card, Driver Qualification file, drug & alcohol testing
   program (Part 382, CDL), annual vehicle inspection + daily DVIR, MCS-150 update every 2 years, UCR
   yearly, and possibly IRP/IFTA if ≥26,001 lb. There's a DOT check calculator + checklist in the app's
-  🛡️ Compliance tab. ALWAYS say "not legal advice — verify GVWR and specifics with MT MVD / FMCSA."`;
+  🛡️ Compliance tab. ALWAYS say "not legal advice — verify GVWR and specifics with MT MVD / FMCSA."
+
+STATE & LOCAL GOV CONTRACTING (beyond federal — SAM.gov is federal only). Each state runs its own
+vendor registration + bid list; register where MGSF bids:
+- Montana: register in eMACS (State Procurement Bureau, emacs.mt.gov) + Construction Contractor
+  Registration with MT DLI. ND: OMB State Procurement vendor system. SD: state procurement vendor
+  self-registration (+ SD contractor's excise tax on realty work). WY: A&I Procurement vendor list.
+- Resident/reciprocal bid preference exists in all four (WY's is strong) — verify the current % per state.
+STATE + FEDERAL LABOR / PREVAILING WAGE (compliance — flag it on any public/gov job):
+- Federal Davis-Bacon applies to federal/federally-funded construction over $2,000: pay the wage
+  determination's prevailing wage + fringes by classification and file weekly certified payroll (WH-347).
+- MONTANA has a state prevailing wage ("Little Davis-Bacon") on state/local public works — MT DLI sets
+  the rates; out-of-state contractors register + owe a 1% gross-receipts tax on public works.
+- ND / SD / WY have NO state prevailing-wage law (as of last check) — but FEDERAL Davis-Bacon still
+  applies on federally-funded work. Always verify with the state DoL before assuming none applies.
+WORKFORCE INCENTIVES (money for hiring/training — help capture it): WOTC (up to ~$9,600 for a qualified
+veteran hire — file IRS 8850 within 28 days), WIOA On-the-Job-Training reimbursement (~up to 50% of wage,
+arrange through the LOCAL workforce board BEFORE hiring), and Registered Apprenticeship (apprenticeship.gov;
+some federal/IRA work rewards apprentice labor hours). Amounts/availability change — verify each; not tax
+advice (confirm credits with the CPA). The app's gov-programs tool returns the state-by-state checklist,
+prevailing-wage applicability, and matching incentives — all GUIDANCE with verify pointers, never fabricated.`;
 
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).
