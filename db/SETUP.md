@@ -13,6 +13,7 @@ turns on. `GET /api/health` and `GET /api/cmdb` then show what's live and the bi
 | 3 | **`scenarios.sql`** | `scenarios` | deployed **automations** (scenario builder) |
 | 4 | **`dispatched_actions.sql`** | `dispatched_actions` | **idempotency** (no double-send) |
 | 5 | **`agent_runs.sql`** | `agent_runs` (same table as #1 defines — harmless if already made) | agent **run-history** + **telemetry** |
+| 6 | **`subcontractors.sql`** | `subcontractors` (roster + compliance docs jsonb) | **subcontractor roster** (prime-with-subs) |
 
 ## Table → env var → feature (what each unlocks)
 | Subsystem | Needs (in Vercel) | Notes |

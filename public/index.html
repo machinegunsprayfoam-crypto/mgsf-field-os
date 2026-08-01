@@ -781,6 +781,9 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <div class="nav-item" onclick="switchModule('bpi');renderBpi()" id="nav-bpi">
         <div class="nav-icon">🏠</div><div class="nav-label">BPI</div>
       </div>
+      <div class="nav-item" onclick="switchModule('subs');renderSubs()" id="nav-subs">
+        <div class="nav-icon">👷</div><div class="nav-label">SUBS</div>
+      </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
       </div>
@@ -2053,6 +2056,11 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="bpi_body"></div>
       </div>
+      <div id="mod-subs" class="module">
+        <div class="mod-head"><h2>👷 Subcontractors — Prime/Sub Roster</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="subs_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -2881,6 +2889,7 @@ function switchModule(id){
   if(id==='pricebook'){ if(window.renderPriceBook) renderPriceBook(); }
   if(id==='compliance'){ if(window.renderCompliance) renderCompliance(); }
   if(id==='bpi'){ if(window.renderBpi) renderBpi(); }
+  if(id==='subs'){ if(window.renderSubs) renderSubs(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -3373,6 +3382,60 @@ function _bpiWireBridge(){ if(window._bpiBridgeWired) return; window._bpiBridgeW
     if(typeof notify==='function') notify('Building pulled from estimator','success');
   });
 }
+
+// ---- Subcontractor roster: prime-with-subs compliance readiness (Supabase-gated) ----
+async function renderSubs(){
+  const b=document.getElementById('subs_body'); if(!b) return; const E=window.sysEsc;
+  b.innerHTML='<div style="opacity:.6">Loading roster…</div>';
+  const d=await fetch('/api/subs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'expiring'})}).then(r=>r.json()).catch(()=>null);
+  let h='';
+  if(!d || d.configured===false){
+    h+='<div class="jsa-card" style="border-left:3px solid var(--yw)"><b>Roster storage not connected.</b> Add Supabase (see db/SETUP.md) to persist subs. Until then, collect each sub\'s required packet — signed subcontract, W-9, COI (MGSF additional insured), license, lien waivers, safety — before any sub works under MGSF as prime.</div>'+_subsForm();
+    b.innerHTML=h; return;
+  }
+  const rows=d.results||[], alerts=d.alerts||[];
+  const cnt={ready:0,expiring:0,blocked:0}; rows.forEach(r=>{ if(r.compliance) cnt[r.compliance.readiness]=(cnt[r.compliance.readiness]||0)+1; });
+  h+=`<div class="jsa-card"><b>${rows.length}</b> subs · <span style="color:var(--gr)">${cnt.ready||0} ready</span> · <span style="color:var(--yw)">${cnt.expiring||0} expiring</span> · <span style="color:var(--red)">${cnt.blocked||0} blocked</span></div>`;
+  if(alerts.length){ h+=`<div class="jsa-card" style="border-left:3px solid var(--yw)"><h4 style="margin:0 0 6px">⚠ Needs attention</h4>`+
+    alerts.map(a=>`<div style="font-size:13px;margin-bottom:4px">${_subBadge(a.readiness)} <b>${E(a.name||'')}</b> <span style="color:var(--t2)">(${E(a.trade||'')})</span> — ${a.readiness==='blocked'?('missing/expired: '+E((a.blockers||[]).join(', ')||'—')):('expiring: '+E((a.expiring||[]).map(x=>x.type+' in '+x.daysLeft+'d').join(', ')))}</div>`).join('')+`</div>`; }
+  h+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Roster</h4>`+(rows.length?rows.map(r=>{ const c=r.compliance||{};
+    return `<div style="font-size:13px;border-bottom:1px solid rgba(255,255,255,.08);padding:4px 0">${_subBadge(c.readiness)} <b>${E(r.name||'')}</b> <span style="color:var(--t2)">${E(r.trade||'')}${r.company?(' · '+E(r.company)):''}${r.state?(' · '+E(r.state)):''}</span></div>`; }).join(''):'<div style="opacity:.6">No subs yet — add one below.</div>')+`</div>`;
+  h+=_subsForm();
+  b.innerHTML=h;
+}
+function _subBadge(r){ const m={ready:['var(--gr)','READY'],expiring:['var(--yw)','EXPIRING'],blocked:['var(--red)','BLOCKED']}; const x=m[r]||['var(--t2)','?']; return `<span style="color:${x[0]};border:1px solid ${x[0]};border-radius:4px;padding:0 4px;font-size:10px">${x[1]}</span>`; }
+function _subsForm(){ return `<div class="jsa-card"><h4 style="margin:0 0 6px">Add / update a sub</h4>`+
+  `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`+
+  `<input class="admin-inp" id="sub_name" placeholder="Name">`+
+  `<input class="admin-inp" id="sub_trade" placeholder="Trade (e.g. electrical)">`+
+  `<input class="admin-inp" id="sub_company" placeholder="Company">`+
+  `<input class="admin-inp" id="sub_phone" placeholder="Phone">`+
+  `<input class="admin-inp" id="sub_state" placeholder="State (MT/ND/SD/WY)">`+
+  `<input class="admin-inp" id="sub_license" placeholder="License #"></div>`+
+  `<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Compliance docs on file (COI + license carry an expiry we watch):</div>`+
+  `<div id="sub_docs">`+
+    ['subcontract','w9','coi','license','lien-waivers','safety'].map(t=>{ const dated=(t==='coi'||t==='license');
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px"><input type="checkbox" class="sub-doc" data-t="${t}" style="width:16px;height:16px">${t}`+
+        (dated?`<input class="admin-inp sub-doc-exp" data-t="${t}" placeholder="expires YYYY-MM-DD" style="flex:1;max-width:180px">`:'')+`</label>`; }).join('')+`</div>`+
+  `<button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="subsSave()">Save sub (approved)</button>`+
+  `<div id="sub_msg" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>`;
+}
+async function subsSave(){
+  const g=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=g('sub_name'), trade=g('sub_trade'), msg=document.getElementById('sub_msg');
+  if(!name||!trade){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Name and trade are required.'; } return; }
+  const docs=[]; document.querySelectorAll('#sub_docs .sub-doc').forEach(cb=>{ if(cb.checked){ const t=cb.getAttribute('data-t'); const exp=((document.querySelector('.sub-doc-exp[data-t="'+t+'"]')||{}).value||''); const doc={type:t,onFile:true}; if(exp) doc.expires=exp.slice(0,10); docs.push(doc); } });
+  const sub={ name:name, trade:trade, company:g('sub_company'), phone:g('sub_phone'), state:g('sub_state'), license_no:g('sub_license'), docs:docs };
+  if(msg){ msg.style.color='var(--cy)'; msg.textContent='Saving…'; }
+  const d=await fetch('/api/subs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'save',sub:sub,approved:true})}).then(r=>r.json()).catch(()=>null);
+  if(!d){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Save failed.'; } return; }
+  if(d.configured===false){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Storage not connected (Supabase) — not saved.'; } return; }
+  if(d.reason==='needs_approval'){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Approval required.'; } return; }
+  if(!d.ok){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Save failed'+(d.errors?(' ('+d.errors.join(', ')+')'):'')+'.'; } return; }
+  if(msg){ msg.style.color='var(--gr)'; msg.textContent='Saved.'; }
+  renderSubs();
+}
+window.renderSubs = renderSubs;
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){

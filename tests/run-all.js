@@ -49,6 +49,7 @@ const SUITES = [
   ["equipment-lookup", "AI make/model → specs: grounded (forced web_search), verified-only-with-source, never-guess, vintage ESTIMATE fallback"],
   ["gov-programs", "state-gov + workforce helper: MT/ND/SD/WY registration + preference, Davis-Bacon/state prevailing-wage applicability, WOTC/OJT/apprenticeship — GUIDANCE w/ verify pointers"],
   ["construction", "GC/prime-with-subs: CSI MasterFormat trade taxonomy, self-perform vs sub split, sub compliance packet (COI/license/lien/bond/prevailing-wage flow-down) — GUIDANCE, no pricing"],
+  ["subs", "subcontractor roster: per-doc + overall compliance readiness (ready/expiring/blocked), COI/license expiry boundaries, expiring-sweep ordering — required set derived from construction packet"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
