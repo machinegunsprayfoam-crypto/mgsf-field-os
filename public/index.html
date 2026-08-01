@@ -787,6 +787,9 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <div class="nav-item" onclick="switchModule('blueprint');renderBlueprint()" id="nav-blueprint">
         <div class="nav-icon">📐</div><div class="nav-label">PLANS</div>
       </div>
+      <div class="nav-item" onclick="switchModule('calcs');renderCalcs()" id="nav-calcs">
+        <div class="nav-icon">🧮</div><div class="nav-label">CALCS</div>
+      </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
       </div>
@@ -2069,6 +2072,11 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="blueprint_body"></div>
       </div>
+      <div id="mod-calcs" class="module">
+        <div class="mod-head"><h2>🧮 Trade Calculators</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="calcs_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -2899,6 +2907,7 @@ function switchModule(id){
   if(id==='bpi'){ if(window.renderBpi) renderBpi(); }
   if(id==='subs'){ if(window.renderSubs) renderSubs(); }
   if(id==='blueprint'){ if(window.renderBlueprint) renderBlueprint(); }
+  if(id==='calcs'){ if(window.renderCalcs) renderCalcs(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -3491,6 +3500,90 @@ function blueprintRender(d){
   out.innerHTML=h;
 }
 window.renderBlueprint = renderBlueprint;
+
+// ---- Trade Calculators: pick a trade → run its wired quantity engine. Built for the whole crew
+// (incl. Clifton's nephews across their own trades) — plain, forgiving, and LOUD about ESTIMATE/verify.
+// Trade→engine wiring is pulled from /api/construction (single source of truth); pricing stays in the
+// estimator, never here. Subbed trades are handled honestly (no fabricated MGSF calc). ----
+function _cE(s){ return (window.sysEsc||String)(s); }
+const CALC_ENGINES = {
+  'foam-calc': { label:'Foam yield (board-feet + sets)', path:'/api/foam-calc', fields:[
+    {id:'type',label:'Foam',type:'select',opts:[['closed','Closed-cell'],['open','Open-cell']]},
+    {id:'area',label:'Area (ft²)',ph:'1000'},{id:'thickness',label:'Thickness (in)',ph:'2'},{id:'waste',label:'Waste (0–0.5)',ph:'0.1'}],
+    render:(d)=> d && d.boardFeet!=null ? `Board-feet: <b>${_cE(d.boardFeet)}</b> (+waste ${_cE(d.boardFeetWithWaste)})<br>Sets to order: <b>${_cE(d.setsToOrder)}</b>` : null },
+  'rvalue-calc': { label:'R-value + code check (IECC Zone 6/7)', path:'/api/rvalue-calc', fields:[
+    {id:'assembly',label:'Assembly',type:'select',opts:[['wall','Wall'],['ceiling','Ceiling/attic'],['floor','Floor'],['basement','Basement'],['crawl','Crawl'],['slab','Slab']]},
+    {id:'zone',label:'Climate zone',type:'select',opts:[['6','Zone 6'],['7','Zone 7']]},
+    {id:'type',label:'Foam',type:'select',opts:[['closed','Closed-cell'],['open','Open-cell']]},
+    {id:'thickness',label:'Foam thickness (in)',ph:'3'},{id:'battR',label:'Batt R (flash+batt, opt)',ph:''}],
+    render:(d)=> d && d.installed ? `Installed: <b>R-${_cE(d.installed.total)}</b> vs code R-${_cE(d.code.min)} → ${d.meets===true?'<span style="color:var(--gr)">MEETS</span>':(d.meets===false?('<span style="color:var(--yw)">SHORT by R-'+_cE(d.shortfallR)+' (~'+_cE(d.addThicknessIn)+'" more foam)</span>'):'—')}<br><span style="color:var(--t2)">${_cE(d.code.paths)}</span>` : null },
+  'coating-calc': { label:'Coating gallons', path:'/api/coating-calc', fields:[
+    {id:'area',label:'Area (ft²)',ph:'2000'},{id:'dryMils',label:'Dry mils',ph:'20'},{id:'solidsPct',label:'Solids % (TDS)',ph:'92'},{id:'coats',label:'Coats',ph:'1'},{id:'waste',label:'Waste (0–0.5)',ph:'0.1'}],
+    render:(d)=> d && d.gallonsToOrder!=null ? `Gallons to order: <b>${_cE(d.gallonsToOrder)}</b> · coverage ${_cE(d.coverageSqftPerGal)} ft²/gal` : null },
+  'concrete-calc': { label:'Concrete lift / void / seawall', path:'/api/concrete-calc', fields:[
+    {id:'mode',label:'Mode',type:'select',opts:[['lift','Slab lift'],['void','Void fill'],['seawall','Seawall'],['soil','Soil (blocked)']]},
+    {id:'area',label:'Area ft² (lift)',ph:'120'},{id:'avgLiftInches',label:'Avg gap in (lift)',ph:'2'},
+    {id:'length',label:'Length ft (void)',ph:''},{id:'width',label:'Width ft (void)',ph:''},{id:'depthInches',label:'Depth in (void)',ph:''},
+    {id:'density',label:'Density lb/ft³ (TDS)',ph:'4'},{id:'lbsPerSet',label:'Set weight lb (opt)',ph:''}],
+    render:(d)=> d && d.poundsCured!=null ? `Volume: <b>${_cE(d.volumeWithWaste)} ft³</b> → cured <b>${_cE(d.poundsCured)} lb</b>${d.setsToOrder?(' → sets '+_cE(d.setsToOrder)):''}${d.blocked?('<br><span style="color:var(--red)">'+_cE(d.blockedReason)+'</span>'):''}` : null },
+  'air-barrier-calc': { label:'Air / vapor barrier', path:'/api/air-barrier-calc', fields:[
+    {id:'method',label:'Method',type:'select',opts:[['fluid','Fluid-applied'],['membrane','Membrane']]},
+    {id:'area',label:'Area (ft²)',ph:'1500'},{id:'coverageSqftPerGal',label:'Coverage ft²/gal (fluid)',ph:'100'},{id:'rollSqft',label:'Roll ft² (membrane)',ph:''},
+    {id:'zone',label:'Climate zone',type:'select',opts:[['6','Zone 6'],['7','Zone 7']]},{id:'combustion',label:'Gas/propane/oil appliances?',type:'select',opts:[['','No'],['1','Yes']]}],
+    render:(d)=> d && (d.gallons!=null||d.rollsToOrder!=null) ? `${d.gallons!=null?('Gallons: <b>'+_cE(d.gallons)+'</b> '):''}${d.rollsToOrder!=null?('Rolls: <b>'+_cE(d.rollsToOrder)+'</b>'):''}<br><span style="color:var(--t2)">${_cE(d.vapor&&d.vapor.vaporControl)}</span>${d.safetyFlag?('<br><span style="color:var(--red)">⚠ '+_cE(d.safetyFlag)+'</span>'):''}` : null },
+  'measure': { label:'Takeoff (area)', path:'/api/measure', fields:[
+    {id:'mode',label:'Mode',type:'select',opts:[['wall','Wall'],['roof','Roof']]},
+    {id:'perimeter',label:'Perimeter ft (wall)',ph:'120'},{id:'height',label:'Height ft (wall)',ph:'10'},
+    {id:'footprint',label:'Footprint ft² (roof)',ph:''},{id:'pitchRise',label:'Pitch rise /12 (roof)',ph:'4'},{id:'waste',label:'Waste (0–0.6)',ph:'0.1'}],
+    render:(d)=> d && (d.netAreaSqft!=null||d.roofAreaWithWaste!=null) ? `Area: <b>${_cE(d.netAreaSqft!=null?d.netAreaSqft:d.roofAreaWithWaste)} ft²</b>${d.squares?(' · '+_cE(d.squares)+' squares'):''}` : null },
+};
+function renderCalcs(){
+  const b=document.getElementById('calcs_body'); if(!b) return;
+  b.innerHTML=`<div class="jsa-card" style="border-left:3px solid var(--yw)"><b>Estimating helpers — NOT quotes.</b> Every result is an ESTIMATE of quantities only. Always verify against the product data sheet (TDS) and your local code official (AHJ). Pricing is done in the Estimator, not here.</div>`+
+    `<div class="jsa-card"><label style="font-size:12px;color:var(--t2)">Pick a trade</label>`+
+    `<select id="calc_trade" class="admin-inp" style="width:100%" onchange="calcPickTrade()"><option value="">— choose a trade —</option></select>`+
+    `<div id="calc_engines" style="margin-top:8px;opacity:.6;font-size:12px">Loading trades…</div></div>`+
+    `<div id="calc_form"></div>`;
+  fetch('/api/construction').then(r=>r.json()).then(d=>{
+    const sel=document.getElementById('calc_trade'), host=document.getElementById('calc_engines');
+    if(host) host.innerHTML='';
+    if(!sel||!d||!Array.isArray(d.trades)) return;
+    window._calcTrades=d.trades;
+    d.trades.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=(t.selfPerform?'🔨 ':'🤝 ')+t.name; sel.appendChild(o); });
+  }).catch(()=>{ const host=document.getElementById('calc_engines'); if(host) host.innerHTML='<span style="color:var(--yw)">Couldn\'t load trades (endpoint offline). Calculators still work once deployed.</span>'; });
+}
+function calcPickTrade(){
+  const id=((document.getElementById('calc_trade')||{}).value)||''; const host=document.getElementById('calc_engines'), form=document.getElementById('calc_form');
+  if(form) form.innerHTML=''; if(!host) return;
+  const t=(window._calcTrades||[]).find(x=>x.id===id); if(!t){ host.innerHTML=''; return; }
+  const engines=(t.engines||[]).filter(e=>CALC_ENGINES[e]);
+  if(!t.selfPerform){ host.innerHTML=`<div style="font-size:13px;color:var(--t2)">🤝 <b>${_cE(t.name)}</b> is a <b>subcontracted</b> trade — MGSF doesn't self-estimate it. Get sub quotes and compare them apples-to-apples in <a onclick="switchModule('subs');renderSubs()" style="color:var(--cy);cursor:pointer">Subs</a>. Need a rough area? Use Takeoff:</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen('measure')">📐 Takeoff (area)</button></div>`; return; }
+  if(!engines.length){ host.innerHTML='<div style="font-size:13px;color:var(--t2)">No calculator wired for this trade yet — use Takeoff for area.</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen(\'measure\')">📐 Takeoff</button></div>'; return; }
+  host.innerHTML=`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">Calculators for ${_cE(t.name)}:</div>`+
+    engines.map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join('');
+}
+function calcOpen(engineId){
+  const spec=CALC_ENGINES[engineId], form=document.getElementById('calc_form'); if(!spec||!form) return;
+  form.innerHTML=`<div class="jsa-card"><h4 style="margin:0 0 6px">${_cE(spec.label)}</h4>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`+
+    spec.fields.map(f=> f.type==='select'
+      ? `<div><label style="font-size:11px;color:var(--t2)">${_cE(f.label)}</label><select class="admin-inp calc-f" data-id="${_cE(f.id)}" style="width:100%">`+f.opts.map(o=>`<option value="${_cE(o[0])}">${_cE(o[1])}</option>`).join('')+`</select></div>`
+      : `<div><label style="font-size:11px;color:var(--t2)">${_cE(f.label)}</label><input class="admin-inp calc-f" data-id="${_cE(f.id)}" inputmode="decimal" placeholder="${_cE(f.ph||'')}" style="width:100%"></div>`).join('')+
+    `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="calcRun('${_cE(engineId)}')">Calculate</button>`+
+    `<div id="calc_out" style="font-size:13px;line-height:1.6;margin-top:8px"></div></div>`;
+}
+async function calcRun(engineId){
+  const spec=CALC_ENGINES[engineId], out=document.getElementById('calc_out'); if(!spec||!out) return;
+  const body={}; document.querySelectorAll('#calc_form .calc-f').forEach(el=>{ const v=(el.value||'').trim(); if(v!=='') body[el.getAttribute('data-id')]=v; });
+  out.innerHTML='Calculating…';
+  const d=await _sysPost(spec.path,body);
+  if(!d || d.__err){ out.innerHTML='<span style="color:var(--red)">Error ('+_cE((d&&d.__err)||'?')+'). Loads once deployed.</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">🔒 Crew code required.</span>'; return; }
+  const html=spec.render(d);
+  out.innerHTML=(html||('<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check your inputs.')+'</span>'))+
+    `<div style="font-size:10px;color:var(--t2);margin-top:6px">ESTIMATE — verify the TDS + the AHJ. Not a quote.</div>`;
+}
+window.renderCalcs = renderCalcs;
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){
