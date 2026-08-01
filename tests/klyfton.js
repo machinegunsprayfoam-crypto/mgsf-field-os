@@ -31,6 +31,18 @@ ok("lists a LIVE section with a known keyless tool", /LIVE:.*foam-calc/s.test(hi
 ok("lists an OFF section", /OFF:/.test(hint));
 ok("tells the router to prefer LIVE-tool minds", /LIVE/.test(hint) && /tool/i.test(hint));
 
+// ---- WIRING INTEGRITY: every tool advertised LIVE must map to a real api/<name>.js module ----
+// (if the router says a tool is LIVE but the file was renamed/removed, minds get recruited for a
+//  phantom capability. This guards that drift — same class as the brain↔retriever guard.)
+const fs = require("fs");
+const apiDir = path.join(__dirname, "..", "api");
+const ALIAS = { "geo-mobilization": "geo" };   // the one advertised name that isn't its own filename
+const liveMatch = hint.match(/LIVE:\s*([^\n]+)/);
+const liveTools = liveMatch ? liveMatch[1].split(",").map((s) => s.trim()).filter(Boolean) : [];
+ok("LIVE list is non-trivial", liveTools.length >= 20);
+const phantom = liveTools.filter((t) => !fs.existsSync(path.join(apiDir, (ALIAS[t] || t) + ".js")));
+ok("every LIVE tool maps to a real api/<name>.js (no phantom capability)", phantom.length === 0, phantom.join(","));
+
 // ---- toolBagBlock: the tool inventory the brain sees ----
 const bag = A.toolBagBlock();
 ok("toolBagBlock returns a non-empty string", typeof bag === "string" && bag.length > 0);
