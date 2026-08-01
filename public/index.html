@@ -3575,7 +3575,7 @@ function calcPickTrade(){
   if(engines.length){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">Calculators${t.selfPerform?(' for '+_cE(t.name)):''}:</div>`+
     engines.map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join(''); }
   else { h+='<div style="font-size:13px;color:var(--t2)">No calculator for this trade yet — use Takeoff for a rough area.</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen(\'measure\')">📐 Takeoff (area)</button></div>'; }
-  h+=`<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><button class="btn btn-ghost" style="margin:2px" onclick="calcOpenEstimate('${_cE(t.id)}')">💵 Estimate (your rates)</button></div>`;
+  h+=`<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><button class="btn btn-ghost" style="margin:2px" onclick="calcOpenPack('${_cE(t.id)}')">🧰 Toolbox (code/permit/safety)</button><button class="btn btn-ghost" style="margin:2px" onclick="calcOpenEstimate('${_cE(t.id)}')">💵 Estimate (your rates)</button></div>`;
   host.innerHTML=h;
 }
 function calcOpen(engineId){
@@ -3699,6 +3699,28 @@ async function calcRunEstimate(tradeId){
   out.innerHTML=h;
 }
 window.calcOpenEstimate = calcOpenEstimate;
+
+// ---- Per-trade Toolbox: the trade's calculators + its own needs (code/permit/license/safety/checklist) ----
+async function calcOpenPack(tradeId){
+  const form=document.getElementById('calc_form'); if(!form) return;
+  form.innerHTML='<div class="jsa-card" style="opacity:.6">Loading toolbox…</div>';
+  const d=await _sysPost('/api/trade-pack',{trade:tradeId});
+  if(!d||d.ok===false){ form.innerHTML='<div class="jsa-card"><span style="color:var(--yw)">Toolbox unavailable'+(d&&d.error?(' ('+_cE(d.error)+')'):'')+' — loads once deployed.</span></div>'; return; }
+  const list=a=>(a||[]).map(x=>`<li>${_cE(x)}</li>`).join('');
+  let h=`<div class="jsa-card"><h4 style="margin:0 0 4px">🧰 ${_cE(d.name)} — Toolbox</h4>`+
+    `<div style="font-size:11px;color:var(--yw);margin-bottom:8px">${_cE(d.label)}</div>`;
+  if(d.calculators&&d.calculators.length){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:3px">Calculators</div>`+
+    d.calculators.filter(e=>CALC_ENGINES[e]).map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join('')+`<div style="height:8px"></div>`; }
+  const sec=(t,v)=> v?`<div style="margin-top:6px"><b style="font-size:12px">${t}</b><div style="font-size:12px;color:var(--t2);line-height:1.5">${_cE(v)}</div></div>`:'';
+  h+=sec('Code',d.code)+sec('Permit &amp; inspections',d.permit)+sec('Licensing',d.license);
+  if(d.safety&&d.safety.length) h+=`<div style="margin-top:6px"><b style="font-size:12px">Safety</b><ul style="font-size:12px;color:var(--t2);margin:2px 0 0 16px;line-height:1.5">${list(d.safety)}</ul></div>`;
+  if(d.checklist&&d.checklist.length) h+=`<div style="margin-top:6px"><b style="font-size:12px">Spec checklist</b><ul style="font-size:12px;color:var(--t2);margin:2px 0 0 16px;line-height:1.5">${list(d.checklist)}</ul></div>`;
+  if(d.materials&&d.materials.length) h+=`<div style="margin-top:6px"><b style="font-size:12px">Common materials</b><div style="font-size:12px;color:var(--t2)">${_cE(d.materials.join(' · '))}</div></div>`;
+  h+=`<div style="font-size:10px;color:var(--t2);margin-top:8px">GUIDANCE — verify code/permit/license with the AHJ + state board. Not a code ruling.</div>`;
+  h+=`<div style="margin-top:8px"><button class="btn btn-primary" style="width:100%" onclick="calcOpenEstimate('${_cE(tradeId)}')">💵 Estimate this trade</button></div></div>`;
+  form.innerHTML=h;
+}
+window.calcOpenPack = calcOpenPack;
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){

@@ -67,6 +67,7 @@ const SUITES = [
   ["framing-calc", "carpentry: stud/plate/sheathing + joist/rafter takeoff + board-feet — spans deferred to IRC tables, no pricing"],
   ["trade-estimate", "per-trade estimator: line-item material (qty×cost) + labor (hrs×rate) from OWNER rates, owner markup/tax, unpriced-line handling, MGSF-doctrine deferral, proposal transform — never fabricates a rate, DRAFT"],
   ["trade-rates", "per-trade rate memory: rate map + applyRates fills MISSING rates only (never overrides owner input), trade-scoped — owner-entered, nothing fabricated"],
+  ["trade-pack", "per-trade toolbox: curated code/permit/license/safety/checklist for named trades + honest generic fallback, calculators from construction wiring — GUIDANCE (verify AHJ/state), no pricing"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
