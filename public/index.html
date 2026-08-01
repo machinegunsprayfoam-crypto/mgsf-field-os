@@ -5385,19 +5385,57 @@ function saveEstimate(val, name, gm){
   const g=parseFloat(gm); if(Number.isFinite(g)&&g>0) est.gm=Math.round(g*1000)/1000;
   appState.estimates.push(est);
   save('estimates');
-  notify(`Estimate $${val.toLocaleString()} saved for ${name}`);
+  // Auto-hallway: the saved estimate flows straight into the CRM pipeline (create/update lead +
+  // advance stage). Idempotent + never regresses a further-along lead. See upsertLeadFromEstimate.
+  const link = upsertLeadFromEstimate(name, val);
+  notify(`Estimate $${val.toLocaleString()} saved for ${name}`+(link?` · lead ${link.action} → Estimate Sent`:''));
   playSound('success');
 }
 
-function createLeadFromEstimate(name, val){
-  const lead={id:Date.now(),name,value:val,service:'From Estimate',
-    state:document.getElementById('eState').value,market:document.getElementById('eMarket').value,
-    status:'Estimate Sent',date:new Date().toISOString().split('T')[0],
-    notes:document.getElementById('eNotes').value,source:'Estimator'};
-  appState.leads.push(lead);
+// ── Estimate → CRM auto-hallway ──────────────────────────────────────────────
+// Saving/closing an estimate automatically creates OR updates the matching lead and advances its
+// pipeline stage to "Estimate Sent" — the #1 module-to-module link (v2.0 item 10). Internal CRM
+// record only (no outward customer action), so it runs without a confirm; it stays transparent
+// (owner is notified) and IDEMPOTENT: re-saving the same customer's estimate UPDATES the one lead
+// (never duplicates) and never REGRESSES a lead already further along (Follow-Up/Won/Lost stay put).
+function upsertLeadFromEstimate(name, val, opts){
+  opts = opts||{};
+  const nm = String(name||'').trim();
+  if(!nm || nm.toLowerCase()==='customer'){ if(opts.announce) notify('Add a customer name to the estimate first','alert'); return null; }
+  const val0 = Math.round(Number(val)||0);
+  const g = id => ((document.getElementById(id)||{}).value||'').trim();
+  const state = g('eState'), market = g('eMarket'), notes = g('eNotes');
+  const key = nm.toLowerCase();
+  // stages AT OR AFTER "Estimate Sent" — a lead already here or beyond doesn't get pulled backward
+  const AHEAD = {'Estimate Sent':1,'Follow-Up':1,'Won':1,'Lost':1};
+  const stamp = new Date().toISOString().split('T')[0];
+  const noteLine = 'Estimate saved '+stamp+': $'+val0.toLocaleString();
+  let lead = (appState.leads||[]).find(l => String(l.name||'').trim().toLowerCase()===key);
+  let action;
+  if(lead){
+    lead.value = val0;
+    lead.lastEstimate = val0;
+    if(!AHEAD[lead.status]) lead.status = 'Estimate Sent';   // advance only from New/Qualified/blank/Follow-Up-earlier
+    if(state && !lead.state)  lead.state  = state;
+    if(market && !lead.market) lead.market = market;
+    if(notes && (!lead.notes || lead.notes.indexOf(notes)<0)) lead.notes = lead.notes ? (lead.notes+'\n'+notes) : notes;
+    lead.notes = lead.notes ? (lead.notes+'\n'+noteLine) : noteLine;
+    action = 'updated';
+  } else {
+    lead = {id:Date.now(), name:nm, value:val0, service:'From Estimate', state, market,
+      status:'Estimate Sent', date:stamp, notes:(notes?notes+'\n':'')+noteLine, source:'Estimator', lastEstimate:val0};
+    appState.leads.push(lead);
+    action = 'created';
+  }
   save('leads');
-  notify(`Lead created for ${name}`);
-  switchModule('crm');
+  try{ if(window.renderPipeline && document.getElementById('mod-crm')) renderPipeline(); }catch(e){}
+  try{ if(window.renderDashMetrics) renderDashMetrics(); }catch(e){}
+  if(opts.switchToCrm) switchModule('crm');
+  return {lead, action};
+}
+function createLeadFromEstimate(name, val){
+  const r = upsertLeadFromEstimate(name, val, {switchToCrm:true, announce:true});
+  if(r) notify('Lead '+r.action+' for '+name+' → Estimate Sent');
 }
 
 function exportEstimate(){

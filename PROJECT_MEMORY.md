@@ -36,6 +36,21 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**✅ ESTIMATE → CRM AUTO-HALLWAY — v2.0 item 10, the #1 missing module-to-module link (2026-08-01, branch):**
+- Was PARTIAL (a manual "→ CREATE LEAD" button that always duplicated). Now saving an estimate
+  (`saveEstimate`) automatically flows into the CRM pipeline via new `upsertLeadFromEstimate(name,val,opts)`
+  in `public/index.html`: create-or-update the matching lead + advance stage to **Estimate Sent**.
+- **Safe by design:** internal CRM record only (no outward customer action → no confirm needed), but
+  transparent (owner notified "lead created/updated → Estimate Sent"). **Idempotent** — re-saving the
+  same customer UPDATES the one lead (case-insensitive name match), never duplicates. **Never regresses**
+  a lead already at/after Estimate Sent (Follow-Up/Won/Lost stay put); only advances New/Qualified/blank.
+  Guards blank/"Customer" placeholder names. The manual button now routes through the same idempotent
+  upsert (so it can't create a dup either) + switches to CRM.
+- Verified: all 25 inline scripts parse; headless boot 0 PAGEERR; new **`tests/estimate-crm-hallway.js`**
+  (19 checks, registered in run-all) covers create/update/no-regress/advance/guard/idempotent. Full gate
+  **84 suites / 1888 checks** green. NEXT (owner review): mirror the stage change into HubSpot via
+  `hubspot-sync` (server-side) so the CRM connector reflects it too. Not merged to main.
+
 **✅ RESOLVED — InfraNodus brain re-scan done (interactive, 2026-08-01, Clifton's "yes"):**
 - Fed the FULL assembled brain corpus (`assembleBrainBlocks("")`, ~90 KB / 13.3k words) through the
   live InfraNodus connector → saved graph **`klyfton-brain-2026-08`**
