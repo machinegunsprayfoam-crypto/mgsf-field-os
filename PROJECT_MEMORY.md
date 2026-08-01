@@ -36,6 +36,23 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**★ BUSINESS AUDIT — AI business-audit tool — 2026-08-01 (branch, not merged):**
+- Clifton asked "AI business audit tool?" — gap was real: we had a PLATFORM audit (`engineer.js`) and a
+  snapshot (`daily-brief.js`) but nothing that DIAGNOSES the business. Built **`api/business-audit.js`**
+  (the business analog of engineer.js): pure keyless `audit(data,opts)` reads leads/jobs/estimates/
+  invoices and returns severity-ranked (red/amber/green) findings across **Pipeline, Sales/stale-bids,
+  Close-rate, Leads/cold, Cash-AR-aging, Ops/overdue-jobs, Customer-concentration, Margin** — each with
+  a metric + recommended action + which cron/tool drafts the fix. `headline` + `topActions` + `summary`
+  for a one-glance read. Optional gated owner-voice **memo** (ANTHROPIC_API_KEY, self-contained fetch,
+  inert without key). Handler reads Vercel KV like daily-brief; DORMANT without KV.
+- **Guardrails:** deterministic (asOfMs injected, no Date.now in core); every finding traces to a real
+  record count or a clearly-labeled operational threshold (mirrors the crons' 7/21/30-day cadences);
+  **margin is graded ONLY when a targetGm is supplied (from doctrine) — the tool never invents a GM**;
+  no pricing, nothing fabricated; all outputs are GUIDANCE/draft.
+- Registered in `tests/run-all.js` + the `api/tools.js` catalog (category pm). `tests/business-audit.js`
+  = 20 checks. Field-os gate **76 suites / 1764 checks** green. **Next (owner review):** surface it as a
+  Klyfton panel (OPS or a new AUDIT nav item) + optionally a weekly cron that pushes the memo. Not merged.
+
 **★ TRADES EXPERT — Klyfton brain now knows every trade in depth — 2026-08-01 (branch, not merged):**
 - Clifton: "Klyfton has to know ALL the trades in-depth like spray foam." Gap was real — the brain
   (`api/klyfton.js` BRAIN_BLOCKS) was foam/concrete-centric (FOAM_SPECS/STEM/HVAC_ENGINEERING); we had
