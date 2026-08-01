@@ -37,7 +37,7 @@ const STOP = new Set(("the a an and or of to in on for with is are be do i we yo
 // Alias common MGSF query vocabulary onto the graph's (more abstract) concept tokens, so real
 // questions match even when the caller's words differ from the graph's. Each key expands to concepts.
 const ALIAS = {
-  sdvosb: ["federal", "govcon"], samgov: ["federal", "govcon"], sam: ["federal", "govcon"],
+  sdvosb: ["federal", "govcon", "credential"], samgov: ["federal", "govcon"], sam: ["federal", "govcon"],
   bid: ["federal", "govcon"], contract: ["federal", "govcon"], grant: ["federal", "govcon"], veteran: ["federal"],
   prevailing: ["federal", "govcon"], davis: ["federal", "govcon"], apprentice: ["federal", "govcon"], apprenticeship: ["federal", "govcon"],
   workforce: ["federal", "govcon"], wotc: ["federal", "govcon"], payroll: ["federal"], emacs: ["federal", "govcon"], procurement: ["federal", "govcon"],
@@ -51,6 +51,13 @@ const ALIAS = {
   concrete: ["lifting", "service"], slab: ["lifting"], seawall: ["lifting"], soil: ["lifting"],
   payback: ["roi"], savings: ["roi"], bill: ["roi"], crew: ["safety", "jsa"], osha: ["safety", "jsa"], ppe: ["safety"],
   hubspot: ["assistant", "connection"], crm: ["assistant", "connection"], lead: ["lead"], customer: ["assistant"],
+  // Insurance / bonding / credentials — the "Credential Binding" cluster (→ BUSINESS + DOCTRINE, which
+  // hold the GL/WC/pollution/umbrella/auto + bonding + SDVOSB facts) was under-bridged in the 2026-08
+  // InfraNodus re-scan; this vocabulary matched no graph node so the questions fell to defaults.
+  insurance: ["credential", "federal"], coi: ["credential", "federal"], bond: ["credential", "federal"],
+  bonding: ["credential", "federal"], surety: ["credential", "federal"], pollution: ["credential", "federal"],
+  umbrella: ["credential", "federal"], liability: ["credential"], workers: ["credential"], comp: ["credential"],
+  cage: ["credential", "federal"], uei: ["credential", "federal"],
   // Trades — route deep trade questions to TRADES_EXPERT (via the Estimate/Engineering/Safety clusters).
   trade: ["estimate", "service"], trades: ["estimate", "service"], subcontractor: ["estimate"], contractor: ["estimate"],
   electrical: ["estimate", "condition"], electric: ["estimate"], wiring: ["estimate"], panel: ["estimate"], breaker: ["estimate"], circuit: ["estimate"], nec: ["estimate"], voltage: ["estimate", "condition"], amp: ["estimate"], amperage: ["estimate"],

@@ -36,18 +36,32 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
-**⚠ OPEN THREAD — brain graph is STALE, needs an InfraNodus re-scan — 2026-08-01:**
-- Ran a brain-graph check (InfraNodus MCP was NOT connected → used the local baked graph
-  `api/brain-graph-data.js`). It's **150 concepts / 513 links / 11 clusters, all pre-trades** — the
-  entire trades domain (TRADES_EXPERT + the 6 sub-trade calcs) plus business-audit/job-workflow/cert
-  knowledge are **absent as graph nodes/clusters**. Retrieval still WORKS (the ~50 trade-word ALIASes
-  in `brain-graph-retrieve.js` route trade queries to existing concepts), so nothing is broken — but the
-  graph doesn't map the new domain. **Do NOT hand-fabricate graph nodes** (that's inventing data).
-- **TO FIX (needs the InfraNodus connector in an interactive session):** feed the assembled brain
-  (`assembleBrainBlocks("")` / the BRAIN_ORDER blocks) through InfraNodus, then regenerate
-  `api/brain-graph-data.js` from the real scan so the trades cluster + new tools become first-class
-  concepts. Then the CLUSTER_BLOCKS mapping can point a real "Trades" cluster at TRADES_EXPERT instead
-  of relying on aliases.
+**✅ RESOLVED — InfraNodus brain re-scan done (interactive, 2026-08-01, Clifton's "yes"):**
+- Fed the FULL assembled brain corpus (`assembleBrainBlocks("")`, ~90 KB / 13.3k words) through the
+  live InfraNodus connector → saved graph **`klyfton-brain-2026-08`**
+  (https://infranodus.com/Klyfton AI/klyfton-brain-2026-08/edit). Result is **healthy**: modularity
+  0.435, diversity "diversified" (not over-focused on top nodes/clusters).
+- **Trades domain now IS represented** (was the whole point): the fresh 8-cluster structure has a
+  **"Code Compliance"** cluster (code/irc/safety/**trade**/verify/defer/scope) and `code`/`irc` are now
+  top-influence nodes (bc 0.093 / 0.074) — absent from the pre-trades 7/27 graph. Confirmed the re-scan
+  picked up TRADES_EXPERT + the calculators.
+- **NEW structural finding (actioned):** all 3 content gaps share one endpoint — the **Insurance /
+  Licensing** cluster (state/license/bid/training/insurance/sdvosb) is the least-bridged part of the
+  brain, disconnected from Soil-Stability, Moisture-Management, and Thermal-Barrier. This is a
+  **recurrence of the 7/24 finding #1 ("the brain can't see the filing cabinet")** — the credentials/
+  insurance/bonding layer stays structurally isolated from the technical work.
+- **Acted on it (safe, tested):** confirmed the retriever MISSED insurance/bonding queries — "what COI
+  and bonding do we need" returned *no concept match* → defaults, never pulling the BUSINESS block that
+  holds the GL/WC/pollution/umbrella/auto + bonding + SDVOSB facts. Added an insurance/bonding/
+  credentials ALIAS group (insurance/coi/bond/bonding/surety/pollution/umbrella/liability/workers/comp/
+  cage/uei → `credential`+`federal`; enriched `sdvosb`) in `brain-graph-retrieve.js` so those route to
+  the Credential Binding cluster → **BUSINESS + DOCTRINE + FEDERAL**. Verified all 3 test queries now
+  pull BUSINESS; retriever suite 23/23; full gate **83 suites / 1869 checks** green.
+- **STILL OPEN (owner-review follow-up, NOT done this session — deliberately):** regenerating the baked
+  `api/brain-graph-data.js` from the new 8-cluster scan would require re-writing the retriever's
+  CLUSTER_BLOCKS (keyed on the OLD 11 cluster names) + ALIAS and a full re-test — a separate careful
+  build. Retrieval already works via aliases, so this is a refinement, not a fix. Do it when regenerating
+  the 3D boot-graph viz too. **Do NOT hand-fabricate graph nodes.**
 
 **★ SUB-TRADE QUANTITY CALCS — closing the trades-depth gap — 2026-08-01 (branch, not merged):**
 - Honest audit (told Clifton): foam = mastery depth (verified specs + locked pricing + calcs + skills);
