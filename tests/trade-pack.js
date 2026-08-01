@@ -27,16 +27,32 @@ const sf = A.pack("spray-foam");
 ok("spray-foam pack: self-perform + points to skills", sf.selfPerform === true && /skills/i.test(sf.note));
 ok("spray-foam calculators include foam-calc + rvalue-calc", sf.calculators.includes("foam-calc") && sf.calculators.includes("rvalue-calc"));
 
-// ---- generic fallback (honest, not fabricated) ----
-const gen = A.pack("masonry");
-ok("uncurated trade ⇒ generic pack, curated:false", gen.curated === false && gen.ok === true);
-ok("generic code/license say 'verify with the AHJ / state'", /verify/i.test(gen.code) && /verify/i.test(gen.license));
-ok("generic still carries materials from construction", Array.isArray(gen.materials));
+// ---- newly curated sub trades cite the right governing code ----
+ok("masonry cites TMS 402/602", /TMS 402\/602/.test(A.pack("masonry").code) && A.pack("masonry").curated === true);
+ok("drywall cites GA-216", /GA-216/.test(A.pack("drywall").code) && A.pack("drywall").curated === true);
+ok("fire suppression cites NFPA 13", /NFPA 13/.test(A.pack("fire").code) && A.pack("fire").curated === true);
+ok("excavation cites OSHA Subpart P + 811", /Subpart P/.test(A.pack("excavation").code) && /811/.test(A.pack("excavation").permit));
+ok("concrete-flatwork cites ACI 318", /ACI 318/.test(A.pack("concrete-flatwork").code) && A.pack("concrete-flatwork").curated === true);
+ok("roofing-shingle cites IRC R905 + ice barrier", /R905/.test(A.pack("roofing-shingle").code) && /ice/i.test(A.pack("roofing-shingle").code));
+ok("metal cites AISC/AISI", /AISC|AISI/.test(A.pack("metal").code) && A.pack("metal").curated === true);
+ok("doors-windows cites egress + safety glazing", /R310/.test(A.pack("doors-windows").code) && /R308/.test(A.pack("doors-windows").code));
+ok("sitework cites 811 locate", /811/.test(A.pack("sitework").code) || /811/.test(A.pack("sitework").permit));
+ok("seawall flags USACE/marine permits", /USACE/.test(A.pack("seawall").permit) && A.pack("seawall").curated === true);
+ok("air-vapor cites ASTM air-barrier + Zone 6/7 vapor rule", /E2178|E2357/.test(A.pack("air-vapor").code) && /Zone 6\/7/.test(A.pack("air-vapor").code));
+ok("soil-stabilization defers to a geotech engineer", /geotech/i.test(A.pack("soil-stabilization").code));
+
+// ---- every construction trade now has a curated pack (no honest-but-thin fallbacks left) ----
+const construction = require(path.join(__dirname, "..", "api", "construction.js"));
+const uncurated = (construction.TRADES || []).map((t) => t.id).filter((id) => !A.PACKS[id]);
+ok("every construction trade is curated", uncurated.length === 0, uncurated.join(","));
+
+// ---- generic fallback still exists + is honest for any future/unknown-but-real trade ----
+ok("GENERIC fallback stays honest (verify AHJ/state, never fabricated)", /verify/i.test(A.GENERIC.code) && /verify/i.test(A.GENERIC.license) && Array.isArray(A.GENERIC.safety));
 
 // ---- guardrails ----
 ok("labeled GUIDANCE + verify", /GUIDANCE/.test(el.label) && /verify/i.test(el.label));
 ok("unknown trade ⇒ error + list", A.pack("spaceship").ok === false && Array.isArray(A.pack("spaceship").trades));
-ok("no pricing anywhere in a pack", !/\$\d|"(price|cost|rate)"\s*:\s*\d/.test(JSON.stringify(el)));
+ok("no pricing anywhere in ANY pack", (construction.TRADES || []).every((t) => !/\$\d|"(price|cost|rate)"\s*:\s*\d/.test(JSON.stringify(A.pack(t.id)))));
 
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
