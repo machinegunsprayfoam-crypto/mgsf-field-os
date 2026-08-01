@@ -40,6 +40,13 @@ const brief = A.assembleBrainBlocks("hi");
 ok("very short input ⇒ full brain text (non-empty)", typeof brief === "string" && brief.length > 200);
 const scoped = A.assembleBrainBlocks("what closed-cell foam R-value hits code in a Zone 7 attic");
 ok("real question ⇒ still returns brain text", typeof scoped === "string" && scoped.length > 0);
+ok("foam query still pulls FOAM SPECS", scoped.includes("FOAM SPECS"));
+
+// ---- in-depth trade knowledge: a trade question pulls the TRADES_EXPERT block (grounded in code) ----
+const tr = A.assembleBrainBlocks("how do I size an electrical service panel and what GFCI is required");
+ok("electrical query ⇒ brain carries TRADES EXPERT + cites NEC", tr.includes("TRADES EXPERT") && /NEC/.test(tr));
+const plumb = A.assembleBrainBlocks("drain and vent sizing plus water heater T&P");
+ok("plumbing query ⇒ TRADES EXPERT + cites IPC", plumb.includes("TRADES EXPERT") && /IPC/.test(plumb));
 
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

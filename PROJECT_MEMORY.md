@@ -36,6 +36,24 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**★ TRADES EXPERT — Klyfton brain now knows every trade in depth — 2026-08-01 (branch, not merged):**
+- Clifton: "Klyfton has to know ALL the trades in-depth like spray foam." Gap was real — the brain
+  (`api/klyfton.js` BRAIN_BLOCKS) was foam/concrete-centric (FOAM_SPECS/STEM/HVAC_ENGINEERING); we had
+  trade *calculators + toolboxes* but no *reasoning* knowledge for electrical/plumbing/framing/etc.
+- Added **`TRADES_EXPERT`** knowledge block (grounded in the SAME published codes as trade-pack.js —
+  NEC/IPC/IRC/IECC/OSHA-Subpart-P/TMS-402-602/ACI-318/NFPA-13 — no fabricated numbers): master-level
+  reasoning for electrical, plumbing, framing/carpentry, masonry, concrete flatwork/foundations, roofing
+  (shingle/metal), drywall, doors/windows, excavation, steel, fire suppression, sitework — each with
+  governing code + key rules + the MGSF calculator for it + red flags + safety + the defer-to-a-licensed-
+  pro/AHJ/engineer line, PLUS cross-trade GC sequencing. HVAC stays in HVAC_ENGINEERING (block points to
+  it). Wired into BRAIN_BLOCKS + BRAIN_ORDER (after HVAC_ENGINEERING).
+- Routing: `api/brain-graph-retrieve.js` — added TRADES_EXPERT to the Estimate/Engineering/Safety clusters
+  + ~50 trade-vocabulary ALIASes so trade questions reliably pull it (verified: electrical/plumbing/
+  framing/masonry/roofing/excavation queries all route ✅; foam queries still pull FOAM_SPECS).
+- Tests: +5 routing checks (tests/brain-graph-retrieve.js) + 3 brain-assembly checks (tests/klyfton.js).
+  Gate **74 suites / 1729 checks** green. Stance preserved: GUIDANCE, licensed trade + AHJ own the
+  sign-off, MGSF self-performs foam/concrete & subs the rest as PRIME, no pricing here (DOCTRINE owns $).
+
 **★ Frontend refit — Option 2 (split) + 2026 redesign — 2026-08-01 (branch, not merged):**
 - Clifton: "It's a pain to change / it looks dated-rough → do #2 and make it state-of-the-art." Decision: **do NOT rewrite** (app works: 13.5k-line single file, 38 panels, ~17 themes, vanilla JS, no framework risk). Instead split for maintainability + modernize the look.
 - **CSS extracted** from the two inline `<style>` blocks (was index.html lines 12–572) into **`public/app.css`** (linked in `<head>`). Zero visual change — verified pixel-identical via headless Chromium before/after. This is the Option-2 maintainability win (index.html 13,579→13,021 lines). The 3 remaining `<style>` blocks in index.html are the embedded proposal/invoice/cert PRINT templates (JS template literals) — left as-is (print-specific, white paper).

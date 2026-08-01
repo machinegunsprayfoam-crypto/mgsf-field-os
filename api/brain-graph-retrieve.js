@@ -16,16 +16,16 @@ const GRAPH = require("./brain-graph-data.js");
 // cluster NAME -> brain knowledge-block names it should pull in (stable across re-scans; names not ids).
 const CLUSTER_BLOCKS = {
   "Cost Doctrine":         ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE"],
-  "Engineering Seer":      ["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "FOAM_SPECS"],
+  "Engineering Seer":      ["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "FOAM_SPECS", "TRADES_EXPERT"],
   "Spray System":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "EQUIPMENT"],
   "Knowledge Stance":      ["MASTERY", "COMPETITIVE_EDGE"],
   "Action Approval":       ["ACTIONS", "PLATFORM", "COMPETITIVE_EDGE"],
   "Revenue Connection":    ["REVENUE_LAYER", "BUSINESS_SYSTEM", "KNOWLEDGE_BRIDGES", "GAP_BRIDGES"],
   "Guarantee Saving":      ["DOCTRINE", "COMPETITIVE_EDGE"],
   "Procurement Equipment": ["PROCUREMENT", "EQUIPMENT", "SUPPLIERS", "FEDERAL"],
-  "Estimate Capability":   ["FOAM_SPECS", "ROI_GUIDE", "PLATFORM"],
+  "Estimate Capability":   ["FOAM_SPECS", "ROI_GUIDE", "PLATFORM", "TRADES_EXPERT"],
   "Credential Binding":    ["DOCTRINE", "BUSINESS"],
-  "Safety Condition":      ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS"],
+  "Safety Condition":      ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "TRADES_EXPERT"],
 };
 // Identity + hard rules that must always be present regardless of the question.
 const ALWAYS = ["base_voice", "DOCTRINE", "COMPETITIVE_EDGE"];
@@ -51,6 +51,18 @@ const ALIAS = {
   concrete: ["lifting", "service"], slab: ["lifting"], seawall: ["lifting"], soil: ["lifting"],
   payback: ["roi"], savings: ["roi"], bill: ["roi"], crew: ["safety", "jsa"], osha: ["safety", "jsa"], ppe: ["safety"],
   hubspot: ["assistant", "connection"], crm: ["assistant", "connection"], lead: ["lead"], customer: ["assistant"],
+  // Trades — route deep trade questions to TRADES_EXPERT (via the Estimate/Engineering/Safety clusters).
+  trade: ["estimate", "service"], trades: ["estimate", "service"], subcontractor: ["estimate"], contractor: ["estimate"],
+  electrical: ["estimate", "condition"], electric: ["estimate"], wiring: ["estimate"], panel: ["estimate"], breaker: ["estimate"], circuit: ["estimate"], nec: ["estimate"], voltage: ["estimate", "condition"], amp: ["estimate"], amperage: ["estimate"],
+  plumbing: ["estimate", "service"], plumb: ["estimate"], drain: ["estimate"], sewer: ["estimate"], pipe: ["estimate"], fixture: ["estimate"], ipc: ["estimate"], vent: ["estimate", "condition"],
+  hvac: ["estimate", "condition"], furnace: ["condition", "estimate"], ductwork: ["estimate", "condition"], mechanical: ["estimate", "condition"],
+  framing: ["estimate", "service"], framer: ["estimate"], carpentry: ["estimate"], carpenter: ["estimate"], stud: ["estimate"], joist: ["estimate"], rafter: ["estimate"], truss: ["estimate"], header: ["estimate"], beam: ["estimate"], lumber: ["estimate"], span: ["estimate"],
+  masonry: ["estimate", "service"], block: ["estimate"], brick: ["estimate"], cmu: ["estimate"], mortar: ["estimate"], grout: ["estimate"],
+  drywall: ["estimate", "service"], sheetrock: ["estimate"], gypsum: ["estimate"], finish: ["estimate"],
+  shingle: ["estimate", "service"], excavation: ["estimate", "safety"], trench: ["estimate", "safety"], earthwork: ["estimate"], grading: ["estimate"],
+  steel: ["estimate", "system"], purlin: ["estimate"], flatwork: ["estimate", "service"], footing: ["estimate"], foundation: ["estimate"], rebar: ["estimate"],
+  sprinkler: ["estimate", "safety"], suppression: ["estimate", "safety"], sitework: ["estimate"], paving: ["estimate"], asphalt: ["estimate"],
+  permit: ["estimate", "condition"], code: ["estimate", "condition"], inspection: ["estimate"], ahj: ["estimate", "condition"], licensed: ["estimate"], license: ["estimate"],
 };
 
 function tokenize(q) {

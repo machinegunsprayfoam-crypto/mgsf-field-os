@@ -36,6 +36,13 @@ ok("retrieve returns matched clusters + a why", Array.isArray(r.matchedClusters)
 const fed = A.retrieve("SDVOSB SAM.gov bid prevailing wage");
 ok("federal query pulls a FEDERAL/PROCUREMENT block", fed.blocks.includes("FEDERAL") || fed.blocks.includes("PROCUREMENT"));
 
+// ---- trade queries route to the TRADES_EXPERT knowledge block ----
+ok("electrical query ⇒ TRADES_EXPERT", A.retrieve("size an electrical service panel and GFCI").blocks.includes("TRADES_EXPERT"));
+ok("plumbing query ⇒ TRADES_EXPERT", A.retrieve("vent and drain sizing for a bathroom").blocks.includes("TRADES_EXPERT"));
+ok("framing query ⇒ TRADES_EXPERT", A.retrieve("floor joist span and header sizing").blocks.includes("TRADES_EXPERT"));
+ok("masonry query ⇒ TRADES_EXPERT", A.retrieve("brick veneer flashing and weep holes").blocks.includes("TRADES_EXPERT"));
+ok("excavation query ⇒ TRADES_EXPERT (safety cluster)", A.retrieve("trench shoring safety for a sewer dig").blocks.includes("TRADES_EXPERT"));
+
 // ---- no concept match ⇒ safe non-empty default (never empty, never fabricated) ----
 const none = A.retrieve("zzzz qqqq wwww");
 ok("no-match query still returns identity blocks (non-empty)", none.blocks.length > 0 && A.ALWAYS.every((b) => none.blocks.includes(b)));
