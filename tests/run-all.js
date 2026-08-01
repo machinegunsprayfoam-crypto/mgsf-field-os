@@ -51,6 +51,7 @@ const SUITES = [
   ["construction", "GC/prime-with-subs: CSI MasterFormat trade taxonomy, self-perform vs sub split, sub compliance packet (COI/license/lien/bond/prevailing-wage flow-down) — GUIDANCE, no pricing"],
   ["subs", "subcontractor roster: per-doc + overall compliance readiness (ready/expiring/blocked), COI/license expiry boundaries, expiring-sweep ordering — required set derived from construction packet"],
   ["blueprint", "blueprint reader (vision): title-block/legend/scope extraction, scope→CSI-trade + prime/sub routing, dimensions-only-as-printed, unreadable path — never fabricates a measurement, not a measurement tool"],
+  ["photo-estimate", "photo→draft estimate stitch: area source (provided vs measure.js), missing-input detection, measure→foam-calc quantities, verify prompts — draft/ESTIMATE only, price never computed"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
