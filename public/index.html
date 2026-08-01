@@ -3575,6 +3575,7 @@ function calcPickTrade(){
   if(engines.length){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">Calculators${t.selfPerform?(' for '+_cE(t.name)):''}:</div>`+
     engines.map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join(''); }
   else { h+='<div style="font-size:13px;color:var(--t2)">No calculator for this trade yet — use Takeoff for a rough area.</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen(\'measure\')">📐 Takeoff (area)</button></div>'; }
+  h+=`<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><button class="btn btn-ghost" style="margin:2px" onclick="calcOpenEstimate('${_cE(t.id)}')">💵 Estimate (your rates)</button></div>`;
   host.innerHTML=h;
 }
 function calcOpen(engineId){
@@ -3595,10 +3596,75 @@ async function calcRun(engineId){
   if(!d || d.__err){ out.innerHTML='<span style="color:var(--red)">Error ('+_cE((d&&d.__err)||'?')+'). Loads once deployed.</span>'; return; }
   if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">🔒 Crew code required.</span>'; return; }
   const html=spec.render(d);
+  try{ window._lastCalc={engineId:engineId, data:d}; }catch(e){}
   out.innerHTML=(html||('<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check your inputs.')+'</span>'))+
-    `<div style="font-size:10px;color:var(--t2);margin-top:6px">ESTIMATE — verify the TDS + the AHJ. Not a quote.</div>`;
+    `<div style="font-size:10px;color:var(--t2);margin-top:6px">ESTIMATE — verify the TDS + the AHJ. Not a quote.</div>`+
+    `<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="calcPrice()">💵 Price this (your rates)</button>`;
 }
 window.renderCalcs = renderCalcs;
+
+// ---- Per-trade Estimator: price a trade's quantities from the OWNER's own rates (never fabricated).
+// Material (qty×cost) + labor (hrs×rate) per line + owner markup + owner tax → DRAFT total. ----
+const CALC_SEED = {
+  'foam-calc': (d)=> d.setsToOrder!=null?{desc:'Foam (closed/open-cell)',qty:d.setsToOrder,unit:'sets'}:null,
+  'coating-calc': (d)=> d.gallonsToOrder!=null?{desc:'Coating',qty:d.gallonsToOrder,unit:'gal'}:null,
+  'concrete-calc': (d)=> d.setsToOrder!=null?{desc:'Polyurethane foam',qty:d.setsToOrder,unit:'sets'}:(d.poundsCured!=null?{desc:'Polyurethane foam',qty:d.poundsCured,unit:'lb'}:null),
+  'air-barrier-calc': (d)=> d.gallons!=null?{desc:'Air/vapor barrier',qty:d.gallons,unit:'gal'}:(d.rollsToOrder!=null?{desc:'Membrane',qty:d.rollsToOrder,unit:'rolls'}:null),
+  'framing-calc': (d)=> d.studs!=null?{desc:'Studs',qty:d.studs,unit:'ea'}:null,
+  'measure': (d)=> (d.netAreaSqft!=null||d.roofAreaWithWaste!=null)?{desc:'Area',qty:(d.netAreaSqft!=null?d.netAreaSqft:d.roofAreaWithWaste),unit:'ft²'}:null,
+};
+function calcPrice(){ // from the last calc result → seed the estimator for the selected trade
+  const trade=((document.getElementById('calc_trade')||{}).value)||'';
+  let seed=null; try{ const lc=window._lastCalc; if(lc&&CALC_SEED[lc.engineId]) seed=CALC_SEED[lc.engineId](lc.data||{}); }catch(e){}
+  calcOpenEstimate(trade, seed);
+}
+function calcOpenEstimate(tradeId, seed){
+  const form=document.getElementById('calc_form'); if(!form) return; const t=(window._calcTrades||[]).find(x=>x.id===tradeId);
+  form.innerHTML=`<div class="jsa-card"><h4 style="margin:0 0 4px">💵 Estimate — ${_cE((t&&t.name)||tradeId||'trade')} <span style="font-size:11px;color:var(--t2)">(your rates)</span></h4>`+
+    `<div style="font-size:11px;color:var(--yw);margin-bottom:6px">DRAFT. Enter YOUR material costs + labor — nothing is priced for you. Add markup + tax. Review before it goes to a customer.</div>`+
+    `<div id="est_lines"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="calcAddLine()">+ Add line</button>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">`+
+    `<div><label style="font-size:11px;color:var(--t2)">Markup / OH&P %</label><input class="admin-inp" id="est_markup" inputmode="decimal" placeholder="e.g. 20" style="width:100%"></div>`+
+    `<div><label style="font-size:11px;color:var(--t2)">Material tax %</label><input class="admin-inp" id="est_tax" inputmode="decimal" placeholder="opt" style="width:100%"></div></div>`+
+    `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="calcRunEstimate('${_cE(tradeId||'')}')">Calculate estimate</button>`+
+    `<div id="est_out" style="font-size:13px;line-height:1.7;margin-top:8px"></div></div>`;
+  calcAddLine(seed); if(!seed) calcAddLine();
+}
+function calcAddLine(seed){ const c=document.getElementById('est_lines'); if(!c) return; seed=seed||{};
+  const d=document.createElement('div'); d.className='est-line'; d.style.cssText='border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px;margin-bottom:6px';
+  d.innerHTML=`<input class="admin-inp est-desc" placeholder="Description" value="${_cE(seed.desc||'')}" style="width:100%;margin-bottom:4px">`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">`+
+    `<input class="admin-inp est-qty" inputmode="decimal" placeholder="Qty" value="${_cE(seed.qty!=null?seed.qty:'')}">`+
+    `<input class="admin-inp est-unit" placeholder="Unit" value="${_cE(seed.unit||'')}">`+
+    `<input class="admin-inp est-cost" inputmode="decimal" placeholder="$/unit">`+
+    `<input class="admin-inp est-lh" inputmode="decimal" placeholder="Labor hrs">`+
+    `<input class="admin-inp est-lr" inputmode="decimal" placeholder="$/hr">`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.closest('.est-line').remove()">✕</button></div>`;
+  c.appendChild(d);
+}
+async function calcRunEstimate(tradeId){
+  const out=document.getElementById('est_out'); if(!out) return;
+  const lineItems=[]; document.querySelectorAll('#est_lines .est-line').forEach(row=>{ const g=s=>((row.querySelector(s)||{}).value||'').trim();
+    const li={desc:g('.est-desc'),qty:g('.est-qty'),unit:g('.est-unit'),unitCost:g('.est-cost'),laborHours:g('.est-lh'),laborRate:g('.est-lr')};
+    if(li.desc||li.qty||li.unitCost||li.laborHours) lineItems.push(li); });
+  if(!lineItems.length){ out.innerHTML='<span style="color:var(--yw)">Add at least one line.</span>'; return; }
+  const body={trade:tradeId,lineItems:lineItems}; const mk=((document.getElementById('est_markup')||{}).value||'').trim(); const tx=((document.getElementById('est_tax')||{}).value||'').trim();
+  if(mk!=='') body.markupPct=mk; if(tx!=='') body.taxPct=tx;
+  out.innerHTML='Calculating…';
+  const d=await _sysPost('/api/trade-estimate',body);
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--red)">Error ('+_cE((d&&d.__err)||'?')+').</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check inputs.')+'</span>'; return; }
+  let h=`Material: <b>$${_cE(d.subtotalMaterial)}</b> · Labor: <b>$${_cE(d.subtotalLabor)}</b><br>Subtotal: <b>${_cE(d.subtotalLabel)}</b>`;
+  if(d.markup&&d.markup.amount!=null) h+=`<br>Markup (${_cE(d.markup.pct)}%): $${_cE(d.markup.amount)}`;
+  if(d.tax&&d.tax.amount!=null) h+=`<br>Tax (${_cE(d.tax.pct)}%): $${_cE(d.tax.amount)}`;
+  h+=`<br><span style="font-size:15px">Total: <b>${_cE(d.totalLabel)}</b></span>`;
+  if(d.warning) h+=`<br><span style="color:var(--yw)">⚠ ${_cE(d.warning)}</span>`;
+  if(d.doctrineNote) h+=`<br><span style="color:var(--cy)">${_cE(d.doctrineNote)}</span>`;
+  h+=`<div style="font-size:10px;color:var(--t2);margin-top:6px">DRAFT — your rates. Review before sending.</div>`;
+  out.innerHTML=h;
+}
+window.calcOpenEstimate = calcOpenEstimate;
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){
