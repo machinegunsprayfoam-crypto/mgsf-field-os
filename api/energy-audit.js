@@ -158,9 +158,91 @@ function concernsToMeasures(concerns) {
   });
 }
 
+// ---- MEASURE CATALOG — best-of taxonomy synthesized from the BPI-2400 tools (Snugg Pro, OptiMiser),
+// the DOE Weatherization Assistant (NEAT/MHEA), and HERS tools (REM/Rate, Ekotrope). Each measure can
+// carry an owner-entered COST + program INCENTIVE (%/$/cap); NONE are MGSF doctrine pricing and none
+// are fabricated. `mgsf:true` marks the measures MGSF actually performs (foam / air-seal / insulation).
+const MEASURE_CATALOG = [
+  ["air-sealing", "Air sealing (blower-door directed)", "envelope", true],
+  ["attic-insulation", "Attic insulation", "envelope", true],
+  ["vault-flat-ceiling", "Vault / flat ceiling insulation", "envelope", true],
+  ["wall-insulation", "Wall insulation", "envelope", true],
+  ["floor-insulation", "Floor / cantilever insulation", "envelope", true],
+  ["basement-wall", "Basement wall insulation", "envelope", true],
+  ["crawl-encapsulation", "Crawlspace encapsulation + insulation", "envelope", true],
+  ["slab-perimeter", "Slab / perimeter insulation", "envelope", true],
+  ["rim-joist", "Rim / band joist air-seal + foam", "envelope", true],
+  ["spf-roof", "SPF roof / roof-deck foam + coating", "envelope", true],
+  ["windows", "Windows", "envelope", false],
+  ["specialty-windows", "Specialty windows", "envelope", false],
+  ["exterior-doors", "Exterior doors", "envelope", false],
+  ["hvac", "HVAC system", "mechanical", false],
+  ["heat-pump", "Heat pump (space)", "mechanical", false],
+  ["ducts", "Duct sealing / insulation", "mechanical", false],
+  ["thermostat", "Smart thermostat", "mechanical", false],
+  ["design-loads", "Design loads (Manual J)", "mechanical", false],
+  ["dhw", "Water heater", "dhw", false],
+  ["hpwh", "Heat-pump water heater", "dhw", false],
+  ["dhw-wrap", "DHW tank / pipe wrap", "dhw", false],
+  ["house-ventilation", "Whole-house ventilation (ASHRAE 62.2)", "ventilation", false],
+  ["bath-ventilation", "Bath exhaust", "ventilation", false],
+  ["kitchen-ventilation", "Kitchen exhaust", "ventilation", false],
+  ["caz-combustion", "Combustion-safety (CAZ) testing", "health-safety", false],
+  ["hazards", "Hazard remediation", "health-safety", false],
+  ["air-quality", "Indoor air quality", "health-safety", false],
+  ["refrigerator", "Refrigerator", "appliance", false],
+  ["freezer", "Freezer", "appliance", false],
+  ["dishwasher", "Dishwasher", "appliance", false],
+  ["clothes-washer", "Clothes washer", "appliance", false],
+  ["dryer", "Dryer", "appliance", false],
+  ["range", "Range / cooktop", "appliance", false],
+  ["lighting", "Lighting", "appliance", false],
+  ["solar-pv", "Solar PV", "renewable", false],
+  ["battery", "Battery storage", "renewable", false],
+  ["ev-charger", "EV charger", "renewable", false],
+].map(([id, name, category, mgsf]) => ({ id, name, category, mgsf }));
+const _CAT_BY_ID = {}; MEASURE_CATALOG.forEach((m) => { _CAT_BY_ID[m.id] = m; });
+function catalogFor(id) { return _CAT_BY_ID[clean(id, 60)] || null; }
+
+// Net cost after a program incentive. All $ are OWNER-ENTERED per job (measure cost, incentive % / $ /
+// cap) — never MGSF doctrine pricing, never fabricated. incentive = cost*pct% + flat$, capped, and can
+// never exceed the cost. Returns {cost, incentive, netCost} — arithmetic only, labeled ESTIMATE upstream.
+function applyIncentive(m) {
+  const cost = Math.max(0, num(m && m.cost, 0));
+  const pct = Math.min(100, Math.max(0, num(m && m.incentivePct, 0)));
+  const dollar = Math.max(0, num(m && m.incentiveDollar, 0));
+  const capRaw = num(m && m.incentiveCap, NaN);
+  let incentive = cost * pct / 100 + dollar;
+  if (Number.isFinite(capRaw) && capRaw >= 0) incentive = Math.min(incentive, capRaw);
+  incentive = Math.min(incentive, cost); // never rebate more than the job costs
+  return { cost: round(cost), incentive: round(incentive), netCost: round(Math.max(0, cost - incentive)) };
+}
+
+// Prioritize measures the NEAT/MHEA way: most cost-effective first. When a measure carries estimated
+// annual energy saved, rank by net-cost-per-unit-saved (lower = better); measures without a savings
+// figure fall to the end, ordered by net cost. Pure; enriches each with catalog name/category/mgsf-lane.
+function prioritize(measures) {
+  const list = (Array.isArray(measures) ? measures : []).filter(Boolean).map((m) => {
+    const cat = catalogFor(m.id);
+    const inc = applyIncentive(m);
+    const units = num(m.annualSavingsUnits, 0);
+    return {
+      id: clean(m.id, 60) || null, name: (cat && cat.name) || clean(m.name, 60) || clean(m.id, 60) || "measure",
+      category: (cat && cat.category) || "other", mgsf: !!(cat && cat.mgsf),
+      cost: inc.cost, incentive: inc.incentive, netCost: inc.netCost,
+      annualSavingsUnits: units > 0 ? units : null,
+      costPerUnitSaved: units > 0 ? round(inc.netCost / units, 3) : null,
+      recommend: m.recommend !== false,
+    };
+  });
+  const scored = list.filter((x) => x.costPerUnitSaved != null).sort((a, b) => a.costPerUnitSaved - b.costPerUnitSaved);
+  const rest = list.filter((x) => x.costPerUnitSaved == null).sort((a, b) => a.netCost - b.netCost);
+  return scored.concat(rest).map((x, i) => ({ ...x, rank: i + 1 }));
+}
+
 function analyze(body) {
   const b = body || {};
-  const out = { ok: true, basis: "ESTIMATE", units: "energy only (kWh / therms) — no dollars; apply the customer's rate for $" };
+  const out = { ok: true, basis: "ESTIMATE", units: "energy savings in units (kWh/therms), no $; measure costs/incentives are OWNER-ENTERED per job, not MGSF pricing" };
   if (b.electric && Array.isArray(b.electric.reads)) out.electric = analyzeFuel(b.electric, b);
   if (b.gas && Array.isArray(b.gas.reads)) out.gas = analyzeFuel(b.gas, b);
   const kwh = out.electric ? out.electric.annualUsage : 0;
@@ -168,16 +250,24 @@ function analyze(body) {
   if (kwh || therms) out.siteEnergyMMBtu = siteEnergyMMBtu(kwh, therms);
   if (b.building) out.geometry = geometry(b.building);
   if (b.concerns) out.recommendations = concernsToMeasures(b.concerns);
+  if (b.measures && Array.isArray(b.measures) && b.measures.length) {
+    const ranked = prioritize(b.measures);
+    out.measures = ranked;
+    const tot = { cost: round(ranked.reduce((s, x) => s + x.cost, 0)), incentive: round(ranked.reduce((s, x) => s + x.incentive, 0)), netCost: round(ranked.reduce((s, x) => s + x.netCost, 0)) };
+    const cap = num(b.programCap, NaN); // optional program-wide incentive cap (OptiMiser "All Measures Cap")
+    if (Number.isFinite(cap) && cap >= 0) { tot.programCap = round(cap); tot.incentiveAfterCap = round(Math.min(tot.incentive, cap)); tot.netCostAfterCap = round(tot.cost - tot.incentiveAfterCap); }
+    out.measuresTotal = tot;
+  }
   if (out.recommendations && out.recommendations.some((r) => r.hasSafety))
     out.safetyFlag = "Combustion-safety (CAZ) testing required before air-sealing — see recommendations.";
-  if (!out.electric && !out.gas && !out.geometry && !out.recommendations)
-    return { ok: false, error: "no_input", note: "POST electric/gas reads, building{}, and/or concerns[]" };
+  if (!out.electric && !out.gas && !out.geometry && !out.recommendations && !out.measures)
+    return { ok: false, error: "no_input", note: "POST electric/gas reads, building{}, concerns[], and/or measures[]" };
   return out;
 }
 
 module.exports = async (req, res) => {
   if (req.method === "GET") {
-    res.status(200).json({ ok: true, service: "energy-audit", pure: true, guarantees: false,
+    res.status(200).json({ ok: true, service: "energy-audit", pure: true, guarantees: false, catalog: MEASURE_CATALOG,
       note: "POST { electric:{start,reads:[{end,usage}]}, gas:{...}, hdd?, typicalHdd?, reductionPct?, " +
         "building:{conditionedArea,wallHeight,length,width,floors,bedrooms,occupants,yearBuilt}, concerns:[{summary,detail}] }. " +
         "Returns annualized use + base/seasonal split, optional weather-normalization + savings ESTIMATE, building geometry (volume→ACH50), " +
@@ -200,6 +290,10 @@ module.exports.estimateSavings = estimateSavings;
 module.exports.siteEnergyMMBtu = siteEnergyMMBtu;
 module.exports.geometry = geometry;
 module.exports.concernsToMeasures = concernsToMeasures;
+module.exports.MEASURE_CATALOG = MEASURE_CATALOG;
+module.exports.catalogFor = catalogFor;
+module.exports.applyIncentive = applyIncentive;
+module.exports.prioritize = prioritize;
 module.exports.analyzeFuel = analyzeFuel;
 module.exports.analyze = analyze;
 module.exports.CONSTANTS = { THERM_BTU, KWH_BTU, THERM_KWH };

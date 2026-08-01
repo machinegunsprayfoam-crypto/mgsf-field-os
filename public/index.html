@@ -3164,13 +3164,26 @@ function renderBpi(){
     `<div id="bpi_greads" style="margin-top:6px"></div>`+
     `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddRead('g')">+ Month</button>`+
     `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAutoDates('g')">↻ Auto-fill dates (+1 mo)</button></div></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Measures & incentives</h4>`+
+    `<div style="font-size:11px;color:var(--t2);margin-bottom:6px">Check what you'll recommend; enter job cost + any program rebate (%/$). Owner-entered — NOT MGSF pricing. Results rank by cost-effectiveness.</div>`+
+    `<div id="bpi_measures"><div style="opacity:.6;font-size:12px">Loading measures…</div></div></div>`+
     `<div class="jsa-card"><h4 style="margin:0 0 4px">Optional — savings ESTIMATE</h4>`+
     `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">`+
       _bpiInput('bpi_hdd','Actual HDD','')+_bpiInput('bpi_thdd','Typical-year HDD','')+_bpiInput('bpi_redpct','Reduction %','25')+
     `</div><div style="font-size:11px;color:var(--t2);margin-top:6px">Savings are ESTIMATES — energy units only, never guaranteed. Apply the customer's own utility rate for $.</div></div>`+
     `<button id="bpi_run" class="btn btn-primary" style="width:100%;font-size:14px" onclick="bpiRun()">Run BPI audit</button>`+
     `<div id="bpi_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div><div id="bpi_out" style="margin-top:10px"></div>`;
-  bpiAddConcern(); bpiAddRead('e'); bpiAddRead('g');
+  bpiAddConcern(); bpiAddRead('e'); bpiAddRead('g'); _bpiLoadMeasures();
+}
+async function _bpiLoadMeasures(){
+  const host=document.getElementById('bpi_measures'); if(!host) return; const E=window.sysEsc;
+  const d=await fetch('/api/energy-audit').then(r=>r.json()).catch(()=>null);
+  const cat=(d&&d.catalog)||[];
+  if(!cat.length){ host.innerHTML='<div style="font-size:12px;color:var(--t2)">Measure catalog unavailable.</div>'; return; }
+  host.innerHTML=cat.map(m=>`<div class="bpi-m" data-id="${E(m.id)}" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px">`+
+    `<input type="checkbox" class="bpi-mrec" style="width:18px;height:18px;margin-top:3px">`+
+    `<div style="flex:1"><div style="font-size:13px">${E(m.name)}${m.mgsf?' <span style="font-size:10px;color:var(--or);border:1px solid var(--or);border-radius:4px;padding:0 4px">MGSF</span>':''}</div>`+
+    `<div style="display:flex;gap:6px;margin-top:3px"><input class="admin-inp bpi-mcost" placeholder="Cost $" inputmode="decimal" style="flex:1"><input class="admin-inp bpi-mincpct" placeholder="Inc %" inputmode="decimal" style="width:64px"><input class="admin-inp bpi-mincdol" placeholder="Inc $" inputmode="decimal" style="width:76px"></div></div></div>`).join('');
 }
 function bpiAddConcern(){ const c=document.getElementById('bpi_concerns'); if(!c) return;
   const d=document.createElement('div'); d.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start';
@@ -3207,6 +3220,12 @@ async function bpiRun(){
   };
   if(!payload.electric.reads.length) delete payload.electric;
   if(!payload.gas.reads.length) delete payload.gas;
+  const measures=[]; document.querySelectorAll('#bpi_measures .bpi-m').forEach(row=>{
+    const id=row.getAttribute('data-id'); const rec=!!(row.querySelector('.bpi-mrec')||{}).checked;
+    const cost=parseFloat((row.querySelector('.bpi-mcost')||{}).value), incp=parseFloat((row.querySelector('.bpi-mincpct')||{}).value), incd=parseFloat((row.querySelector('.bpi-mincdol')||{}).value);
+    if(rec || isFinite(cost)){ const m={id:id, recommend:rec}; if(isFinite(cost)) m.cost=cost; if(isFinite(incp)) m.incentivePct=incp; if(isFinite(incd)) m.incentiveDollar=incd; measures.push(m); }
+  });
+  if(measures.length) payload.measures=measures;
   if(st) st.textContent='Running the audit…';
   const d=await _sysPost('/api/energy-audit',payload);
   if(st) st.textContent='';
@@ -3230,6 +3249,12 @@ function bpiRenderResult(d){
     (g.bedrooms!=null?`Bedrooms: ${E(g.bedrooms)}`:'')+(g.footprint?` · Footprint: ${E(g.footprint)} ft²`:'')+`</div></div>`; }
   html+=fuel(d.electric,'Electric (kWh)')+fuel(d.gas,'Gas (therms)');
   if(d.siteEnergyMMBtu) html+=`<div class="jsa-card" style="font-size:13px">Combined site energy: <b>${E(d.siteEnergyMMBtu)} MMBtu/yr</b> (ESTIMATE)</div>`;
+  if(d.measures&&d.measures.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Measures (ranked by cost-effectiveness)</h4>`;
+    d.measures.forEach(m=>{ html+=`<div style="font-size:12px;margin-bottom:4px;display:flex;justify-content:space-between;gap:8px"><span>${E(m.rank)}. ${E(m.name)}${m.mgsf?' <span style="color:var(--or)">•MGSF</span>':''}</span>`+
+      `<span style="color:var(--t2)">$${E(m.cost)} − $${E(m.incentive)} = <b>$${E(m.netCost)}</b>${m.costPerUnitSaved!=null?' · $'+E(m.costPerUnitSaved)+'/unit':''}</span></div>`; });
+    if(d.measuresTotal){ const t=d.measuresTotal; html+=`<div style="font-size:13px;margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">Total: $${E(t.cost)} − incentive $${E(t.incentive)} = <b>net $${E(t.netCost)}</b>`+
+      (t.incentiveAfterCap!=null?` <span style="color:var(--t2)">(after program cap: net $${E(t.netCostAfterCap)})</span>`:'')+`</div>`; }
+    html+=`<div style="font-size:11px;color:var(--t2);margin-top:4px">Costs/incentives owner-entered — ESTIMATE, not MGSF pricing.</div></div>`; }
   if(d.recommendations&&d.recommendations.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Recommended measures</h4>`;
     d.recommendations.forEach(r=>{ html+=`<div style="margin-bottom:8px"><div style="font-weight:600;font-size:13px">${E(r.summary)}</div>`;
       (r.measures||[]).forEach(m=>{ html+=`<div style="font-size:12px;color:${m.safety?'var(--red)':'inherit'};margin-left:8px">• ${m.safety?'⚠ ':''}${E(m.measure)}<br><span style="color:var(--t2)">${E(m.why)}</span></div>`; });

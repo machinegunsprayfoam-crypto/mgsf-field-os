@@ -68,7 +68,7 @@ ok("analyze returns per-fuel baselines", !!r.electric && !!r.gas && r.ok === tru
 ok("analyze reports combined site energy (MMBtu)", typeof r.siteEnergyMMBtu === "number" && r.siteEnergyMMBtu > 0);
 ok("analyze carries weather-normalization when HDD supplied", r.electric.weatherNormalized.normalized === true);
 ok("analyze carries a savings ESTIMATE when reduction% supplied", r.electric.savings.estimated === true && r.electric.savings.label === "ESTIMATE");
-ok("analyze output flags ESTIMATE + energy-only (no dollars)", r.basis === "ESTIMATE" && /no dollars/i.test(r.units));
+ok("analyze output flags ESTIMATE + energy-savings-in-units + costs not MGSF pricing", r.basis === "ESTIMATE" && /no \$/.test(r.units) && /not MGSF pricing/i.test(r.units));
 ok("no input at all ⇒ ok:false no_input", A.analyze({}).ok === false && A.analyze({}).error === "no_input");
 
 // ---- geometry(): derived numbers, ESTIMATE, missing inputs omitted (not guessed) ----
@@ -108,6 +108,40 @@ ok("building/concerns alone (no bills) is valid input", full2.ok === true);
 const bare = A.analyze({ gas: { reads: [{ days: 30, usage: 224 }, { days: 30, usage: 60 }] } });
 ok("no HDD ⇒ normalization skipped (honest)", bare.gas.weatherNormalized.normalized === false);
 ok("no reduction% ⇒ savings skipped (honest)", bare.gas.savings.estimated === false);
+
+// ---- MEASURE_CATALOG + catalogFor() ----
+ok("catalog is a non-empty array", Array.isArray(A.MEASURE_CATALOG) && A.MEASURE_CATALOG.length >= 20);
+ok("catalog ids are unique", new Set(A.MEASURE_CATALOG.map((m) => m.id)).size === A.MEASURE_CATALOG.length);
+ok("catalog has the core foam/air-seal measures flagged mgsf:true", ["air-sealing", "attic-insulation", "wall-insulation", "crawl-encapsulation"].every((id) => A.catalogFor(id) && A.catalogFor(id).mgsf === true));
+ok("a non-MGSF measure (windows) is mgsf:false", A.catalogFor("windows").mgsf === false);
+ok("catalogFor(unknown) ⇒ null", A.catalogFor("nope") === null);
+
+// ---- applyIncentive(): owner-entered cost/incentive math ----
+ok("incentive = cost*pct% + flat$", (function () { const r = A.applyIncentive({ cost: 1000, incentivePct: 10, incentiveDollar: 200 }); return r.incentive === 300 && r.netCost === 700; })());
+ok("incentive capped by incentiveCap", (function () { const r = A.applyIncentive({ cost: 1000, incentivePct: 50, incentiveCap: 300 }); return r.incentive === 300 && r.netCost === 700; })());
+ok("incentive never exceeds the cost", (function () { const r = A.applyIncentive({ cost: 100, incentiveDollar: 500 }); return r.incentive === 100 && r.netCost === 0; })());
+ok("pct clamped ≤100", A.applyIncentive({ cost: 1000, incentivePct: 150 }).netCost === 0);
+ok("no cost ⇒ zeros, no throw", A.applyIncentive({}).netCost === 0);
+
+// ---- prioritize(): NEAT-style cost-effectiveness ranking ----
+const ranked = A.prioritize([
+  { id: "attic-insulation", cost: 2000, incentiveDollar: 500, annualSavingsUnits: 100 }, // net 1500 → 15/unit
+  { id: "windows", cost: 8000, annualSavingsUnits: 100 },                                // net 8000 → 80/unit
+  { id: "lighting", cost: 200 },                                                          // no savings → last
+]);
+ok("most cost-effective first (attic before windows)", ranked[0].id === "attic-insulation" && ranked[1].id === "windows");
+ok("measures without a savings figure fall to the end", ranked[2].id === "lighting");
+ok("ranks are 1..n", ranked.map((x) => x.rank).join(",") === "1,2,3");
+ok("catalog enrichment: name + category + mgsf lane", ranked[0].name === "Attic insulation" && ranked[0].category === "envelope" && ranked[0].mgsf === true);
+ok("costPerUnitSaved computed for scored, null for unscored", ranked[0].costPerUnitSaved === 15 && ranked[2].costPerUnitSaved === null);
+ok("unknown id keeps supplied name, category 'other'", (function () { const r = A.prioritize([{ id: "zzz", name: "Custom thing", cost: 100 }]); return r[0].name === "Custom thing" && r[0].category === "other" && r[0].mgsf === false; })());
+
+// ---- analyze() wiring: measures + totals + program cap; measures alone is valid input ----
+const mres = A.analyze({ measures: [{ id: "air-sealing", cost: 1000, incentivePct: 20 }] });
+ok("analyze carries ranked measures + totals", Array.isArray(mres.measures) && mres.measuresTotal.cost === 1000 && mres.measuresTotal.incentive === 200 && mres.measuresTotal.netCost === 800);
+ok("measures alone (no bills) is valid input", mres.ok === true);
+const capped = A.analyze({ measures: [{ id: "a", cost: 1000, incentiveDollar: 400 }, { id: "b", cost: 1000, incentiveDollar: 400 }], programCap: 500 });
+ok("program cap limits total incentive", capped.measuresTotal.incentiveAfterCap === 500 && capped.measuresTotal.netCostAfterCap === 1500);
 
 console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
