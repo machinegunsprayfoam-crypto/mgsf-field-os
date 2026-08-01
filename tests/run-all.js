@@ -9,6 +9,7 @@ const SUITES = [
   ["calc-invariants", "estimator math invariants"],
   ["calc-money", "commission / payment-schedule / unit-convert math"],
   ["brain-retrieve", "GraphRAG routing"],
+  ["brain-graph-sync", "brain graph baked into 3 files (data.js / brain-graph.json / brain-graph.js viz) stays byte-identical + structurally valid — guards boot-viz↔retriever drift after a re-scan"],
   ["brain-assembly", "brain block selection (live wiring)"],
   ["brain-context", "live-data grounding (gated)"],
   ["missed-call", "speed-to-lead / missed-call recovery"],
