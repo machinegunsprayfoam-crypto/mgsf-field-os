@@ -10,6 +10,23 @@ Every integration is **gated + graceful**: if a key is absent, that feature is s
 
 ---
 
+## 0. Quick path — flip switches by leverage (from `/api/cmdb`)
+
+Set each in **Vercel → Settings → Environment Variables**, then **Redeploy** (env only applies on a new
+deploy). Watch them go green live in **SYS tab → "Connections & wiring"** (or `GET /api/boot`).
+
+| # | Switch | Env var(s) | Lights | Count |
+|---|---|---|---|---|
+| 1 | **Outbound webhook** — biggest single unlock | `ALERTS_WEBHOOK_URL` (+ `WEBHOOK_SECRET`) | arms · zapier-bus · notify · missed-call · daily-brief · follow-up · estimate-followup · invoice-remind · inventory-reorder · roof-maintenance | **10** |
+| 2 | **Data spine** — records the crons + business-audit read | `KV_REST_API_URL` + `KV_REST_API_TOKEN` (Vercel → Storage → KV) | daily brief, all sweep crons, **business-audit** have data to work on | — |
+| 3 | **Supabase brain** | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` + run [`db/SETUP.md`](db/SETUP.md) SQL | memory · wiki · telemetry · command-center · sync · photo · storage · mcp-server | **8** |
+| 4 | **Intelligence** | `ANTHROPIC_API_KEY` | the hive/brain · blueprint vision · business-audit memo · all AI | — |
+
+> #1 **delivers**; #2 gives it something to **say**. The sweep crons (daily-brief, follow-up,
+> invoice-remind) and the new **business-audit** read records from **Vercel KV** — without KV they
+> return `configured:false`, so set #1 **and** #2 together for the outreach/audit loop to actually run.
+> Everything below (§1) is the full per-var detail; §5-equivalent extras each light ~1 tool.
+
 ## 1. Set environment variables (Vercel → mgsf-field-os → Settings → Environment Variables)
 
 ### ESSENTIAL — the engine + brain won't think without these
