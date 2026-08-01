@@ -54,7 +54,8 @@ const LOCAL_TOOLS = [
   { id: "cmdb",             category: "infra",     kind: "compute", does: "self-map: component dependency graph, why-is-X-dark root cause, biggest-unlock", module: "api/cmdb.js" },
   { id: "boot",             category: "infra",     kind: "compute", does: "boot manifest — one live self-map (components/deps/tools/brain/agents) computed from env", module: "api/boot.js" },
   { id: "scenarios",        category: "automation", kind: "compute", does: "AI scenario builder — turn 'when X do Y' into a validated, safe automation (real triggers/tools)", module: "api/scenarios.js" },
-  { id: "agents",           category: "automation", kind: "compute", does: "goal-completing agent runtime (PM/collector/bid-chaser/lead-closer) — plans + stages drafts, approval-gated", module: "api/agents.js" },
+  { id: "agents",           category: "automation", kind: "compute", does: "goal-completing agent runtime (PM/collector/bid-chaser/lead-closer/sub-compliance) — plans + stages drafts, approval-gated", module: "api/agents.js" },
+  { id: "engineer",         category: "platform",   kind: "compute", does: "pit-crew agent — assesses health/gaps/curriculum, ranks improvements, drafts an AI plan (all outputs draft-for-approval)", module: "api/engineer.js" },
   // keyless document + draft generators (produce a doc/message for approval — no external key)
   { id: "proposal-pdf",     category: "documents", kind: "compute", does: "turn an estimate into a branded, emailable proposal PDF", module: "api/proposal-pdf.js" },
   { id: "warranty-cert",    category: "documents", kind: "compute", does: "warranty certificate PDF to hand over at job close", module: "api/warranty-cert.js" },

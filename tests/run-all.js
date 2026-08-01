@@ -56,6 +56,8 @@ const SUITES = [
   ["sub-bid", "subcontractor bid leveling: scope baseline (required/union), gap detection, low/high/spread, cheapest-but-incomplete trap, mixed-trade/missing-amount warnings — advisory, never auto-accepts"],
   ["prime-assembler", "GC prime rollup: self-perform (doctrine-deferred) + leveled sub bids + suggested choice + compliance gate + subs subtotal + owner-vs-deferred markup + proposal skeleton — never fabricates MGSF price, never auto-awards"],
   ["change-order", "change-order doc build: delta = sum of changes (incl. credits), new total = original + delta, OWNER-INPUT markers, negative-$ format, optional sections — amounts caller-supplied, no doctrine pricing"],
+  ["axle", "axle programs: workers/money/all on-demand presets + tick logic (Sunday guard, owner-gear blocks) — from Copilot PR #77, folded in"],
+  ["engineer", "engineer agent: platform assessment (health+cmdb+curriculum → ranked findings) + suggestions + gated AI plan — from Copilot PR #77, folded in"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];

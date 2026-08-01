@@ -30,6 +30,13 @@ function _authed(req) {
 // A transmission PROGRAM = a cadence + the gears time engages. Each gear is a gearbox event.
 // Keep these to internal/heartbeat turns; outward per-item work stays with the dedicated crons.
 // (drive is decided by the gear itself in gearbox HANDLERS — owner gears here would draft + block.)
+//
+// NAMED PRESETS (graduated from the 3D gear-model presets):
+//   daily / weekly  — scheduled cadence crons (see vercel.json).
+//   workers         — field-ops heartbeat: certs + roof-maintenance readiness (run on demand).
+//   money           — revenue heartbeat: pipeline sweep + follow-up reheat drafts (owner gear
+//                     → goes blocked/draft until Clifton approves; never auto-sends).
+//   all             — full sweep: everything daily + weekly in one shot (run on demand).
 const PROGRAMS = {
   daily: { cadence: "0 12 * * 1-6", label: "Daily heartbeat",
     turns: [
@@ -41,6 +48,24 @@ const PROGRAMS = {
     turns: [
       { name: "axle.weekly", note: "weekly coordination tick" },
       { name: "roofmaint.sweep", note: "roof-maintenance cycle check (internal)" },
+    ] },
+  workers: { cadence: "manual", label: "Workers (field-ops focus)",
+    turns: [
+      { name: "certs.watch", note: "cert/doc expiry check — are the crew's tickets current?" },
+      { name: "roofmaint.sweep", note: "roof-maintenance cycle heartbeat — which roofs need a follow-up?" },
+    ] },
+  money: { cadence: "manual", label: "Money (revenue focus)",
+    turns: [
+      { name: "pipeline.sweep", note: "re-check open estimates/deals — what's stale?" },
+      { name: "followup.scheduled", note: "reheat stale leads/estimates (owner gear — drafts + blocks for Clifton's approval; never auto-sends)" },
+    ] },
+  all: { cadence: "manual", label: "All gears (full sweep)",
+    turns: [
+      { name: "axle.daily", note: "daily coordination tick" },
+      { name: "pipeline.sweep", note: "re-check open estimates/deals" },
+      { name: "certs.watch", note: "cert/doc expiry check" },
+      { name: "axle.weekly", note: "weekly coordination tick" },
+      { name: "roofmaint.sweep", note: "roof-maintenance cycle heartbeat" },
     ] },
 };
 
