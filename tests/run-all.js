@@ -54,6 +54,7 @@ const SUITES = [
   ["photo-estimate", "photo→draft estimate stitch: area source (provided vs measure.js), missing-input detection, measure→foam-calc quantities, verify prompts — draft/ESTIMATE only, price never computed"],
   ["concrete-calc", "concrete lifting/void/seawall quantity engine: void geometry → cured pounds (×density) → sets (only w/ set weight), waste clamp, soil blocked — ESTIMATE, price deferred"],
   ["sub-bid", "subcontractor bid leveling: scope baseline (required/union), gap detection, low/high/spread, cheapest-but-incomplete trap, mixed-trade/missing-amount warnings — advisory, never auto-accepts"],
+  ["prime-assembler", "GC prime rollup: self-perform (doctrine-deferred) + leveled sub bids + suggested choice + compliance gate + subs subtotal + owner-vs-deferred markup + proposal skeleton — never fabricates MGSF price, never auto-awards"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
