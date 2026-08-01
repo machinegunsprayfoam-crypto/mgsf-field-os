@@ -89,6 +89,11 @@ const ENGINES = {
   "concrete-lifting": ["concrete-calc"],
   "soil-stabilization": ["concrete-calc"],
   "seawall": ["concrete-calc"],
+  // Sub trades a GC estimates or checks a sub's bid against — calc engine + sub-bid leveling.
+  "hvac": ["hvac-load", "sub-bid"],
+  "electrical": ["electrical-load", "sub-bid"],
+  "plumbing": ["plumbing-calc", "sub-bid"],
+  "framing": ["framing-calc", "sub-bid"],
 };
 // The engine(s) for a trade id. Self-perform ⇒ its calc modules; sub trade ⇒ ["sub-bid"] (quoted, not
 // estimated by MGSF); unknown ⇒ []. Deterministic.

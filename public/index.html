@@ -3536,6 +3536,19 @@ const CALC_ENGINES = {
     {id:'perimeter',label:'Perimeter ft (wall)',ph:'120'},{id:'height',label:'Height ft (wall)',ph:'10'},
     {id:'footprint',label:'Footprint ft² (roof)',ph:''},{id:'pitchRise',label:'Pitch rise /12 (roof)',ph:'4'},{id:'waste',label:'Waste (0–0.6)',ph:'0.1'}],
     render:(d)=> d && (d.netAreaSqft!=null||d.roofAreaWithWaste!=null) ? `Area: <b>${_cE(d.netAreaSqft!=null?d.netAreaSqft:d.roofAreaWithWaste)} ft²</b>${d.squares?(' · '+_cE(d.squares)+' squares'):''}` : null },
+  'electrical-load': { label:'Electrical service load (NEC 220)', path:'/api/electrical-load', fields:[
+    {id:'area',label:'Floor area (ft²)',ph:'2000'},{id:'smallAppliance',label:'Small-appliance circuits',ph:'2'},{id:'laundry',label:'Laundry circuits',ph:'1'},
+    {id:'rangeVA',label:'Range demand VA (Tbl 220.55)',ph:'8000'},{id:'dryerVA',label:'Dryer VA (min 5000)',ph:'5000'},{id:'acVA',label:'A/C VA',ph:'3600'},{id:'heatVA',label:'Heat VA',ph:'10000'}],
+    render:(d)=> d && d.calculatedAmps!=null ? `Calculated load: <b>${_cE(d.calculatedAmps)} A</b> → service <b>${_cE(d.recommendedService)}</b><br><span style="color:var(--t2)">A licensed electrician + the AHJ must design/permit.</span>` : null },
+  'plumbing-calc': { label:'Plumbing fixture units + sizing (IPC)', path:'/api/plumbing-calc', fields:[
+    {id:'wc',label:'Water closets',ph:'2'},{id:'lav',label:'Lavatories',ph:'2'},{id:'shower',label:'Showers',ph:'1'},{id:'tub',label:'Tubs',ph:'1'},{id:'ksink',label:'Kitchen sinks',ph:'1'},{id:'washer',label:'Clothes washers',ph:'1'}],
+    render:(d)=> d && d.wsfu!=null ? `Load: <b>${_cE(d.wsfu)} WSFU</b> / <b>${_cE(d.dfu)} DFU</b><br>Drain: <b>${_cE(d.drain&&d.drain.recommendedDrain)}</b> · Supply: <b>${_cE(d.supply&&d.supply.roughSupplySize)}</b> (~${_cE(d.supply&&d.supply.peakGPM)} GPM)` : null },
+  'hvac-load': { label:'HVAC load + tonnage (rule of thumb)', path:'/api/hvac-load', fields:[
+    {id:'area',label:'Floor area (ft²)',ph:'2000'},{id:'tightness',label:'Envelope',type:'select',opts:[['typical','Typical'],['tight','Tight/new'],['leaky','Leaky/old']]},{id:'bedrooms',label:'Bedrooms (vent)',ph:'3'}],
+    render:(d)=> d && d.heatingBtu ? `Heating: <b>${_cE(d.heatingBtu.low)}–${_cE(d.heatingBtu.high)} BTU/hr</b><br>Cooling: <b>${_cE(d.coolingBtu.low)}–${_cE(d.coolingBtu.high)} BTU/hr</b> (~${_cE(d.coolingTons.low)}–${_cE(d.coolingTons.high)} tons)<br><span style="color:var(--yw)">Rule of thumb — get a Manual J; don't oversize.</span>` : null },
+  'framing-calc': { label:'Framing takeoff (studs/plates/sheathing)', path:'/api/framing-calc', fields:[
+    {id:'lengthFt',label:'Wall length (ft)',ph:'40'},{id:'heightFt',label:'Wall height (ft)',ph:'8'},{id:'oc',label:'Stud spacing',type:'select',opts:[['16','16" OC'],['24','24" OC'],['12','12" OC']]},{id:'openings',label:'Openings (doors/windows)',ph:'2'},{id:'studSize',label:'Stud size',type:'select',opts:[['2x6','2x6'],['2x4','2x4']]}],
+    render:(d)=> d && d.studs!=null ? `Studs: <b>${_cE(d.studs)}</b> · Plates: <b>${_cE(d.plates)}</b> · Sheathing: <b>${_cE(d.sheathingSheets)}</b> sheets<br>Board-feet: <b>${_cE(d.boardFeet)}</b><br><span style="color:var(--t2)">Member sizing/spans → IRC tables + AHJ/engineer.</span>` : null },
 };
 function renderCalcs(){
   const b=document.getElementById('calcs_body'); if(!b) return;
@@ -3557,10 +3570,12 @@ function calcPickTrade(){
   if(form) form.innerHTML=''; if(!host) return;
   const t=(window._calcTrades||[]).find(x=>x.id===id); if(!t){ host.innerHTML=''; return; }
   const engines=(t.engines||[]).filter(e=>CALC_ENGINES[e]);
-  if(!t.selfPerform){ host.innerHTML=`<div style="font-size:13px;color:var(--t2)">🤝 <b>${_cE(t.name)}</b> is a <b>subcontracted</b> trade — MGSF doesn't self-estimate it. Get sub quotes and compare them apples-to-apples in <a onclick="switchModule('subs');renderSubs()" style="color:var(--cy);cursor:pointer">Subs</a>. Need a rough area? Use Takeoff:</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen('measure')">📐 Takeoff (area)</button></div>`; return; }
-  if(!engines.length){ host.innerHTML='<div style="font-size:13px;color:var(--t2)">No calculator wired for this trade yet — use Takeoff for area.</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen(\'measure\')">📐 Takeoff</button></div>'; return; }
-  host.innerHTML=`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">Calculators for ${_cE(t.name)}:</div>`+
-    engines.map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join('');
+  let h='';
+  if(!t.selfPerform){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:6px">🤝 <b>${_cE(t.name)}</b> is usually <b>subcontracted</b>. Use these to size the job or <b>check a sub's bid</b>, then compare quotes in <a onclick="switchModule('subs');renderSubs()" style="color:var(--cy);cursor:pointer">Subs</a>.</div>`; }
+  if(engines.length){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">Calculators${t.selfPerform?(' for '+_cE(t.name)):''}:</div>`+
+    engines.map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join(''); }
+  else { h+='<div style="font-size:13px;color:var(--t2)">No calculator for this trade yet — use Takeoff for a rough area.</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen(\'measure\')">📐 Takeoff (area)</button></div>'; }
+  host.innerHTML=h;
 }
 function calcOpen(engineId){
   const spec=CALC_ENGINES[engineId], form=document.getElementById('calc_form'); if(!spec||!form) return;

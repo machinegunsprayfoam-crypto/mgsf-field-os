@@ -61,6 +61,10 @@ const SUITES = [
   ["warranty-cert", "warranty certificate build: term/expiry math (addYears, termYears clamp+round), OWNER-INPUT marker, optional/default sections — workmanship only (no savings guarantee, no mold claim), no pricing"],
   ["rvalue-calc", "R-value / code-min engine: installed R (foam + flash-and-batt) vs IECC 2021 Zone 6/7 minimums, meets/short + add-thickness — R/inch + code both ESTIMATE/verify, no pricing"],
   ["air-barrier-calc", "air/vapor barrier engine: fluid gallons (coverage/wet-mil) + membrane rolls, cold-climate vapor-control rule (Zone 5-8), CAZ combustion flag — coverage owner-entered, no pricing"],
+  ["electrical-load", "electrical: NEC 220 dwelling service load + 310.16 ampacity + voltage drop — ESTIMATE/licensed-electrician+AHJ, no pricing"],
+  ["plumbing-calc", "plumbing: IPC fixture units → drain/supply sizing + water-heater sizing — ESTIMATE/licensed-plumber+AHJ, no pricing"],
+  ["hvac-load", "HVAC: Zone 6/7 rule-of-thumb load + tonnage/CFM + ASHRAE 62.2 ventilation — NOT a Manual J, no pricing"],
+  ["framing-calc", "carpentry: stud/plate/sheathing + joist/rafter takeoff + board-feet — spans deferred to IRC tables, no pricing"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
