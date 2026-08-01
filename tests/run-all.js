@@ -45,6 +45,7 @@ const SUITES = [
   ["estimate-followup", "estimate reheat sweep: 2/7/21-day cadence + closed/won filter + total ordering + drafts"],
   ["roof-maintenance", "roof upkeep schedule/sweep: base-date + inspection/re-coat cadence + due windows + order"],
   ["invoice-remind", "AR reminders: overdue tone ladder + settled/unpaid filter (paid-substring guard) + ordering"],
+  ["energy-audit", "utility-bill baseline: annualize + base/seasonal disaggregation + gated normalize/savings (ESTIMATE, no $)"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 
