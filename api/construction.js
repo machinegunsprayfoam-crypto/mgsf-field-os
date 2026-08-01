@@ -78,6 +78,28 @@ const TRADES = [
   { id: "sitework", name: "Site / Paving", div: "32", selfPerform: false, keys: ["paving", "asphalt", "site concrete", "sidewalk", "curb", "landscape"], materials: ["asphalt", "site concrete", "base course"] },
 ];
 
+// WIRING: trade → the quantity/spec engine(s) that estimate it (the api/*-calc modules). This is the
+// bridge that routes a self-perform trade to the right calc. Sub trades have NO MGSF engine — they're
+// quoted by the sub and leveled via sub-bid, so they map to that instead.
+const ENGINES = {
+  "spray-foam": ["foam-calc", "rvalue-calc"],
+  "spf-roofing": ["measure", "foam-calc", "coating-calc", "rvalue-calc"],
+  "coatings": ["coating-calc"],
+  "air-vapor": ["air-barrier-calc", "rvalue-calc"],
+  "concrete-lifting": ["concrete-calc"],
+  "soil-stabilization": ["concrete-calc"],
+  "seawall": ["concrete-calc"],
+};
+// The engine(s) for a trade id. Self-perform ⇒ its calc modules; sub trade ⇒ ["sub-bid"] (quoted, not
+// estimated by MGSF); unknown ⇒ []. Deterministic.
+function engineFor(tradeId) {
+  const id = low(tradeId);
+  if (ENGINES[id]) return ENGINES[id].slice();
+  const t = TRADES.find((x) => x.id === id);
+  if (t && t.selfPerform === false) return ["sub-bid"];
+  return [];
+}
+
 function tradeMatch(text) {
   const q = low(text); if (!q) return null;
   // longest key match wins so "spray foam roof" prefers the roof branch when explicit
@@ -87,7 +109,7 @@ function tradeMatch(text) {
 }
 function tradeById(id) { return TRADES.find((t) => t.id === low(id)) || null; }
 function divisionFor(text) {
-  const t = tradeMatch(text); if (t) return { ...DIV_BY_N[t.div], trade: t.id, tradeName: t.name, selfPerform: t.selfPerform };
+  const t = tradeMatch(text); if (t) return { ...DIV_BY_N[t.div], trade: t.id, tradeName: t.name, selfPerform: t.selfPerform, engines: engineFor(t.id) };
   // fall back to a direct division-number or title hint
   const q = low(text);
   const d = DIVISIONS.find((x) => q.indexOf(x.title.toLowerCase()) >= 0 || q === x.n);
@@ -118,7 +140,7 @@ function primeSubStructure(body) {
   const resolved = raw.map((t) => {
     const tr = tradeById(t) || tradeMatch(t);
     if (!tr) return { input: clean(t), matched: false, note: "No trade match — classify manually (self-perform vs sub)." };
-    return { input: clean(t), trade: tr.id, name: tr.name, division: tr.div, divisionTitle: (DIV_BY_N[tr.div] || {}).title, role: tr.selfPerform ? "self-perform (MGSF)" : "subcontract" };
+    return { input: clean(t), trade: tr.id, name: tr.name, division: tr.div, divisionTitle: (DIV_BY_N[tr.div] || {}).title, role: tr.selfPerform ? "self-perform (MGSF)" : "subcontract", engines: engineFor(tr.id) };
   });
   const selfPerform = resolved.filter((r) => r.role && r.role.indexOf("self") === 0);
   const subs = resolved.filter((r) => r.role === "subcontract");
@@ -134,7 +156,7 @@ function analyze(body) {
   if (body.query || body.trade) { const d = divisionFor(body.query || body.trade); if (d) out.division = d; }
   if (Array.isArray(body.trades) && body.trades.length) out.structure = primeSubStructure(body);
   else out.subPacket = subPacket(body);
-  out.selfPerform = TRADES.filter((t) => t.selfPerform).map((t) => ({ id: t.id, name: t.name, division: t.div }));
+  out.selfPerform = TRADES.filter((t) => t.selfPerform).map((t) => ({ id: t.id, name: t.name, division: t.div, engines: engineFor(t.id) }));
   return out;
 }
 
@@ -142,7 +164,7 @@ module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ ok: true, service: "construction", grounded: true, fabricates: false, priced: false,
       framework: "CSI MasterFormat 2020 (50 divisions, 00–49)", divisions: DIVISIONS,
-      trades: TRADES.map((t) => ({ id: t.id, name: t.name, division: t.div, selfPerform: t.selfPerform, materials: t.materials })),
+      trades: TRADES.map((t) => ({ id: t.id, name: t.name, division: t.div, selfPerform: t.selfPerform, materials: t.materials, engines: engineFor(t.id) })),
       subPacketTemplate: subPacket({}),
       note: "POST { trades:[...], state?, federallyFunded?, publicWorks?, bondRequired? } to split a job into MGSF self-perform vs subs and get each sub's compliance packet; or { query } to map a trade to its CSI division. GUIDANCE only — starter taxonomy, no pricing, verify regulatory items per state/contract." });
     return;
@@ -158,6 +180,8 @@ module.exports = async (req, res) => {
 module.exports.DIVISIONS = DIVISIONS;
 module.exports.TRADES = TRADES;
 module.exports.tradeMatch = tradeMatch;
+module.exports.engineFor = engineFor;
+module.exports.ENGINES = ENGINES;
 module.exports.tradeById = tradeById;
 module.exports.divisionFor = divisionFor;
 module.exports.subPacket = subPacket;

@@ -24,6 +24,17 @@ ok("unknown text → null division", A.divisionFor("underwater basket weaving") 
 ok("tradeById resolves", A.tradeById("hvac").div === "23");
 ok("longest-key match prefers explicit roof branch", A.tradeMatch("spf roof recoat").id === "spf-roofing");
 
+// ---- WIRING: trade → engine ----
+ok("spray foam wired to foam-calc + rvalue-calc", (() => { const e = A.engineFor("spray-foam"); return e.includes("foam-calc") && e.includes("rvalue-calc"); })());
+ok("air-vapor wired to air-barrier-calc", A.engineFor("air-vapor").includes("air-barrier-calc"));
+ok("concrete-lifting wired to concrete-calc", A.engineFor("concrete-lifting").includes("concrete-calc"));
+ok("seawall wired to concrete-calc", A.engineFor("seawall").includes("concrete-calc"));
+ok("sub trade (electrical) wired to sub-bid (not an MGSF engine)", JSON.stringify(A.engineFor("electrical")) === '["sub-bid"]');
+ok("unknown trade ⇒ no engine", A.engineFor("spaceship").length === 0);
+ok("divisionFor surfaces engines", (A.divisionFor("spray foam attic").engines || []).includes("foam-calc"));
+ok("primeSubStructure self-perform rows carry engines", (() => { const s = A.primeSubStructure({ trades: ["spray foam"] }); return (s.selfPerform[0].engines || []).includes("foam-calc"); })());
+ok("every self-perform trade has at least one engine wired", A.TRADES.filter((t) => t.selfPerform && t.id !== "soil-stabilization").every((t) => A.engineFor(t.id).length > 0));
+
 // ---- sub compliance packet ----
 const base = A.subPacket({});
 const ids = base.items.map((i) => i.id);

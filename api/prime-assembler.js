@@ -49,6 +49,7 @@ function assemble(body) {
   // ---- self-perform rows: list + quantities (if provided) + pricing deferred ----
   const selfPerform = structure.selfPerform.map((s) => ({
     trade: s.trade, name: s.name, division: s.division,
+    engines: s.engines || construction.engineFor(s.trade),   // wiring: which calc(s) quantify this trade
     quantities: quantities[s.trade] || undefined,
     pricing: { deferred: true, how: "Priced via mgsf-estimator doctrine (locked rates, GM target, mobilization, state multiplier)." },
   }));

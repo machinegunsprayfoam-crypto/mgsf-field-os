@@ -34,6 +34,7 @@ const r = A.assemble(base);
 ok("self-perform picks MGSF trades", r.selfPerform.some((s) => s.trade === "spray-foam") && r.selfPerform.some((s) => s.trade === "spf-roofing"));
 ok("subs picks non-MGSF trades", r.subs.some((s) => s.trade === "electrical") && r.subs.some((s) => s.trade === "plumbing"));
 ok("self-perform pricing deferred to doctrine", r.selfPerform.every((s) => s.pricing.deferred === true));
+ok("self-perform rows are WIRED to their engine(s)", r.selfPerform.find((s) => s.trade === "spray-foam").engines.includes("foam-calc") && r.selfPerform.find((s) => s.trade === "spf-roofing").engines.includes("measure"));
 
 // ---- sub-bid leveling + suggested choice (lowest FULL-scope) ----
 const elec = r.subs.find((s) => s.trade === "electrical");
