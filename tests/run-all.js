@@ -58,6 +58,7 @@ const SUITES = [
   ["change-order", "change-order doc build: delta = sum of changes (incl. credits), new total = original + delta, OWNER-INPUT markers, negative-$ format, optional sections — amounts caller-supplied, no doctrine pricing"],
   ["axle", "axle programs: workers/money/all on-demand presets + tick logic (Sunday guard, owner-gear blocks) — from Copilot PR #77, folded in"],
   ["engineer", "engineer agent: platform assessment (health+cmdb+curriculum → ranked findings) + suggestions + gated AI plan — from Copilot PR #77, folded in"],
+  ["warranty-cert", "warranty certificate build: term/expiry math (addYears, termYears clamp+round), OWNER-INPUT marker, optional/default sections — workmanship only (no savings guarantee, no mold claim), no pricing"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
