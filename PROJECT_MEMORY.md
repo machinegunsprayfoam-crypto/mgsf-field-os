@@ -36,6 +36,24 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**★ JOB WORKFLOW / WIRING MAP + AI-connections answer — 2026-08-01 (branch, not merged):**
+- Clifton asked for a "map + blueprint workflow and wiring tool" and an "AI connections tool."
+- **AI connections tool = already exists** → `cmdb.js` (components → capabilities they depend on,
+  why-is-X-dark root cause, blast radius, biggest-unlock) + `health.js` (live/dark) + `tools.js`
+  (catalog) + `boot.js` (manifest). It IS the app's connections/wiring self-map — just not surfaced
+  prominently. Did NOT build a redundant module. **Next (owner):** give cmdb/boot a dedicated panel.
+- **Job workflow = real gap, built** → `api/job-workflow.js`, the missing link between `blueprint.js`
+  (reads plan → scope → trades) and `construction.js` (prime/sub). Pure keyless `workflow(tradeIds)`
+  turns a job's trades into the ORDERED construction sequence (site → foundation → structure →
+  roof-dryin → rough-in → insulation → coatings → finishes → final) with **dependency edges (the
+  wiring — what must finish first), inspection GATES per phase, prime/sub tag per trade**, and the
+  baked-in MGSF rule *never cover spray foam before the insulation inspection*. Dependencies resolve
+  to the nearest PRESENT phase when a phase is skipped. Grounded in the standard GC/IRC inspection
+  sequence (same as the TRADES_EXPERT brain block) — GUIDANCE + verify-AHJ, no pricing, no invented
+  durations (scheduling = mgsf-scheduling). Registered in run-all.js + tools.js catalog (category pm);
+  `tests/job-workflow.js` = 19 checks. Field-os gate **77 suites / 1783 checks** green. **Next (owner):**
+  wire blueprint.js scope output straight into workflow(), and surface it as a PLANS-panel view.
+
 **★ BUSINESS AUDIT — AI business-audit tool — 2026-08-01 (branch, not merged):**
 - Clifton asked "AI business audit tool?" — gap was real: we had a PLATFORM audit (`engineer.js`) and a
   snapshot (`daily-brief.js`) but nothing that DIAGNOSES the business. Built **`api/business-audit.js`**
