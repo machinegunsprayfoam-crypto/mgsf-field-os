@@ -51,5 +51,17 @@ ok("no-match why explains the default", /No concept match/.test(none.why));
 // ---- CLUSTER_BLOCKS only names real block strings (routing, not invention) ----
 ok("every cluster maps to a non-empty block list", Object.values(A.CLUSTER_BLOCKS).every((v) => Array.isArray(v) && v.length > 0));
 
+// ---- WIRING INTEGRITY: every block the retriever can emit must exist in Klyfton's brain ----
+// (a typo in CLUSTER_BLOCKS / ALWAYS, or a renamed brain block, would otherwise SILENTLY drop
+//  knowledge from the assembled prompt — no error, just missing context. This guards that.)
+const klyfton = require(path.join(__dirname, "..", "api", "klyfton.js"));
+const brainOrder = (klyfton._BRAIN_ORDER || []).map((k) => String(k).toUpperCase());
+const brainSet = new Set(brainOrder);
+const emittable = new Set([...A.ALWAYS, ...Object.values(A.CLUSTER_BLOCKS).flat()].map((b) => String(b).toUpperCase()));
+const dangling = [...emittable].filter((b) => !brainSet.has(b));
+ok("every retriever-emittable block exists in BRAIN_ORDER (no silent knowledge drop)", dangling.length === 0, dangling.join(","));
+ok("BRAIN_ORDER has no duplicate blocks", brainOrder.length === brainSet.size);
+ok("BRAIN_ORDER is non-trivial (brain wired)", brainOrder.length >= 20);
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
