@@ -28,6 +28,7 @@ const T = {
   staleBidDays: 7, deadBidDays: 21,
   arWatchDays: 1, arRedDays: 30,
   concentrationPct: 0.4,   // one customer > 40% of pipeline OR of AR = concentration risk
+  certRedDays: 60, certAmberDays: 120,   // cert/license expiry: renew-now vs plan-ahead windows
 };
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -134,6 +135,24 @@ function audit(data, opts) {
     add("Margin", "green", "Margin audit off (no target supplied)", "Supply your doctrine GM target to grade margin — this tool never invents one.", null, "Pass targetGm (from mgsf-core doctrine) to enable.");
   }
 
+  // ---- COMPLIANCE: cert / license expiry (data-driven from the CERTS tracker — never fabricated) ----
+  const certs = Array.isArray(data && data.certs) ? data.certs : [];
+  if (certs.length) {
+    // daysBetween = days SINCE a date; for expiry we want days UNTIL → negate (positive = days left, negative = expired)
+    const daysUntil = (d) => { const n = daysBetween(d, asOf); return n == null ? null : -n; };
+    const cx = certs.map((c) => ({ name: (String(c.name || c.type || "cert").trim().slice(0, 60)) || "cert", exp: c.expires || "", days: daysUntil(c.expires) }));
+    const lbl = (arr) => arr.map((c) => c.name + (c.exp ? " (" + c.exp + ")" : "")).join("; ");
+    const expired = cx.filter((c) => c.days != null && c.days < 0);
+    const soon = cx.filter((c) => c.days != null && c.days >= 0 && c.days <= th.certRedDays);
+    const watch = cx.filter((c) => c.days != null && c.days > th.certRedDays && c.days <= th.certAmberDays);
+    const noExp = cx.filter((c) => c.days == null);
+    if (expired.length) add("Compliance", "red", `${expired.length} cert/license EXPIRED`, lbl(expired), { expired: expired.length }, "Renew immediately — an expired safety cert can disqualify a bid and undercut your insurance posture.");
+    else if (soon.length) add("Compliance", "red", `${soon.length} cert(s) expire within ${th.certRedDays} days`, cx.filter((c) => soon.includes(c)).map((c) => c.name + " — " + c.days + "d").join("; "), { soon: soon.length }, "Book the renewal now — don't let a safety cert lapse mid-season.");
+    else if (watch.length) add("Compliance", "amber", `${watch.length} cert(s) expire within ${th.certAmberDays} days`, cx.filter((c) => watch.includes(c)).map((c) => c.name + " — " + c.days + "d").join("; "), { watch: watch.length }, "Schedule the renewal so it never becomes urgent.");
+    else add("Compliance", "green", `Certs current (${certs.length} tracked)`, `None expiring within ${th.certAmberDays} days.`, { tracked: certs.length }, "Good — keep the tracker fed.");
+    if (noExp.length) add("Compliance", "amber", `${noExp.length} cert(s) missing an expiry date`, lbl(noExp), { noExpiry: noExp.length }, "Add the expiry date so renewals get tracked automatically.");
+  }
+
   // ---- rank + summarize ----
   F.sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity]);
   const summary = { red: F.filter((f) => f.severity === "red").length, amber: F.filter((f) => f.severity === "amber").length, green: F.filter((f) => f.severity === "green").length };
@@ -175,9 +194,9 @@ module.exports = async (req, res) => {
   let body = req.body; if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } } body = body || {};
   const action = String((body.action || (req.query && req.query.action) || "audit")).toLowerCase();
   try {
-    const [leads, jobs, estimates, invoices] = await Promise.all([kvGet("leads"), kvGet("jobs"), kvGet("estimates"), kvGet("invoices")]);
+    const [leads, jobs, estimates, invoices, certs] = await Promise.all([kvGet("leads"), kvGet("jobs"), kvGet("estimates"), kvGet("invoices"), kvGet("certs")]);
     const targetGm = body.targetGm != null ? parseFloat(body.targetGm) : null;
-    const report = audit({ leads, jobs, estimates, invoices }, { asOfMs: Date.now(), targetGm });
+    const report = audit({ leads, jobs, estimates, invoices, certs }, { asOfMs: Date.now(), targetGm });
     if (action === "memo") { const m = await memo(report, body); res.status(200).json(Object.assign({ report }, { memo: m })); return; }
     res.status(200).json(report);
   } catch (e) { res.status(200).json({ ok: false, error: String((e && e.message) || e).slice(0, 200) }); }

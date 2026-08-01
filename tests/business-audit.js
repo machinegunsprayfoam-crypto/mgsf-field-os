@@ -70,6 +70,15 @@ const margin = A.audit({
 ok("margin graded vs supplied target (40% < 45% ⇒ not green)", /Blended GM 40%/.test(find(margin, "Margin").title) && find(margin, "Margin").severity !== "green");
 ok("no fabricated GM target anywhere when none supplied", find(good, "Margin").metric === null);
 
+// ---- COMPLIANCE: cert/license expiry (data-driven, days-UNTIL) ----
+const certFind = (r) => r.findings.find((f) => f.area === "Compliance");
+ok("all certs far in the future ⇒ green", certFind(A.audit({ certs: [{ name: "Fall Protection", expires: "2027-03-14" }, { name: "Forklift", expires: "2028-03-14" }] }, { asOfMs: ASOF })).severity === "green");
+ok("cert within 60d ⇒ red (renew now)", certFind(A.audit({ certs: [{ name: "X", expires: "2026-09-05" }] }, { asOfMs: ASOF })).severity === "red");
+ok("expired cert ⇒ red", certFind(A.audit({ certs: [{ name: "Y", expires: "2026-06-01" }] }, { asOfMs: ASOF })).severity === "red" && /EXPIRED/.test(certFind(A.audit({ certs: [{ name: "Y", expires: "2026-06-01" }] }, { asOfMs: ASOF })).title));
+ok("cert 61–120d out ⇒ amber (plan ahead)", certFind(A.audit({ certs: [{ name: "Z", expires: "2026-11-09" }] }, { asOfMs: ASOF })).severity === "amber");
+ok("cert with no expiry ⇒ amber 'missing an expiry'", A.audit({ certs: [{ name: "NoDate" }] }, { asOfMs: ASOF }).findings.some((f) => f.area === "Compliance" && /missing an expiry/.test(f.title)));
+ok("no certs supplied ⇒ no Compliance finding (nothing fabricated)", !certFind(A.audit({}, { asOfMs: ASOF })));
+
 // ---- guardrails ----
 ok("empty book ⇒ ok, no throw, pipeline amber", (() => { const r = A.audit({}, { asOfMs: ASOF }); return r.ok === true && find(r, "Pipeline").severity === "amber"; })());
 ok("no pricing/$ rate fabricated in findings", !/"(price|rate)"\s*:\s*\d/.test(JSON.stringify(good)));
