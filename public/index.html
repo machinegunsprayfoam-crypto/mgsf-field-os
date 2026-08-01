@@ -3141,8 +3141,10 @@ function _bpiInput(id,label,ph){ return `<label style="display:block;font-size:1
   `<input id="${id}" class="admin-inp" placeholder="${ph||''}" style="width:100%" inputmode="decimal">`; }
 function renderBpi(){
   const b=document.getElementById('bpi_body'); if(!b) return;
+  _bpiWireBridge(); // one-time: receive building context pushed back from the estimator iframe
   if(document.getElementById('bpi_run')) return; // build once — keep entered data on reopen
   b.innerHTML =
+    `<div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiPullFromEstimator()">⇙ Pull building from Estimator</button></div>`+
     `<div class="jsa-card"><h4 style="margin:0 0 4px">Building</h4>`+
     `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`+
       _bpiInput('bpi_year','Year built','1936')+_bpiInput('bpi_area','Conditioned area (ft²)','2500')+
@@ -3261,7 +3263,44 @@ function bpiRenderResult(d){
       html+=`</div>`; });
     html+=`</div>`; }
   html+=`<div style="font-size:11px;color:var(--t2);margin-top:6px">ESTIMATE only — energy units, no dollars, no guaranteed savings. Combustion-safety (CAZ) testing required before air-sealing a home with gas/propane/oil appliances.</div>`;
+  html+=`<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="bpiToEstimator()">→ Send building to Estimator (price these measures)</button>`;
   out.innerHTML=html;
+}
+// ---- Bidirectional BPI ↔ Estimator handoff ----
+// Both live in this shared origin. BPI→estimator reuses the mgsf_prefill_v1 channel (selects the
+// BPI service + fills geometry on load / storage event) and also posts to the live iframe; the
+// estimator→BPI direction asks the iframe for its current BPI fields via postMessage.
+function _bpiFuelMatch(sel,val){ if(!sel||val==null||val==='') return; const norm=s=>String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  let v=norm(val), want=v;
+  if(/natural|gas/.test(v)) want='naturalgas'; else if(/propane|lp/.test(v)) want='propane';
+  else if(/elec/.test(v)) want='electric'; else if(/oil/.test(v)) want='fueloil'; else if(/wood|pellet/.test(v)) want='woodpellet';
+  for(let i=0;i<sel.options.length;i++){ if(norm(sel.options[i].value)===want||norm(sel.options[i].text)===want){ sel.selectedIndex=i; return; } }
+  for(let j=0;j<sel.options.length;j++){ if(norm(sel.options[j].text).indexOf(want.slice(0,4))>=0){ sel.selectedIndex=j; return; } }
+}
+function _bpiGeom(){ const num=id=>{ const v=parseFloat((document.getElementById(id)||{}).value); return isFinite(v)?v:undefined; };
+  return { sf:num('bpi_area'), ch:num('bpi_wallh'), year:num('bpi_year'), fuel:(document.getElementById('bpi_fuel')||{}).value||'' };
+}
+function bpiToEstimator(){
+  const g=_bpiGeom();
+  try{ localStorage.setItem('mgsf_prefill_v1', JSON.stringify({ ts:Date.now(), service:'bpi', bpiSf:g.sf, bpiCh:g.ch, bpiYear:g.year, bpiFuel:g.fuel })); }catch(e){}
+  switchModule('estimate');
+  const f=document.getElementById('estFrame');
+  if(f){ if(!f.src && f.dataset.src){ f.src=f.dataset.src; } // first open → estimator reads prefill on load
+    else { try{ f.contentWindow.postMessage({type:'mgsf-bpi-handoff',payload:g},'*'); }catch(e){} } }
+  if(typeof notify==='function') notify('Building sent to estimator — BPI service selected','success');
+}
+function bpiPullFromEstimator(){
+  const f=document.getElementById('estFrame');
+  if(!f || !f.src){ if(typeof notify==='function') notify('Open the Estimator once first, then pull','alert'); return; }
+  try{ f.contentWindow.postMessage({type:'mgsf-bpi-req'},'*'); }catch(e){}
+}
+function _bpiWireBridge(){ if(window._bpiBridgeWired) return; window._bpiBridgeWired=true;
+  window.addEventListener('message',function(ev){ const m=ev&&ev.data; if(!m||typeof m!=='object'||m.type!=='mgsf-bpi-ctx'||!m.payload) return;
+    const p=m.payload; const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
+    set('bpi_area',p.sf); set('bpi_wallh',p.ch); set('bpi_year',p.year);
+    if(p.fuel) _bpiFuelMatch(document.getElementById('bpi_fuel'),p.fuel);
+    if(typeof notify==='function') notify('Building pulled from estimator','success');
+  });
 }
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
