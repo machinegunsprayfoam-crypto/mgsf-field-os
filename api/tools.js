@@ -36,6 +36,7 @@ const SUBSYS_META = {
 const LOCAL_TOOLS = [
   { id: "foam-calc",        category: "estimator", kind: "compute", does: "open/closed-cell board-feet, sets, cost", module: "api/foam-calc.js" },
   { id: "coating-calc",     category: "estimator", kind: "compute", does: "roof-coating gallons + coats + cost", module: "api/coating-calc.js" },
+  { id: "concrete-calc",    category: "estimator", kind: "compute", does: "concrete lifting/void-fill/seawall quantities: void volume → cured polyurethane pounds (×density) → sets (owner set weight); density default is a typical ESTIMATE (verify TDS); soil blocked (Terra-Lok); no pricing", module: "api/concrete-calc.js" },
   { id: "measure",          category: "estimator", kind: "compute", does: "roof/wall takeoff (area, waste, slope factor)", module: "api/measure.js" },
   { id: "dew-point",        category: "estimator", kind: "compute", does: "spray-safety GO/CAUTION/NO-GO (5°F margin)", module: "api/dew-point.js" },
   { id: "bpi-calc",         category: "estimator", kind: "compute", does: "blower-door ACH50 bands + ASHRAE 62.2 target", module: "api/bpi-calc.js" },

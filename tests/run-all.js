@@ -52,6 +52,7 @@ const SUITES = [
   ["subs", "subcontractor roster: per-doc + overall compliance readiness (ready/expiring/blocked), COI/license expiry boundaries, expiring-sweep ordering — required set derived from construction packet"],
   ["blueprint", "blueprint reader (vision): title-block/legend/scope extraction, scope→CSI-trade + prime/sub routing, dimensions-only-as-printed, unreadable path — never fabricates a measurement, not a measurement tool"],
   ["photo-estimate", "photo→draft estimate stitch: area source (provided vs measure.js), missing-input detection, measure→foam-calc quantities, verify prompts — draft/ESTIMATE only, price never computed"],
+  ["concrete-calc", "concrete lifting/void/seawall quantity engine: void geometry → cured pounds (×density) → sets (only w/ set weight), waste clamp, soil blocked — ESTIMATE, price deferred"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
