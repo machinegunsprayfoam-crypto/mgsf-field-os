@@ -75,5 +75,17 @@ const blob = JSON.stringify(A.analyze({ trades: ["spray foam", "electrical", "pl
 ok("output carries no pricing/cost/rate fields", !/"price"|"cost"|"rate"|"\$\/|per (sf|sqft|lb|bf)"/i.test(blob));
 ok("only $ present is the statutory Davis-Bacon threshold (not a job price)", (blob.match(/\$/g) || []).every((_, i, arr) => true) && !/\$\s?\d[\d,]*\s?(per|\/|sqft|sf|bf|lb)/i.test(blob));
 
+// ---- WIRING INTEGRITY: every calc a trade routes to (ENGINES) has a frontend CALC_ENGINES form ----
+// (calcPickTrade does engines.filter(e=>CALC_ENGINES[e]) — a calc in ENGINES but missing from the UI
+//  form map silently drops that trade's calculator button. This guards backend↔frontend calc drift.)
+const fs = require("fs");
+const engineCalcs = [...new Set(Object.values(A.ENGINES).flat().filter((e) => e !== "sub-bid"))];
+const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+const ceBlock = html.slice(html.indexOf("const CALC_ENGINES"), html.indexOf("function renderCalcs"));
+const feForms = new Set([...ceBlock.matchAll(/^\s*'([a-z0-9-]+)'\s*:\s*\{\s*label:/gm)].map((m) => m[1]));
+ok("frontend CALC_ENGINES parsed non-trivially", feForms.size >= 10, String(feForms.size));
+const noForm = engineCalcs.filter((e) => !feForms.has(e));
+ok("every trade-routed calc has a frontend CALC_ENGINES form (no silent missing button)", noForm.length === 0, noForm.join(","));
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
