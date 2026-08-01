@@ -59,6 +59,7 @@ const SUITES = [
   ["axle", "axle programs: workers/money/all on-demand presets + tick logic (Sunday guard, owner-gear blocks) — from Copilot PR #77, folded in"],
   ["engineer", "engineer agent: platform assessment (health+cmdb+curriculum → ranked findings) + suggestions + gated AI plan — from Copilot PR #77, folded in"],
   ["warranty-cert", "warranty certificate build: term/expiry math (addYears, termYears clamp+round), OWNER-INPUT marker, optional/default sections — workmanship only (no savings guarantee, no mold claim), no pricing"],
+  ["job-cost", "job-cost margin math: material+labor+drive+overhead → totalCost, laborFlat override, price-from-target-GM (sell=cost/(1−GM)), actual-margin + GO/THIN/NO-GO at a supplied sell, clamps/defaults — all dollars caller-supplied, no doctrine pricing"],
   ["rvalue-calc", "R-value / code-min engine: installed R (foam + flash-and-batt) vs IECC 2021 Zone 6/7 minimums, meets/short + add-thickness — R/inch + code both ESTIMATE/verify, no pricing"],
   ["air-barrier-calc", "air/vapor barrier engine: fluid gallons (coverage/wet-mil) + membrane rolls, cold-climate vapor-control rule (Zone 5-8), CAZ combustion flag — coverage owner-entered, no pricing"],
   ["electrical-load", "electrical: NEC 220 dwelling service load + 310.16 ampacity + voltage drop — ESTIMATE/licensed-electrician+AHJ, no pricing"],
