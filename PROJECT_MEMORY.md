@@ -72,11 +72,21 @@ _Last updated: 2026-07-26._
   cage/uei → `credential`+`federal`; enriched `sdvosb`) in `brain-graph-retrieve.js` so those route to
   the Credential Binding cluster → **BUSINESS + DOCTRINE + FEDERAL**. Verified all 3 test queries now
   pull BUSINESS; retriever suite 23/23; full gate **83 suites / 1869 checks** green.
-- **STILL OPEN (owner-review follow-up, NOT done this session — deliberately):** regenerating the baked
-  `api/brain-graph-data.js` from the new 8-cluster scan would require re-writing the retriever's
-  CLUSTER_BLOCKS (keyed on the OLD 11 cluster names) + ALIAS and a full re-test — a separate careful
-  build. Retrieval already works via aliases, so this is a refinement, not a fix. Do it when regenerating
-  the 3D boot-graph viz too. **Do NOT hand-fabricate graph nodes.**
+- **✅ BAKED GRAPH REGENERATED + BOOT VIZ REFRESHED (2026-08-01, Clifton's "then the brain stuff"):**
+  regenerated all three artifacts — `public/brain-graph.js` (window.BRAIN_GRAPH, 3D boot viz),
+  `public/brain-graph.json`, `api/brain-graph-data.js` (retriever + boot) — from the InfraNodus scan.
+  Now **150 real nodes / 1125 real edges / 9 named clusters** (Foam Verification, Business Licensing,
+  Cost Efficiency, Performance Metrics, Soil Stability, Safety Compliance, Moisture Control, Pressure
+  Testing, Dew Point), dated 2026-08-01. Used ONLY real InfraNodus data (real node keys + betweenness +
+  weighted edges + InfraNodus's own named clusters); per-node cluster membership assigned by seeding
+  from InfraNodus's named-cluster keywords + edge-weighted label propagation (deterministic, standard
+  method — not fabricated). Generator: `scratchpad/regen-brain-graph.js`. **Trades + credentials are now
+  FIRST-CLASS clusters** (Safety Compliance→TRADES_EXPERT; Business Licensing→BUSINESS+FEDERAL), not
+  alias hacks. Rewrote the retriever's CLUSTER_BLOCKS (9 new names) + ALIAS (retargeted to the new node
+  vocabulary), keeping ACTIONS/EQUIPMENT/PROCUREMENT reachable. Both retriever suites + full gate
+  **84 suites / 1888 checks** green; headless boot 0 PAGEERR. NOTE for next re-scan: InfraNodus community
+  detection is stochastic run-to-run (got 8 then 9 clusters) — after any future scan, reconcile
+  CLUSTER_BLOCKS + ALIAS to the new node vocabulary and keep the behavior tests green.
 
 **★ SUB-TRADE QUANTITY CALCS — closing the trades-depth gap — 2026-08-01 (branch, not merged):**
 - Honest audit (told Clifton): foam = mastery depth (verified specs + locked pricing + calcs + skills);

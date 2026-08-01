@@ -13,19 +13,21 @@
 
 const GRAPH = require("./brain-graph-data.js");
 
-// cluster NAME -> brain knowledge-block names it should pull in (stable across re-scans; names not ids).
+// cluster NAME -> brain knowledge-block names it should pull in. Keyed on the cluster names from the
+// 2026-08-01 InfraNodus re-scan (api/brain-graph-data.js). Names, not ids, so a re-scan that keeps the
+// same names keeps this mapping. NOTE: InfraNodus community detection is somewhat stochastic run-to-run
+// (cluster names/count can shift) — after any re-scan, reconcile this map + ALIAS to the new node
+// vocabulary and keep tests/brain-graph-retrieve.js green (it asserts routing behavior, not names).
 const CLUSTER_BLOCKS = {
-  "Cost Doctrine":         ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE"],
-  "Engineering Seer":      ["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "FOAM_SPECS", "TRADES_EXPERT"],
-  "Spray System":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "EQUIPMENT"],
-  "Knowledge Stance":      ["MASTERY", "COMPETITIVE_EDGE"],
-  "Action Approval":       ["ACTIONS", "PLATFORM", "COMPETITIVE_EDGE"],
-  "Revenue Connection":    ["REVENUE_LAYER", "BUSINESS_SYSTEM", "KNOWLEDGE_BRIDGES", "GAP_BRIDGES"],
-  "Guarantee Saving":      ["DOCTRINE", "COMPETITIVE_EDGE"],
-  "Procurement Equipment": ["PROCUREMENT", "EQUIPMENT", "SUPPLIERS", "FEDERAL"],
-  "Estimate Capability":   ["FOAM_SPECS", "ROI_GUIDE", "PLATFORM", "TRADES_EXPERT"],
-  "Credential Binding":    ["DOCTRINE", "BUSINESS"],
-  "Safety Condition":      ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "TRADES_EXPERT"],
+  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY"],   // foam/spray/doctrine/spec/ahj/verify
+  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT"],              // license/insurance/sam/contractor — credentials + gov
+  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM"],// cost/margin/roi/job/lead + the deal-closing action flow (proposal/invoice/draft)
+  "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
+  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES"],     // concrete/lifting/void/soil/seawall
+  "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE"], // code/irc/scope/trade/calculator/safety
+  "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE"], // barrier/air/vapor/moisture/mold
+  "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE"],                 // blower door/proof/ACH50 (BPI)
+  "Dew Point":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS"],      // substrate/dew/wind/temp/lift (spray window)
 };
 // Identity + hard rules that must always be present regardless of the question.
 const ALWAYS = ["base_voice", "DOCTRINE", "COMPETITIVE_EDGE"];
@@ -36,40 +38,59 @@ const STOP = new Set(("the a an and or of to in on for with is are be do i we yo
 
 // Alias common MGSF query vocabulary onto the graph's (more abstract) concept tokens, so real
 // questions match even when the caller's words differ from the graph's. Each key expands to concepts.
+// Aliases retargeted to the 2026-08-01 graph's node vocabulary. Each key expands to REAL node keys so
+// a caller's word routes to the right cluster: federal/sam/license/insurance/business (Business
+// Licensing), cost/roi/estimate (Cost Efficiency), trade/code/scope/safety (Safety Compliance),
+// barrier/air/vapor/moisture (Moisture Control), substrate/dew/wind (Dew Point), concrete/soil/roof
+// (Soil Stability), blower/door/proof (Pressure Testing), foam/spray/doctrine (Foam Verification).
 const ALIAS = {
-  sdvosb: ["federal", "govcon", "credential"], samgov: ["federal", "govcon"], sam: ["federal", "govcon"],
-  bid: ["federal", "govcon"], contract: ["federal", "govcon"], grant: ["federal", "govcon"], veteran: ["federal"],
-  prevailing: ["federal", "govcon"], davis: ["federal", "govcon"], apprentice: ["federal", "govcon"], apprenticeship: ["federal", "govcon"],
-  workforce: ["federal", "govcon"], wotc: ["federal", "govcon"], payroll: ["federal"], emacs: ["federal", "govcon"], procurement: ["federal", "govcon"],
-  margin: ["cost"], profit: ["cost", "money"], markup: ["cost"], gm: ["cost"], price: ["cost"], pricing: ["cost"], quote: ["cost", "estimate"],
-  substrate: ["condition", "spray"], dewpoint: ["condition"], condensation: ["condition", "spray"], humidity: ["condition"],
-  temperature: ["condition"], weather: ["condition"], cold: ["condition"], hot: ["condition"], window: ["condition"],
-  proposal: ["action", "outward"], invoice: ["action", "outward", "money"], email: ["action", "outward"], sms: ["action", "outward"],
-  schedule: ["action"], followup: ["action", "lead"], reminder: ["action"], review: ["action", "outward"],
-  crawlspace: ["service", "foam"], attic: ["service", "foam"], wall: ["service", "foam"], roof: ["coating", "service"],
-  barn: ["service", "foam"], shop: ["service", "foam"], building: ["service", "system"], metal: ["foam", "system"],
-  concrete: ["lifting", "service"], slab: ["lifting"], seawall: ["lifting"], soil: ["lifting"],
-  payback: ["roi"], savings: ["roi"], bill: ["roi"], crew: ["safety", "jsa"], osha: ["safety", "jsa"], ppe: ["safety"],
-  hubspot: ["assistant", "connection"], crm: ["assistant", "connection"], lead: ["lead"], customer: ["assistant"],
-  // Insurance / bonding / credentials — the "Credential Binding" cluster (→ BUSINESS + DOCTRINE, which
-  // hold the GL/WC/pollution/umbrella/auto + bonding + SDVOSB facts) was under-bridged in the 2026-08
-  // InfraNodus re-scan; this vocabulary matched no graph node so the questions fell to defaults.
-  insurance: ["credential", "federal"], coi: ["credential", "federal"], bond: ["credential", "federal"],
-  bonding: ["credential", "federal"], surety: ["credential", "federal"], pollution: ["credential", "federal"],
-  umbrella: ["credential", "federal"], liability: ["credential"], workers: ["credential"], comp: ["credential"],
-  cage: ["credential", "federal"], uei: ["credential", "federal"],
-  // Trades — route deep trade questions to TRADES_EXPERT (via the Estimate/Engineering/Safety clusters).
-  trade: ["estimate", "service"], trades: ["estimate", "service"], subcontractor: ["estimate"], contractor: ["estimate"],
-  electrical: ["estimate", "condition"], electric: ["estimate"], wiring: ["estimate"], panel: ["estimate"], breaker: ["estimate"], circuit: ["estimate"], nec: ["estimate"], voltage: ["estimate", "condition"], amp: ["estimate"], amperage: ["estimate"],
-  plumbing: ["estimate", "service"], plumb: ["estimate"], drain: ["estimate"], sewer: ["estimate"], pipe: ["estimate"], fixture: ["estimate"], ipc: ["estimate"], vent: ["estimate", "condition"],
-  hvac: ["estimate", "condition"], furnace: ["condition", "estimate"], ductwork: ["estimate", "condition"], mechanical: ["estimate", "condition"],
-  framing: ["estimate", "service"], framer: ["estimate"], carpentry: ["estimate"], carpenter: ["estimate"], stud: ["estimate"], joist: ["estimate"], rafter: ["estimate"], truss: ["estimate"], header: ["estimate"], beam: ["estimate"], lumber: ["estimate"], span: ["estimate"],
-  masonry: ["estimate", "service"], block: ["estimate"], brick: ["estimate"], cmu: ["estimate"], mortar: ["estimate"], grout: ["estimate"],
-  drywall: ["estimate", "service"], sheetrock: ["estimate"], gypsum: ["estimate"], finish: ["estimate"],
-  shingle: ["estimate", "service"], excavation: ["estimate", "safety"], trench: ["estimate", "safety"], earthwork: ["estimate"], grading: ["estimate"],
-  steel: ["estimate", "system"], purlin: ["estimate"], flatwork: ["estimate", "service"], footing: ["estimate"], foundation: ["estimate"], rebar: ["estimate"],
-  sprinkler: ["estimate", "safety"], suppression: ["estimate", "safety"], sitework: ["estimate"], paving: ["estimate"], asphalt: ["estimate"],
-  permit: ["estimate", "condition"], code: ["estimate", "condition"], inspection: ["estimate"], ahj: ["estimate", "condition"], licensed: ["estimate"], license: ["estimate"],
+  // Federal / GovCon → Business Licensing (BUSINESS + FEDERAL + PROCUREMENT)
+  sdvosb: ["federal", "license", "sam"], vosb: ["federal", "license"], samgov: ["federal", "sam"], sam: ["federal", "sam"],
+  bid: ["federal", "business"], contract: ["federal", "business"], grant: ["federal", "business"], veteran: ["federal", "business"],
+  prevailing: ["federal", "license"], davis: ["federal", "license"], apprentice: ["federal", "license"], apprenticeship: ["federal", "license"],
+  workforce: ["federal", "business"], wotc: ["federal", "business"], payroll: ["federal", "business"], emacs: ["federal", "license"], procurement: ["federal", "business"],
+  cage: ["federal", "sam"], uei: ["federal", "sam"], naics: ["federal", "license"], setaside: ["federal", "business"],
+  // Insurance / bonding / credentials → Business Licensing (BUSINESS holds GL/WC/pollution/umbrella/auto + bonding)
+  insurance: ["insurance", "license", "federal"], coi: ["insurance", "license"], bond: ["insurance", "federal"], bonding: ["insurance", "federal"],
+  surety: ["insurance", "federal"], pollution: ["insurance", "license"], umbrella: ["insurance", "license"], liability: ["insurance", "business"],
+  workers: ["insurance", "business"], comp: ["insurance", "business"], license: ["license", "business"], licensed: ["license", "trade"],
+  // Cost / margin → Cost Efficiency (DOCTRINE + ACCOUNTING_FINANCE + ROI_GUIDE)
+  margin: ["cost", "roi"], profit: ["cost", "roi"], markup: ["cost"], gm: ["cost"], price: ["cost", "estimate"], pricing: ["cost"], quote: ["cost", "estimate"],
+  payback: ["roi", "cost"], savings: ["roi", "cost"], bill: ["roi", "cost"],
+  // Spray window / weather → Dew Point (+ Foam Verification)
+  substrate: ["substrate", "spray"], dewpoint: ["dew", "substrate"], condensation: ["dew", "moisture"], humidity: ["dew", "moisture"],
+  temperature: ["temp", "substrate"], weather: ["substrate", "wind"], cold: ["substrate", "temp"], hot: ["substrate", "temp"], window: ["substrate"],
+  // Outward actions → Cost Efficiency (carries ACTIONS + PLATFORM): proposal/invoice/draft/approval flow
+  proposal: ["cost", "estimate"], invoice: ["cost", "estimate"], draft: ["cost", "lead"], approval: ["cost"], action: ["cost"],
+  email: ["lead", "cost"], sms: ["lead", "cost"], schedule: ["lead"], followup: ["lead"], reminder: ["lead"], review: ["lead"],
+  // Equipment / rig / procurement → Performance Metrics (carries EQUIPMENT + PROCUREMENT + SUPPLIERS)
+  equipment: ["service", "building"], rig: ["service", "building"], proportioner: ["service", "building"], reactor: ["service", "building"],
+  compressor: ["service", "building"], generator: ["service", "building"], scissor: ["service", "building"], telehandler: ["service", "building"],
+  boom: ["service", "building"], buy: ["service", "cost"], rent: ["service", "cost"], supplier: ["service", "business"], vendor: ["service", "business"],
+  // Foam services → Foam Verification / Soil Stability / Moisture Control
+  crawlspace: ["foam", "moisture"], attic: ["attic", "foam"], wall: ["foam", "spray"], roof: ["roof", "foam"],
+  barn: ["foam", "spray"], shop: ["foam", "spray"], building: ["building", "load"], metal: ["foam", "building"],
+  concrete: ["concrete", "soil"], slab: ["concrete", "soil"], seawall: ["concrete", "soil"], soil: ["soil", "concrete"],
+  // Moisture / envelope → Moisture Control
+  moisture: ["moisture", "barrier"], vapor: ["vapor", "barrier"], mold: ["mold", "moisture"], air: ["air", "barrier"], sealing: ["air", "barrier"],
+  // BPI / blower door → Pressure Testing
+  blower: ["blower", "door"], ach50: ["blower", "proof"], bpi: ["blower", "proof"], leakage: ["blower", "air"],
+  // HVAC → Cost Efficiency (hvac node) + Performance Metrics (load)
+  hvac: ["hvac", "load"], furnace: ["hvac", "load"], ductwork: ["hvac", "load"], mechanical: ["hvac", "load"], manualj: ["hvac", "load"],
+  // CRM / assistant
+  hubspot: ["lead", "business"], crm: ["lead", "business"], lead: ["lead"], customer: ["lead", "business"],
+  // Trades → Safety Compliance (TRADES_EXPERT): trade/code/scope/safety are all in that cluster
+  trade: ["trade", "code", "scope"], trades: ["trade", "code", "scope"], subcontractor: ["trade", "scope"], contractor: ["trade", "business"],
+  electrical: ["trade", "code"], electric: ["trade", "code"], wiring: ["trade", "code"], panel: ["trade", "code"], breaker: ["trade", "code"], circuit: ["trade", "code"], nec: ["trade", "code"], voltage: ["trade", "code"], amp: ["trade", "code"], amperage: ["trade", "code"],
+  plumbing: ["trade", "code"], plumb: ["trade", "code"], drain: ["trade", "code"], sewer: ["trade", "code"], pipe: ["trade", "code"], fixture: ["trade", "code"], ipc: ["trade", "code"], vent: ["trade", "code"],
+  framing: ["trade", "code"], framer: ["trade", "code"], carpentry: ["trade", "code"], carpenter: ["trade", "code"], stud: ["trade", "code"], joist: ["trade", "code"], rafter: ["trade", "code"], truss: ["trade", "code"], header: ["trade", "code"], beam: ["trade", "code"], lumber: ["trade", "code"], span: ["trade", "code"],
+  masonry: ["trade", "code"], block: ["trade", "code"], brick: ["trade", "code"], cmu: ["trade", "code"], mortar: ["trade", "code"], grout: ["trade", "code"],
+  drywall: ["trade", "code"], sheetrock: ["trade", "code"], gypsum: ["trade", "code"], finish: ["trade", "code"],
+  shingle: ["trade", "code", "roof"], excavation: ["trade", "safety"], trench: ["trade", "safety"], earthwork: ["trade", "code"], grading: ["trade", "code"],
+  steel: ["trade", "code", "building"], purlin: ["trade", "code"], flatwork: ["trade", "concrete"], footing: ["trade", "concrete"], foundation: ["trade", "concrete"], rebar: ["trade", "concrete"],
+  sprinkler: ["trade", "safety"], suppression: ["trade", "safety"], sitework: ["trade", "code"], paving: ["trade", "code"], asphalt: ["trade", "code"],
+  permit: ["code", "trade"], inspection: ["inspection", "code"], ahj: ["code", "trade"],
+  crew: ["safety", "trade"], osha: ["safety", "trade"], ppe: ["safety"],
 };
 
 function tokenize(q) {
