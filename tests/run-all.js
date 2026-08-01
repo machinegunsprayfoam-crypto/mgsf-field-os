@@ -80,6 +80,7 @@ const SUITES = [
   ["gearbox", "internal drivetrain: _evt shape, AI-gear cascade (estimate.closed→lead.won→invoice.created), OWNER approval gate (blocked+reverse mile, never sent / approved+forward mile), roof/spf branch, depth/cycle guard"],
   ["klyfton", "Queen router pure exports: shouldSkipSynth time-budget guard, bestAnswer (fullest worker answer), routerToolHint LIVE/OFF status, toolBagBlock, assembleBrainBlocks — no network/no synth"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
+  ["meta-suites", "harness integrity: tests/*.js and the SUITES registry stay 1:1 in sync (no silently-skipped suite, no dead reference)"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
