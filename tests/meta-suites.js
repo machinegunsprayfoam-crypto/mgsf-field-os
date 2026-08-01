@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Meta — guards the test harness itself. Run: `node tests/meta-suites.js`. Deterministic, keyless.
-// A new tests/<x>.js that isn't added to run-all.js's SUITES array SILENTLY never runs — coverage
-// lost with no error. And a SUITES entry with no matching file is a dead reference. This asserts the
-// tests/ directory and the SUITES registry stay in 1:1 sync (this file included), so neither drifts.
+// Meta — guards repo integrity that has no other test. Run: `node tests/meta-suites.js`. Deterministic,
+// keyless. Two invariants:
+//  (1) TEST REGISTRY: a new tests/<x>.js not added to run-all.js's SUITES array SILENTLY never runs
+//      (coverage lost, no error); a SUITES entry with no file is a dead reference. tests/ ↔ SUITES 1:1.
+//  (2) DB GO-LIVE DOCS: every db/*.sql must be listed in db/SETUP.md's run-order — else at go-live the
+//      owner runs the checklist, misses a table, and a subsystem stays dark with no obvious cause.
 
 const fs = require("fs");
 const path = require("path");
@@ -34,6 +36,19 @@ const dangling = registered.filter((r) => !fileSet.has(r));
 ok("every SUITES entry has a matching tests/<name>.js (no dead reference)", dangling.length === 0, dangling.join(","));
 
 ok("this meta-suite is itself registered", regSet.has("meta-suites"));
+
+// ---- (2) DB go-live docs: every db/*.sql is listed in db/SETUP.md's run-order ----
+const dbDir = path.join(testsDir, "..", "db");
+const setupPath = path.join(dbDir, "SETUP.md");
+if (fs.existsSync(dbDir) && fs.existsSync(setupPath)) {
+  const sqlFiles = fs.readdirSync(dbDir).filter((f) => f.endsWith(".sql")).sort();
+  const setup = fs.readFileSync(setupPath, "utf8");
+  const undocumented = sqlFiles.filter((f) => !setup.includes(f));
+  ok("db/ has SQL schema files", sqlFiles.length >= 1, String(sqlFiles.length));
+  ok("every db/*.sql is listed in db/SETUP.md (owner won't miss a table at go-live)", undocumented.length === 0, undocumented.join(","));
+} else {
+  ok("db/ + SETUP.md present to audit", false, "missing db dir or SETUP.md");
+}
 
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
