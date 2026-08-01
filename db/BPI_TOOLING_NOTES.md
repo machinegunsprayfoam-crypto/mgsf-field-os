@@ -40,7 +40,8 @@ MGSF's business. Split it:
   cantilever foam; drafty/no wall insulation → air-seal + wall foam; high gas → envelope + baseline;
   **CO/combustion → CAZ safety flag (not an upsell)**; moisture → manage vapor (no mold claim);
   unmatched → "assessment needed". Surfaces a top-level `safetyFlag` when a combustion concern exists.
-- **BPI panel in the app UI** — not yet built (owner's call; endpoint + brain tool-bag entry exist).
+- **BPI panel in the app UI** — ✅ BUILT (🏠 BPI nav panel → /api/energy-audit: building geometry, concerns→measures, electric/gas bills, savings ESTIMATE, CAZ flag).
+- **Measures catalog + per-measure incentive/rebate ($/%) tracking** — DEFERRED (owner said absorb-only, 2026-08). Mirrors OptiMiser's "Imp" tab: a fixed retrofit list (attic/ceiling/vent/walls/doors/windows/air-seal/floor/basement/slab/crawl/thermostat/ducts/heat-cool/solar) each with an owner-entered rebate % and $ (IRA HOMES / utility programs) + a cap. Incentives are owner/program-entered per job — NOT MGSF pricing, never fabricated. Also seen: auditor/program header fields + utility-rate fields (customer's own rate, converts energy→$). Build only when the owner asks.
 - **Recommendation library** (reusable measure write-ups) — natural fit for the existing `wiki`.
 
 ## HARD SAFETY RULE (non-negotiable in any MGSF energy report)
