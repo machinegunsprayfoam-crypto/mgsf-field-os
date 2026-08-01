@@ -778,6 +778,9 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       <div class="nav-item" onclick="switchModule('scenarios');renderScenarios()" id="nav-scenarios">
         <div class="nav-icon">⚙️</div><div class="nav-label">AUTO</div>
       </div>
+      <div class="nav-item" onclick="switchModule('bpi');renderBpi()" id="nav-bpi">
+        <div class="nav-icon">🏠</div><div class="nav-label">BPI</div>
+      </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
       </div>
@@ -2045,6 +2048,11 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="scenarios_body"></div>
       </div>
+      <div id="mod-bpi" class="module">
+        <div class="mod-head"><h2>🏠 BPI — Home Energy Audit</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="bpi_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -2872,6 +2880,7 @@ function switchModule(id){
   if(id==='materials'){ if(window.renderMaterials) renderMaterials(); }
   if(id==='pricebook'){ if(window.renderPriceBook) renderPriceBook(); }
   if(id==='compliance'){ if(window.renderCompliance) renderCompliance(); }
+  if(id==='bpi'){ if(window.renderBpi) renderBpi(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -3122,6 +3131,113 @@ window.renderSystem = async function(){
 window.sysEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function _sysGet(url){ return fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
 function _sysPost(url,body){ return fetch(url,{method:'POST',headers:{'content-type':'application/json','x-crew-code':(window.appCrewCode||'')},body:JSON.stringify(body)}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+
+// ============================================================
+// BPI — Home Energy Audit intake panel (mirrors the field audit tool). Collects building geometry,
+// homeowner concerns, and 12-mo electric/gas bills, then runs /api/energy-audit. ESTIMATE only —
+// energy units (no dollars), no guaranteed savings, no mold claims; CAZ safety surfaced.
+// ============================================================
+function _bpiInput(id,label,ph){ return `<label style="display:block;font-size:12px;color:var(--t2);margin:6px 0 2px">${label}</label>`+
+  `<input id="${id}" class="admin-inp" placeholder="${ph||''}" style="width:100%" inputmode="decimal">`; }
+function renderBpi(){
+  const b=document.getElementById('bpi_body'); if(!b) return;
+  if(document.getElementById('bpi_run')) return; // build once — keep entered data on reopen
+  b.innerHTML =
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Building</h4>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`+
+      _bpiInput('bpi_year','Year built','1936')+_bpiInput('bpi_area','Conditioned area (ft²)','2500')+
+      _bpiInput('bpi_wallh','Avg wall height (ft)','8')+_bpiInput('bpi_floors','Floors above grade','2')+
+      _bpiInput('bpi_len','House length (ft)','40')+_bpiInput('bpi_wid','House width (ft)','32')+
+      _bpiInput('bpi_beds','Bedrooms','4')+_bpiInput('bpi_occ','Occupants','2')+
+    `</div>`+
+    `<label style="display:block;font-size:12px;color:var(--t2);margin:8px 0 2px">Primary heating fuel</label>`+
+    `<select id="bpi_fuel" class="admin-inp" style="width:100%"><option>Natural Gas</option><option>Propane</option><option>Electric</option><option>Fuel Oil</option><option>Wood/Pellet</option></select></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Concerns</h4><div id="bpi_concerns"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddConcern()">+ Add concern</button></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Electric bills (kWh)</h4>`+
+    _bpiInput('bpi_estart','Start meter read date — oldest first (YYYY-MM-DD)','2016-07-08')+
+    `<div id="bpi_ereads" style="margin-top:6px"></div>`+
+    `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddRead('e')">+ Month</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAutoDates('e')">↻ Auto-fill dates (+1 mo)</button></div></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Gas bills (therms)</h4>`+
+    _bpiInput('bpi_gstart','Start meter read date — oldest first (YYYY-MM-DD)','2016-07-08')+
+    `<div id="bpi_greads" style="margin-top:6px"></div>`+
+    `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddRead('g')">+ Month</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAutoDates('g')">↻ Auto-fill dates (+1 mo)</button></div></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Optional — savings ESTIMATE</h4>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">`+
+      _bpiInput('bpi_hdd','Actual HDD','')+_bpiInput('bpi_thdd','Typical-year HDD','')+_bpiInput('bpi_redpct','Reduction %','25')+
+    `</div><div style="font-size:11px;color:var(--t2);margin-top:6px">Savings are ESTIMATES — energy units only, never guaranteed. Apply the customer's own utility rate for $.</div></div>`+
+    `<button id="bpi_run" class="btn btn-primary" style="width:100%;font-size:14px" onclick="bpiRun()">Run BPI audit</button>`+
+    `<div id="bpi_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div><div id="bpi_out" style="margin-top:10px"></div>`;
+  bpiAddConcern(); bpiAddRead('e'); bpiAddRead('g');
+}
+function bpiAddConcern(){ const c=document.getElementById('bpi_concerns'); if(!c) return;
+  const d=document.createElement('div'); d.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start';
+  d.innerHTML=`<div style="flex:1"><input class="admin-inp bpi-csum" placeholder="Concern (e.g. cold floors)" style="width:100%;margin-bottom:4px"><input class="admin-inp bpi-cdet" placeholder="Detail (optional)" style="width:100%"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.parentNode.remove()">✕</button>`;
+  c.appendChild(d);
+}
+function bpiAddRead(kind){ const c=document.getElementById(kind==='e'?'bpi_ereads':'bpi_greads'); if(!c) return;
+  const unit=kind==='e'?'kWh':'therms'; const d=document.createElement('div');
+  d.style.cssText='display:flex;gap:6px;margin-bottom:4px;align-items:center';
+  d.innerHTML=`<input class="admin-inp bpi-${kind}end" placeholder="End date YYYY-MM-DD" style="flex:1.2">`+
+    `<input class="admin-inp bpi-${kind}use" placeholder="Usage" inputmode="decimal" style="flex:1"><span style="font-size:11px;color:var(--t2);width:46px">${unit}</span>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.parentNode.remove()">✕</button>`;
+  c.appendChild(d);
+}
+function bpiAutoDates(kind){ const start=(document.getElementById(kind==='e'?'bpi_estart':'bpi_gstart')||{}).value;
+  const t=Date.parse(String(start||'').slice(0,10)); if(!isFinite(t)){ if(typeof notify==='function') notify('Enter a valid start date first (YYYY-MM-DD)','alert'); return; }
+  document.querySelectorAll('#'+(kind==='e'?'bpi_ereads':'bpi_greads')+' .bpi-'+kind+'end').forEach((inp,i)=>{ const d=new Date(t); d.setUTCMonth(d.getUTCMonth()+i+1); inp.value=d.toISOString().slice(0,10); });
+}
+function _bpiReads(kind){ const start=((document.getElementById(kind==='e'?'bpi_estart':'bpi_gstart')||{}).value||'').slice(0,10);
+  const ends=document.querySelectorAll('#'+(kind==='e'?'bpi_ereads':'bpi_greads')+' .bpi-'+kind+'end');
+  const uses=document.querySelectorAll('#'+(kind==='e'?'bpi_ereads':'bpi_greads')+' .bpi-'+kind+'use');
+  const reads=[]; ends.forEach((e,i)=>{ const u=parseFloat(((uses[i]||{}).value)); if(e.value && isFinite(u)) reads.push({end:e.value.slice(0,10),usage:u}); });
+  return { start:start, reads:reads };
+}
+async function bpiRun(){
+  const st=document.getElementById('bpi_status'), out=document.getElementById('bpi_out');
+  const num=id=>{ const v=parseFloat((document.getElementById(id)||{}).value); return isFinite(v)?v:undefined; };
+  const concerns=[]; document.querySelectorAll('#bpi_concerns > div').forEach(d=>{ const s=((d.querySelector('.bpi-csum')||{}).value||'').trim(); const det=((d.querySelector('.bpi-cdet')||{}).value||'').trim(); if(s) concerns.push({summary:s,detail:det}); });
+  const payload={
+    building:{ yearBuilt:num('bpi_year'), conditionedArea:num('bpi_area'), wallHeight:num('bpi_wallh'), floors:num('bpi_floors'), length:num('bpi_len'), width:num('bpi_wid'), bedrooms:num('bpi_beds'), occupants:num('bpi_occ') },
+    concerns:concerns, electric:_bpiReads('e'), gas:_bpiReads('g'),
+    hdd:num('bpi_hdd'), typicalHdd:num('bpi_thdd'), reductionPct:num('bpi_redpct'),
+  };
+  if(!payload.electric.reads.length) delete payload.electric;
+  if(!payload.gas.reads.length) delete payload.gas;
+  if(st) st.textContent='Running the audit…';
+  const d=await _sysPost('/api/energy-audit',payload);
+  if(st) st.textContent='';
+  if(!d || d.__err){ if(out) out.innerHTML='<p style="color:var(--red);font-size:13px">Couldn\'t run the audit ('+((d&&d.__err)||'error')+').</p>'; return; }
+  if(d.__gated){ if(out) out.innerHTML='<p style="color:var(--yw);font-size:13px">🔒 Crew code required.</p>'; return; }
+  if(d.ok===false){ if(out) out.innerHTML='<p style="color:var(--yw);font-size:13px">'+window.sysEsc(d.note||'Enter bills, building, and/or concerns.')+'</p>'; return; }
+  bpiRenderResult(d);
+}
+function bpiRenderResult(d){
+  const out=document.getElementById('bpi_out'); if(!out) return; const E=window.sysEsc;
+  const fuel=(f,name)=> f? `<div class="jsa-card"><h4 style="margin:0 0 4px">${E(name)}</h4><div style="font-size:13px;line-height:1.6">`+
+    `Annual use: <b>${E(f.annualUsage)}</b> <span style="color:var(--t2)">(${E(f.basis)})</span><br>`+
+    `Base load: ${E(f.baseAnnual)} · Seasonal: <b>${E(f.seasonalAnnual)}</b> (${E(f.seasonalPct)}%)<br>`+
+    (f.weatherNormalized&&f.weatherNormalized.normalized?`Weather-normalized seasonal: ${E(f.weatherNormalized.normalizedSeasonal)}<br>`:'')+
+    (f.savings&&f.savings.estimated?`<span style="color:var(--gr)">Est. energy saved: ${E(f.savings.unitsSaved)} at ${E(f.savings.reductionPct)}% — ESTIMATE, actual savings vary</span>`:'<span style="color:var(--t2)">Add HDD + reduction % for a savings estimate.</span>')+
+    `</div></div>` : '';
+  let html='';
+  if(d.safetyFlag) html+=`<div class="jsa-card" style="border-left:3px solid var(--red)"><b style="color:var(--red)">⚠ Safety:</b> ${E(d.safetyFlag)}</div>`;
+  if(d.geometry){ const g=d.geometry; html+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Building</h4><div style="font-size:13px;line-height:1.6">`+
+    (g.volume?`Volume: <b>${E(g.volume)} ft³</b> <span style="color:var(--t2)">(feeds blower-door ACH50 + ASHRAE 62.2)</span><br>`:'')+
+    (g.bedrooms!=null?`Bedrooms: ${E(g.bedrooms)}`:'')+(g.footprint?` · Footprint: ${E(g.footprint)} ft²`:'')+`</div></div>`; }
+  html+=fuel(d.electric,'Electric (kWh)')+fuel(d.gas,'Gas (therms)');
+  if(d.siteEnergyMMBtu) html+=`<div class="jsa-card" style="font-size:13px">Combined site energy: <b>${E(d.siteEnergyMMBtu)} MMBtu/yr</b> (ESTIMATE)</div>`;
+  if(d.recommendations&&d.recommendations.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Recommended measures</h4>`;
+    d.recommendations.forEach(r=>{ html+=`<div style="margin-bottom:8px"><div style="font-weight:600;font-size:13px">${E(r.summary)}</div>`;
+      (r.measures||[]).forEach(m=>{ html+=`<div style="font-size:12px;color:${m.safety?'var(--red)':'inherit'};margin-left:8px">• ${m.safety?'⚠ ':''}${E(m.measure)}<br><span style="color:var(--t2)">${E(m.why)}</span></div>`; });
+      html+=`</div>`; });
+    html+=`</div>`; }
+  html+=`<div style="font-size:11px;color:var(--t2);margin-top:6px">ESTIMATE only — energy units, no dollars, no guaranteed savings. Combustion-safety (CAZ) testing required before air-sealing a home with gas/propane/oil appliances.</div>`;
+  out.innerHTML=html;
+}
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){
