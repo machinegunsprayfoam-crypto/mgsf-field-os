@@ -21,6 +21,7 @@ const THERM_KWH = THERM_BTU / KWH_BTU; // ≈29.30 kWh-equivalent per therm
 
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
 function round(n, p) { const f = Math.pow(10, p == null ? 2 : p); return Math.round(num(n, 0) * f) / f; }
+function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 200); }
 function daysBetween(aIso, bIso) {
   const a = Date.parse(String(aIso) + "T00:00:00Z"), b = Date.parse(String(bIso) + "T00:00:00Z");
   return (Number.isFinite(a) && Number.isFinite(b)) ? Math.round((a - b) / 86400000) : null;
@@ -112,6 +113,51 @@ function analyzeFuel(fuel, opts) {
   return { ...d, weatherNormalized: norm, savings: sav };
 }
 
+// Building geometry → the derived numbers a report needs. volume feeds bpi-calc (ACH50) and the
+// bedroom count feeds ASHRAE 62.2. All derived values are ESTIMATES; a missing input is simply
+// omitted (never guessed). Rough "box model" for envelope area — sales-grade, not a Manual-J takeoff.
+function geometry(building) {
+  const o = building || {};
+  const area = num(o.conditionedArea != null ? o.conditionedArea : o.area, 0);
+  const wallH = num(o.wallHeight != null ? o.wallHeight : o.ceilingHeight, 8);
+  const len = num(o.length, 0), wid = num(o.width, 0);
+  const floors = Math.max(1, num(o.floors, 1));
+  const out = { bedrooms: num(o.bedrooms, null), occupants: num(o.occupants, null), yearBuilt: num(o.yearBuilt, null) };
+  if (area > 0 && wallH > 0) { out.volume = round(area * wallH); out.volumeBasis = "conditioned area × wall height (ESTIMATE — feeds blower-door ACH50 + ASHRAE 62.2)"; }
+  if (len > 0 && wid > 0) {
+    out.footprint = round(len * wid);
+    out.wallAreaEst = round(2 * (len + wid) * wallH * floors);
+    out.geomBasis = "rough box model (ESTIMATE)";
+  }
+  return out;
+}
+
+// Homeowner concerns → recommended MGSF measures. Keyword-matched, grounded in our services +
+// building science. Combustion/CO is a SAFETY item (CAZ testing), never a foam upsell. Moisture is
+// "manage/control", NEVER a mold-elimination claim. An unmatched concern returns "assessment needed"
+// — we never invent a fix. Nothing here guarantees savings.
+const MEASURE_RULES = [
+  { re: /\b(co|carbon monoxide|backdraft|combustion|furnace|gas leak|flue)\b/i, safety: true, measure: "Combustion-safety (CAZ) testing", why: "Air-sealing can worsen backdrafting/CO — test combustion safety before AND after tightening; do not tighten a home with a CO concern until it is cleared." },
+  { re: /cold (feet|floor)|floor.{0,15}(cold|cool)|cantilever|above (the )?garage/i, measure: "Air-seal + spray-foam the floor / cantilever / floor-over-garage assembly", why: "A cold floor over unconditioned space is leaky, uninsulated framing; closed-cell foam seals and insulates it." },
+  { re: /draft|air.?leak|\bleak|infiltrat/i, measure: "Whole-home air-sealing (blower-door directed)", why: "Drafts are air leakage; seal the envelope and verify the reduction with a blower door." },
+  { re: /(no|missing|lack|without|un).{0,12}insulat|wall.{0,20}insulat|insulat.{0,20}wall/i, measure: "Insulate the walls (foam / dense-pack per assembly)", why: "Uninsulated walls are a major heat-loss path; insulate to cut the load." },
+  { re: /attic|ceiling|ice ?dam|roof.{0,15}(cold|leak|heat)/i, measure: "Air-seal + insulate the attic / roof deck", why: "The attic plane drives stack-effect loss and ice dams; air-seal, then insulate or foam the deck." },
+  { re: /crawl ?space|\bcrawl\b/i, measure: "Encapsulate + closed-cell the crawlspace", why: "An open/vented crawlspace loses heat and drives moisture; encapsulate and foam it." },
+  { re: /gas bill|energy bill|utility bill|high bill|bills?.{0,20}(high|expensive)|expensive/i, measure: "Cut the heating load: air-seal + envelope foam (verify against the utility baseline)", why: "High bills track the seasonal heating load — the utility analysis quantifies it and foam reduces it (ESTIMATE — actual savings vary)." },
+  { re: /\bhot\b|overheat|too warm|cooling|\bac\b|air.?condition/i, measure: "Assess cooling load / envelope (foam cuts summer heat gain too)", why: "Overheating is solar/conduction gain; a tighter, insulated envelope reduces it." },
+  { re: /moist|damp|condensat|humid|sweat|window.{0,10}wet/i, measure: "Moisture / dew-point assessment; air-seal to manage vapor drive", why: "Manage moisture and condensation risk with air-sealing and the right vapor strategy for Zone 6/7." },
+];
+function concernsToMeasures(concerns) {
+  const list = Array.isArray(concerns) ? concerns.filter(Boolean) : [];
+  return list.map((c) => {
+    const text = (clean(c.summary, 200) + " " + clean(c.detail, 4000)).toLowerCase();
+    const measures = [];
+    for (const r of MEASURE_RULES) { if (r.re.test(text)) measures.push({ measure: r.measure, why: r.why, safety: !!r.safety }); }
+    if (!measures.length) measures.push({ measure: "On-site assessment needed", why: "No standard measure matched this concern — the auditor should evaluate on site.", safety: false });
+    return { summary: clean(c.summary, 200), measures, hasSafety: measures.some((m) => m.safety) };
+  });
+}
+
 function analyze(body) {
   const b = body || {};
   const out = { ok: true, basis: "ESTIMATE", units: "energy only (kWh / therms) — no dollars; apply the customer's rate for $" };
@@ -120,15 +166,22 @@ function analyze(body) {
   const kwh = out.electric ? out.electric.annualUsage : 0;
   const therms = out.gas ? out.gas.annualUsage : 0;
   if (kwh || therms) out.siteEnergyMMBtu = siteEnergyMMBtu(kwh, therms);
-  if (!out.electric && !out.gas) return { ok: false, error: "no_bills", note: "POST electric.reads and/or gas.reads" };
+  if (b.building) out.geometry = geometry(b.building);
+  if (b.concerns) out.recommendations = concernsToMeasures(b.concerns);
+  if (out.recommendations && out.recommendations.some((r) => r.hasSafety))
+    out.safetyFlag = "Combustion-safety (CAZ) testing required before air-sealing — see recommendations.";
+  if (!out.electric && !out.gas && !out.geometry && !out.recommendations)
+    return { ok: false, error: "no_input", note: "POST electric/gas reads, building{}, and/or concerns[]" };
   return out;
 }
 
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ ok: true, service: "energy-audit", pure: true, guarantees: false,
-      note: "POST { electric:{start,reads:[{end,usage}]}, gas:{...}, hdd?, typicalHdd?, reductionPct? }. " +
-        "Returns annualized use, base-load vs seasonal split, optional weather-normalization + savings ESTIMATE. Energy units only — no dollars, no guarantees." });
+      note: "POST { electric:{start,reads:[{end,usage}]}, gas:{...}, hdd?, typicalHdd?, reductionPct?, " +
+        "building:{conditionedArea,wallHeight,length,width,floors,bedrooms,occupants,yearBuilt}, concerns:[{summary,detail}] }. " +
+        "Returns annualized use + base/seasonal split, optional weather-normalization + savings ESTIMATE, building geometry (volume→ACH50), " +
+        "and homeowner concerns mapped to MGSF measures (CAZ safety flagged). Energy units only — no dollars, no guarantees, no mold claims." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -145,6 +198,8 @@ module.exports.disaggregate = disaggregate;
 module.exports.normalize = normalize;
 module.exports.estimateSavings = estimateSavings;
 module.exports.siteEnergyMMBtu = siteEnergyMMBtu;
+module.exports.geometry = geometry;
+module.exports.concernsToMeasures = concernsToMeasures;
 module.exports.analyzeFuel = analyzeFuel;
 module.exports.analyze = analyze;
 module.exports.CONSTANTS = { THERM_BTU, KWH_BTU, THERM_KWH };

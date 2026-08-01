@@ -69,7 +69,41 @@ ok("analyze reports combined site energy (MMBtu)", typeof r.siteEnergyMMBtu === 
 ok("analyze carries weather-normalization when HDD supplied", r.electric.weatherNormalized.normalized === true);
 ok("analyze carries a savings ESTIMATE when reduction% supplied", r.electric.savings.estimated === true && r.electric.savings.label === "ESTIMATE");
 ok("analyze output flags ESTIMATE + energy-only (no dollars)", r.basis === "ESTIMATE" && /no dollars/i.test(r.units));
-ok("no bills ⇒ ok:false no_bills", A.analyze({}).ok === false && A.analyze({}).error === "no_bills");
+ok("no input at all ⇒ ok:false no_input", A.analyze({}).ok === false && A.analyze({}).error === "no_input");
+
+// ---- geometry(): derived numbers, ESTIMATE, missing inputs omitted (not guessed) ----
+let g = A.geometry({ conditionedArea: 2500, wallHeight: 8, length: 40, width: 32, floors: 2, bedrooms: 4, occupants: 2, yearBuilt: 1936 });
+ok("volume = area × wall height (feeds ACH50)", near(g.volume, 20000, 1));
+ok("footprint = length × width", near(g.footprint, 1280, 1));
+ok("wall area = perimeter × height × floors", near(g.wallAreaEst, 2 * (40 + 32) * 8 * 2, 1));
+ok("bedrooms/occupants/yearBuilt carried", g.bedrooms === 4 && g.occupants === 2 && g.yearBuilt === 1936);
+ok("wall height defaults to 8 when absent", near(A.geometry({ conditionedArea: 1000 }).volume, 8000, 1));
+ok("missing dims ⇒ no footprint/wallArea (not guessed)", A.geometry({ conditionedArea: 1000 }).footprint === undefined);
+ok("no area ⇒ no volume", A.geometry({ length: 40, width: 32 }).volume === undefined);
+
+// ---- concernsToMeasures(): map complaints to measures; CO=safety; unmatched=assessment ----
+const cm = A.concernsToMeasures([
+  { summary: "Cold feet in the kitchen", detail: "floor above the garage is always cold" },
+  { summary: "House feels drafty", detail: "no insulation in the walls" },
+  { summary: "Gas bills too high", detail: "much higher than the previous home" },
+  { summary: "CO monitor", detail: "the CO alarm has gone off a few times" },
+  { summary: "The paint is a nice blue", detail: "we like the color" },
+]);
+ok("cold floor over garage ⇒ floor/cantilever foam", /floor|cantilever/i.test(cm[0].measures[0].measure));
+ok("drafty + no wall insulation ⇒ air-seal AND wall insulation", cm[1].measures.some((m) => /air-seal/i.test(m.measure)) && cm[1].measures.some((m) => /wall/i.test(m.measure)));
+ok("high gas bills ⇒ heating-load / envelope measure", /heating load|envelope|air-seal/i.test(cm[2].measures[0].measure));
+ok("CO concern ⇒ SAFETY (CAZ), flagged, not an upsell", cm[3].measures[0].safety === true && /CAZ|combustion/i.test(cm[3].measures[0].measure) && cm[3].hasSafety === true);
+ok("unmatched concern ⇒ 'assessment needed' (never invented)", /assessment needed/i.test(cm[4].measures[0].measure));
+ok("no measure guarantees savings", JSON.stringify(cm).toLowerCase().indexOf("guarantee") === -1);
+ok("no mold-elimination claim anywhere", !/mold/i.test(JSON.stringify(cm)));
+ok("null/non-array concerns ⇒ [] no throw", A.concernsToMeasures(null).length === 0 && A.concernsToMeasures([null]).length === 0);
+
+// ---- analyze() wiring: building + concerns + top-level CAZ safety flag ----
+const full2 = A.analyze({ building: { conditionedArea: 2500, wallHeight: 8, bedrooms: 4 }, concerns: [{ summary: "CO alarm", detail: "goes off" }, { summary: "drafty", detail: "" }] });
+ok("analyze carries geometry", full2.geometry && near(full2.geometry.volume, 20000, 1));
+ok("analyze carries recommendations", Array.isArray(full2.recommendations) && full2.recommendations.length === 2);
+ok("analyze raises a top-level CAZ safetyFlag when a CO concern is present", /CAZ|combustion/i.test(full2.safetyFlag || ""));
+ok("building/concerns alone (no bills) is valid input", full2.ok === true);
 // gating without inputs
 const bare = A.analyze({ gas: { reads: [{ days: 30, usage: 224 }, { days: 30, usage: 60 }] } });
 ok("no HDD ⇒ normalization skipped (honest)", bare.gas.weatherNormalized.normalized === false);

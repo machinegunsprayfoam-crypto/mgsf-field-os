@@ -32,12 +32,15 @@ MGSF's business. Split it:
 - **Snugg Pro / OptiMiser (buy when needed):** any **certified/modeled** report for IRA HOMES rebates
   or utility programs. Rebates = customer's money = easier close; worth the subscription per-program.
 
-## What a full report needs that we can still add to Klyfton (owner's call, not yet built)
-- **Building-geometry intake** (year built, conditioned area, dims, wall height, floors, occupants,
-  bedrooms, orientation, shielding) — the screenshots' Building tab. Feeds volume→`bpi-calc` and a
-  richer (still ESTIMATE) load picture.
-- **Homeowner-concerns intake** → mapped to measures in the report (cold floor → floor/cantilever foam;
-  drafty/no wall insulation → air-seal + wall foam; high gas bills → envelope + the utility baseline).
+## What a full report needs
+- **Building-geometry intake** — ✅ BUILT (`energy-audit.js` `geometry()`): conditioned area, wall
+  height, dims, floors, bedrooms, occupants, year built → volume (feeds `bpi-calc` ACH50) + rough
+  envelope area (ESTIMATE); missing inputs omitted, never guessed.
+- **Homeowner-concerns intake → measures** — ✅ BUILT (`concernsToMeasures()`): cold floor → floor/
+  cantilever foam; drafty/no wall insulation → air-seal + wall foam; high gas → envelope + baseline;
+  **CO/combustion → CAZ safety flag (not an upsell)**; moisture → manage vapor (no mold claim);
+  unmatched → "assessment needed". Surfaces a top-level `safetyFlag` when a combustion concern exists.
+- **BPI panel in the app UI** — not yet built (owner's call; endpoint + brain tool-bag entry exist).
 - **Recommendation library** (reusable measure write-ups) — natural fit for the existing `wiki`.
 
 ## HARD SAFETY RULE (non-negotiable in any MGSF energy report)
