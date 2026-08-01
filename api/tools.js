@@ -64,6 +64,7 @@ const LOCAL_TOOLS = [
   { id: "unit-convert",     category: "estimator", kind: "compute", does: "trade unit conversions", module: "api/unit-convert.js" },
   { id: "job-cost",         category: "finance",   kind: "compute", does: "job-cost roll-up vs estimate", module: "api/job-cost.js" },
   { id: "predictive-cost",  category: "finance",   kind: "compute", does: "predict a job's likely cost from the crew's own completed-job history (size→cost regression + R² confidence); advisory, never sets a doctrine price, honest when history is thin", module: "api/predictive-cost.js" },
+  { id: "portal",           category: "crm",       kind: "endpoint", does: "customer-facing portal — token-gated (HMAC per record), read-only safe view of one customer's job status/quote/docs-to-sign; owner generates the link (crew-gated), customer opens /portal.html?token=…; strict allowlist, never leaks cost/margin/internal data; gated on PORTAL_SECRET + KV", module: "api/portal.js" },
   { id: "curriculum",       category: "learning",  kind: "compute", does: "graded exam that scores Klyfton's knowledge (the eval loop)", module: "api/curriculum.js" },
   { id: "rag",              category: "knowledge", kind: "compute", does: "unified retrieval — fans out across brain graph + wiki + memory, merged + ranked (doctrine wins)", module: "api/rag.js" },
   { id: "projects",         category: "pm",        kind: "compute", does: "job-lifecycle tracker — where each job is, what's next, what's overdue", module: "api/projects.js" },
