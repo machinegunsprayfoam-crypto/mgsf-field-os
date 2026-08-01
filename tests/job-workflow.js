@@ -40,6 +40,11 @@ const edgeCount = r.steps.reduce((n, s) => n + s.dependsOn.length, 0);
 ok("edges match total dependsOn count", r.edges.length === edgeCount);
 ok("edges are {from,to} present-phase pairs", r.edges.every((e) => r.steps.some((s) => s.phase === e.from) && r.steps.some((s) => s.phase === e.to)));
 
+// ---- fuzzy name resolution (the crew types natural names, not exact ids) ----
+const fuzzy = A.workflow(["spray foam", "foundation", "electrician"]);
+ok("resolves natural names to ids (spray foam→spray-foam, foundation→concrete-flatwork, electrician→electrical)",
+  fuzzy.trades.includes("spray-foam") && fuzzy.trades.includes("concrete-flatwork") && fuzzy.trades.includes("electrical") && fuzzy.unknownTrades.length === 0);
+
 // ---- unknown trades captured, never fabricated ----
 const unk = A.workflow(["framing", "spaceship"]);
 ok("unknown trade captured in unknownTrades", unk.unknownTrades.includes("spaceship") && !unk.steps.some((s) => s.trades.some((t) => t.id === "spaceship")));

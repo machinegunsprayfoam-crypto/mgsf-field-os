@@ -37,9 +37,17 @@ function clean(s) { return String(s == null ? "" : s).trim().toLowerCase(); }
 // resolved to the nearest EARLIER present phase (so a skipped phase doesn't dangle the chain).
 function workflow(tradeIds, opts) {
   opts = opts || {};
-  const wanted = new Set((Array.isArray(tradeIds) ? tradeIds : []).map(clean).filter(Boolean));
-  const unknown = [...wanted].filter((t) => !construction.tradeById(t));
-  const knownWanted = [...wanted].filter((t) => construction.tradeById(t));
+  // Resolve each input to a real trade id — exact id first, then fuzzy keyword match (so the crew can
+  // type "spray foam"/"foundation"/"electrician", not just the exact ids). Unresolved = honest unknown.
+  const raw = (Array.isArray(tradeIds) ? tradeIds : []).map((t) => String(t == null ? "" : t).trim()).filter(Boolean);
+  const wanted = new Set();
+  const unknown = [];
+  for (const t of raw) {
+    const byId = construction.tradeById(clean(t));
+    const m = byId || construction.tradeMatch(t);
+    if (m && m.id) wanted.add(m.id); else unknown.push(t);
+  }
+  const knownWanted = [...wanted];
 
   // which phases are "present" (have at least one wanted trade)
   const present = PHASES.filter((p) => p.trades.some((t) => wanted.has(t)));

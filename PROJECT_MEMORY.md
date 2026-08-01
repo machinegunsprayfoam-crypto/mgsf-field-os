@@ -42,6 +42,16 @@ _Last updated: 2026-07-26._
   why-is-X-dark root cause, blast radius, biggest-unlock) + `health.js` (live/dark) + `tools.js`
   (catalog) + `boot.js` (manifest). It IS the app's connections/wiring self-map — just not surfaced
   prominently. Did NOT build a redundant module. **Next (owner):** give cmdb/boot a dedicated panel.
+- **UI WIRED (2026-08-01):** (a) **Connections & wiring panel** — enhanced `renderSystem()` (SYS nav →
+  mod-system) to also pull `/api/cmdb`: a "Connections & wiring" card lists all 14 connections
+  (capabilities) sorted by what each powers, live/dark dot, the exact env-var to arm each, + "do first"
+  = biggest unlock. (Did NOT add a redundant new panel — cmdb IS the connections map; surfaced it.)
+  (b) **Blueprint → workflow** — `renderBlueprint()` (PLANS nav) now auto-builds the job-workflow from a
+  read plan's resolved trades (`d.structure` prime/sub ids), and a manual "Job workflow / wiring map"
+  box lets the crew type trades in natural language. Also made `job-workflow.workflow()` resolve names
+  FUZZILY via `construction.tradeMatch` (so "spray foam"/"foundation"/"electrician" resolve, not just
+  exact ids) — fixed a real usability bug found in headless verify. Both panels render-verified headless
+  (in-process server shimming the Vercel handlers). +1 test (fuzzy). Gate **77 suites / 1784 checks**.
 - **Job workflow = real gap, built** → `api/job-workflow.js`, the missing link between `blueprint.js`
   (reads plan → scope → trades) and `construction.js` (prime/sub). Pure keyless `workflow(tradeIds)`
   turns a job's trades into the ORDERED construction sequence (site → foundation → structure →

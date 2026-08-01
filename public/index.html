@@ -2546,7 +2546,7 @@ window.renderSystem = async function(){
   const tile = (label, val) => '<div style="min-width:110px"><div style="font-size:11px;opacity:.6;text-transform:uppercase">'+e(label)+'</div><div style="font-size:18px;font-weight:600">'+e(String(val))+'</div></div>';
   body.innerHTML = '<div style="opacity:.6;padding:16px">Loading system map…</div>';
   async function get(url){ try{ const r=await fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}); if(r.status===401) return {__gated:true}; if(!r.ok) return {__err:r.status}; return await r.json(); }catch(err){ return {__err:String(err).slice(0,80)}; } }
-  const [boot, health, tele] = await Promise.all([get('/api/boot'), get('/api/health'), get('/api/telemetry')]);
+  const [boot, health, tele, cmdb] = await Promise.all([get('/api/boot'), get('/api/health'), get('/api/telemetry'), get('/api/cmdb')]);
   let html = '';
 
   if(boot && boot.__gated){
@@ -2572,6 +2572,22 @@ window.renderSystem = async function(){
     html += card('Klyfton — live map', '<div style="opacity:.7">Map unavailable ('+e((boot&&boot.__err)||'no data')+'). Loads once the app is deployed with the endpoints live.</div>');
   }
 
+  // Connections & wiring — from /api/cmdb: the capabilities (connections) each with what it powers +
+  // how to arm it, plus which dark components are blocked by which connection (the wiring / why-dark).
+  if(cmdb && !cmdb.__gated && !cmdb.__err && Array.isArray(cmdb.capabilities)){
+    const caps = cmdb.capabilities.slice().sort((a,b)=>(b.powers||0)-(a.powers||0));
+    const rows = caps.map(c=>{
+      const dot = c.live?'🟢':'⚪';
+      const arm = (!c.live && c.arm)?'<div style="opacity:.6;font-size:11px;margin-top:2px">→ '+e(c.arm)+'</div>':'';
+      return '<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+dot+' '+e(c.label||c.id)+'</span><span style="opacity:.55;font-size:12px">powers '+e(String(c.powers||0))+'</span></div>'+arm+'</div>';
+    }).join('');
+    const cc = cmdb.counts||{};
+    html += card('Connections & wiring',
+      '<div style="opacity:.7;font-size:12px;margin-bottom:8px">'+e(String(cc.capsLive||0))+' / '+e(String(cc.capabilities||0))+' connections live · '+e(String(cc.live||0))+' / '+e(String(cc.components||0))+' components live</div>'
+      + rows
+      + (cmdb.biggestUnlock?'<div style="margin-top:8px;font-size:12px"><b>Do first:</b> '+e(cmdb.biggestUnlock.arm||'')+' → +'+e(String(cmdb.biggestUnlock.unlocks||0))+' tools</div>':''));
+  }
+
   if(health && !health.__err && Array.isArray(health.subsystems)){
     const rows = health.subsystems.map(x=>{
       const dot = x.status==='on'?'🟢':(x.status==='partial'?'🟡':'⚪');
@@ -2591,7 +2607,7 @@ window.renderSystem = async function(){
     }
   }
 
-  html += '<div style="opacity:.5;font-size:11px;margin-top:8px">Read-only self-map · /api/boot · /api/health · /api/telemetry</div>';
+  html += '<div style="opacity:.5;font-size:11px;margin-top:8px">Read-only self-map · /api/boot · /api/cmdb · /api/health · /api/telemetry</div>';
   body.innerHTML = html;
 };
 
@@ -2903,8 +2919,40 @@ function renderBlueprint(){
     `<input type="file" id="bp_file" accept="image/*,application/pdf" class="admin-inp" style="width:100%">`+
     `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="blueprintRun()">Read the plan</button>`+
     `<div id="bp_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>`+
-    `<div id="bp_out"></div>`;
+    `<div id="bp_out"></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 6px">🗺️ Job workflow / wiring map</h4>`+
+    `<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Reading a plan builds this automatically. Or type the trades on a job (comma-separated) and Klyfton orders the phases, shows what must finish before what (the wiring), the inspection gates, and who's prime vs sub.</div>`+
+    `<input type="text" id="wf_trades" class="admin-inp" style="width:100%" placeholder="e.g. sitework, foundation, framing, electrical, plumbing, hvac, spray foam, drywall">`+
+    `<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="bpWorkflow(((document.getElementById('wf_trades')||{}).value||'').split(','))">Build the workflow</button></div>`+
+    `<div id="bp_workflow"></div>`;
 }
+// Job workflow / wiring map — POST trades → /api/job-workflow → ordered phases + dependency wiring +
+// inspection gates + prime/sub. Auto-called after a blueprint read; also manual from the trades box.
+async function bpWorkflow(trades){
+  const out=document.getElementById('bp_workflow'); if(!out) return; const E=window.sysEsc;
+  const list=(Array.isArray(trades)?trades:[]).map(t=>String(t||'').trim()).filter(Boolean);
+  if(!list.length){ out.innerHTML='<div class="jsa-card" style="color:var(--yw);font-size:12px">Enter at least one trade, or read a plan first.</div>'; return; }
+  out.innerHTML='<div style="opacity:.6;font-size:12px;padding:8px">Mapping the workflow…</div>';
+  const d=await _sysPost('/api/job-workflow',{trades:list});
+  if(!d||d.__err||!d.steps){ out.innerHTML='<div class="jsa-card" style="color:var(--red);font-size:12px">Workflow unavailable ('+((d&&d.__err)||'error')+').</div>'; return; }
+  if(!d.steps.length){ out.innerHTML='<div class="jsa-card" style="color:var(--yw);font-size:12px">No known trades to sequence'+((d.unknownTrades&&d.unknownTrades.length)?(' — unrecognized: '+E(d.unknownTrades.join(', '))):'')+'.</div>'; return; }
+  let h='<div class="jsa-card"><h4 style="margin:0 0 8px">🗺️ Job workflow — '+d.steps.length+' phases</h4>';
+  d.steps.forEach(s=>{
+    const badge=s.mgsfSelfPerform?'<span style="color:var(--or);font-size:10px"> [MGSF self-perform]</span>':'';
+    const trades=(s.trades||[]).map(t=>E(t.name)+(t.role==='self-perform'?' ★':'')).join(', ');
+    h+='<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+      '<div style="font-weight:600">'+s.order+'. '+E(s.name)+badge+'</div>'+
+      (trades?'<div style="font-size:12px;color:var(--tx)">'+trades+'</div>':'')+
+      (s.dependsOn&&s.dependsOn.length?'<div style="font-size:11px;color:var(--cy)">⟵ after: '+E(s.dependsOn.join(', '))+'</div>':'')+
+      '<div style="font-size:11px;color:var(--t2)">🛂 '+E(s.gate)+'</div>'+
+    '</div>';
+  });
+  if(d.criticalGate) h+='<div style="margin-top:8px;padding:8px;background:rgba(249,115,22,.12);border:1px solid var(--or);border-radius:6px;font-size:12px;color:var(--or)">⚠ '+E(d.criticalGate)+'</div>';
+  if(d.unknownTrades&&d.unknownTrades.length) h+='<div style="font-size:11px;color:var(--yw);margin-top:6px">Unrecognized (not sequenced): '+E(d.unknownTrades.join(', '))+'</div>';
+  h+='<div style="font-size:11px;color:var(--t2);margin-top:6px">'+E(d.label||'GUIDANCE')+'</div></div>';
+  out.innerHTML=h;
+}
+window.bpWorkflow = bpWorkflow;
 async function blueprintRun(){
   const f=(document.getElementById('bp_file')||{}).files; const st=document.getElementById('bp_status'), out=document.getElementById('bp_out');
   if(!f || !f.length){ if(st){ st.style.color='var(--yw)'; st.textContent='Pick a plan file first.'; } return; }
@@ -2939,6 +2987,12 @@ function blueprintRender(d){
   if(d.note) h+=`<div class="jsa-card" style="font-size:12px;color:var(--t2)">${E(d.note)}</div>`;
   h+=`<div style="font-size:11px;color:var(--t2);margin-top:6px">${E(d.label||'READING')} — ${E((d.verify||[]).join(' '))}</div>`;
   out.innerHTML=h;
+  // Auto-build the job workflow from the resolved trades (prime/sub ids), else the scope trade strings.
+  let wfTrades=[];
+  if(d.structure){ wfTrades=(d.structure.selfPerform||[]).concat(d.structure.subs||[]).map(x=>x.trade).filter(Boolean); }
+  if(!wfTrades.length && d.scope){ wfTrades=d.scope.map(s=>s.trade).filter(Boolean); }
+  const box=document.getElementById('wf_trades'); if(box && wfTrades.length) box.value=wfTrades.join(', ');
+  if(wfTrades.length) bpWorkflow(wfTrades);
 }
 window.renderBlueprint = renderBlueprint;
 
