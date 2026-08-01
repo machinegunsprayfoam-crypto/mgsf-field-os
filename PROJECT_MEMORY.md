@@ -36,6 +36,19 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**⚠ OPEN THREAD — brain graph is STALE, needs an InfraNodus re-scan — 2026-08-01:**
+- Ran a brain-graph check (InfraNodus MCP was NOT connected → used the local baked graph
+  `api/brain-graph-data.js`). It's **150 concepts / 513 links / 11 clusters, all pre-trades** — the
+  entire trades domain (TRADES_EXPERT + the 6 sub-trade calcs) plus business-audit/job-workflow/cert
+  knowledge are **absent as graph nodes/clusters**. Retrieval still WORKS (the ~50 trade-word ALIASes
+  in `brain-graph-retrieve.js` route trade queries to existing concepts), so nothing is broken — but the
+  graph doesn't map the new domain. **Do NOT hand-fabricate graph nodes** (that's inventing data).
+- **TO FIX (needs the InfraNodus connector in an interactive session):** feed the assembled brain
+  (`assembleBrainBlocks("")` / the BRAIN_ORDER blocks) through InfraNodus, then regenerate
+  `api/brain-graph-data.js` from the real scan so the trades cluster + new tools become first-class
+  concepts. Then the CLUSTER_BLOCKS mapping can point a real "Trades" cluster at TRADES_EXPERT instead
+  of relying on aliases.
+
 **★ SUB-TRADE QUANTITY CALCS — closing the trades-depth gap — 2026-08-01 (branch, not merged):**
 - Honest audit (told Clifton): foam = mastery depth (verified specs + locked pricing + calcs + skills);
   subbed trades = GC depth (scope/size/sub-check), correct by design, but **9 of 13 sub-trades had NO
