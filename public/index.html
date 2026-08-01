@@ -660,6 +660,31 @@
         <div id="ccBoard" style="font-size:13px;line-height:1.9"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Drivetrain · recent gear-turns</h3>
         <div id="ccDrive" style="font-size:12px;line-height:1.7;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+        <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Owner Tools</h3>
+        <div style="display:grid;gap:10px">
+          <div class="jsa-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🔍 AI Business Audit</b>
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderBizAudit()">Run audit</button></div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px">Ranked, decision-ready findings from your own records — pipeline health, stale bids, cold leads, AR aging, close rate, overdue jobs, concentration. No fabricated numbers.</div>
+            <div id="bizAuditOut" style="margin-top:8px;font-size:13px;line-height:1.55"></div>
+          </div>
+          <div class="jsa-card">
+            <div style="font-weight:700">🔮 Predict job cost from history</div>
+            <div style="font-size:11px;color:var(--t2);margin:2px 0 6px">Least-squares prediction from YOUR completed logged jobs (size → cost) with a confidence read. Advisory — a look at what similar past jobs actually cost, never a quote.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input class="admin-inp" id="pcSvc" placeholder="Service (e.g. spray foam)" style="flex:1;min-width:150px">
+              <input class="admin-inp" id="pcSize" inputmode="decimal" placeholder="Size (sq ft / BF)" style="width:150px">
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderPredictCost()">Predict</button>
+            </div>
+            <div id="predictCostOut" style="margin-top:8px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+          </div>
+          <div class="jsa-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>▶ What's next — every open job</b>
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderWorkflow()">Refresh</button></div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px">Your whole pipeline, one glance: what's overdue and the next step on each open lead/job (lead → bid → scheduled → in&nbsp;progress → invoice → paid). Nothing sends automatically.</div>
+            <div id="workflowOut" style="margin-top:8px;font-size:13px;line-height:1.55"></div>
+          </div>
+        </div>
         <div style="margin-top:16px"><button onclick="renderCommand()" style="background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700">↻ Refresh</button></div>
       </div>
       <div id="mod-intel" class="module">
@@ -881,6 +906,16 @@
             <button class="btn btn-ghost" onclick="govSaveKey()">Save key</button>
           </div>
           <div style="font-size:10px;color:var(--t2);margin-top:6px">Stored on this device only, never shown in quotes. Get a free key at sam.gov → Account Details → Public API Key.</div>
+        </div>
+
+        <!-- State + workforce programs (gov-programs) -->
+        <div class="admin-section">
+          <div class="admin-section-title">🏛️ STATE &amp; WORKFORCE PROGRAMS</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:8px">State bid registration, prevailing-wage applicability, and hiring incentives (WOTC / WIOA / apprenticeship). GUIDANCE — every item carries a verify pointer.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${['MT','ND','SD','WY'].map(s=>`<button class="btn btn-ghost" style="font-size:12px" onclick="renderGovPrograms('${s}')">${s}</button>`).join('')}
+          </div>
+          <div id="govProgOut" style="margin-top:10px;font-size:13px;line-height:1.55"></div>
         </div>
 
         <!-- Filters -->
@@ -2995,6 +3030,63 @@ function blueprintRender(d){
   if(wfTrades.length) bpWorkflow(wfTrades);
 }
 window.renderBlueprint = renderBlueprint;
+
+// ── Owner Tools (Command Center): AI Business Audit + Predictive Cost ──────────────────────────
+async function renderBizAudit(){
+  const out=document.getElementById('bizAuditOut'); if(!out) return;
+  out.innerHTML='<span style="color:var(--t2)">Running audit…</span>';
+  const d=await _sysPost('/api/business-audit',{action:'audit'});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Audit unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS tab) to run the audit.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Audit needs the data spine (Vercel KV) switched on — see GO_LIVE.')+'</span>'; return; }
+  const findings=(d.findings)||[];
+  const head=d.headline?('<div style="font-weight:700;margin-bottom:6px">'+_cE(d.headline)+'</div>'):'';
+  if(!findings.length){ out.innerHTML=head+'<span style="color:var(--gr)">No issues flagged — clean bill of health.</span>'; return; }
+  const sev={high:'#ef4444',medium:'#f59e0b',low:'#8a8a9a'};
+  out.innerHTML=head+findings.slice(0,12).map(f=>
+    '<div style="border-left:3px solid '+(sev[String(f.severity||'').toLowerCase()]||'#8a8a9a')+';padding:3px 0 3px 8px;margin-bottom:7px">'+
+    '<b>'+_cE(f.title||f.area||'')+'</b> <span style="font-size:10px;color:var(--t2)">'+_cE(String(f.severity||'').toUpperCase())+'</span>'+
+    (f.detail?'<br><span style="color:var(--t2)">'+_cE(f.detail)+'</span>':'')+
+    (f.action?'<br><span style="color:var(--cy)">→ '+_cE(f.action)+'</span>':'')+'</div>').join('');
+}
+async function renderPredictCost(){
+  const out=document.getElementById('predictCostOut'); if(!out) return;
+  const svc=((document.getElementById('pcSvc')||{}).value||'').trim();
+  const size=parseFloat((document.getElementById('pcSize')||{}).value||'');
+  if(!svc || !(size>0)){ out.innerHTML='<span style="color:var(--yw)">Enter a service and a size to predict.</span>'; return; }
+  out.innerHTML='<span style="color:var(--t2)">Predicting from your job history…</span>';
+  const d=await _sysPost('/api/predictive-cost',{service:svc,size:size});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Prediction unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS tab) to predict.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Predictive costing needs the data spine (Vercel KV) switched on.')+'</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||('Not enough history yet ('+(d.samples||0)+'/'+(d.needed||3)+' completed jobs with size + logged cost).'))+'</span>'; return; }
+  out.textContent=d.formatted||JSON.stringify(d.prediction);
+}
+window.renderBizAudit = renderBizAudit;
+window.renderPredictCost = renderPredictCost;
+// Guided workflow — the whole pipeline's "what's next" from the app's own leads+jobs (api/projects).
+// Overdue first (red), then the next step per open record, with a jump-to-tab button. Draft-only.
+async function renderWorkflow(){
+  const out=document.getElementById('workflowOut'); if(!out) return;
+  out.innerHTML='<span style="color:var(--t2)">Reading your pipeline…</span>';
+  const jobs=[].concat(appState.leads||[],appState.jobs||[]).map(r=>({customer:r.customer||r.name,name:r.name,status:r.status||r.stage,date:r.date,scheduled:r.scheduled}));
+  if(!jobs.length){ out.innerHTML='<span style="color:var(--t2)">No leads or jobs on file yet — add one in CRM.</span>'; return; }
+  const d=await _sysPost('/api/projects',{jobs:jobs});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Workflow unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  const jump={lead:'crm',bid:'crm',scheduled:'jobs',in_progress:'jobs',done:'invoice',invoiced:'invoice',paid:'crm'};
+  let h='';
+  const od=d.overdue||[];
+  if(od.length){ h+='<div style="font-weight:700;color:#ef4444;margin-bottom:4px">⚠ Overdue ('+od.length+')</div>'+
+    od.slice(0,8).map(o=>'<div style="border-left:3px solid #ef4444;padding:2px 0 2px 8px;margin-bottom:4px"><b>'+_cE(o.who)+'</b> — '+_cE(o.reason)+'</div>').join('')+'<div style="height:8px"></div>'; }
+  const na=d.nextActions||[];
+  if(na.length){ h+='<div style="font-weight:700;color:var(--or);margin-bottom:4px">Next step ('+(d.open||na.length)+' open)</div>'+
+    na.slice(0,14).map(a=>'<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid var(--bd,#2a2a3a);padding:4px 0">'+
+      '<div><b>'+_cE(a.who)+'</b> <span style="font-size:10px;color:var(--t2)">'+_cE(String(a.stage).toUpperCase())+'</span><br><span style="color:var(--t2)">'+_cE(a.action)+'</span></div>'+
+      '<button class="btn btn-ghost" style="font-size:11px;flex:none" onclick="switchModule(\''+(jump[a.stage]||'crm')+'\')">Open</button></div>').join(''); }
+  else if(!od.length){ h='<span style="color:var(--gr)">Nothing open — pipeline clear.</span>'; }
+  out.innerHTML=h;
+}
+window.renderWorkflow = renderWorkflow;
 
 // ---- Trade Calculators: pick a trade → run its wired quantity engine. Built for the whole crew
 // (incl. Clifton's nephews across their own trades) — plain, forgiving, and LOUD about ESTIMATE/verify.
@@ -6707,10 +6799,33 @@ function openLeadDetail(id){
   <div class="modal-actions">
     <button class="btn btn-danger" onclick="deleteLead(${id})">DELETE</button>
     <button class="btn btn-cyan" onclick="estimateFromLead(${id})" title="Open the estimator prefilled with this lead">🧾 CREATE BID</button>
+    <button class="btn btn-ghost" onclick="sharePortalLink(${id},'${esc((l.name||'').replace(/'/g,"\\'"))}')" title="Generate a private status-portal link to share with this customer">🔗 PORTAL LINK</button>
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="updateLead(${id})">SAVE CHANGES</button>
-  </div>`);
+  </div>
+  <div id="portalLinkOut" style="font-size:12px;margin-top:8px"></div>`);
 }
+// Generate + share a customer status-portal link (owner action; crew-gated server-side). Shows the URL
+// to copy and drafts a customer-friendly share text (draft only — you send it).
+async function sharePortalLink(id, name){
+  const out=document.getElementById('portalLinkOut'); if(out) out.innerHTML='<span style="color:var(--t2)">Generating link…</span>';
+  const d=await _sysPost('/api/portal',{action:'link',id:id});
+  if(!out) return;
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Couldn\'t generate ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS tab) to generate a portal link.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Set PORTAL_SECRET in Vercel to enable the customer portal.')+'</span>'; return; }
+  if(!d.ok||!d.url){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.reason||'Could not generate a link.')+'</span>'; return; }
+  const url=d.url;
+  const msg='Hi'+(name?(' '+name):'')+', here\'s your live project status with Machine Gun Spray Foam: '+url;
+  out.innerHTML='<div style="background:var(--s2,#1a1a26);border:1px solid var(--bd,#2a2a3a);border-radius:8px;padding:8px">'+
+    '<div style="word-break:break-all;color:var(--cy)">'+_cE(url)+'</div>'+
+    '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'+
+    '<button class="btn btn-ghost" style="font-size:12px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+url.replace(/'/g,"\\'")+'\');notify(\'Link copied\')">Copy link</button>'+
+    '<button class="btn btn-ghost" style="font-size:12px" onclick="klyftonDraftText(\''+msg.replace(/'/g,"\\'")+'\')">Draft text to customer</button>'+
+    '</div><div style="font-size:11px;color:var(--t2);margin-top:5px">Private link — only this customer can open it. Shows status, quote & docs to sign; never your costs or margin.</div></div>';
+}
+function klyftonDraftText(msg){ try{ if(navigator.clipboard) navigator.clipboard.writeText(msg); }catch(e){} notify('Draft copied — review, then send from your phone'); }
+window.sharePortalLink = sharePortalLink;
 
 // One-click: open the Estimate tab (Ultimate Estimator) prefilled with this lead's info.
 // Uses the same shared-origin channel — we write a short-lived prefill payload that the
@@ -7732,6 +7847,25 @@ function govRenderNaicsChips(){
   }).join('');
 }
 function renderGov(){ govStatus(); govRenderNaicsChips(); }
+// State + workforce program checklist for a state (gov-programs). GUIDANCE only; every item verify-pointed.
+async function renderGovPrograms(state){
+  const out=document.getElementById('govProgOut'); if(!out) return;
+  out.innerHTML='<span style="color:var(--t2)">Loading '+_cE(state)+' programs…</span>';
+  const d=await _sysPost('/api/gov-programs',{state:state});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  const sec=(title,body)=> body?('<div style="margin-top:8px"><b style="color:var(--or);font-size:12px">'+_cE(title)+'</b><div style="margin-top:2px">'+body+'</div></div>'):'';
+  let h='';
+  const reg=(d.registration||[]);
+  if(reg.length) h+=sec('Register to bid ('+_cE(state)+')', reg.map(r=>'• '+_cE(r.step||r)+(r.url?' <span style="color:var(--cy)">'+_cE(r.url)+'</span>':'')).join('<br>'));
+  const pw=d.prevailingWage;
+  if(pw) h+=sec('Prevailing wage', (pw.has?('<span style="color:var(--yw)">APPLIES</span> — '+_cE(pw.law||'')):'<span style="color:var(--gr)">No state law</span> — '+_cE(pw.note||''))+((pw.obligations&&pw.obligations.length)?('<br>'+pw.obligations.map(o=>'– '+_cE(o)).join('<br>')):''));
+  const wf=d.workforce;
+  if(wf){ const items=Array.isArray(wf)?wf:(wf.incentives||wf.programs||Object.values(wf).filter(x=>x&&x.value));
+    if(items&&items.length) h+=sec('Hiring / workforce incentives', items.map(i=>'• <b>'+_cE(i.name||i.id||'')+'</b> — '+_cE(i.value||'')+(i.how?'<br><span style="color:var(--t2)">'+_cE(i.how)+'</span>':'')).join('<br>')); }
+  h+='<div style="font-size:10px;color:var(--t2);margin-top:8px">'+_cE(d.disclaimer||'GUIDANCE — verify current rules/rates/portals on the official source.')+'</div>';
+  out.innerHTML=h||'<span style="color:var(--t2)">No program data returned.</span>';
+}
+window.renderGovPrograms = renderGovPrograms;
 
 // ================= DATA SHEETS — SDS & TDS (📑 SHEETS tab) =================
 function sheetUrl(name, kind){ return 'https://www.google.com/search?q='+encodeURIComponent(name+' '+kind); }
@@ -12966,6 +13100,7 @@ Verify current requirements with the local building department (AHJ) before fili
 // Operations Command Center (Phase 2) — reads real KPIs/leaderboard/roster from /api/command-center.
 // Self-contained; honest empty state when telemetry isn't configured yet. Never shows fake numbers.
 window.renderCommand = async function(){
+  try{ if(window.renderWorkflow) renderWorkflow(); }catch(e){}   // auto-populate the What's-Next workflow card
   var e = function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var set = function(id,html){var el=document.getElementById(id); if(el) el.innerHTML=html;};
   set('ccKpis','<div class="metric-card"><div class="metric-val">…</div><div class="metric-lbl">loading</div></div>');
