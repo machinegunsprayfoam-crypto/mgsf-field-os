@@ -74,6 +74,33 @@ async function main() {
   ok("history unconfigured ⇒ configured:false, empty", (await A.history("pm")).configured === false);
   ok("logRun unconfigured ⇒ configured:false (no throw)", (await A.logRun("pm", [{ step: { who: "R", stage: "bid" }, outcome: "needs_approval" }], NOW)).configured === false);
 
+  // ---- Agent #5: Sub-Compliance Chaser (operates on the subs roster) ----
+  ok("roster includes sub-compliance", !!A.AGENTS["sub-compliance"] && A.AGENTS["sub-compliance"].source === "subs");
+  const CNOW = Date.parse("2026-08-01T00:00:00Z");
+  const fullDocs = [{ type: "subcontract", onFile: true }, { type: "w9", onFile: true }, { type: "coi", onFile: true, expires: "2027-06-01" }, { type: "license", onFile: true, expires: "2027-06-01" }, { type: "lien-waivers", onFile: true }, { type: "safety", onFile: true }];
+  const roster = [
+    { name: "Ready Co", trade: "electrical", email: "ready@x.com", docs: fullDocs },                                  // ready → no chase
+    { name: "Expiring Co", trade: "plumbing", email: "exp@x.com", docs: fullDocs.map((d) => d.type === "coi" ? { ...d, expires: "2026-08-15" } : d) }, // expiring → chase
+    { name: "Blocked Co", trade: "hvac", phone: "4065551212", docs: fullDocs.filter((d) => d.type !== "coi") },        // missing COI → chase
+    { name: "NoContact Co", trade: "framing", docs: fullDocs.filter((d) => d.type !== "license") },                     // blocked + no contact
+  ];
+  const sp = A.planSubCompliance(roster, CNOW, WEBHOOK);
+  ok("chaser skips ready subs, plans only expiring/blocked", sp.count === 3 && !sp.steps.some((s) => s.who === "Ready Co"));
+  ok("every chase step is approval-gated + routed to arms", sp.steps.every((s) => s.approval === true && s.tool === "arms"));
+  ok("expiring sub's issue names the doc + days", sp.steps.find((s) => s.who === "Expiring Co").issue.match(/coi/i) && /expiring/i.test(sp.steps.find((s) => s.who === "Expiring Co").issue));
+  ok("blocked sub's issue flags missing/expired", /missing\/expired/i.test(sp.steps.find((s) => s.who === "Blocked Co").issue));
+  ok("buildSubAction uses email when present, empty body (owner drafts)", (() => { const a = A.buildSubAction({ who: "Expiring Co" }, roster[1]); return a.type === "send_email" && a.to === "exp@x.com" && a.body === ""; })());
+  ok("buildSubAction falls back to SMS when only phone", A.buildSubAction({ who: "Blocked Co" }, roster[2]).type === "send_sms");
+  ok("no contact on file ⇒ null action (manual)", A.buildSubAction({ who: "NoContact Co" }, roster[3]) === null);
+  // closed loop: NOTHING sends unless approved
+  const scSeen = [];
+  const scExec = async (action, o) => { scSeen.push({ action, approved: o.approved }); return { status: o.approved ? "dispatched" : "needs_approval" }; };
+  const scPreview = await A.runSubCompliance(roster, CNOW, WEBHOOK, { exec: scExec });
+  ok("chaser preview dispatches nothing (all gated drafts)", scPreview.dispatched === 0 && scPreview.drafts >= 1 && scSeen.every((s) => s.approved === false));
+  ok("no-contact sub handled in-app, not sent", scPreview.results.some((r) => r.outcome === "in_app"));
+  const scApproved = await A.runSubCompliance(roster, CNOW, WEBHOOK, { exec: scExec, approved: true });
+  ok("approved run dispatches the contactable chases", scApproved.dispatched >= 1);
+
   console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 }
