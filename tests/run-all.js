@@ -70,6 +70,15 @@ const SUITES = [
   ["trade-rates", "per-trade rate memory: rate map + applyRates fills MISSING rates only (never overrides owner input), trade-scoped — owner-entered, nothing fabricated"],
   ["trade-pack", "per-trade toolbox: curated code/permit/license/safety/checklist for named trades + honest generic fallback, calculators from construction wiring — GUIDANCE (verify AHJ/state), no pricing"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
+  ["weather", "spray-window go/no-go: parseWind/cToF/worst + assessHour conservative ladder (rain %, cold/hot, dew-point spread, wind/overspray) GO→CAUTION→NOGO — thresholds only, no fabrication"],
+  ["reviews", "review-request draft: first-name greeting + fallbacks, OWNER-INPUT review-link marker (never invents a link), draftOnly (never sends), brand voice"],
+  ["capability-statement", "SDVOSB one-pager build: verified public identity (legal name/UEI/NAICS), OWNER-INPUT markers for unverified past-performance/bonding, no EIN, overrides fill — never fabricated"],
+  ["infranodus", "content-gap helpers: isConfigured reflects the key (INACTIVE default), defensive normalize (field-name fallbacks, unknown⇒[]), HTML→text reducer — never fabricates topics/gaps"],
+  ["brain-graph-retrieve", "GraphRAG-lite routing: tokenize (stopwords+MGSF aliases), score (ranked/non-negative clusters), retrieve (ALWAYS identity blocks, sensible routing, safe non-empty default) — routes, invents no facts"],
+  ["proposal-pdf", "branded proposal PDF: valid %PDF/%%EOF bytes, caller-supplied items+customer render, money formatter, OWNER-INPUT markers for empty customer/items — every dollar caller-supplied"],
+  ["hubspot", "contact→lead mapper: name fallback chain (first+last→email→Unknown), phone→mobilephone fallback, field trim, priority score/band attached — empty fields map empty, no fabrication"],
+  ["gearbox", "internal drivetrain: _evt shape, AI-gear cascade (estimate.closed→lead.won→invoice.created), OWNER approval gate (blocked+reverse mile, never sent / approved+forward mile), roof/spf branch, depth/cycle guard"],
+  ["klyfton", "Queen router pure exports: shouldSkipSynth time-budget guard, bestAnswer (fullest worker answer), routerToolHint LIVE/OFF status, toolBagBlock, assembleBrainBlocks — no network/no synth"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];
 

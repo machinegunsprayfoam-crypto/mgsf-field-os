@@ -174,3 +174,9 @@ module.exports = async (req, res) => {
     sendJson(res, status, { ok: false, error: msg });
   }
 };
+
+// Pure helpers exported for unit testing (the go/no-go spray-window logic). No keys, no network.
+module.exports.assessHour = assessHour;
+module.exports.parseWind = parseWind;
+module.exports.cToF = cToF;
+module.exports.worst = worst;
