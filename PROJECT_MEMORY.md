@@ -36,6 +36,19 @@ _Last updated: 2026-07-26._
 - **Responsive audit of all 30 modules:** 8 clipped content off-screen on phone → fixed with `overflow-x:auto` net (except `#mod-estimate`). Estimator iframe widened (`.main` 820→1180px; has its own `#estWideBtn`).
 - **QA sweep (all clean):** 279 onclick handlers all defined (no dead buttons); fixed 1 real duplicate id (incident-log `in_desc`→`inc_desc`, was colliding with invoice textarea); dangling-ref audit = all non-crashing (print areas + `klyftonActionPrompt` created dynamically, `in_num` intentional fallback, `updateLeadStatus` dead, `exportEstimate` lives inside inert `<template id="legacyEstimator">` so never fires). Boot render verified headless: canvas draws, `setLayout` works, only `file://` egress/permissions-policy console noise (none in prod https).
 
+**★ SUB-TRADE QUANTITY CALCS — closing the trades-depth gap — 2026-08-01 (branch, not merged):**
+- Honest audit (told Clifton): foam = mastery depth (verified specs + locked pricing + calcs + skills);
+  subbed trades = GC depth (scope/size/sub-check), correct by design, but **9 of 13 sub-trades had NO
+  quantity calculator** (masonry/drywall/roofing-shingle/excavation/metal/doors-windows/fire/sitework/
+  concrete-flatwork) — fell back to trade-estimate. Offered to build the 9; Clifton hadn't said go yet,
+  so building them ONE-per-fire overnight, grounded + staged for review.
+- **#1 built: `api/drywall-calc.js`** — area→sheets by sheet size + waste (SOLID geometry) + GA-216 screw
+  scaling + GA-214 mud/tape ESTIMATES (transparent, overridable coverage assumptions echoed in output,
+  clearly labeled ESTIMATE). Board TYPE deferred to AHJ. No pricing. Wired `drywall`→`drywall-calc` in
+  construction ENGINES (so it surfaces in trade-pack Toolbox). `tests/drywall-calc.js` = 18 + 1
+  construction wiring check. Gate **78 suites / 1803 checks** green. **Remaining 8** sub-trade calcs +
+  adding drywall-calc to the frontend CALCS `CALC_ENGINES` form map = next fires / owner review.
+
 **★ JOB WORKFLOW / WIRING MAP + AI-connections answer — 2026-08-01 (branch, not merged):**
 - Clifton asked for a "map + blueprint workflow and wiring tool" and an "AI connections tool."
 - **AI connections tool = already exists** → `cmdb.js` (components → capabilities they depend on,
