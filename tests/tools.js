@@ -45,5 +45,17 @@ ok("handler returns the catalog object", viaHandler && viaHandler.ok === true &&
 // ---- find on a miss ----
 ok("find() on unknown id ⇒ null (no throw)", T.find("nope", {}) === null);
 
+// ---- WIRING INTEGRITY: every catalog entry's module path points to a real file ----
+// (the catalog powers cmdb/boot/toolBagBlock; a renamed/removed module left in the catalog would
+//  advertise a phantom tool in the self-map. This guards that drift — same class as klyfton/retriever guards.)
+const fs = require("fs");
+const cat = T.catalog().tools;
+ok("catalog is non-trivial", Array.isArray(cat) && cat.length >= 40, cat && cat.length);
+const withMod = cat.filter((e) => e.module);
+const brokenMod = withMod.filter((e) => !fs.existsSync(path.join(__dirname, "..", e.module)));
+ok("every catalog module path resolves to a real file (no phantom tool)", brokenMod.length === 0, brokenMod.map((e) => e.id + "→" + e.module).join(","));
+const ids = cat.map((e) => e.id);
+ok("catalog tool ids are unique", ids.length === new Set(ids).size);
+
 console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
