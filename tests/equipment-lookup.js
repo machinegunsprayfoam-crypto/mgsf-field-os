@@ -98,7 +98,24 @@ ok("payload user carries make+model", /Trane/.test(pay.messages[0].content) && /
 
   // no make/model ⇒ rejected
   const empty = await A.lookup({}, { key: "k" });
-  ok("no make/model ⇒ error", empty.ok === false && empty.error === "need_make_model");
+  ok("no make/model/serial ⇒ error", empty.ok === false && empty.error === "need_make_model");
+
+  // ---- serial numbers ----
+  ok("mfgDate keeps a value with a plausible year", A.mfgDate("2015-06") === "2015-06" && A.mfgDate("June 2018") === "June 2018");
+  ok("mfgDate drops a value with no plausible year (no guess)", A.mfgDate("W12345") === null && A.mfgDate("") === null);
+  const serialResp = { content: [{ type: "text", text: '{"found":true,"type":"furnace","brand":"Trane","serial":"1815ABCDEF","manufactureDate":"2018 (week 15)","specs":{"afue":96,"inputBtu":80000},"sources":["https://trane.com/spec.pdf"]}' }] };
+  const pr = A.parseAiResult(serialResp, "furnace");
+  ok("serial parsed from AI result", pr.equipment.serial === "1815ABCDEF");
+  ok("manufacture date kept when it has a plausible year", pr.equipment.manufactureDate === "2018 (week 15)");
+  const badMfg = { content: [{ type: "text", text: '{"found":true,"type":"furnace","serial":"X1","manufactureDate":"unknown","specs":{"afue":96,"inputBtu":80000},"sources":["https://x.com"]}' }] };
+  ok("implausible manufacture date dropped", A.parseAiResult(badMfg, "furnace").equipment.manufactureDate === undefined);
+  ok("buildPayload includes serial + forbids guessing the mfg date", (() => { const p = A.buildPayload("Trane", "S9V2", "furnace", null, "1815ABC"); return /1815ABC/.test(p.messages[0].content) && /NEVER guess[\s\S]*manufacture date/i.test(p.system); })());
+  // user serial is authoritative — carried back even when the model isn't found
+  const notFoundSerial = await A.lookup({ make: "Weird", model: "ZZZ", serial: "SN-USER-1", type: "ac" }, { key: "k", call: async () => ({ content: [{ type: "text", text: '{"found":false}' }] }) });
+  ok("serial echoed back even when model not found", notFoundSerial.found === false && notFoundSerial.equipment && notFoundSerial.equipment.serial === "SN-USER-1");
+  // serial-only (no make/model) is a valid lookup
+  const serialOnly = await A.lookup({ serial: "SN-ONLY" }, { key: "" });
+  ok("serial-only is accepted (not rejected)", serialOnly.ok === true && serialOnly.equipment.serial === "SN-ONLY");
 
   console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);

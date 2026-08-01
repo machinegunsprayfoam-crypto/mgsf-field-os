@@ -296,6 +296,7 @@ function summarizeEquipment(list) {
     e = e || {};
     const combustion = e.combustion === true || combustionRe.test(String(e.fuel || "")) || /furnace|boiler/i.test(String(e.type || ""));
     return { type: String(e.type || "").slice(0, 40) || "unit", make: String(e.make || "").slice(0, 60), model: String(e.model || "").slice(0, 60),
+      serial: e.serial ? String(e.serial).slice(0, 60) : undefined, manufactureDate: e.manufactureDate ? String(e.manufactureDate).slice(0, 40) : undefined,
       year: e.year ? String(e.year).slice(0, 8) : undefined, fuel: e.fuel ? String(e.fuel).slice(0, 40) : undefined,
       specs: (e.specs && typeof e.specs === "object") ? e.specs : undefined, verified: !!e.verified, combustion };
   }).filter((e) => e.make || e.model);

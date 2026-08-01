@@ -98,10 +98,16 @@ function parseEquipment(type, raw) {
   if ((t === "ac" || t === "heat_pump") && specs.capacityBtu && specs.tons == null) specs.tons = round(specs.capacityBtu / 12000, 1);
   if ((t === "ac" || t === "heat_pump") && specs.tons && specs.capacityBtu == null) specs.capacityBtu = round(specs.tons * 12000, 0);
   const combustion = TYPES[t].combustion === true || (TYPES[t].combustion === null && isCombustionFuel(raw && raw.fuel));
-  const eq = { type: t, label: TYPES[t].label, brand: clean(raw && raw.brand, 60) || undefined, model: clean(raw && raw.model, 60) || undefined, fuel: clean(raw && raw.fuel, 40) || undefined, specs, combustion };
+  const eq = { type: t, label: TYPES[t].label, brand: clean(raw && raw.brand, 60) || undefined, model: clean(raw && raw.model, 60) || undefined,
+    serial: clean(raw && raw.serial, 60) || undefined, fuel: clean(raw && raw.fuel, 40) || undefined, specs, combustion };
+  const mfg = mfgDate(raw && raw.manufactureDate);
+  if (mfg) eq.manufactureDate = mfg;
   return { found: kept > 0, equipment: eq };
 }
 function isCombustionFuel(f) { return /gas|propane|lp|oil|wood|pellet|diesel|kerosene/i.test(String(f || "")); }
+// Manufacture date decoded from a serial is brand-specific and error-prone — only accept a value
+// that carries a plausible 4-digit year (1970–2035); anything else is dropped (never guessed).
+function mfgDate(v) { const s = clean(v, 40); if (!s) return null; const m = s.match(/(19[7-9]\d|20[0-3]\d)/); return m ? s : null; }
 
 // ---- Pure: pull the model's JSON + collected web sources out of an Anthropic response object.
 function extractJson(data) {
@@ -138,17 +144,18 @@ function parseAiResult(data, type) {
   return { found: true, verified, equipment: parsed.equipment, sources };
 }
 
-function buildPayload(make, model, type, modelId) {
+function buildPayload(make, model, type, modelId, serial) {
   const t = normType(type);
   const sys =
     "You find real HVAC / water-heater equipment specifications from a make and model number. " +
     "You MUST use web_search to locate the manufacturer spec sheet, submittal, or AHRI listing for the EXACT model. " +
     "Return ONLY a JSON object, no prose: " +
-    '{"found":true|false,"type":"furnace|boiler|water_heater|ac|heat_pump|mini_split","brand":"","model":"","fuel":"","specs":{...},"sources":["url"]}. ' +
+    '{"found":true|false,"type":"furnace|boiler|water_heater|ac|heat_pump|mini_split","brand":"","model":"","serial":"","manufactureDate":"","fuel":"","specs":{...},"sources":["url"]}. ' +
     "Spec keys by type — furnace/boiler: afue,inputBtu,outputBtu,stages; water_heater: uef,ef,gallons,inputBtu,gpm; ac: seer2,seer,eer,capacityBtu,tons; heat_pump: seer2,seer,hspf2,hspf,capacityBtu,tons,cop; mini_split: seer2,hspf2,capacityBtu,cop. " +
-    "Values are NUMBERS only (no units, no % sign). RULES: include only spec values you actually found in a cited source, and list those source URLs in sources[]. " +
-    "If you cannot find the specific model, return {\"found\":false}. NEVER guess, estimate, or infer a real unit's nameplate values — an unfound model is found:false, not a guess.";
-  const user = "Find the specs for: make=\"" + make + "\", model=\"" + model + "\"" + (t ? (", type=\"" + t + "\"") : "") + ".";
+    "Values are NUMBERS only (no units, no % sign). If a serial number is given, echo it back in \"serial\" and, ONLY if that brand's serial-date scheme is documented in a cited source, decode the manufacture date into \"manufactureDate\" (include a 4-digit year); otherwise leave manufactureDate empty. " +
+    "RULES: include only spec values you actually found in a cited source, and list those source URLs in sources[]. " +
+    "If you cannot find the specific model, return {\"found\":false}. NEVER guess, estimate, or infer a real unit's nameplate values or manufacture date — an unfound model is found:false, not a guess.";
+  const user = "Find the specs for: make=\"" + make + "\", model=\"" + model + "\"" + (t ? (", type=\"" + t + "\"") : "") + (serial ? (", serial=\"" + serial + "\"") : "") + ".";
   return {
     model: modelId || _env(/EQUIP_MODEL$/i) || "claude-haiku-4-5",
     max_tokens: 1024,
@@ -177,20 +184,22 @@ async function callAI(key, payload) {
 
 async function lookup(body, opts) {
   opts = opts || {};
-  const make = clean(body.make, 60), model = clean(body.model, 60);
+  const make = clean(body.make, 60), model = clean(body.model, 60), serial = clean(body.serial, 60);
   const type = normType(body.type), year = yr(body.year);
-  if (!make && !model) return { ok: false, error: "need_make_model", note: "POST { make, model, type?, year? }" };
+  if (!make && !model && !serial) return { ok: false, error: "need_make_model", note: "POST { make, model, serial?, type?, year? }" };
   const fallback = typicalByVintage(type, year);
   const key = opts.key || _env(/ANTHROPIC_API_KEY$/i);
-  if (!key) return { ok: true, configured: false, found: false, verified: false, query: { make, model, type, year }, fallback, note: "AI lookup needs ANTHROPIC_API_KEY. Showing typical-by-vintage ESTIMATE only — verify the nameplate." };
+  // The user-entered serial is authoritative — always carry it back, even when the model isn't found.
+  const withSerial = (eq) => { const e = eq || {}; if (serial && !e.serial) e.serial = serial; return e; };
+  if (!key) return { ok: true, configured: false, found: false, verified: false, equipment: serial ? withSerial({ type: type || undefined }) : undefined, query: { make, model, serial, type, year }, fallback, note: "AI lookup needs ANTHROPIC_API_KEY. Showing typical-by-vintage ESTIMATE only — verify the nameplate." };
   try {
     const call = opts.call || callAI;
-    const data = await call(key, buildPayload(make, model, type, opts.model));
+    const data = await call(key, buildPayload(make, model, type, opts.model, serial));
     const r = parseAiResult(data, type);
-    return { ok: true, configured: true, found: r.found, verified: r.verified, equipment: r.equipment, sources: r.sources, query: { make, model, type, year }, fallback,
+    return { ok: true, configured: true, found: r.found, verified: r.verified, equipment: (r.found || serial) ? withSerial(r.equipment) : undefined, sources: r.sources, query: { make, model, serial, type, year }, fallback,
       note: r.found ? (r.verified ? "Specs from cited source(s) — confirm against the nameplate." : "Model matched but no source cited — treat as UNVERIFIED; confirm the nameplate.") : "Model not found — enter the nameplate manually. Typical-by-vintage ESTIMATE shown as a placeholder only." };
   } catch (e) {
-    return { ok: true, configured: true, found: false, verified: false, error: String((e && e.message) || e).slice(0, 140), query: { make, model, type, year }, fallback, note: "Lookup failed — showing typical-by-vintage ESTIMATE. Verify the nameplate." };
+    return { ok: true, configured: true, found: false, verified: false, equipment: serial ? withSerial({ type: type || undefined }) : undefined, error: String((e && e.message) || e).slice(0, 140), query: { make, model, serial, type, year }, fallback, note: "Lookup failed — showing typical-by-vintage ESTIMATE. Verify the nameplate." };
   }
 }
 
@@ -199,7 +208,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ ok: true, service: "equipment-lookup", grounded: true, fabricates: false,
       types: Object.keys(TYPES).map((k) => ({ id: k, label: TYPES[k].label, combustion: TYPES[k].combustion, specs: Object.keys(TYPES[k].specs) })),
       vintage: VINTAGE,
-      note: "POST { make, model, type?, year? }. Forces a web_search; only marks specs verified when a real source is cited; returns found:false rather than guess a unit's nameplate. Keyless typical-by-vintage ESTIMATE always offered. Verify against the nameplate." });
+      note: "POST { make, model, serial?, type?, year? }. Forces a web_search; only marks specs verified when a real source is cited; returns found:false rather than guess a unit's nameplate. A serial number is captured/echoed for asset + warranty tracking and (only if the brand's serial-date scheme is cited) decoded to a manufacture date. Keyless typical-by-vintage ESTIMATE always offered. Verify against the nameplate." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -218,5 +227,6 @@ module.exports.parseAiResult = parseAiResult;
 module.exports.buildPayload = buildPayload;
 module.exports.lookup = lookup;
 module.exports.isCombustionFuel = isCombustionFuel;
+module.exports.mfgDate = mfgDate;
 module.exports.TYPES = TYPES;
 module.exports.VINTAGE = VINTAGE;

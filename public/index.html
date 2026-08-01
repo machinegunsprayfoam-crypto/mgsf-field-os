@@ -3189,7 +3189,8 @@ function bpiAddEquip(){ const c=document.getElementById('bpi_equip'); if(!c) ret
     `<select class="admin-inp bpi-eqtype"><option value="furnace">Furnace</option><option value="boiler">Boiler</option><option value="water_heater">Water heater</option><option value="ac">Central AC</option><option value="heat_pump">Heat pump</option><option value="mini_split">Mini-split</option></select>`+
     `<input class="admin-inp bpi-eqyear" placeholder="Year (opt)" inputmode="numeric">`+
     `<input class="admin-inp bpi-eqmake" placeholder="Make (e.g. Trane)">`+
-    `<input class="admin-inp bpi-eqmodel" placeholder="Model #"></div>`+
+    `<input class="admin-inp bpi-eqmodel" placeholder="Model #">`+
+    `<input class="admin-inp bpi-eqserial" placeholder="Serial # (opt)" style="grid-column:1 / -1"></div>`+
     `<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiFindSpecs(this)">🔎 Find specs (AI)</button>`+
     `<button class="btn btn-ghost" style="font-size:12px" onclick="this.closest('.bpi-eq').remove()">✕</button></div>`+
     `<div class="bpi-eqout" style="font-size:12px;margin-top:6px;color:var(--t2)"></div>`;
@@ -3197,26 +3198,28 @@ function bpiAddEquip(){ const c=document.getElementById('bpi_equip'); if(!c) ret
 }
 async function bpiFindSpecs(btn){ const row=btn.closest('.bpi-eq'); if(!row) return; const E=window.sysEsc;
   const g=sel=>((row.querySelector(sel)||{}).value||'').trim();
-  const type=g('.bpi-eqtype'), make=g('.bpi-eqmake'), model=g('.bpi-eqmodel'), year=g('.bpi-eqyear');
+  const type=g('.bpi-eqtype'), make=g('.bpi-eqmake'), model=g('.bpi-eqmodel'), year=g('.bpi-eqyear'), serial=g('.bpi-eqserial');
   const out=row.querySelector('.bpi-eqout');
-  if(!make && !model){ if(out) out.innerHTML='<span style="color:var(--yw)">Enter a make and/or model first.</span>'; return; }
+  if(!make && !model && !serial){ if(out) out.innerHTML='<span style="color:var(--yw)">Enter a make/model (or at least a serial #) first.</span>'; return; }
   if(out) out.innerHTML='Searching spec sheets…'; btn.disabled=true;
-  const d=await fetch('/api/equipment-lookup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({make:make,model:model,type:type,year:year})}).then(r=>r.json()).catch(()=>null);
+  const d=await fetch('/api/equipment-lookup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({make:make,model:model,serial:serial,type:type,year:year})}).then(r=>r.json()).catch(()=>null);
   btn.disabled=false;
   if(!d || d.ok===false){ if(out) out.innerHTML='<span style="color:var(--red)">Lookup failed'+(d&&d.error?(' ('+E(d.error)+')'):'')+'.</span>'; return; }
   const specLine=s=>Object.keys(s||{}).map(k=>E(k)+': <b>'+E(s[k])+'</b>').join(' · ');
   let h='';
-  if(d.found && d.equipment){ const eq=d.equipment;
+  const eq=d.equipment||{};
+  const serialLine=()=> (serial||eq.serial||eq.manufactureDate)?`<div style="margin-top:3px;font-size:11px;color:var(--t2)">`+((serial||eq.serial)?('S/N: '+E(serial||eq.serial)):'')+(eq.manufactureDate?`  ·  Mfg date: <b>${E(eq.manufactureDate)}</b> (verify)`:'')+`</div>`:'';
+  if(d.found && d.equipment){
     const badge=d.verified?'<span style="color:var(--gr);border:1px solid var(--gr);border-radius:4px;padding:0 4px;font-size:10px">✓ VERIFIED</span>':'<span style="color:var(--yw);border:1px solid var(--yw);border-radius:4px;padding:0 4px;font-size:10px">UNVERIFIED</span>';
     h+=`<div>${badge} ${E(eq.brand||make)} ${E(eq.model||model)}${eq.fuel?(' · '+E(eq.fuel)):''}</div>`;
-    h+=`<div style="margin-top:3px">${specLine(eq.specs)}</div>`;
+    h+=`<div style="margin-top:3px">${specLine(eq.specs)}</div>`+serialLine();
     if(eq.combustion){ h+=`<div style="color:var(--red);margin-top:3px">⚠ Combustion appliance — CAZ combustion-safety testing required before air-sealing.</div>`;
       const fs=document.getElementById('bpi_fuel'); if(fs && eq.fuel) _bpiFuelMatch(fs,eq.fuel); }
     if(d.sources&&d.sources.length){ h+=`<div style="margin-top:3px;font-size:11px">Source: `+d.sources.slice(0,2).map(u=>`<a href="${E(u)}" target="_blank" rel="noopener" style="color:var(--cy)">link</a>`).join(' · ')+`</div>`; }
-    row.dataset.eq=JSON.stringify({type:eq.type,make:make,model:model,year:year,fuel:eq.fuel,specs:eq.specs,verified:!!d.verified,combustion:!!eq.combustion});
+    row.dataset.eq=JSON.stringify({type:eq.type,make:make,model:model,serial:serial||eq.serial,manufactureDate:eq.manufactureDate,year:year,fuel:eq.fuel,specs:eq.specs,verified:!!d.verified,combustion:!!eq.combustion});
   } else {
-    h+=`<div style="color:var(--yw)">Model not found — enter the nameplate manually.</div>`;
-    row.dataset.eq=JSON.stringify({type:type,make:make,model:model,year:year,verified:false});
+    h+=`<div style="color:var(--yw)">Model not found — enter the nameplate manually.</div>`+serialLine();
+    row.dataset.eq=JSON.stringify({type:type,make:make,model:model,serial:serial||eq.serial,manufactureDate:eq.manufactureDate,year:year,verified:false});
   }
   if(d.fallback && d.fallback.specs){ h+=`<div style="margin-top:3px;font-size:11px;color:var(--t2)">Typical for this type/era (ESTIMATE, not this unit): ${specLine(d.fallback.specs)}${d.fallback.note?(' — '+E(d.fallback.note)):''}</div>`; }
   h+=`<div style="margin-top:3px;font-size:10px;color:var(--t2)">${E(d.note||'')}</div>`;
@@ -3224,9 +3227,10 @@ async function bpiFindSpecs(btn){ const row=btn.closest('.bpi-eq'); if(!row) ret
 }
 function _bpiEquip(){ const rows=document.querySelectorAll('#bpi_equip .bpi-eq'); const list=[];
   rows.forEach(row=>{ const g=sel=>((row.querySelector(sel)||{}).value||'').trim();
-    const make=g('.bpi-eqmake'), model=g('.bpi-eqmodel'); if(!make && !model) return;
+    const make=g('.bpi-eqmake'), model=g('.bpi-eqmodel'), serial=g('.bpi-eqserial'); if(!make && !model && !serial) return;
     let looked=null; try{ looked=row.dataset.eq?JSON.parse(row.dataset.eq):null; }catch(e){}
-    list.push(looked || { type:g('.bpi-eqtype'), make:make, model:model, year:g('.bpi-eqyear') });
+    if(looked && serial && !looked.serial) looked.serial=serial;
+    list.push(looked || { type:g('.bpi-eqtype'), make:make, model:model, serial:serial, year:g('.bpi-eqyear') });
   });
   return list;
 }
@@ -3309,6 +3313,7 @@ function bpiRenderResult(d){
     d.equipment.forEach(eq=>{ const sp=Object.keys(eq.specs||{}).map(k=>E(k)+' '+E(eq.specs[k])).join(' · ');
       html+=`<div style="font-size:12px;margin-bottom:4px"><span>${E(eq.type)}: ${E(eq.make||'')} ${E(eq.model||'')}${eq.fuel?(' ('+E(eq.fuel)+')'):''}</span>`+
         `${eq.verified?' <span style="color:var(--gr);font-size:10px">✓</span>':' <span style="color:var(--yw);font-size:10px">unverified</span>'}`+
+        (eq.serial?`<br><span style="color:var(--t2)">S/N: ${E(eq.serial)}${eq.manufactureDate?(' · mfg '+E(eq.manufactureDate)):''}</span>`:'')+
         (sp?`<br><span style="color:var(--t2)">${sp}</span>`:'')+(eq.combustion?`<br><span style="color:var(--red)">⚠ combustion — CAZ before air-sealing</span>`:'')+`</div>`; });
     html+=`</div>`; }
   if(d.sizing){ const s=d.sizing; html+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Right-sizing after the work (ESTIMATE)</h4><div style="font-size:12px;line-height:1.6">`+

@@ -148,6 +148,8 @@ const se = A.summarizeEquipment([{ type: "furnace", make: "Trane", model: "S9V2"
 ok("equipment with make/model kept; empty dropped", se.list.length === 1 && se.list[0].make === "Trane");
 ok("gas furnace ⇒ hasCombustion", se.hasCombustion === true && se.list[0].combustion === true);
 ok("verified flag preserved", se.list[0].verified === true);
+const seSerial = A.summarizeEquipment([{ type: "furnace", make: "Trane", model: "S9V2", serial: "1815ABC", manufactureDate: "2018", fuel: "Natural Gas" }]);
+ok("serial + manufacture date carried through", seSerial.list[0].serial === "1815ABC" && seSerial.list[0].manufactureDate === "2018");
 const seElec = A.summarizeEquipment([{ type: "heat_pump", make: "Mitsubishi", model: "MSZ", fuel: "electric" }]);
 ok("electric heat pump ⇒ not combustion", seElec.hasCombustion === false);
 ok("non-array equipment ⇒ empty", A.summarizeEquipment(null).list.length === 0);
