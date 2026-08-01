@@ -32,7 +32,8 @@ ok("seawall wired to concrete-calc", A.engineFor("seawall").includes("concrete-c
 ok("electrical wired to its calc engine + sub-bid (estimate or check the bid)", (() => { const e = A.engineFor("electrical"); return e.includes("electrical-load") && e.includes("sub-bid"); })());
 ok("HVAC/plumbing/framing each wired to their calc engine", A.engineFor("hvac").includes("hvac-load") && A.engineFor("plumbing").includes("plumbing-calc") && A.engineFor("framing").includes("framing-calc"));
 ok("drywall wired to drywall-calc + sub-bid", A.engineFor("drywall").includes("drywall-calc") && A.engineFor("drywall").includes("sub-bid"));
-ok("a pure sub trade (masonry) still routes to sub-bid only", JSON.stringify(A.engineFor("masonry")) === '["sub-bid"]');
+ok("masonry/flatwork/roofing wired to their calc + sub-bid", A.engineFor("masonry").includes("masonry-calc") && A.engineFor("concrete-flatwork").includes("flatwork-calc") && A.engineFor("roofing-shingle").includes("roofing-shingle-calc"));
+ok("a still-pure sub trade (fire) routes to sub-bid only", JSON.stringify(A.engineFor("fire")) === '["sub-bid"]');
 ok("unknown trade ⇒ no engine", A.engineFor("spaceship").length === 0);
 ok("divisionFor surfaces engines", (A.divisionFor("spray foam attic").engines || []).includes("foam-calc"));
 ok("primeSubStructure self-perform rows carry engines", (() => { const s = A.primeSubStructure({ trades: ["spray foam"] }); return (s.selfPerform[0].engines || []).includes("foam-calc"); })());

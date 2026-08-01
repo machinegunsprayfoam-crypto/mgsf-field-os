@@ -42,12 +42,22 @@ _Last updated: 2026-07-26._
   quantity calculator** (masonry/drywall/roofing-shingle/excavation/metal/doors-windows/fire/sitework/
   concrete-flatwork) — fell back to trade-estimate. Offered to build the 9; Clifton hadn't said go yet,
   so building them ONE-per-fire overnight, grounded + staged for review.
-- **#1 built: `api/drywall-calc.js`** — area→sheets by sheet size + waste (SOLID geometry) + GA-216 screw
-  scaling + GA-214 mud/tape ESTIMATES (transparent, overridable coverage assumptions echoed in output,
-  clearly labeled ESTIMATE). Board TYPE deferred to AHJ. No pricing. Wired `drywall`→`drywall-calc` in
-  construction ENGINES (so it surfaces in trade-pack Toolbox). `tests/drywall-calc.js` = 18 + 1
-  construction wiring check. Gate **78 suites / 1803 checks** green. **Remaining 8** sub-trade calcs +
-  adding drywall-calc to the frontend CALCS `CALC_ENGINES` form map = next fires / owner review.
+- **4 of 9 built** (all: pure geometry solid + standard coverage constants labeled ESTIMATE, overridable,
+  no pricing, structural/design deferred to the code/engineer/AHJ; each wired into construction ENGINES
+  so it surfaces in the trade-pack Toolbox; each registered in run-all + tools catalog):
+  - `api/drywall-calc.js` — area→sheets by size + waste + GA-216 screws + GA-214 mud/tape.
+  - `api/flatwork-calc.js` — area×thickness→cubic yards (0.25-yd round-up) + bagged-mix for small pours;
+    rebar/mix/frost-depth deferred to ACI 318/332 + IRC. (Distinct from concrete-calc = our PU lifting.)
+  - `api/roofing-shingle-calc.js` — roof-surface area→squares + bundles/underlayment/accessories;
+    ice-barrier + fastening per IRC R905. (SPF/coated roofs = coating-calc.)
+  - `api/masonry-calc.js` — wall area × unit coverage→block/brick + mortar + grout(filled cells);
+    reinforcing/structural deferred to TMS 402/602.
+  Tests: drywall 18, flatwork 11, roofing 10, masonry 11 + construction wiring checks. Gate **81 suites
+  / 1842 checks** green.
+  - **Remaining candidates:** excavation (cut/fill cu-yd) + sitework (asphalt tonnage/base) are buildable
+    next. metal (structural→engineer), doors-windows (a COUNT→trade-estimate), fire (stamped NFPA-13
+    design→NICET) are correctly LEFT deferred, not naive-calc'd. Also TODO: add these to the frontend
+    CALCS `CALC_ENGINES` form map (owner review).
 
 **★ JOB WORKFLOW / WIRING MAP + AI-connections answer — 2026-08-01 (branch, not merged):**
 - Clifton asked for a "map + blueprint workflow and wiring tool" and an "AI connections tool."

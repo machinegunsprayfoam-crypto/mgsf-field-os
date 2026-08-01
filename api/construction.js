@@ -95,6 +95,9 @@ const ENGINES = {
   "plumbing": ["plumbing-calc", "sub-bid"],
   "framing": ["framing-calc", "sub-bid"],
   "drywall": ["drywall-calc", "sub-bid"],
+  "concrete-flatwork": ["flatwork-calc", "sub-bid"],
+  "roofing-shingle": ["roofing-shingle-calc", "sub-bid"],
+  "masonry": ["masonry-calc", "sub-bid"],
 };
 // The engine(s) for a trade id. Self-perform ⇒ its calc modules; sub trade ⇒ ["sub-bid"] (quoted, not
 // estimated by MGSF); unknown ⇒ []. Deterministic.

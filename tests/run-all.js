@@ -84,6 +84,9 @@ const SUITES = [
   ["business-audit", "business audit: ranked findings from records (pipeline/stale bids/close rate/cold leads/AR aging/overdue jobs/concentration/margin), severity-sorted, margin only graded when a target is supplied — no fabricated numbers, no pricing"],
   ["job-workflow", "job workflow / wiring map: trades → ordered construction phases + dependency edges (the wiring) + inspection gates + prime/sub tags + the MGSF never-cover-foam-before-inspection rule; dependency resolves to nearest present phase; GUIDANCE, no pricing/durations"],
   ["drywall-calc", "drywall takeoff: area→sheets by sheet size + waste (solid geometry) + GA-216 screw scaling + transparent/overridable mud+tape ESTIMATES; board type deferred to AHJ; no pricing"],
+  ["flatwork-calc", "concrete flatwork takeoff: area×thickness→cubic yards (0.25-yd round-up) + bagged-mix for small pours (solid geometry); rebar/mix/footings deferred to ACI/IRC + AHJ; no pricing"],
+  ["roofing-shingle-calc", "shingle/metal roofing takeoff: roof-surface area→squares (geometry) + bundles/underlayment/accessories (ESTIMATE); ice-barrier + fastening per IRC/AHJ; no pricing"],
+  ["masonry-calc", "masonry takeoff: wall area × unit coverage→block/brick count + mortar + grout for filled cells (standard coverage, ESTIMATE); reinforcing/structural deferred to TMS 402/602 + engineer; no pricing"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
