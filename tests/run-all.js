@@ -87,6 +87,7 @@ const SUITES = [
   ["flatwork-calc", "concrete flatwork takeoff: area×thickness→cubic yards (0.25-yd round-up) + bagged-mix for small pours (solid geometry); rebar/mix/footings deferred to ACI/IRC + AHJ; no pricing"],
   ["roofing-shingle-calc", "shingle/metal roofing takeoff: roof-surface area→squares (geometry) + bundles/underlayment/accessories (ESTIMATE); ice-barrier + fastening per IRC/AHJ; no pricing"],
   ["masonry-calc", "masonry takeoff: wall area × unit coverage→block/brick count + mortar + grout for filled cells (standard coverage, ESTIMATE); reinforcing/structural deferred to TMS 402/602 + engineer; no pricing"],
+  ["excavation-calc", "excavation/earthwork takeoff: area×depth→bank cubic yards (geometry) + swell (loose/haul) + compaction (fill) + truck loads; soil factors are ESTIMATE (verify geotech); 811 + OSHA Subpart P surfaced; no pricing"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
