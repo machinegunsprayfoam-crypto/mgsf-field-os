@@ -40,6 +40,8 @@ const SUITES = [
   ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
+  ["axle", "axle programs: workers/money/all presets + tick logic"],
+  ["engineer", "engineer agent: platform assessment + suggestions + plan-gating"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
