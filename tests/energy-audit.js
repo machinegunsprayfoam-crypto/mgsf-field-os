@@ -143,5 +143,18 @@ ok("measures alone (no bills) is valid input", mres.ok === true);
 const capped = A.analyze({ measures: [{ id: "a", cost: 1000, incentiveDollar: 400 }, { id: "b", cost: 1000, incentiveDollar: 400 }], programCap: 500 });
 ok("program cap limits total incentive", capped.measuresTotal.incentiveAfterCap === 500 && capped.measuresTotal.netCostAfterCap === 1500);
 
+// ---- summarizeEquipment(): document existing systems, combustion drives CAZ (no fabrication) ----
+const se = A.summarizeEquipment([{ type: "furnace", make: "Trane", model: "S9V2", fuel: "Natural Gas", specs: { afue: 96 }, verified: true }, { type: "ac", make: "", model: "" }]);
+ok("equipment with make/model kept; empty dropped", se.list.length === 1 && se.list[0].make === "Trane");
+ok("gas furnace ⇒ hasCombustion", se.hasCombustion === true && se.list[0].combustion === true);
+ok("verified flag preserved", se.list[0].verified === true);
+const seElec = A.summarizeEquipment([{ type: "heat_pump", make: "Mitsubishi", model: "MSZ", fuel: "electric" }]);
+ok("electric heat pump ⇒ not combustion", seElec.hasCombustion === false);
+ok("non-array equipment ⇒ empty", A.summarizeEquipment(null).list.length === 0);
+// analyze wiring: equipment alone is valid input; a combustion unit raises the CAZ safety flag
+const eqRes = A.analyze({ equipment: [{ type: "furnace", make: "Lennox", model: "SL280", fuel: "Natural Gas" }] });
+ok("equipment alone is valid input", eqRes.ok === true && Array.isArray(eqRes.equipment) && eqRes.equipment.length === 1);
+ok("combustion equipment raises CAZ safety flag", /CAZ/.test(eqRes.safetyFlag || ""));
+
 console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

@@ -46,6 +46,7 @@ const SUITES = [
   ["roof-maintenance", "roof upkeep schedule/sweep: base-date + inspection/re-coat cadence + due windows + order"],
   ["invoice-remind", "AR reminders: overdue tone ladder + settled/unpaid filter (paid-substring guard) + ordering"],
   ["energy-audit", "utility-bill baseline: annualize + base/seasonal disaggregation + gated normalize/savings (ESTIMATE, no $)"],
+  ["equipment-lookup", "AI make/model → specs: grounded (forced web_search), verified-only-with-source, never-guess, vintage ESTIMATE fallback"],
   ["daily-brief", "morning brief compose: active/dead filter + open-invoice threshold + AR/pipeline sums + overdue/cold"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
 ];

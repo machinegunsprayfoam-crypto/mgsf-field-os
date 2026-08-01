@@ -240,6 +240,22 @@ function prioritize(measures) {
   return scored.concat(rest).map((x, i) => ({ ...x, rank: i + 1 }));
 }
 
+// Document existing systems from the equipment-lookup helper. Pure passthrough — we don't
+// invent specs here (equipment-lookup already validated/labeled them); we just surface them and
+// let any combustion unit reinforce the CAZ safety flag. Returns { list, hasCombustion }.
+function summarizeEquipment(list) {
+  if (!Array.isArray(list)) return { list: [], hasCombustion: false };
+  const combustionRe = /gas|propane|lp|oil|wood|pellet|diesel|kerosene/i;
+  const clean = list.map((e) => {
+    e = e || {};
+    const combustion = e.combustion === true || combustionRe.test(String(e.fuel || "")) || /furnace|boiler/i.test(String(e.type || ""));
+    return { type: String(e.type || "").slice(0, 40) || "unit", make: String(e.make || "").slice(0, 60), model: String(e.model || "").slice(0, 60),
+      year: e.year ? String(e.year).slice(0, 8) : undefined, fuel: e.fuel ? String(e.fuel).slice(0, 40) : undefined,
+      specs: (e.specs && typeof e.specs === "object") ? e.specs : undefined, verified: !!e.verified, combustion };
+  }).filter((e) => e.make || e.model);
+  return { list: clean, hasCombustion: clean.some((e) => e.combustion) };
+}
+
 function analyze(body) {
   const b = body || {};
   const out = { ok: true, basis: "ESTIMATE", units: "energy savings in units (kWh/therms), no $; measure costs/incentives are OWNER-ENTERED per job, not MGSF pricing" };
@@ -258,10 +274,12 @@ function analyze(body) {
     if (Number.isFinite(cap) && cap >= 0) { tot.programCap = round(cap); tot.incentiveAfterCap = round(Math.min(tot.incentive, cap)); tot.netCostAfterCap = round(tot.cost - tot.incentiveAfterCap); }
     out.measuresTotal = tot;
   }
-  if (out.recommendations && out.recommendations.some((r) => r.hasSafety))
+  if (b.equipment) { const eq = summarizeEquipment(b.equipment); if (eq.list.length) { out.equipment = eq.list; out.hasCombustion = eq.hasCombustion; } }
+  const combustionConcern = (out.recommendations && out.recommendations.some((r) => r.hasSafety)) || out.hasCombustion;
+  if (combustionConcern)
     out.safetyFlag = "Combustion-safety (CAZ) testing required before air-sealing — see recommendations.";
-  if (!out.electric && !out.gas && !out.geometry && !out.recommendations && !out.measures)
-    return { ok: false, error: "no_input", note: "POST electric/gas reads, building{}, concerns[], and/or measures[]" };
+  if (!out.electric && !out.gas && !out.geometry && !out.recommendations && !out.measures && !out.equipment)
+    return { ok: false, error: "no_input", note: "POST electric/gas reads, building{}, concerns[], equipment[], and/or measures[]" };
   return out;
 }
 
@@ -290,6 +308,7 @@ module.exports.estimateSavings = estimateSavings;
 module.exports.siteEnergyMMBtu = siteEnergyMMBtu;
 module.exports.geometry = geometry;
 module.exports.concernsToMeasures = concernsToMeasures;
+module.exports.summarizeEquipment = summarizeEquipment;
 module.exports.MEASURE_CATALOG = MEASURE_CATALOG;
 module.exports.catalogFor = catalogFor;
 module.exports.applyIncentive = applyIncentive;

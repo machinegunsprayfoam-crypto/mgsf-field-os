@@ -40,6 +40,7 @@ const LOCAL_TOOLS = [
   { id: "dew-point",        category: "estimator", kind: "compute", does: "spray-safety GO/CAUTION/NO-GO (5°F margin)", module: "api/dew-point.js" },
   { id: "bpi-calc",         category: "estimator", kind: "compute", does: "blower-door ACH50 bands + ASHRAE 62.2 target", module: "api/bpi-calc.js" },
   { id: "energy-audit",     category: "estimator", kind: "compute", does: "utility-bill baseline for BPI reports — annualize kWh/therms, base-load vs seasonal split, weather-normalize, ESTIMATE savings (energy units, no $)", module: "api/energy-audit.js" },
+  { id: "equipment-lookup", category: "estimator", kind: "ai", does: "AI helper: find an HVAC/water-heater unit's specs from make+model (grounded web_search, verified-only-with-source, never guesses; typical-by-vintage ESTIMATE fallback)", module: "api/equipment-lookup.js" },
   { id: "roi",              category: "estimator", kind: "compute", does: "financing cash-flow / payback decision", module: "api/roi.js" },
   { id: "geo-mobilization", category: "geo",       kind: "compute", does: "mobilization tier by distance (keyless math)", module: "api/geo.js" },
   { id: "commission",       category: "finance",   kind: "compute", does: "commission split math", module: "api/commission.js" },
