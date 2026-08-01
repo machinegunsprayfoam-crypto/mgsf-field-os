@@ -69,8 +69,10 @@ _Last updated: 2026-07-26._
   / 1842 checks** green.
   - **Remaining candidates:** excavation (cut/fill cu-yd) + sitework (asphalt tonnage/base) are buildable
     next. metal (structural→engineer), doors-windows (a COUNT→trade-estimate), fire (stamped NFPA-13
-    design→NICET) are correctly LEFT deferred, not naive-calc'd. Also TODO: add these to the frontend
-    CALCS `CALC_ENGINES` form map (owner review).
+    design→NICET) are correctly LEFT deferred, not naive-calc'd.
+  - **UPDATE: all 6 built** (drywall/flatwork/roofing-shingle/masonry/excavation/sitework) AND **wired
+    into the frontend CALCS forms** (`CALC_ENGINES` + `CALC_SEED` in public/index.html) — tap-to-use in
+    the app, verified end-to-end headless (drywall 1200+800→69 sheets, no JS break). Gap fully closed.
 
 **★ JOB WORKFLOW / WIRING MAP + AI-connections answer — 2026-08-01 (branch, not merged):**
 - Clifton asked for a "map + blueprint workflow and wiring tool" and an "AI connections tool."

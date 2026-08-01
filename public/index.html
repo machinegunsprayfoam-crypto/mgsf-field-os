@@ -3044,6 +3044,24 @@ const CALC_ENGINES = {
   'framing-calc': { label:'Framing takeoff (studs/plates/sheathing)', path:'/api/framing-calc', fields:[
     {id:'lengthFt',label:'Wall length (ft)',ph:'40'},{id:'heightFt',label:'Wall height (ft)',ph:'8'},{id:'oc',label:'Stud spacing',type:'select',opts:[['16','16" OC'],['24','24" OC'],['12','12" OC']]},{id:'openings',label:'Openings (doors/windows)',ph:'2'},{id:'studSize',label:'Stud size',type:'select',opts:[['2x6','2x6'],['2x4','2x4']]}],
     render:(d)=> d && d.studs!=null ? `Studs: <b>${_cE(d.studs)}</b> · Plates: <b>${_cE(d.plates)}</b> · Sheathing: <b>${_cE(d.sheathingSheets)}</b> sheets<br>Board-feet: <b>${_cE(d.boardFeet)}</b><br><span style="color:var(--t2)">Member sizing/spans → IRC tables + AHJ/engineer.</span>` : null },
+  'drywall-calc': { label:'Drywall takeoff (sheets)', path:'/api/drywall-calc', fields:[
+    {id:'wallArea',label:'Wall area (ft²)',ph:'1200'},{id:'ceilingArea',label:'Ceiling area (ft²)',ph:'800'},{id:'sheet',label:'Sheet size',type:'select',opts:[['4x8','4×8'],['4x10','4×10'],['4x12','4×12']]},{id:'waste',label:'Waste (0–0.6)',ph:'0.1'}],
+    render:(d)=> d && d.sheetsToOrder!=null ? `Sheets: <b>${_cE(d.sheetsToOrder)}</b><br>Screws ~${_cE(d.consumables&&d.consumables.screws)} · Mud <b>${_cE(d.consumables&&d.consumables.jointCompoundGallons)}</b> gal · Tape ${_cE(d.consumables&&d.consumables.tapeFeet)} ft<br><span style="color:var(--t2)">Board TYPE (type-X/mold/cement) per GA-216 + AHJ.</span>` : null },
+  'flatwork-calc': { label:'Concrete flatwork (cubic yards)', path:'/api/flatwork-calc', fields:[
+    {id:'area',label:'Area (ft²)',ph:'400'},{id:'thickness',label:'Thickness (in)',ph:'4'},{id:'waste',label:'Waste (0–0.5)',ph:'0.1'}],
+    render:(d)=> d && d.yardsToOrder!=null ? `Order: <b>${_cE(d.yardsToOrder)} yd³</b> ready-mix (${_cE(d.cubicYards)} cy)${d.bagOption?`<br>or ~<b>${_cE(d.bagOption.bagsNeeded)}</b> × ${_cE(d.bagOption.bagSizeLb)}lb bags (small pour)`:''}<br><span style="color:var(--t2)">Rebar/mix/frost-depth → ACI/IRC + AHJ/engineer.</span>` : null },
+  'roofing-shingle-calc': { label:'Shingle/metal roofing (squares)', path:'/api/roofing-shingle-calc', fields:[
+    {id:'roofArea',label:'Roof-SURFACE area (ft²)',ph:'2000'},{id:'waste',label:'Waste (0–0.4)',ph:'0.12'},{id:'eaveRakeFt',label:'Eave+rake (ft)',ph:'180'},{id:'ridgeHipFt',label:'Ridge+hip (ft)',ph:'60'}],
+    render:(d)=> d && d.squares!=null ? `Squares: <b>${_cE(d.squares)}</b> · Bundles: <b>${_cE(d.bundles)}</b><br>Underlayment ${_cE(d.underlaymentRolls&&d.underlaymentRolls.rolls)} rolls · Drip/starter ${_cE(d.accessories&&d.accessories.dripEdgeFt||'—')} ft<br><span style="color:var(--yw)">Zone 6/7: ice-and-water barrier required (IRC R905).</span>` : null },
+  'masonry-calc': { label:'Masonry (block/brick count)', path:'/api/masonry-calc', fields:[
+    {id:'wallArea',label:'Wall face area (ft²)',ph:'800'},{id:'unit',label:'Unit',type:'select',opts:[['cmu-8','CMU 8"'],['cmu-12','CMU 12"'],['brick-mod','Modular brick'],['brick-std','Standard brick']]},{id:'waste',label:'Waste (0–0.4)',ph:'0.05'},{id:'groutedCellPct',label:'Grouted cells (0–1)',ph:'0'}],
+    render:(d)=> d && d.units!=null ? `Units: <b>${_cE(d.units)}</b> · Mortar <b>${_cE(d.mortarBags&&d.mortarBags.bags)}</b> bags${d.grout?`<br>Grout <b>${_cE(d.grout.cubicYards)}</b> cy (${_cE(d.grout.groutedCellPct)}% cells)`:''}<br><span style="color:var(--t2)">Reinforcing/structural → TMS 402/602 + engineer.</span>` : null },
+  'excavation-calc': { label:'Excavation (cut/fill cubic yards)', path:'/api/excavation-calc', fields:[
+    {id:'area',label:'Area (ft²)',ph:'1000'},{id:'depth',label:'Depth (ft)',ph:'3'},{id:'swellPct',label:'Swell (0–1)',ph:'0.25'},{id:'truckYd',label:'Truck (cy/load)',ph:'10'}],
+    render:(d)=> d && d.bankCubicYards!=null ? `Bank (cut): <b>${_cE(d.bankCubicYards)} cy</b> · Haul (loose): <b>${_cE(d.looseCubicYards)} cy</b><br>Trucks: <b>${_cE(d.truckLoads&&d.truckLoads.loads)}</b> · Fill-borrow ${_cE(d.fillBankYardsToPlaceCompacted)} cy<br><span style="color:var(--yw)">811 locate first · trench ≥5 ft: OSHA Subpart P protective system.</span>` : null },
+  'sitework-calc': { label:'Sitework / paving (tons)', path:'/api/sitework-calc', fields:[
+    {id:'material',label:'Material',type:'select',opts:[['asphalt','Asphalt (HMA)'],['base','Aggregate base']]},{id:'area',label:'Area (ft²)',ph:'10000'},{id:'thickness',label:'Thickness (in)',ph:'2'},{id:'waste',label:'Waste (0–0.4)',ph:'0.05'}],
+    render:(d)=> d && d.tons!=null ? `<b>${_cE(d.tons)} tons</b> ${_cE(d.material)} (${_cE(d.cubicYards)} cy)<br><span style="color:var(--t2)">Density is ESTIMATE — verify mix/DOT. 811 · drainage · SWPPP if ≥1 acre.</span>` : null },
 };
 function renderCalcs(){
   const b=document.getElementById('calcs_body'); if(!b) return;
@@ -3107,6 +3125,12 @@ const CALC_SEED = {
   'air-barrier-calc': (d)=> d.gallons!=null?{desc:'Air/vapor barrier',qty:d.gallons,unit:'gal'}:(d.rollsToOrder!=null?{desc:'Membrane',qty:d.rollsToOrder,unit:'rolls'}:null),
   'framing-calc': (d)=> d.studs!=null?{desc:'Studs',qty:d.studs,unit:'ea'}:null,
   'measure': (d)=> (d.netAreaSqft!=null||d.roofAreaWithWaste!=null)?{desc:'Area',qty:(d.netAreaSqft!=null?d.netAreaSqft:d.roofAreaWithWaste),unit:'ft²'}:null,
+  'drywall-calc': (d)=> d.sheetsToOrder!=null?{desc:'Drywall sheets',qty:d.sheetsToOrder,unit:'sheets'}:null,
+  'flatwork-calc': (d)=> d.yardsToOrder!=null?{desc:'Concrete (ready-mix)',qty:d.yardsToOrder,unit:'yd³'}:null,
+  'roofing-shingle-calc': (d)=> d.bundles!=null?{desc:'Shingles',qty:d.bundles,unit:'bundles'}:null,
+  'masonry-calc': (d)=> d.units!=null?{desc:'Block/brick',qty:d.units,unit:'ea'}:null,
+  'excavation-calc': (d)=> d.looseCubicYards!=null?{desc:'Excavation (haul)',qty:d.looseCubicYards,unit:'cy'}:null,
+  'sitework-calc': (d)=> d.tons!=null?{desc:'Paving material',qty:d.tons,unit:'tons'}:null,
 };
 function calcPrice(){ // from the last calc result → seed the estimator for the selected trade
   const trade=((document.getElementById('calc_trade')||{}).value)||'';
