@@ -18,6 +18,9 @@ function ok(name, cond, detail) { if (cond) { pass++; } else { fail++; console.l
 console.log("Frontend wiring integrity (public/index.html)\n");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+const crewApi = fs.readFileSync(path.join(__dirname, "..", "public", "crew-api.js"), "utf8");
+ok("crew API boundary loads before app scripts", html.indexOf("crew-api.js") >= 0 && html.indexOf("crew-api.js") < html.indexOf("brain-graph.js"));
+ok("crew API boundary only decorates same-origin API requests", /url\.origin === window\.location\.origin/.test(crewApi) && /url\.pathname\.indexOf\('\/api\/'\) === 0/.test(crewApi));
 
 // ---- collect every defined name (functions, window.X, const/let/var assignments, obj-literal methods) ----
 const defs = new Set();
