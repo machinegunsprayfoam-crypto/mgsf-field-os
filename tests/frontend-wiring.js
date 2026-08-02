@@ -18,13 +18,17 @@ function ok(name, cond, detail) { if (cond) { pass++; } else { fail++; console.l
 console.log("Frontend wiring integrity (public/index.html)\n");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+const layoutController = fs.readFileSync(path.join(__dirname, "..", "public", "layout-controller.js"), "utf8");
+const frontendSource = html + "\n" + layoutController;
+ok("layout controller is an external frontend foundation", html.indexOf("layout-controller.js") >= 0 && !/Device layout selector/.test(html));
+ok("layout controller preserves responsive and saved-layout behavior", /window\.setLayout/.test(layoutController) && /mgsf_layout/.test(layoutController) && /innerWidth<700/.test(layoutController));
 
 // ---- collect every defined name (functions, window.X, const/let/var assignments, obj-literal methods) ----
 const defs = new Set();
-for (const m of html.matchAll(/function\s+([A-Za-z_$][\w$]*)\s*\(/g)) defs.add(m[1]);
-for (const m of html.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=/g)) defs.add(m[1]);
-for (const m of html.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function|\()/g)) defs.add(m[1]);
-for (const m of html.matchAll(/([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s*)?function/g)) defs.add(m[1]);
+for (const m of frontendSource.matchAll(/function\s+([A-Za-z_$][\w$]*)\s*\(/g)) defs.add(m[1]);
+for (const m of frontendSource.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=/g)) defs.add(m[1]);
+for (const m of frontendSource.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function|\()/g)) defs.add(m[1]);
+for (const m of frontendSource.matchAll(/([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s*)?function/g)) defs.add(m[1]);
 ok("index.html defines a non-trivial number of functions", defs.size >= 200, String(defs.size));
 
 // ---- (1) DEAD BUTTON: every inline event handler's leading call resolves to a definition ----
