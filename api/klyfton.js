@@ -26,6 +26,28 @@ const ROUTER_MODEL = "claude-haiku-4-5";
 const WORKER_MODEL = "claude-sonnet-5";
 const CRITIC_MODEL = "claude-sonnet-5";
 
+// Near-the-wall guard — a serverless function is HARD-KILLED at its platform limit. This account is
+// Vercel PRO, and vercel.json sets `maxDuration: 300`, so the real wall is ~300s. The synthesizer is
+// the last and most expensive step; if the workers already ate most of the budget, STARTING a synth
+// we can't finish just gets the whole turn killed mid-write (a truncated/lost answer). Instead: when
+// too little time remains, skip the synth and return the fullest specialist answer we already have —
+// a complete real reply beats a dead one. Default wall = 290s (10s headroom under the 300s Pro cap);
+// almost never fires on a normal turn, only as a genuine backstop. Tunable via env: if this ever
+// runs on Hobby (60s cap) set KLYFTON_WALL_MS=55000; if Fluid Compute lifts the cap, raise it.
+const WALL_MS = parseInt(process.env.KLYFTON_WALL_MS, 10) || 290000;                  // effective function wall (Pro/300s)
+const SYNTH_RESERVE_MS = parseInt(process.env.KLYFTON_SYNTH_RESERVE_MS, 10) || 14000; // time a synth+send needs
+// PURE (testable): have we burned enough of the budget that we shouldn't start the synth?
+function shouldSkipSynth(elapsedMs, wallMs, reserveMs) {
+  return Number(elapsedMs) > Number(wallMs) - Number(reserveMs);
+}
+// PURE (testable): the fullest non-empty worker answer — the most complete standalone reply.
+function bestAnswer(answers) {
+  return (Array.isArray(answers) ? answers : [])
+    .filter((a) => a && a.text)
+    .slice()
+    .sort((a, b) => b.text.length - a.text.length)[0] || null;
+}
+
 // ---- Monthly cost cap (opt-in) ------------------------------------------------
 // Reuses the same Vercel KV / Upstash the sync module uses. Dormant unless KV is
 // attached AND KLYFTON_MONTHLY_BUDGET_USD is set. Spend is tracked per calendar
@@ -184,6 +206,12 @@ as MT. MT contractor/business license BOI-3RD-LIC-000309 (issued 2026-03-18). TA
 taxed as a CORPORATION was intended — CONFIRM with the accountant whether it was actually filed/accepted
 (it changes which return the surety needs and how SAM should read). Credentials for the capability statement:
 BPI Building Analyst + Building Science Principles (ID 5073450), SPFA member (2025), ProFoam-certified.
+OSHA OPERATOR/SAFETY CERTS (Clifton, Liftoff Certifications, all issued 2025-03-14): Fall Protection —
+General & Construction (OSHA 1926 Subpart M / 1910 Subpart D, ANSI/ASSP Z359.2; EXPIRES 2027-03-14 —
+renews FIRST, flag a renewal reminder ~60-90 days prior); MEWP aerial & scissor lifts (OSHA 1926.453,
+ANSI/SAIA A92.22/A92.24; expires 2028-03-14); Forklift classes 1-7 (OSHA 1910.178, ANSI B56.1-2020;
+expires 2028-03-14). Use them as safety differentiators on bids/GovCon; also filed in Drive
+(Legal_and_Certificates).
 
 INSURANCE — verified on file: General Liability (Midvale Indemnity, policy CP00147824, $1M/$2M, eff 2026-04-11,
 EXPIRES 2027-04-11 — flag a renewal reminder); Workers' Comp MT (Montana State Fund, policy 03-612989-4, eff
@@ -542,7 +570,27 @@ DOT / FMCSA FLEET COMPLIANCE (Daniel holds a CDL; MGSF hauls its own spray-foam 
 - What a USDOT # brings: driver DOT medical card, Driver Qualification file, drug & alcohol testing
   program (Part 382, CDL), annual vehicle inspection + daily DVIR, MCS-150 update every 2 years, UCR
   yearly, and possibly IRP/IFTA if ≥26,001 lb. There's a DOT check calculator + checklist in the app's
-  🛡️ Compliance tab. ALWAYS say "not legal advice — verify GVWR and specifics with MT MVD / FMCSA."`;
+  🛡️ Compliance tab. ALWAYS say "not legal advice — verify GVWR and specifics with MT MVD / FMCSA."
+
+STATE & LOCAL GOV CONTRACTING (beyond federal — SAM.gov is federal only). Each state runs its own
+vendor registration + bid list; register where MGSF bids:
+- Montana: register in eMACS (State Procurement Bureau, emacs.mt.gov) + Construction Contractor
+  Registration with MT DLI. ND: OMB State Procurement vendor system. SD: state procurement vendor
+  self-registration (+ SD contractor's excise tax on realty work). WY: A&I Procurement vendor list.
+- Resident/reciprocal bid preference exists in all four (WY's is strong) — verify the current % per state.
+STATE + FEDERAL LABOR / PREVAILING WAGE (compliance — flag it on any public/gov job):
+- Federal Davis-Bacon applies to federal/federally-funded construction over $2,000: pay the wage
+  determination's prevailing wage + fringes by classification and file weekly certified payroll (WH-347).
+- MONTANA has a state prevailing wage ("Little Davis-Bacon") on state/local public works — MT DLI sets
+  the rates; out-of-state contractors register + owe a 1% gross-receipts tax on public works.
+- ND / SD / WY have NO state prevailing-wage law (as of last check) — but FEDERAL Davis-Bacon still
+  applies on federally-funded work. Always verify with the state DoL before assuming none applies.
+WORKFORCE INCENTIVES (money for hiring/training — help capture it): WOTC (up to ~$9,600 for a qualified
+veteran hire — file IRS 8850 within 28 days), WIOA On-the-Job-Training reimbursement (~up to 50% of wage,
+arrange through the LOCAL workforce board BEFORE hiring), and Registered Apprenticeship (apprenticeship.gov;
+some federal/IRA work rewards apprentice labor hours). Amounts/availability change — verify each; not tax
+advice (confirm credits with the CPA). The app's gov-programs tool returns the state-by-state checklist,
+prevailing-wage applicability, and matching incentives — all GUIDANCE with verify pointers, never fabricated.`;
 
 // Klyfton can propose an action in the app. The crew member always confirms with a button —
 // nothing is written silently (matches the "you draft, humans commit" rule).
@@ -1042,6 +1090,128 @@ Guardrails: accounting & tax are GUIDANCE ONLY — a CPA signs the returns/finan
 targets, and entity status defer to DOCTRINE + the accountant (ProTax); QuickBooks is the system of record;
 never fabricate financials; nothing customer-facing (invoices, quotes) sends without Clifton's approval.`;
 
+// TRADES EXPERT — in-depth, master-level knowledge of every construction trade MGSF touches as a PRIME
+// GC (self-perform = foam/roofing/coatings/concrete-lifting/soil-seawall; the rest we sub + manage).
+// Grounded in the PUBLISHED governing codes (same authorities as api/trade-pack.js + the trade
+// calculators), NOT fabricated. Klyfton reasons like a seasoned GC/foreman across trades, cites the
+// code, runs the right calculator, knows the red flags — and DEFERS every jobsite value + final sign-off
+// to the licensed trade pro / the AHJ / a stamped engineer. HVAC lives in HVAC_ENGINEERING; this covers
+// the others. No pricing here — sizing/quantities come from the calculators, dollars from DOCTRINE/owner.
+const TRADES_EXPERT = `TRADES EXPERT (reason like a GC/foreman across every trade; cite the code, run the calculator, defer the sign-off):
+STANCE: MGSF self-performs foam/SPF-roofing/coatings/concrete-lifting/soil+seawall. Everything below we
+run as PRIME and subcontract to a licensed trade — so know each trade well enough to SCOPE it, size it,
+sanity-check a sub's bid (sub-bid leveling), catch red flags, and sequence it — but a licensed
+electrician/plumber/etc. + the AHJ own the permit, the final numbers, and the sign-off. Editions vary by
+jurisdiction — always "verify the AHJ's adopted code + edition." Never fabricate a jobsite value; never
+promise a code number without verifying; MGSF pricing stays in DOCTRINE.
+
+ELECTRICAL — code: NEC (NFPA 70). Calculator: electrical-load (Art. 220 service load, 310.16 ampacity,
+voltage drop). Master rules a GC checks: service size comes from the Art. 220 demand calc (general
+lighting 3 VA/ft² + small-appliance + fixed appliances w/ demand factors), NOT a guess. 210: 20A
+small-appliance circuits in kitchen; AFCI on most living-area circuits; GFCI at kitchens/baths/garage/
+outdoors/laundry (210.8); receptacle spacing so no point on a wall is >6 ft from an outlet (210.52).
+Conductor ampacity + derate for temp/bundling (310.16); size the OCPD (breaker) to the wire, not the
+load only (240). Grounding + bonding (250) is the safety spine. Box fill + conduit fill (Ch. 3). RED
+FLAGS: aluminum branch wiring, double-taps, no AFCI/GFCI where required, undersized service for added
+load (e.g. after adding a heat pump — coordinate with HVAC). SAFETY: LOTO (1910.147) + NFPA 70E arc-flash
+PPE + verify-dead. Defer: a licensed electrician sizes + signs; AHJ inspects rough-in + final.
+
+PLUMBING — code: IPC (or UPC per AHJ). Calculator: plumbing-calc (WSFU→supply, DFU→drain, water-heater
+sizing). Master rules: size supply off fixture units (Tbl 604.3 WSFU) + pressure/length; size DWV off
+DFU with correct slope (¼"/ft typical on small horizontal drains) and every fixture trap PROTECTED by a
+vent (no siphoning). Trap-arm length limits; cleanouts where required; water heater needs a T&P valve +
+drain pan/discharge; expansion control on closed systems; backflow prevention on cross-connections.
+Water-hammer + thermal-expansion are real. RED FLAGS: S-traps, flat/back-pitched drains, unvented
+fixtures, no T&P discharge, undersized supply causing pressure drop. SAFETY: confined space (1910.146)
+in crawls/vaults, torch/hot-work fire watch, scald control (ASSE 1017). Defer: a licensed plumber sizes
++ pressure-tests + signs; AHJ inspects.
+
+HVAC/MECHANICAL — see HVAC_ENGINEERING for the deep system logic. Calculator: hvac-load (Zone 6/7
+rule-of-thumb + tonnage/CFM + ASHRAE 62.2). One-liner: air-seal FIRST → Manual J → Manual S/D; ~400
+CFM/ton; never oversize; combustion-safety/CAZ after tightening. Licensed mechanical + EPA 608 owns it.
+
+FRAMING/CARPENTRY — code: IRC (R502 floors, R602 walls, R802 roof). Calculator: framing-calc (stud/
+plate/sheathing + joist/rafter takeoff + board-feet; SPANS deferred to IRC tables). Master rules: member
+size comes from the IRC span tables (species/grade/spacing/load) or an engineer — never eyeballed; header
+at every opening sized to the span; king/jack/cripple layout; fastening schedule (R602.3); wall bracing/
+shear (R602.10); truss layout + PERMANENT bracing per the truss engineer; point loads carry continuously
+to the footing. RED FLAGS: notched/bored joists past limits, missing headers, no bracing, cut trusses
+(never cut an engineered truss). SAFETY: fall protection >6 ft (1926.501), saw/nail-gun guarding,
+temporary bracing until sheathed. Defer: engineer anything outside the tables; AHJ inspects framing before
+cover. (Insulation/air-barrier ties straight back to our foam scope — rvalue-calc + air-barrier-calc.)
+
+MASONRY — code: TMS 402/602 + IBC ch.21 / IRC R606; ASTM C90 (CMU), C270 (mortar), C476 (grout). Master
+rules: mortar TYPE matches the load (N/S/M — don't over/under-spec); reinforcing + grouted cells per the
+drawings; control/expansion joints to manage movement/cracking; flashing + weep holes at the base of
+veneer (water WILL get behind brick — it must drain out); cold-weather masonry protection <40°F. RED
+FLAGS: no weeps/flashing, wrong mortar type, missing movement joints, ungrouted reinforced cells. SAFETY:
+silica (1926.1153) on cutting/mixing, scaffold (Subpart L), wall bracing until cured (Subpart limited-
+access zones). Defer: engineer structural/seismic; AHJ inspects.
+
+CONCRETE FLATWORK/FOUNDATIONS — code: ACI 318 / ACI 332 (residential) + IRC R403/R404/R506. Master
+rules: footings BELOW the local frost line; rebar size/spacing + cover per ACI/drawings; mix design +
+slump + AIR ENTRAINMENT for freeze-thaw (Zone 6/7 = non-negotiable); vapor barrier under heated slab;
+control/expansion joints (crack where you PLAN to) + a cure plan (concrete cracks — control it, don't
+pretend it won't). RED FLAGS: no air entrainment in freeze-thaw, footings above frost, no vapor barrier,
+no control joints. SAFETY: wet-concrete is caustic (skin/eye PPE + wash), silica on cut/grind, pump-line/
+formwork bracing. (This is adjacent to our concrete-LIFTING self-perform — but flatwork/pours we sub.)
+
+ROOFING (shingle/metal) — code: IRC R905 + IBC ch.15; manufacturer instructions govern the WARRANTY;
+wind/uplift per the listing + ASCE 7. Master rules: ICE-AND-WATER barrier at eaves/valleys (required in
+Zone 6/7 — R905.1.2); underlayment + drip edge; fastener count/pattern per the wind rating; step/valley/
+penetration flashing; BALANCED ventilation (intake + ridge). RED FLAGS: no ice barrier in our climate,
+under-nailed field, reverse-lapped flashing, unbalanced/blocked ventilation. SAFETY: fall protection >6
+ft, roof-jack/ladder setup, weather window. (SPF/coating roofs we self-perform — that's FOAM_SPECS/
+SERVICE_ARCHITECTURE; tear-off shingle/metal we sub.)
+
+DRYWALL & FINISHES — code: GA-216 + ASTM C840; IRC R702, fire-rated/type-X assemblies per R302 + the
+listed UL/GA detail. Master rules: right board for the location (type-X where rated, mold-resistant in wet
+areas, cement board behind tile); fastener spacing + screw depth; a fire-rated assembly must match the
+LISTED detail exactly; finish LEVEL (GA-214 Level 0-5) per the spec + lighting; control joints on long
+runs. RED FLAGS: standard board where a rated assembly is required, wrong board in wet areas, over-driven
+screws. SAFETY: silica/dust on sanding (respirator), panel lift/handling.
+
+DOORS & WINDOWS — code: IRC R308 (safety glazing), R310 (egress/EERO at bedrooms), manufacturer flashing;
+IECC U-factor/SHGC for Zone 6/7. Master rules: egress opening size at every sleeping room; safety glazing
+at hazardous locations; flashing + sill-pan per the maker (or the warranty voids + it leaks); header sized
+for the opening (framing-calc/engineer); performance rating meets our climate. RED FLAGS: bedroom window
+too small for egress, no pan flashing, non-safety glass at a door/tub.
+
+EXCAVATION/EARTHWORK — code: OSHA 1926 Subpart P is the GOVERNING safety rule (this is where people die).
+Calculator: none — this is scope/safety. Master rules: call 811 to locate utilities BEFORE any dig (not
+optional); a protective system (slope/shore/trench box) for any trench ≥5 ft (and a competent person
+classifies the soil A/B/C); access/egress ≤25 ft in trenches ≥4 ft; keep spoil ≥2 ft from the edge;
+nobody under a suspended load; dewatering + surface-water diversion; compaction/backfill per geotech.
+RED FLAGS: unprotected trench, no locate ticket, water in the trench, spoil at the edge. This is a
+STOP-WORK trade if the protective system isn't right.
+
+STEEL/METAL BUILDING — code: AISC 360 / AISI S100 + IBC ch.22; MBMA for metal-building systems; welds per
+AWS D1.1. Master rules: erect to the STAMPED drawings; anchor-bolt layout + bolt torque / weld inspection;
+bracing + purlin/girt layout; erection sequence per the manufacturer (it's not stable until braced). RED
+FLAGS: field-modifying stamped steel, missing bracing, un-inspected welds. SAFETY: steel-erection fall
+protection (Subpart R), crane/rigging + spotter, hot-work fire watch. Defer: engineer + stamped package.
+
+FIRE SUPPRESSION — code: NFPA 13 (commercial) / 13R / 13D + NFPA 25 (test/inspect); IFC/IBC ch.9. Master
+rules: the design must be STAMPED (NICET designer + hydraulic calc); head spacing/coverage per the listing;
+adequate water supply/flow test; hydrostatic test (200 psi/2 hr) + fire-marshal acceptance. This trade is
+almost always a licensed fire-protection contractor — MGSF coordinates, never DIYs it.
+
+SITEWORK/PAVING — code: IRC R401/R403 site prep + drainage, IBC ch.32; asphalt to state DOT specs; ADA
+where public; SWPPP/erosion control if disturbing ≥1 acre (EPA/state). Master rules: 811 + survey/stakes;
+subgrade prep + base-course compaction; POSITIVE drainage away from structures (min slope); ADA slopes/
+detectable warnings where public. RED FLAGS: ponding toward the building, uncompacted subgrade, no SWPPP
+on a big disturbance.
+
+CROSS-TRADE SEQUENCING (a GC's real value): sitework/excavation → foundation/flatwork → framing/steel →
+roof dry-in → rough-ins (electrical/plumbing/HVAC) + inspections → insulation/air-barrier (OUR foam) +
+inspection → drywall → finishes/doors-windows → final trades → final inspections. Air-seal/insulate is
+gated by rough-in sign-offs; never cover foam before the insulation inspection. Prime tools: construction
+(taxonomy), trade-pack (per-trade code/permit/license/safety), trade-estimate (owner-rate pricing),
+sub-bid (leveling), prime-assembler (rollup), subs (compliance).
+Guardrails: GUIDANCE — a licensed trade + the AHJ own the permit/final numbers/sign-off; verify every code
++ edition with the AHJ; engineer anything structural; sizing comes from the calculators; NO fabricated
+numbers; MGSF pricing stays in DOCTRINE; never guarantee savings; nothing customer-facing sends without Clifton's approval.`;
+
 // ---- GraphRAG brain assembly: load only the knowledge blocks relevant to THIS question, via
 // retrieval over the real InfraNodus brain graph (api/brain-graph-retrieve.js). Identity, doctrine,
 // operating principles, the action contract and the expert-library citation router are ALWAYS present;
@@ -1050,14 +1220,14 @@ never fabricate financials; nothing customer-facing (invoices, quotes) sends wit
 const brainRetrieve = require("./brain-graph-retrieve.js");
 const BRAIN_BLOCKS = {
   BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
-  STEM_FOUNDATIONS, HVAC_ENGINEERING, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
+  STEM_FOUNDATIONS, HVAC_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
   PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
@@ -1358,7 +1528,7 @@ Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, gen
 Use "marketing" for social posts / content / captions / ads. Use "hunter" for finding new leads,
 jobs, opportunities, or gov solicitations.
 Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
-Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
+Rules: 1-3 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
 If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
   const recent = (history || [])
@@ -1376,7 +1546,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
     const parsed = j ? JSON.parse(j[0]) : null;
     let minds = (parsed && Array.isArray(parsed.minds) ? parsed.minds : [])
       .filter((k) => SPECIALISTS[k])
-      .slice(0, 4);
+      .slice(0, 3); // hive cap: at most 3 minds — bounds worker fan-out (latency/timeout control)
     if (!minds.length) minds = ["general"];
     const complexity = parsed && parsed.complexity === "complex" ? "complex" : "simple";
     return { minds: complexity === "simple" ? [minds[0]] : minds, complexity };
@@ -1397,9 +1567,9 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
     model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
     // and fast (the synth writes the full final answer). Big worker budgets + adaptive
-    // thinking were pushing complex, multi-mind asks past the 60s function limit and
+    // thinking were pushing complex, multi-mind asks toward the function time limit and
     // making Klyfton time out ("ran long"). 4000 leaves room for thinking + a focused
-    // answer without the latency blow-up.
+    // answer without the latency blow-up (kept tight even on Pro/300s — latency, not just the cap).
     max_tokens: 4000,
     system,
     thinking: { type: "adaptive" },
@@ -1411,7 +1581,7 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
 
 // Self-healing worker (adopted from the field's auto-retry/self-healing pattern, e.g. Beam): a
 // transient failure — a thrown error or an EMPTY answer — gets ONE bounded retry before we give up.
-// Capped at a single extra call so we never blow the function's 60s time / cost budget. The
+// Capped at a single extra call so we never blow the function's time / cost budget. The
 // synthesizer+critic still catches fabrication and doctrine-gate failures downstream; this layer
 // only recovers flaky/empty runs so one hiccup doesn't silently drop a mind from the hive.
 async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
@@ -1589,47 +1759,56 @@ module.exports = async (req, res) => {
   }
 
   const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
-  // Merge the client-sent memory with a SEMANTIC recall of the most relevant long-term facts for
-  // this specific message (top-K by embedding similarity). Best-effort + gated: no-op with zero
-  // network cost when pgvector memory isn't configured, and never blocks the answer on failure.
-  let memList = Array.isArray(body.memory) ? body.memory.slice() : [];
-  if (userText && !isTrivial(userText, attachments)) {
-    try {
-      const rec = await semanticMemory.recall(userText, 6);
-      if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
-        const hits = rec.results.map((x) => x && x.note).filter(Boolean);
-        memList = Array.from(new Set(hits.concat(memList))); // relevant recalls first, de-duped
-      }
-    } catch (e) { /* fall back to client-sent memory */ }
-  }
-  // Live-data grounding — when the question is about the pipeline (leads/jobs/estimates/money), pull a
-  // compact REAL "situation" from brain-context (KV + HubSpot). Best-effort + gated: ~zero cost and a
-  // no-op when unconfigured, 2.5s timeout-guarded, and never blocks the answer on failure.
-  let liveCtx = "";
-  if (userText && !isTrivial(userText, attachments) &&
-      /\b(lead|leads|customer|client|job|jobs|pipeline|estimate|estimates|quote|proposal|invoice|revenue|money|sales|follow[- ]?up|cold|deal|contact|schedule|how many|status|AR)\b/i.test(userText)) {
-    try { const g = await brainContext.gather({}); if (g && g.configured && g.context) liveCtx = "\n\n" + g.context; }
-    catch (e) { /* live data is best-effort — never block the answer */ }
-  }
-  // Knowledge-base grounding — pull the most relevant wiki articles (SOPs/playbooks) for this
-  // question. Best-effort + gated: no-op with zero cost when the wiki (Supabase) isn't attached,
-  // 2.5s-safe, never blocks the answer. Truth order is stated so a wiki article never overrides
-  // locked doctrine.
-  let wikiCtx = "";
-  if (userText && !isTrivial(userText, attachments)) {
-    try {
-      const w = await wiki.retrieve(userText, 3);
-      if (w && w.configured && Array.isArray(w.results) && w.results.length) {
-        wikiCtx = "\n\nKNOWLEDGE BASE (wiki — company SOPs/playbooks; use these, but LOCKED DOCTRINE still wins over anything here):\n" +
-          w.results.map((r) => "• " + r.title + ": " + r.snippet).join("\n");
-      }
-    } catch (e) { /* wiki is best-effort — never block the answer */ }
-  }
-  const ctx = contextBlock(body.context, memList) + liveCtx + wikiCtx + toolBagBlock();
 
   // The router is text-only; give it a hint when a message is just an attachment.
   const routeText = userText || "[user attached " + attachments.length + " " +
     (attachments.some((a) => a.kind === "pdf") ? "file(s)" : "photo(s)") + " with no caption]";
+  // Per-request cost meter — every model call adds its dollar cost here.
+  const meter = { usd: 0 };
+  // Kick off routing CONCURRENTLY with the grounding lookups below. The router needs neither the
+  // grounding context nor the ATS state, so overlap its Haiku call under the grounding wall instead
+  // of running it afterward (saves ~1-2s off every non-trivial turn). route() self-catches to a
+  // safe {general,simple} default, so this promise never rejects — safe to leave in flight.
+  const routeP = isTrivial(userText, attachments)
+    ? Promise.resolve({ minds: ["general"], complexity: "simple" })
+    : route(key, routeText, history, meter);
+
+  // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
+  // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
+  // backend can't stack latency or eat into the function time budget. Previously these three awaited
+  // one-after-another, ADDING their times together on every non-trivial turn (and memory/wiki had
+  // no timeout at all — only brain-context self-aborts at 2.5s). Same inputs, same resulting
+  // context and same assembly order; just overlapped and time-bounded. On timeout/failure a source
+  // resolves null and is simply skipped — grounding is optional, never blocks the answer.
+  let memList = Array.isArray(body.memory) ? body.memory.slice() : [];
+  let liveCtx = "";
+  let wikiCtx = "";
+  if (userText && !isTrivial(userText, attachments)) {
+    const cap = (p, ms) => Promise.race([
+      Promise.resolve(p).catch(() => null),
+      new Promise((resolve) => setTimeout(() => resolve(null), ms)),
+    ]);
+    // Live pipeline data only matters for pipeline/money questions — same gate as before.
+    const wantsLive = /\b(lead|leads|customer|client|job|jobs|pipeline|estimate|estimates|quote|proposal|invoice|revenue|money|sales|follow[- ]?up|cold|deal|contact|schedule|how many|status|AR)\b/i.test(userText);
+    const [rec, g, w] = await Promise.all([
+      cap(semanticMemory.recall(userText, 6), 2500),
+      wantsLive ? cap(brainContext.gather({}), 2600) : Promise.resolve(null),
+      cap(wiki.retrieve(userText, 3), 2500),
+    ]);
+    // Semantic memory: relevant recalls first, de-duped ahead of client-sent memory.
+    if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
+      const hits = rec.results.map((x) => x && x.note).filter(Boolean);
+      memList = Array.from(new Set(hits.concat(memList)));
+    }
+    // Live "situation" — compact REAL pipeline snapshot; gated + null when unconfigured/slow.
+    if (g && g.configured && g.context) liveCtx = "\n\n" + g.context;
+    // Wiki SOPs/playbooks — LOCKED DOCTRINE still wins over anything here.
+    if (w && w.configured && Array.isArray(w.results) && w.results.length) {
+      wikiCtx = "\n\nKNOWLEDGE BASE (wiki — company SOPs/playbooks; use these, but LOCKED DOCTRINE still wins over anything here):\n" +
+        w.results.map((r) => "• " + r.title + ": " + r.snippet).join("\n");
+    }
+  }
+  const ctx = contextBlock(body.context, memList) + liveCtx + wikiCtx + toolBagBlock();
 
   // Client opts into token streaming with { stream:true } (or an SSE Accept header).
   const wantStream = body.stream === true || /text\/event-stream/i.test(req.headers.accept || "");
@@ -1645,9 +1824,6 @@ same question. Merge them into ONE answer in the owner's voice. Your job as crit
 - One screen. Do not mention "minds", "agents", or this process — just answer the owner.
 If there are durable facts worth remembering across sessions (a customer preference, a confirmed
 price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwise omit that block.`;
-
-  // Per-request cost meter — every model call adds its dollar cost here.
-  const meter = { usd: 0 };
 
   // Monthly cost cap (opt-in): needs KV attached AND KLYFTON_MONTHLY_BUDGET_USD set.
   // Over budget → refuse new AI work with a friendly note. The estimator, JSA drafts,
@@ -1681,9 +1857,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   if (wantStream) {
     sseInit(res);
     try {
-      let plan = isTrivial(userText, attachments)
-        ? { minds: ["general"], complexity: "simple" }
-        : await route(key, routeText, history, meter);
+      let plan = await routeP; // routing already in flight (started concurrently with grounding)
       plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
@@ -1713,6 +1887,18 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
         await persistSemanticMemory(remember);
         run.mode = "single"; run.minds = [answers[0].mind]; run.status = "ok";
         sseSend(res, { done: true, text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
+        res.end();
+        return;
+      }
+
+      // Near-the-wall guard: if too little time remains to run the synth safely, skip it and send
+      // back the fullest worker answer rather than risk the function being killed mid-synth.
+      if (shouldSkipSynth(Date.now() - startedAt, WALL_MS, SYNTH_RESERVE_MS)) {
+        const best = bestAnswer(answers);
+        const { text, remember } = splitMemory(best.text);
+        await persistSemanticMemory(remember);
+        run.mode = "hive-guarded"; run.minds = answers.map((a) => a.mind); run.model = best.model; run.status = "ok";
+        sseSend(res, { done: true, text, remember, configured: true, mode: "hive-guarded", minds: answers.map((a) => a.mind), model: best.model });
         res.end();
         return;
       }
@@ -1752,10 +1938,8 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
   // ---- Non-streaming path (JSON) — used by GROW tools and as the fallback ----
   try {
-    // 1) Queen recruits the minds (skipped for trivial greetings/acks).
-    let plan = isTrivial(userText, attachments)
-      ? { minds: ["general"], complexity: "simple" }
-      : await route(key, routeText, history, meter);
+    // 1) Queen recruits the minds — routing already in flight (started concurrently with grounding).
+    let plan = await routeP;
     plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
 
     // 2) Simple job → one mind answers directly (fast + cheap).
@@ -1791,6 +1975,17 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
       await persistSemanticMemory(remember);
       run.mode = "single"; run.minds = [answers[0].mind]; run.status = "ok";
       res.status(200).json({ text, remember, configured: true, mode: "single", minds: [answers[0].mind] });
+      return;
+    }
+
+    // Near-the-wall guard: if too little time remains to run the synth safely, skip it and return
+    // the fullest worker answer rather than risk the function being killed mid-synth.
+    if (shouldSkipSynth(Date.now() - startedAt, WALL_MS, SYNTH_RESERVE_MS)) {
+      const best = bestAnswer(answers);
+      const { text, remember } = splitMemory(best.text);
+      await persistSemanticMemory(remember);
+      run.mode = "hive-guarded"; run.minds = answers.map((a) => a.mind); run.model = best.model; run.status = "ok";
+      res.status(200).json({ text, remember, configured: true, mode: "hive-guarded", minds: answers.map((a) => a.mind), model: best.model });
       return;
     }
 
@@ -1838,3 +2033,5 @@ module.exports.assembleBrainBlocks = assembleBrainBlocks;
 module.exports._BRAIN_ORDER = BRAIN_ORDER;
 module.exports.toolBagBlock = toolBagBlock;
 module.exports.routerToolHint = routerToolHint;
+module.exports.shouldSkipSynth = shouldSkipSynth;
+module.exports.bestAnswer = bestAnswer;

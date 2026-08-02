@@ -1,0 +1,70 @@
+<!doctype html>
+<html data-theme="grid">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Klyfton UI Preview — design harness</title>
+<!-- DEV TOOL (not deployed): loads the real app stylesheets so design changes to app.css /
+     theme-2026.css can be seen + screenshotted fast, without booting the whole app or a backend.
+     Usage: open in a browser, or headless: node tools/ui/shot-preview.js.  Switch skins with the
+     Theme dropdown (writes data-theme on <html> exactly like the real app). -->
+<link rel="stylesheet" href="../../public/app.css">
+<link rel="stylesheet" href="../../public/theme-2026.css">
+<style>
+  /* harness chrome only — not part of the app */
+  body{overflow:auto;padding:24px}
+  .ph-bar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .ph-sec{margin:26px 0 10px;color:var(--t2);font:700 11px/1 var(--font);letter-spacing:2px;text-transform:uppercase}
+  .ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  select.inp{width:auto}
+</style>
+</head>
+<body>
+  <div class="ph-bar">
+    <span class="logo-text">KLYFTON</span><span class="logo-badge">UI PREVIEW</span>
+    <span class="ph-sec" style="margin:0">Theme</span>
+    <select class="inp" id="themeSel" onchange="document.documentElement.setAttribute('data-theme',this.value)">
+      <option value="grid">grid (default)</option><option value="blaze">blaze</option>
+      <option value="tactical">tactical</option><option value="matrix">matrix</option>
+      <option value="ice">ice</option><option value="synthwave">synthwave</option>
+      <option value="amber">amber</option><option value="stealth">stealth</option>
+      <option value="clean">clean</option><option value="aeon">aeon</option>
+      <option value="quantum">quantum</option><option value="helios">helios</option>
+      <option value="nebula">nebula</option><option value="obsidian">obsidian</option>
+    </select>
+  </div>
+
+  <div class="ph-sec">Metrics</div>
+  <div class="metrics-row">
+    <div class="metric-card"><div class="metric-val">$42,800</div><div class="metric-lbl">MTD Revenue</div><div class="metric-spark"></div></div>
+    <div class="metric-card"><div class="metric-val">7</div><div class="metric-lbl">Active Leads</div><div class="metric-spark"></div></div>
+    <div class="metric-card"><div class="metric-val">3</div><div class="metric-lbl">Active Jobs</div><div class="metric-spark"></div></div>
+    <div class="metric-card"><div class="metric-val">$118K</div><div class="metric-lbl">Pipeline</div><div class="metric-spark"></div></div>
+  </div>
+
+  <div class="ph-sec">Cards + buttons + badges</div>
+  <div class="ph-grid">
+    <div class="card"><div class="card-title">Quick Estimate</div>
+      <div class="form-group"><label class="form-label">Foam type</label>
+        <select class="inp"><option>Closed Cell</option><option>Open Cell</option></select></div>
+      <div class="form-group"><label class="form-label">Square feet</label><input class="inp" placeholder="Sq Ft"></div>
+      <div class="row"><button class="btn btn-primary">Calc</button><button class="btn btn-ghost">Reset</button></div>
+    </div>
+    <div class="card"><div class="card-title">Badges + actions</div>
+      <div class="row" style="margin-bottom:10px"><span class="badge badge-or">Bid</span><span class="badge badge-gr">Won</span><span class="badge badge-red">Overdue</span><span class="badge badge-cy">New</span><span class="badge badge-yw">Hold</span></div>
+      <div class="row"><button class="btn btn-orange">Orange</button><button class="btn btn-cyan">Cyan</button><button class="btn btn-danger">Danger</button></div>
+    </div>
+    <div class="card"><div class="card-title">Table</div>
+      <table class="tbl"><thead><tr><th>Customer</th><th>Service</th><th>Value</th></tr></thead>
+      <tbody><tr><td>J. Doe</td><td>Attic SPF</td><td>$6,400</td></tr>
+      <tr><td>Acme Barn</td><td>Metal bldg</td><td>$21,900</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="ph-sec">Pipeline cards</div>
+  <div class="row">
+    <div class="job-card" style="width:240px"><div class="job-num">JOB-1042</div><div class="job-name">Glendive shop — closed cell</div><div class="job-val">$12,400</div><div class="job-meta">MT · 2,000 sqft · scheduled</div></div>
+    <div class="pipe-card" style="width:240px"><div class="pipe-name">Miles City crawlspace</div><div class="pipe-val">$4,200</div><div class="pipe-meta">Warm · quoted 3d ago</div></div>
+  </div>
+</body>
+</html>

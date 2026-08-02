@@ -35,6 +35,7 @@ const DIFF = [
   "Service-Disabled Veteran-Owned (USMC combat veteran / machine gunner — the company's namesake)",
   "BPI Building Analyst — building-science-trained, not spray-and-go",
   "ProFoam-certified applicators; NCFI foam & roofing systems",
+  "OSHA safety-certified operator (Liftoff): Fall Protection (construction), MEWP aerial/scissor lifts, Forklift classes 1–7",
   "Regional coverage: MT, ND, SD, WY (Climate Zones 6 & 7) — we work where others won't",
   "Direct owner involvement on every job; fast, firm written bids",
 ];

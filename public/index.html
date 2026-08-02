@@ -9,567 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23080810%22/%3E%3Ctext x=%2250%22 y=%2266%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23f97316%22%3EK%3C/text%3E%3C/svg%3E">
 <title>KLYFTON AI — Machine Gun Spray Foam</title>
-<style>
-
-/* KLYFTON_WAVE1 */
-.mod-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.btn{border:none;border-radius:7px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
-.btn-primary{background:var(--or);color:#111}.btn-primary:hover{box-shadow:0 0 14px var(--glow)}
-.btn-ghost{background:var(--s3);color:var(--tx);border:1px solid var(--bd)}.btn-ghost:hover{border-color:var(--or)}
-.jsa-card{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px}
-.jsa-card h4{color:var(--or);font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
-.jsa-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-.chk{display:flex;align-items:flex-start;gap:8px;margin:6px 0;font-size:13px;color:var(--tx)}
-.chk input{margin-top:3px;flex-shrink:0}
-.fl{display:block;font-size:11px;color:var(--t2);margin:8px 0 3px}
-.jsa-wrap .admin-inp{width:100%;max-width:100%}
-.tc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.tc-card{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center}
-.tc-card.on{border-color:var(--gr);box-shadow:0 0 10px rgba(34,197,94,.25)}
-.tc-name{font-weight:700;font-size:14px;margin-bottom:8px}
-.tc-status{font-size:11px;color:var(--t2);margin-bottom:8px}
-.sigpad{border:1px dashed var(--t3);border-radius:8px;background:#0b0b14;touch-action:none;width:100%;max-width:360px;height:120px}
-.log-row{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;margin-bottom:6px;font-size:12px;background:var(--s2)}
-
-:root{
-  --bg:#080810;--s1:#0d0d18;--s2:#12121f;--s3:#1a1a2e;
-  --or:#f97316;--red:#C8102E;--cy:#00d4ff;--gr:#22c55e;
-  --yw:#fbbf24;--tx:#e8e8f0;--t2:#8888a0;--t3:#404055;
-  --bd:rgba(249,115,22,.18);--glow:rgba(249,115,22,.4);
-  --r:8px;--font:'Segoe UI',system-ui,sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:14px}
-
-/* BOOT SCREEN */
-#boot{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .8s}
-#boot.hidden{opacity:0;pointer-events:none}
-.boot-logo{font-size:52px;font-weight:900;letter-spacing:12px;color:var(--or);text-shadow:0 0 40px var(--or),0 0 80px rgba(249,115,22,.4);animation:pulse 1s ease-in-out infinite}
-.boot-sub{font-size:13px;letter-spacing:6px;color:var(--cy);margin-top:8px;opacity:.8}
-.boot-bar{width:360px;height:3px;background:#111;border-radius:2px;margin-top:40px;overflow:hidden}
-.boot-fill{height:100%;background:linear-gradient(90deg,var(--or),var(--cy));width:0%;transition:width .1s linear;box-shadow:0 0 12px var(--or)}
-.boot-log{margin-top:20px;font-size:11px;color:var(--t2);letter-spacing:2px;min-height:20px;text-align:center}
-.boot-gears{margin-top:16px;width:min(92vw,640px);height:min(54vh,430px);display:block}
-@keyframes pulse{0%,100%{text-shadow:0 0 40px var(--or),0 0 80px rgba(249,115,22,.4)}50%{text-shadow:0 0 60px var(--or),0 0 120px rgba(249,115,22,.7)}}
-
-/* PIN OVERLAY */
-.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--t3);transition:all .15s}
-.pin-dot.filled{background:var(--or);border-color:var(--or);box-shadow:0 0 10px var(--or)}
-.pin-key{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--tx);font-size:22px;font-weight:600;border-radius:8px;cursor:pointer;transition:all .15s;width:68px;height:56px}
-.pin-key:hover{background:rgba(249,115,22,.15);border-color:var(--or);color:var(--or)}
-.pin-key:active{transform:scale(.93)}
-.pin-del{font-size:18px;color:var(--t2)}
-.pin-enter{background:rgba(34,197,94,.15);border-color:var(--gr);color:var(--gr)}
-.pin-enter:hover{background:rgba(34,197,94,.3)}
-@keyframes pinShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
-.pin-shake{animation:pinShake .35s ease}
-
-/* ADMIN MODULE */
-.admin-section{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
-.admin-section-title{font-size:11px;letter-spacing:2px;color:var(--or);font-weight:700;margin-bottom:12px;text-transform:uppercase}
-.admin-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-.admin-lbl{font-size:12px;color:var(--t2);min-width:180px;flex-shrink:0}
-.admin-inp{background:var(--s3);border:1px solid var(--t3);color:var(--tx);padding:5px 10px;border-radius:5px;font-size:13px;width:100%;max-width:340px;box-sizing:border-box}
-.admin-inp:focus{outline:none;border-color:var(--or)}
-.csv-btn{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.28);color:var(--cy);font-size:10px;padding:3px 9px;border-radius:4px;cursor:pointer;letter-spacing:.5px;transition:all .2s;white-space:nowrap}
-.csv-btn:hover{background:rgba(0,212,255,.22);border-color:var(--cy);color:#fff}
-.csv-upl{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.28);color:var(--gr);font-size:10px;padding:3px 9px;border-radius:4px;cursor:pointer;letter-spacing:.5px;transition:all .2s;white-space:nowrap;display:inline-block}
-.csv-upl:hover{background:rgba(34,197,94,.22);border-color:var(--gr);color:#fff}
-
-/* CANVAS BG */
-#bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
-
-/* LAYOUT */
-#app{position:fixed;inset:0;display:flex;flex-direction:column;z-index:1;opacity:0;transition:opacity .6s}
-#app.visible{opacity:1}
-
-/* TOPBAR */
-#topbar{height:52px;background:rgba(8,8,16,.9);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:16px;backdrop-filter:blur(12px);flex-shrink:0}
-.logo-text{font-size:18px;font-weight:800;letter-spacing:4px;color:var(--or);text-shadow:0 0 20px rgba(249,115,22,.5);white-space:nowrap}
-.logo-badge{font-size:9px;letter-spacing:2px;color:var(--cy);background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:3px;padding:2px 6px;margin-left:4px}
-.status-dot{width:8px;height:8px;border-radius:50%;background:var(--gr);box-shadow:0 0 8px var(--gr);animation:blink 2s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
-.status-label{font-size:11px;color:var(--gr);letter-spacing:1px}
-/* honest online/offline state (JS flips .offline) */
-.status-dot.offline{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
-.status-label.offline{color:var(--red)}
-/* keyboard/switch users get a visible focus ring */
-:focus-visible{outline:2px solid var(--or);outline-offset:2px}
-/* field crews on phones: bigger tap targets, no accidental zoom on input focus */
-@media(max-width:820px){
-  .btn{min-height:44px}
-  .nav-item{min-height:48px}
-  #topClock{display:none}
-  .admin-inp,.inp{font-size:16px}
-  /* never clip module content off the right edge on small screens — let it scroll into reach */
-  .module:not(#mod-estimate){overflow-x:auto;-webkit-overflow-scrolling:touch}
-}
-.top-spacer{flex:1}
-.top-clock{font-size:13px;color:var(--cy);font-family:monospace;letter-spacing:2px}
-.top-btn{background:none;border:1px solid var(--bd);color:var(--t2);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px;letter-spacing:1px;transition:all .2s}
-.top-btn:hover{border-color:var(--or);color:var(--or);box-shadow:0 0 8px rgba(249,115,22,.2)}
-.top-btn.active{border-color:var(--or);color:var(--or);background:rgba(249,115,22,.1)}
-/* device layout selector (Phone / Tablet / Desktop) */
-#layoutSeg{display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-left:8px;flex-shrink:0}
-#layoutSeg button{background:none;border:0;border-right:1px solid var(--bd);color:var(--t2);font:700 10px/1 inherit;letter-spacing:.5px;padding:6px 9px;cursor:pointer;white-space:nowrap}
-#layoutSeg button:last-child{border-right:0}
-#layoutSeg button.on{background:rgba(249,115,22,.16);color:var(--or)}
-#layoutSeg button:hover{color:var(--or)}
-/* PHONE — big touch targets, single column */
-body.lay-phone #topClock{display:none}
-body.lay-phone .btn{min-height:46px}
-body.lay-phone .nav-item{min-height:54px}
-body.lay-phone .admin-inp,body.lay-phone .inp{font-size:16px}
-body.lay-phone .metrics-row{grid-template-columns:repeat(2,1fr)}
-body.lay-phone .grid-2,body.lay-phone .grid-3{grid-template-columns:1fr}
-/* phone: slim the nav to an icon rail so modules get the screen width back */
-body.lay-phone #sidebar{width:60px;min-width:60px;max-width:60px;padding:10px 4px 96px;gap:6px 4px}
-body.lay-phone #navResize{display:none}
-body.lay-tablet #sidebar{width:92px;min-width:92px;max-width:92px}
-/* phone: icon-only top bar so all buttons (incl. the device selector) fit */
-body.lay-phone .tbl{display:none}
-body.lay-phone .logo-badge,body.lay-phone .status-label{display:none}
-body.lay-phone #topbar{gap:4px;padding:0 6px;overflow-x:auto;overflow-y:hidden}
-body.lay-phone .top-btn{padding:6px 7px;font-size:14px}
-body.lay-phone #layoutSeg button{padding:6px 8px;font-size:14px}
-body.lay-phone .logo-text{font-size:15px}
-body.lay-phone #chatPanel:not(.collapsed){position:fixed;top:52px;right:0;bottom:0;width:min(92vw,360px);z-index:60;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
-/* TABLET — medium */
-body.lay-tablet .metrics-row{grid-template-columns:repeat(2,1fr)}
-body.lay-tablet .grid-3{grid-template-columns:1fr 1fr}
-body.lay-tablet .btn{min-height:42px}
-body.lay-tablet .admin-inp,body.lay-tablet .inp{font-size:15px}
-/* DESKTOP — dense, full columns (override the mobile @media so it holds on any screen) */
-body.lay-desktop #topClock{display:block}
-body.lay-desktop .btn{min-height:32px}
-body.lay-desktop .nav-item{min-height:48px}
-body.lay-desktop .metrics-row{grid-template-columns:repeat(4,1fr)}
-body.lay-desktop .grid-2{grid-template-columns:1fr 1fr}
-body.lay-desktop .grid-3{grid-template-columns:1fr 1fr 1fr}
-body.lay-desktop .admin-inp,body.lay-desktop .inp{font-size:13px}
-/* phone/tablet layouts: modules scroll horizontally instead of clipping content off-screen */
-body.lay-phone .module:not(#mod-estimate),body.lay-tablet .module:not(#mod-estimate){overflow-x:auto;-webkit-overflow-scrolling:touch}
-#voiceBtn.listening{border-color:var(--red);color:var(--red);background:rgba(200,16,46,.15);animation:pulseBorder .5s ease-in-out infinite}
-@keyframes pulseBorder{0%,100%{box-shadow:0 0 8px rgba(200,16,46,.3)}50%{box-shadow:0 0 16px rgba(200,16,46,.6)}}
-
-/* MAIN AREA */
-#main{display:flex;flex:1;overflow:hidden;min-height:0}
-
-/* SIDEBAR */
-#sidebar{width:var(--navw,124px);min-width:58px;max-width:280px;background:rgba(8,8,16,.95);border-right:1px solid var(--bd);display:flex;flex-flow:row wrap;align-content:flex-start;justify-content:center;padding:12px 6px 96px;gap:6px 8px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;position:relative;box-sizing:border-box}
-#sidebar::-webkit-scrollbar{width:6px}
-#sidebar::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
-#navResize{position:absolute;top:0;right:0;width:11px;height:100%;cursor:ew-resize;touch-action:none;z-index:6}
-#navResize::before{content:"";position:absolute;top:50%;right:2px;transform:translateY(-50%);width:3px;height:34px;border-radius:3px;background:var(--bd)}
-#navResize:hover::before,#navResize.drag::before{background:var(--or,#f97316)}
-.nav-item{width:48px;height:48px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;border:1px solid transparent;gap:3px}
-.nav-item:hover{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.15)}
-.nav-item.active{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.4);box-shadow:0 0 12px rgba(249,115,22,.15)}
-.nav-icon{font-size:18px;line-height:1}
-.nav-label{font-size:8px;letter-spacing:.5px;color:var(--t2);text-transform:uppercase}
-.nav-item.active .nav-label{color:var(--or)}
-.nav-divider{flex-basis:100%;width:auto;height:1px;background:var(--bd);margin:2px 6px}
-
-/* CONTENT */
-#content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;min-width:0}
-.module{display:none;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;padding-bottom:calc(180px + env(safe-area-inset-bottom,0px))}
-/* Guaranteed bottom runout for the flex-column scroll (belt-and-suspenders vs any browser that
-   ignores a scroll container's padding-bottom). Excluded on the estimate tab (iframe fills it). */
-.module.active:not(#mod-estimate)::after{content:"";display:block;flex:0 0 auto;height:24px}
-/* Bid action bar — normal flow (NOT pinned, so the taskbar can't clip it); buttons stay in one row and shrink to fit */
-#estBtns{flex-wrap:nowrap}
-#estBtns .btn{flex:1 1 0;min-width:0;white-space:nowrap;padding:13px 12px;font-size:14px;font-weight:700}
-#estActions{padding:2px}
-.module.active{display:flex;flex-direction:column;gap:12px}
-/* Estimate tab = embedded MGSF Ultimate Estimator; iframe fills the pane and scrolls itself */
-#mod-estimate{padding:0}
-#mod-estimate.active{gap:0;padding:0}
-#estFrame{flex:1 1 auto;width:100%;height:100%;min-height:0;border:0;display:block;background:var(--bg,#05060a)}
-
-/* CHAT PANEL */
-#chatPanel{width:340px;background:rgba(8,8,16,.95);border-left:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s}
-#chatPanel.collapsed{width:0;overflow:hidden}
-
-/* CARDS */
-.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;position:relative;overflow:hidden}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--or),transparent);opacity:.3}
-.card-title{font-size:11px;letter-spacing:2px;color:var(--t2);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.card-title::before{content:'';width:3px;height:14px;background:var(--or);border-radius:2px;display:inline-block}
-
-/* METRICS ROW */
-.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.metric-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px 12px;text-align:center;position:relative;overflow:hidden;cursor:pointer;transition:all .2s}
-.metric-card:hover{border-color:var(--or);box-shadow:0 0 16px rgba(249,115,22,.1)}
-.metric-val{font-size:26px;font-weight:700;color:var(--or);line-height:1.1}
-.metric-lbl{font-size:10px;color:var(--t2);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
-.metric-chg{font-size:11px;margin-top:4px}
-.metric-chg.up{color:var(--gr)}
-.metric-chg.dn{color:var(--red)}
-.metric-spark{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--or),var(--cy));opacity:.4}
-
-/* GRID LAYOUTS */
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-
-/* FORM ELEMENTS */
-.form-group{margin-bottom:10px}
-.form-label{font-size:11px;color:var(--t2);letter-spacing:1px;margin-bottom:4px;display:block}
-.inp{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:9px 11px;border-radius:6px;width:100%;font-size:13px;outline:none;transition:border-color .2s}
-.inp:focus{border-color:var(--or);box-shadow:0 0 0 2px rgba(249,115,22,.15)}
-select.inp option{background:var(--s2)}
-.btn{padding:9px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;border:none;transition:all .2s;letter-spacing:.5px}
-.btn-primary{background:var(--or);color:#000}
-.btn-primary:hover{background:#ea6d0f;box-shadow:0 0 16px rgba(249,115,22,.4)}
-.btn-ghost{background:none;border:1px solid var(--bd);color:var(--t2)}
-.btn-ghost:hover{border-color:var(--or);color:var(--or)}
-.btn-danger{background:none;border:1px solid rgba(200,16,46,.4);color:var(--red)}
-.btn-danger:hover{background:rgba(200,16,46,.15)}
-.btn-cyan{background:none;border:1px solid rgba(0,212,255,.4);color:var(--cy)}
-.btn-cyan:hover{background:rgba(0,212,255,.1)}
-.btn-orange{background:rgba(249,115,22,.15);border:1px solid var(--or);color:var(--or)}
-.btn-orange:hover{background:rgba(249,115,22,.28);box-shadow:0 0 12px rgba(249,115,22,.3)}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
-/* TABLE */
-.tbl{width:100%;border-collapse:collapse}
-.tbl th{font-size:10px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;border-bottom:1px solid var(--bd);padding:8px 10px;text-align:left}
-.tbl td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
-.tbl tr:hover td{background:rgba(249,115,22,.04)}
-
-/* BADGES */
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;letter-spacing:.5px;font-weight:600}
-.badge-or{background:rgba(249,115,22,.15);color:var(--or);border:1px solid rgba(249,115,22,.3)}
-.badge-gr{background:rgba(34,197,94,.15);color:var(--gr);border:1px solid rgba(34,197,94,.3)}
-.badge-red{background:rgba(200,16,46,.15);color:var(--red);border:1px solid rgba(200,16,46,.3)}
-.badge-cy{background:rgba(0,212,255,.1);color:var(--cy);border:1px solid rgba(0,212,255,.3)}
-.badge-yw{background:rgba(251,191,36,.12);color:var(--yw);border:1px solid rgba(251,191,36,.3)}
-
-/* PIPELINE */
-.pipeline{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}
-.pipe-col{min-width:200px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:10px;flex-shrink:0}
-.job-col{min-width:220px;max-width:260px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:10px;flex-shrink:0;flex:1}
-.job-col-hdr{font-size:10px;letter-spacing:1.5px;font-weight:700;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
-.job-card{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px;margin-bottom:8px;cursor:pointer;transition:all .2s;position:relative}
-.job-card:hover{border-color:var(--or);box-shadow:0 2px 12px rgba(249,115,22,.12)}
-.job-num{font-size:9px;letter-spacing:1px;color:var(--t2);margin-bottom:3px}
-.job-name{font-size:13px;font-weight:700;color:var(--tx);margin-bottom:3px;line-height:1.3}
-.job-val{font-size:15px;font-weight:800;color:var(--or);margin-bottom:5px}
-.job-meta{font-size:11px;color:var(--t2);line-height:1.5}
-.job-actions{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
-.job-sum-chip{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px 14px;font-size:12px;min-width:110px}
-.job-sum-val{font-size:18px;font-weight:800;color:var(--or);line-height:1.2}
-.job-sum-lbl{font-size:10px;color:var(--t2);letter-spacing:.5px}
-.pipe-col-hdr{font-size:10px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between}
-.pipe-card{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px;margin-bottom:8px;cursor:pointer;transition:all .2s}
-.pipe-card:hover{border-color:var(--or);transform:translateX(2px)}
-.pipe-name{font-size:13px;font-weight:600;margin-bottom:4px}
-.pipe-val{font-size:12px;color:var(--or)}
-.pipe-meta{font-size:11px;color:var(--t2);margin-top:4px}
-
-/* CHAT */
-#chatPanel .chat-header{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-shrink:0}
-.klyfton-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--or),var(--red));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;box-shadow:0 0 12px rgba(249,115,22,.4)}
-.klyfton-name{font-weight:700;color:var(--or);font-size:14px}
-.klyfton-status{font-size:10px;color:var(--gr);letter-spacing:1px}
-#chatMessages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:90%;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5;animation:msgIn .2s ease-out}
-@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.msg.user{align-self:flex-end;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.25);border-radius:10px 10px 2px 10px}
-.msg.ai{align-self:flex-start;background:var(--s2);border:1px solid var(--bd);border-radius:10px 10px 10px 2px}
-.msg.ai .msg-name{font-size:10px;color:var(--or);letter-spacing:1px;margin-bottom:4px;font-weight:700}
-.msg-time{font-size:10px;color:var(--t3);margin-top:4px;text-align:right}
-.chat-input-area{padding:12px;border-top:1px solid var(--bd);flex-shrink:0}
-#chatInput{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:9px 12px;border-radius:8px;width:100%;font-size:13px;outline:none;resize:none;height:76px;font-family:var(--font)}
-#chatInput:focus{border-color:var(--or)}
-.chat-chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px 2px}
-.chat-chip{background:var(--s2);border:1px solid var(--bd);color:var(--t2);font-size:11px;padding:5px 9px;border-radius:14px;cursor:pointer;white-space:nowrap;font-family:var(--font)}
-.chat-chip:hover{border-color:var(--or);color:var(--or)}
-.chat-actions{display:flex;gap:6px;margin-top:8px}
-.chat-send{flex:1;background:var(--or);color:#000;border:none;border-radius:6px;padding:8px;font-weight:700;cursor:pointer;font-size:12px;transition:all .2s}
-.chat-send:hover{background:#ea6d0f;box-shadow:0 0 12px rgba(249,115,22,.3)}
-.voice-btn-chat{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;padding:8px 10px;cursor:pointer;font-size:14px;transition:all .2s}
-.voice-btn-chat:hover{border-color:var(--cy);color:var(--cy)}
-.voice-btn-chat.listening{border-color:var(--red);color:var(--red);animation:pulseBorder .5s infinite}
-.chat-attach-btn{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;padding:8px 11px;cursor:pointer;font-size:16px;line-height:1;font-weight:700;transition:all .2s}
-.chat-attach-btn:hover{border-color:var(--or);color:var(--or)}
-.chat-atts{display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.chat-att{position:relative;width:52px;height:52px;border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2);display:flex;align-items:center;justify-content:center}
-.chat-att img{width:100%;height:100%;object-fit:cover}
-.chat-att-pdf{font-size:9px;color:var(--t2);padding:4px;text-align:center;line-height:1.2;word-break:break-all}
-.chat-att-x{position:absolute;top:1px;right:1px;width:16px;height:16px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;font-size:9px;line-height:16px;cursor:pointer}
-.chat-att-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-.chat-att-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--bd)}
-.chat-att-file{font-size:11px;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:4px 8px}
-
-/* ESTIMATE RESULT */
-.est-result{background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.25);border-radius:var(--r);padding:16px;margin-top:12px}
-.est-result-line{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
-.est-result-line:last-child{border:none;font-size:15px;font-weight:700;color:var(--or);padding-top:10px}
-.est-result-line .lbl{color:var(--t2)}
-
-/* SKILLS PANEL */
-.skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.skill-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
-.skill-card:hover{border-color:var(--cy);box-shadow:0 0 16px rgba(0,212,255,.1)}
-.skill-card.connected{border-color:rgba(34,197,94,.3)}
-.skill-card.connected::after{content:'✓';position:absolute;top:8px;right:10px;color:var(--gr);font-size:11px;font-weight:700}
-.skill-icon{font-size:28px;margin-bottom:8px}
-.skill-name{font-size:12px;font-weight:600;margin-bottom:4px}
-.skill-desc{font-size:10px;color:var(--t2);line-height:1.4}
-.skill-badge{display:inline-block;margin-top:6px;font-size:9px;padding:2px 6px;border-radius:3px}
-
-/* INTEL CHART */
-.chart-wrap{position:relative;height:160px;margin:8px 0}
-canvas.chart{width:100%;height:100%}
-
-/* PROGRESS BAR */
-.progress-bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-top:4px}
-.progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
-.progress-fill.or{background:linear-gradient(90deg,var(--red),var(--or))}
-.progress-fill.gr{background:var(--gr)}
-.progress-fill.cy{background:var(--cy)}
-
-/* SCROLLBAR */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--t3);border-radius:2px}
-::-webkit-scrollbar-thumb:hover{background:var(--or)}
-
-/* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px;width:480px;max-width:95vw;max-height:80vh;overflow-y:auto}
-.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--or)}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-
-/* NOTIFICATION */
-#notif{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--or);border-radius:8px;padding:10px 20px;font-size:13px;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;box-shadow:0 0 20px rgba(249,115,22,.2)}
-#notif.show{opacity:1}
-
-/* VOICE INDICATOR */
-#voiceIndicator{position:fixed;top:60px;right:20px;background:rgba(200,16,46,.9);border-radius:20px;padding:6px 14px;font-size:12px;color:#fff;z-index:200;display:none;align-items:center;gap:6px}
-#voiceIndicator.show{display:flex}
-.voice-wave{display:flex;gap:2px;align-items:center}
-.voice-wave span{display:inline-block;width:3px;background:#fff;border-radius:2px;animation:wave .8s ease-in-out infinite}
-.voice-wave span:nth-child(2){animation-delay:.15s}
-.voice-wave span:nth-child(3){animation-delay:.3s}
-@keyframes wave{0%,100%{height:4px}50%{height:14px}}
-
-/* SOUND WAVE AMBIENT */
-#ambientBar{position:fixed;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--or),var(--cy),var(--or),transparent);opacity:0;transition:opacity .5s;animation:scanLine 3s linear infinite}
-@keyframes scanLine{0%{background-position:-100% 0}100%{background-position:200% 0}}
-#ambientBar.on{opacity:.5}
-
-/* RESPONSIVE */
-@media(max-width:768px){
-  .metrics-row{grid-template-columns:repeat(2,1fr)}
-  #chatPanel{position:fixed;right:0;top:52px;bottom:0;z-index:10}
-  #chatPanel.collapsed{width:0}
-  .skill-grid{grid-template-columns:repeat(2,1fr)}
-}
-
-/* ESTIMATOR v4 */
-.jtype-btn{background:var(--s2);border:1px solid var(--bd);color:var(--cy);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.3px;transition:background .15s,border-color .15s,transform .1s}
-.jtype-btn:hover{background:var(--s3);border-color:var(--cy);transform:translateY(-1px)}
-.jtype-btn:active{transform:translateY(0)}
-.scope-item{margin-bottom:10px;border-left:3px solid var(--cy);animation:scopeIn .2s ease-out}
-@keyframes scopeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.scope-item .form-label{font-size:11px;color:var(--t2);margin-bottom:3px}
-#qbgBody{padding-top:10px}
-/* Wall/Roof Builders */
-.builder-toggle{width:100%;background:none;border:1px dashed var(--bd);color:var(--t2);padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-top:8px;text-align:left}
-.builder-toggle:hover{border-color:var(--cy);color:var(--cy)}
-.builder-panel{margin-top:8px;padding:10px;background:rgba(0,0,0,.25);border-radius:6px;border:1px solid var(--bd)}
-.brow{display:flex;gap:4px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
-.brow-inp{width:72px;padding:4px 6px;font-size:11px;background:var(--s2);border:1px solid var(--bd);border-radius:4px;color:var(--fg);min-width:0}
-.brow-lbl{font-size:10px;color:var(--t2);white-space:nowrap;min-width:28px}
-.brow-label-inp{flex:1;min-width:80px;max-width:140px;padding:4px 6px;font-size:11px;background:var(--s2);border:1px solid var(--bd);border-radius:4px;color:var(--fg)}
-.brow-rm{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
-.brow-sf{font-size:11px;color:var(--gr);font-weight:700;min-width:52px;text-align:right}
-.ded-add-btn{background:var(--s2);border:1px solid var(--bd);color:var(--t2);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600}
-.ded-add-btn:hover{border-color:var(--cy);color:var(--cy)}
-.net-sf-strip{background:var(--s3);border:1px solid var(--bd);border-radius:4px;padding:7px 10px;margin-top:8px;font-size:12px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px}
-.apply-sf-btn{background:var(--cy);color:#000;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700}
-.apply-sf-btn:hover{opacity:.85}
-
-/* ============================================================
-   TRON THEME — futuristic "grid" skin. Neon cyan/orange on near-black,
-   a receding perspective grid floor, glowing edges + scanlines. Purely
-   visual (additive); readability + layout preserved.
-   ============================================================ */
-/* FX color channels — overridden per theme via :root[data-theme]. Default = GRID (Tron). */
-:root{ --neon:#00e5ff; --neonSoft:rgba(0,229,255,.5);
-  --gridRGB:0,229,255; --neonRGB:0,229,255; --accentRGB:249,115,22; }
-
-/* Signature perspective grid floor (fixed, behind content, no clicks) */
-#tronFloor{position:fixed;left:0;right:0;bottom:0;height:46vh;z-index:0;pointer-events:none;overflow:hidden;
-  perspective:320px;opacity:.5;transition:opacity .4s;
-  -webkit-mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.55) 42%,transparent 100%);
-          mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.55) 42%,transparent 100%)}
-#tronFloor::before{content:"";position:absolute;left:-60%;right:-60%;top:0;bottom:-20%;
-  background-image:linear-gradient(rgba(var(--gridRGB),.45) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(var(--gridRGB),.35) 1px,transparent 1px);
-  background-size:46px 46px;transform:rotateX(74deg);transform-origin:50% 0;
-  animation:tronRun 5.5s linear infinite}
-@keyframes tronRun{from{background-position:0 0}to{background-position:0 46px}}
-#tronFloor::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
-  background:var(--neon);box-shadow:0 0 18px 2px var(--neonSoft);opacity:.55}
-
-/* Holographic scanlines + vignette overlay */
-#tronScan{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.55;transition:opacity .4s;
-  background:repeating-linear-gradient(to bottom,rgba(var(--gridRGB),.035) 0 1px,transparent 1px 3px),
-             radial-gradient(120% 80% at 50% 0%,transparent 55%,rgba(0,0,0,.45) 100%)}
-/* "off" theme kills the FX layers entirely (clean look) */
-:root[data-theme="clean"] #tronFloor,:root[data-theme="clean"] #tronScan{display:none}
-:root[data-theme="stealth"] #tronFloor{opacity:.12}
-:root[data-theme="stealth"] #tronScan{opacity:.28}
-
-/* keep the app shell above fx (overlays keep their own high z-index) */
-#topbar,#sidebar,#content,#chatPanel{position:relative;z-index:2}
-
-/* Neon edges + depth on panels */
-.card,.metric-card,.admin-section,.jsa-card,.log-row,.tc-card{
-  box-shadow:inset 0 1px 0 rgba(var(--neonRGB),.12), 0 0 16px rgba(var(--neonRGB),.045), 0 6px 22px rgba(0,0,0,.45)}
-.card:hover,.admin-section:hover,.jsa-card:hover{
-  box-shadow:inset 0 1px 0 rgba(var(--neonRGB),.22), 0 0 26px rgba(var(--neonRGB),.09), 0 8px 30px rgba(0,0,0,.5)}
-.metric-card{transition:transform .18s,box-shadow .18s}
-.metric-card:hover{transform:translateY(-2px);
-  box-shadow:inset 0 1px 0 rgba(var(--neonRGB),.25), 0 0 26px rgba(var(--accentRGB),.16), 0 8px 30px rgba(0,0,0,.5)}
-
-/* HUD-style glowing titles + numbers */
-.card-title{color:var(--cy);text-shadow:0 0 10px rgba(var(--neonRGB),.4)}
-.metric-val{text-shadow:0 0 18px rgba(var(--accentRGB),.55)}
-.logo-text{text-shadow:0 0 12px rgba(var(--accentRGB),.85),0 0 34px rgba(var(--accentRGB),.4)}
-.admin-section-title{text-shadow:0 0 10px rgba(var(--accentRGB),.5)}
-h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
-
-/* Glowing buttons */
-.btn-primary{box-shadow:0 0 16px rgba(var(--accentRGB),.4)}
-.btn-primary:hover{box-shadow:0 0 30px rgba(var(--accentRGB),.75)}
-.btn-cyan{box-shadow:0 0 14px rgba(var(--neonRGB),.28)}
-.btn-cyan:hover{box-shadow:0 0 26px rgba(var(--neonRGB),.6);color:#fff;border-color:var(--neon)}
-
-/* Neon nav + input focus */
-.nav-item.active{border-color:var(--neon);box-shadow:0 0 18px rgba(var(--neonRGB),.35),inset 0 0 12px rgba(var(--neonRGB),.14)}
-.nav-item.active .nav-icon{filter:drop-shadow(0 0 6px var(--neon))}
-.inp:focus,.admin-inp:focus{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),0 0 14px rgba(var(--neonRGB),.28)}
-
-/* Top bar reads like a HUD strip */
-#topbar{box-shadow:0 1px 0 rgba(var(--neonRGB),.18),0 6px 22px rgba(0,0,0,.4)}
-.status-dot{box-shadow:0 0 10px var(--gr),0 0 4px var(--gr)}
-
-/* ===== SELECTABLE THEMES (data-theme on <html>). GRID/Tron = default :root ===== */
-:root[data-theme="blaze"]{--bg:#0c0a07;--s1:#15100a;--s2:#1c140c;--s3:#241a10;
-  --or:#ff7a1a;--cy:#ffb347;--neon:#ff8c2a;--neonSoft:rgba(255,140,42,.5);
-  --gridRGB:255,140,42;--neonRGB:255,140,42;--accentRGB:255,122,26;
-  --bd:rgba(255,122,26,.2);--glow:rgba(255,122,26,.5)}
-:root[data-theme="tactical"]{--bg:#0a0d09;--s1:#111710;--s2:#161d13;--s3:#1e281a;
-  --or:#c2a878;--cy:#9bbb5a;--neon:#9bbb5a;--neonSoft:rgba(155,187,90,.5);
-  --gridRGB:130,160,80;--neonRGB:155,187,90;--accentRGB:194,168,120;
-  --bd:rgba(155,187,90,.2);--glow:rgba(194,168,120,.4);--tx:#e9ecdf;--t2:#93a082}
-:root[data-theme="matrix"]{--bg:#000600;--s1:#001400;--s2:#001c06;--s3:#02260c;
-  --or:#22ff66;--cy:#00ffa3;--neon:#00ff66;--neonSoft:rgba(0,255,90,.5);
-  --gridRGB:0,255,90;--neonRGB:0,255,120;--accentRGB:34,255,102;
-  --bd:rgba(0,255,100,.2);--glow:rgba(0,255,100,.4);--tx:#c9ffd2;--t2:#4fbf6a;--t3:#124a24}
-:root[data-theme="ice"]{--bg:#04080f;--s1:#0a121f;--s2:#0f1a2c;--s3:#16263f;
-  --or:#38bdf8;--cy:#7dd3fc;--neon:#4be0ff;--neonSoft:rgba(75,224,255,.5);
-  --gridRGB:80,200,255;--neonRGB:80,200,255;--accentRGB:56,189,248;
-  --bd:rgba(56,189,248,.2);--glow:rgba(56,189,248,.45);--tx:#eaf4ff;--t2:#8aa8c8}
-:root[data-theme="synthwave"]{--bg:#0e0420;--s1:#160a2e;--s2:#1e0f3d;--s3:#2a1550;
-  --or:#ff2e97;--cy:#22d3ee;--neon:#ff2e97;--neonSoft:rgba(255,46,151,.5);
-  --gridRGB:255,46,151;--neonRGB:34,211,238;--accentRGB:255,46,151;
-  --bd:rgba(255,46,151,.24);--glow:rgba(255,46,151,.5);--tx:#f6e8ff;--t2:#b48ad6}
-:root[data-theme="amber"]{--bg:#0a0700;--s1:#140d00;--s2:#1b1200;--s3:#241900;
-  --or:#ffb000;--cy:#ffcf6b;--neon:#ffb000;--neonSoft:rgba(255,176,0,.5);
-  --gridRGB:255,176,0;--neonRGB:255,176,0;--accentRGB:255,176,0;
-  --bd:rgba(255,176,0,.2);--glow:rgba(255,176,0,.4);--tx:#ffe6b0;--t2:#b8842e}
-:root[data-theme="stealth"]{--bg:#0a0a0c;--s1:#0f0f13;--s2:#141419;--s3:#1c1c23;
-  --or:#cbd5e1;--cy:#94a3b8;--neon:#8493a8;--neonSoft:rgba(132,147,168,.4);
-  --gridRGB:110,122,140;--neonRGB:132,147,168;--accentRGB:203,213,225;
-  --bd:rgba(148,163,184,.14);--glow:rgba(148,163,184,.22);--tx:#e5e9f0;--t2:#8a93a3}
-:root[data-theme="clean"]{--bg:#0b0d12;--s1:#111420;--s2:#161a28;--s3:#1e2333;
-  --or:#f97316;--cy:#38bdf8;--neon:#38bdf8;--neonSoft:rgba(56,189,248,.4);
-  --gridRGB:56,189,248;--neonRGB:56,189,248;--accentRGB:249,115,22;
-  --bd:rgba(255,255,255,.1);--glow:rgba(249,115,22,.3)}
-
-/* ===== FUTURISTIC SET ===== */
-/* AEON (Y3024) — my read on humanity ~1000 yrs out: post-scarcity, human+AI symbiosis, spacefaring
-   and serene. Cosmic indigo + platinum starlight + a warm gold "human spark", on an iridescent
-   aurora grid that slowly shifts hue. Refined, not garish. */
-:root[data-theme="aeon"]{--bg:#05060d;--s1:#0b0d1a;--s2:#111426;--s3:#1a1e38;
-  --or:#e8c07d;--cy:#a9b8ff;--neon:#b7a6ff;--neonSoft:rgba(183,166,255,.5);
-  --gridRGB:150,180,255;--neonRGB:170,150,255;--accentRGB:232,192,125;
-  --bd:rgba(170,150,255,.18);--glow:rgba(232,192,125,.4);--tx:#eef1ff;--t2:#9aa3c8}
-:root[data-theme="aeon"] #tronFloor::before{animation:tronRun 6.5s linear infinite, aeonHue 16s linear infinite}
-:root[data-theme="aeon"] #tronFloor::after{animation:aeonHue 16s linear infinite}
-@keyframes aeonHue{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
-
-:root[data-theme="quantum"]{--bg:#03060a;--s1:#081420;--s2:#0c1c2e;--s3:#12283f;
-  --or:#2dd4bf;--cy:#5eead4;--neon:#22d3ee;--neonSoft:rgba(34,211,238,.5);
-  --gridRGB:34,211,238;--neonRGB:45,212,191;--accentRGB:45,212,191;
-  --bd:rgba(45,212,191,.2);--glow:rgba(45,212,191,.4);--tx:#e6feff;--t2:#7fb8c0}
-:root[data-theme="helios"]{--bg:#0d0702;--s1:#170d02;--s2:#1f1204;--s3:#2b1908;
-  --or:#ffd24a;--cy:#ff8a3c;--neon:#ffb03a;--neonSoft:rgba(255,176,58,.5);
-  --gridRGB:255,180,60;--neonRGB:255,200,80;--accentRGB:255,138,60;
-  --bd:rgba(255,180,60,.2);--glow:rgba(255,138,60,.45);--tx:#fff2d6;--t2:#c99a55}
-:root[data-theme="nebula"]{--bg:#08040f;--s1:#120a22;--s2:#1a0f33;--s3:#261648;
-  --or:#c084fc;--cy:#f0abfc;--neon:#a855f7;--neonSoft:rgba(168,85,247,.5);
-  --gridRGB:168,85,247;--neonRGB:200,130,255;--accentRGB:240,171,252;
-  --bd:rgba(168,85,247,.22);--glow:rgba(240,171,252,.4);--tx:#f3e9ff;--t2:#a78bc8}
-:root[data-theme="obsidian"]{--bg:#000000;--s1:#060608;--s2:#0a0a0d;--s3:#121216;
-  --or:#e6faff;--cy:#7fefff;--neon:#c8f7ff;--neonSoft:rgba(200,247,255,.5);
-  --gridRGB:120,200,220;--neonRGB:200,247,255;--accentRGB:230,250,255;
-  --bd:rgba(200,247,255,.12);--glow:rgba(200,247,255,.3);--tx:#eef6f9;--t2:#7f8c96}
-</style>
-<style id="mg-facelift">
-  /* ── Klyfton facelift: depth, neon, glass, motion (additive) ── */
-  body{
-    background:
-      radial-gradient(1100px 560px at 18% -12%, rgba(34,211,238,.07), transparent 60%),
-      radial-gradient(950px 480px at 105% -5%, rgba(249,115,22,.08), transparent 55%),
-      var(--bg, #0a0a12) !important;
-  }
-  .jsa-card, .card, .metric-card, .skill-card{
-    border:1px solid rgba(255,255,255,.07);
-    box-shadow: 0 2px 22px rgba(0,0,0,.38);
-    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
-  }
-  .jsa-card:hover, .card:hover, .metric-card:hover, .skill-card:hover{
-    border-color: rgba(34,211,238,.30);
-    box-shadow: 0 6px 30px rgba(0,0,0,.55), 0 0 20px rgba(34,211,238,.08);
-    transform: translateY(-1px);
-  }
-  .nav-item{ transition: background .18s ease, box-shadow .18s ease, color .18s ease; }
-  .nav-item:hover{ box-shadow: inset 3px 0 0 var(--or, #f97316); }
-  .nav-item.active{ box-shadow: inset 3px 0 0 var(--cy, #22d3ee), 0 0 24px rgba(34,211,238,.06); }
-  .btn-primary{ box-shadow: 0 0 16px rgba(249,115,22,.28); }
-  .btn-primary:hover{ box-shadow: 0 0 22px rgba(249,115,22,.45); }
-  .klyfton-avatar, .metric-icon{ filter: drop-shadow(0 0 8px rgba(249,115,22,.35)); }
-  /* subtle animated scanline sheen on the very top */
-  #app::before, body::before{ content:none; }
-
-  /* ── Field radio widget ── */
-  .mg-radio{ position:fixed; left:14px; bottom:14px; z-index:60; font-family:var(--font, system-ui); }
-  .mg-radio-toggle{ display:none; width:46px; height:46px; border-radius:50%; border:1px solid rgba(34,211,238,.35); touch-action:none;
-    background:rgba(10,10,18,.92); color:#e8e8f0; font-size:20px; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.5), 0 0 18px rgba(34,211,238,.15); }
-  .mg-radio.collapsed .mg-radio-toggle{ display:block; }
-  .mg-radio.collapsed .mg-radio-panel{ display:none; }
-  .mg-radio-panel{ width:210px; background:rgba(12,12,20,.92); backdrop-filter:blur(10px);
-    border:1px solid rgba(34,211,238,.22); border-radius:12px; padding:10px; box-shadow:0 8px 30px rgba(0,0,0,.55); }
-  .mg-radio-head{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--cy,#22d3ee); font-weight:700; margin-bottom:8px; cursor:move; user-select:none; touch-action:none }
-  .mg-drag-grip{ color:var(--t2,#8a8a9a); margin-right:6px; cursor:move }
-  .mg-radio-head button{ background:none; border:none; color:var(--t2,#8a8a9a); cursor:pointer; font-size:13px }
-  .mg-radio-stations{ display:flex; flex-direction:column; gap:4px; margin-bottom:8px; max-height:150px; overflow:auto }
-  .mg-st{ text-align:left; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); color:#d8d8e4;
-    border-radius:7px; padding:6px 8px; font-size:12px; cursor:pointer; transition:all .15s }
-  .mg-st:hover{ border-color:rgba(249,115,22,.4) }
-  .mg-st.on{ border-color:var(--or,#f97316); color:#fff; box-shadow:0 0 12px rgba(249,115,22,.25) }
-  .mg-radio-ctrl{ display:flex; align-items:center; gap:8px }
-  .mg-radio-ctrl button{ width:34px; height:30px; border-radius:7px; border:1px solid rgba(255,255,255,.12);
-    background:var(--or,#f97316); color:#000; font-weight:800; cursor:pointer }
-  .mg-radio-ctrl input[type=range]{ flex:1; accent-color:var(--or,#f97316) }
-  @media(max-width:720px){ .mg-radio{ left:10px; bottom:70px } }
-</style>
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="theme-2026.css">
 
 </head>
 <body>
@@ -777,6 +218,18 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
       </div>
       <div class="nav-item" onclick="switchModule('scenarios');renderScenarios()" id="nav-scenarios">
         <div class="nav-icon">⚙️</div><div class="nav-label">AUTO</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('bpi');renderBpi()" id="nav-bpi">
+        <div class="nav-icon">🏠</div><div class="nav-label">BPI</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('subs');renderSubs()" id="nav-subs">
+        <div class="nav-icon">👷</div><div class="nav-label">SUBS</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('blueprint');renderBlueprint()" id="nav-blueprint">
+        <div class="nav-icon">📐</div><div class="nav-label">PLANS</div>
+      </div>
+      <div class="nav-item" onclick="switchModule('calcs');renderCalcs()" id="nav-calcs">
+        <div class="nav-icon">🧮</div><div class="nav-label">CALCS</div>
       </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
         <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
@@ -1207,6 +660,31 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <div id="ccBoard" style="font-size:13px;line-height:1.9"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Drivetrain · recent gear-turns</h3>
         <div id="ccDrive" style="font-size:12px;line-height:1.7;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+        <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Owner Tools</h3>
+        <div style="display:grid;gap:10px">
+          <div class="jsa-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🔍 AI Business Audit</b>
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderBizAudit()">Run audit</button></div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px">Ranked, decision-ready findings from your own records — pipeline health, stale bids, cold leads, AR aging, close rate, overdue jobs, concentration. No fabricated numbers.</div>
+            <div id="bizAuditOut" style="margin-top:8px;font-size:13px;line-height:1.55"></div>
+          </div>
+          <div class="jsa-card">
+            <div style="font-weight:700">🔮 Predict job cost from history</div>
+            <div style="font-size:11px;color:var(--t2);margin:2px 0 6px">Least-squares prediction from YOUR completed logged jobs (size → cost) with a confidence read. Advisory — a look at what similar past jobs actually cost, never a quote.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input class="admin-inp" id="pcSvc" placeholder="Service (e.g. spray foam)" style="flex:1;min-width:150px">
+              <input class="admin-inp" id="pcSize" inputmode="decimal" placeholder="Size (sq ft / BF)" style="width:150px">
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderPredictCost()">Predict</button>
+            </div>
+            <div id="predictCostOut" style="margin-top:8px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+          </div>
+          <div class="jsa-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>▶ What's next — every open job</b>
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderWorkflow()">Refresh</button></div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px">Your whole pipeline, one glance: what's overdue and the next step on each open lead/job (lead → bid → scheduled → in&nbsp;progress → invoice → paid). Nothing sends automatically.</div>
+            <div id="workflowOut" style="margin-top:8px;font-size:13px;line-height:1.55"></div>
+          </div>
+        </div>
         <div style="margin-top:16px"><button onclick="renderCommand()" style="background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700">↻ Refresh</button></div>
       </div>
       <div id="mod-intel" class="module">
@@ -1428,6 +906,16 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
             <button class="btn btn-ghost" onclick="govSaveKey()">Save key</button>
           </div>
           <div style="font-size:10px;color:var(--t2);margin-top:6px">Stored on this device only, never shown in quotes. Get a free key at sam.gov → Account Details → Public API Key.</div>
+        </div>
+
+        <!-- State + workforce programs (gov-programs) -->
+        <div class="admin-section">
+          <div class="admin-section-title">🏛️ STATE &amp; WORKFORCE PROGRAMS</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:8px">State bid registration, prevailing-wage applicability, and hiring incentives (WOTC / WIOA / apprenticeship). GUIDANCE — every item carries a verify pointer.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${['MT','ND','SD','WY'].map(s=>`<button class="btn btn-ghost" style="font-size:12px" onclick="renderGovPrograms('${s}')">${s}</button>`).join('')}
+          </div>
+          <div id="govProgOut" style="margin-top:10px;font-size:13px;line-height:1.55"></div>
         </div>
 
         <!-- Filters -->
@@ -2044,6 +1532,26 @@ h2{text-shadow:0 0 14px rgba(var(--accentRGB),.35)}
         <div class="mod-head"><h2>⚙️ Automations — Scenario Builder</h2>
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="scenarios_body"></div>
+      </div>
+      <div id="mod-bpi" class="module">
+        <div class="mod-head"><h2>🏠 BPI — Home Energy Audit</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="bpi_body"></div>
+      </div>
+      <div id="mod-subs" class="module">
+        <div class="mod-head"><h2>👷 Subcontractors — Prime/Sub Roster</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="subs_body"></div>
+      </div>
+      <div id="mod-blueprint" class="module">
+        <div class="mod-head"><h2>📐 Plans — Blueprint Reader</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="blueprint_body"></div>
+      </div>
+      <div id="mod-calcs" class="module">
+        <div class="mod-head"><h2>🧮 Trade Calculators</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="calcs_body"></div>
       </div>
   </div><!-- /main -->
 </div><!-- /app -->
@@ -2872,6 +2380,10 @@ function switchModule(id){
   if(id==='materials'){ if(window.renderMaterials) renderMaterials(); }
   if(id==='pricebook'){ if(window.renderPriceBook) renderPriceBook(); }
   if(id==='compliance'){ if(window.renderCompliance) renderCompliance(); }
+  if(id==='bpi'){ if(window.renderBpi) renderBpi(); }
+  if(id==='subs'){ if(window.renderSubs) renderSubs(); }
+  if(id==='blueprint'){ if(window.renderBlueprint) renderBlueprint(); }
+  if(id==='calcs'){ if(window.renderCalcs) renderCalcs(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -3068,8 +2580,8 @@ window.renderSystem = async function(){
   const card = (title, inner) => '<div class="card" style="margin-bottom:12px"><div class="card-title">'+e(title)+'</div>'+inner+'</div>';
   const tile = (label, val) => '<div style="min-width:110px"><div style="font-size:11px;opacity:.6;text-transform:uppercase">'+e(label)+'</div><div style="font-size:18px;font-weight:600">'+e(String(val))+'</div></div>';
   body.innerHTML = '<div style="opacity:.6;padding:16px">Loading system map…</div>';
-  async function get(url){ try{ const r=await fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}); if(r.status===401) return {__gated:true}; if(!r.ok) return {__err:r.status}; return await r.json(); }catch(err){ return {__err:String(err).slice(0,80)}; } }
-  const [boot, health, tele] = await Promise.all([get('/api/boot'), get('/api/health'), get('/api/telemetry')]);
+  async function get(url){ try{ const cc=(window.appCrewCode||(function(){try{return (localStorage.getItem('klyfton_crew_code')||'').trim();}catch(e){return '';}})()); const r=await fetch(url,{headers:{'x-crew-code':cc}}); if(r.status===401) return {__gated:true}; if(!r.ok) return {__err:r.status}; return await r.json(); }catch(err){ return {__err:String(err).slice(0,80)}; } }
+  const [boot, health, tele, cmdb] = await Promise.all([get('/api/boot'), get('/api/health'), get('/api/telemetry'), get('/api/cmdb')]);
   let html = '';
 
   if(boot && boot.__gated){
@@ -3095,6 +2607,22 @@ window.renderSystem = async function(){
     html += card('Klyfton — live map', '<div style="opacity:.7">Map unavailable ('+e((boot&&boot.__err)||'no data')+'). Loads once the app is deployed with the endpoints live.</div>');
   }
 
+  // Connections & wiring — from /api/cmdb: the capabilities (connections) each with what it powers +
+  // how to arm it, plus which dark components are blocked by which connection (the wiring / why-dark).
+  if(cmdb && !cmdb.__gated && !cmdb.__err && Array.isArray(cmdb.capabilities)){
+    const caps = cmdb.capabilities.slice().sort((a,b)=>(b.powers||0)-(a.powers||0));
+    const rows = caps.map(c=>{
+      const dot = c.live?'🟢':'⚪';
+      const arm = (!c.live && c.arm)?'<div style="opacity:.6;font-size:11px;margin-top:2px">→ '+e(c.arm)+'</div>':'';
+      return '<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+dot+' '+e(c.label||c.id)+'</span><span style="opacity:.55;font-size:12px">powers '+e(String(c.powers||0))+'</span></div>'+arm+'</div>';
+    }).join('');
+    const cc = cmdb.counts||{};
+    html += card('Connections & wiring',
+      '<div style="opacity:.7;font-size:12px;margin-bottom:8px">'+e(String(cc.capsLive||0))+' / '+e(String(cc.capabilities||0))+' connections live · '+e(String(cc.live||0))+' / '+e(String(cc.components||0))+' components live</div>'
+      + rows
+      + (cmdb.biggestUnlock?'<div style="margin-top:8px;font-size:12px"><b>Do first:</b> '+e(cmdb.biggestUnlock.arm||'')+' → +'+e(String(cmdb.biggestUnlock.unlocks||0))+' tools</div>':''));
+  }
+
   if(health && !health.__err && Array.isArray(health.subsystems)){
     const rows = health.subsystems.map(x=>{
       const dot = x.status==='on'?'🟢':(x.status==='partial'?'🟡':'⚪');
@@ -3114,14 +2642,700 @@ window.renderSystem = async function(){
     }
   }
 
-  html += '<div style="opacity:.5;font-size:11px;margin-top:8px">Read-only self-map · /api/boot · /api/health · /api/telemetry</div>';
+  html += '<div style="opacity:.5;font-size:11px;margin-top:8px">Read-only self-map · /api/boot · /api/cmdb · /api/health · /api/telemetry</div>';
   body.innerHTML = html;
 };
 
 // ---- shared helpers for the interactive panels (additive; no app deps) ----
 window.sysEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function _sysGet(url){ return fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
-function _sysPost(url,body){ return fetch(url,{method:'POST',headers:{'content-type':'application/json','x-crew-code':(window.appCrewCode||'')},body:JSON.stringify(body)}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+// The crew code the owner sets in Vercel (CREW_CODE) is entered once per device and stored in
+// localStorage('klyfton_crew_code'); send THAT on every gated call. (window.appCrewCode is never
+// assigned, so relying on it alone 401'd every system panel the moment CREW_CODE was set.)
+function _crewCode(){ try{ return (window.appCrewCode||localStorage.getItem('klyfton_crew_code')||'').trim(); }catch(e){ return String(window.appCrewCode||''); } }
+function _sysGet(url){ return fetch(url,{headers:{'x-crew-code':_crewCode()}}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+function _sysPost(url,body){ return fetch(url,{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},body:JSON.stringify(body)}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+
+// ============================================================
+// BPI — Home Energy Audit intake panel (mirrors the field audit tool). Collects building geometry,
+// homeowner concerns, and 12-mo electric/gas bills, then runs /api/energy-audit. ESTIMATE only —
+// energy units (no dollars), no guaranteed savings, no mold claims; CAZ safety surfaced.
+// ============================================================
+function _bpiInput(id,label,ph){ return `<label style="display:block;font-size:12px;color:var(--t2);margin:6px 0 2px">${label}</label>`+
+  `<input id="${id}" class="admin-inp" placeholder="${ph||''}" style="width:100%" inputmode="decimal">`; }
+function renderBpi(){
+  const b=document.getElementById('bpi_body'); if(!b) return;
+  _bpiWireBridge(); // one-time: receive building context pushed back from the estimator iframe
+  if(document.getElementById('bpi_run')) return; // build once — keep entered data on reopen
+  b.innerHTML =
+    `<div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiPullFromEstimator()">⇙ Pull building from Estimator</button></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Building</h4>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`+
+      _bpiInput('bpi_year','Year built','1936')+_bpiInput('bpi_area','Conditioned area (ft²)','2500')+
+      _bpiInput('bpi_wallh','Avg wall height (ft)','8')+_bpiInput('bpi_floors','Floors above grade','2')+
+      _bpiInput('bpi_len','House length (ft)','40')+_bpiInput('bpi_wid','House width (ft)','32')+
+      _bpiInput('bpi_beds','Bedrooms','4')+_bpiInput('bpi_occ','Occupants','2')+
+    `</div>`+
+    `<label style="display:block;font-size:12px;color:var(--t2);margin:8px 0 2px">Primary heating fuel</label>`+
+    `<select id="bpi_fuel" class="admin-inp" style="width:100%"><option>Natural Gas</option><option>Propane</option><option>Electric</option><option>Fuel Oil</option><option>Wood/Pellet</option></select></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Concerns</h4><div id="bpi_concerns"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddConcern()">+ Add concern</button></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Electric bills (kWh)</h4>`+
+    _bpiInput('bpi_estart','Start meter read date — oldest first (YYYY-MM-DD)','2016-07-08')+
+    `<div id="bpi_ereads" style="margin-top:6px"></div>`+
+    `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddRead('e')">+ Month</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAutoDates('e')">↻ Auto-fill dates (+1 mo)</button></div></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Gas bills (therms)</h4>`+
+    _bpiInput('bpi_gstart','Start meter read date — oldest first (YYYY-MM-DD)','2016-07-08')+
+    `<div id="bpi_greads" style="margin-top:6px"></div>`+
+    `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddRead('g')">+ Month</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAutoDates('g')">↻ Auto-fill dates (+1 mo)</button></div></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Existing equipment</h4>`+
+    `<div style="font-size:11px;color:var(--t2);margin-bottom:6px">Enter make + model — Klyfton finds the specs (grounded web lookup; always verify the nameplate). Combustion units flag CAZ testing.</div>`+
+    `<div id="bpi_equip"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="bpiAddEquip()">+ Add equipment</button></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Measures & incentives</h4>`+
+    `<div style="font-size:11px;color:var(--t2);margin-bottom:6px">Check what you'll recommend; enter job cost + any program rebate (%/$). Owner-entered — NOT MGSF pricing. Results rank by cost-effectiveness.</div>`+
+    `<div id="bpi_measures"><div style="opacity:.6;font-size:12px">Loading measures…</div></div></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 4px">Optional — savings ESTIMATE</h4>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">`+
+      _bpiInput('bpi_hdd','Actual HDD','')+_bpiInput('bpi_thdd','Typical-year HDD','')+_bpiInput('bpi_redpct','Reduction %','25')+
+    `</div><div style="font-size:11px;color:var(--t2);margin-top:6px">Savings are ESTIMATES — energy units only, never guaranteed. Apply the customer's own utility rate for $.</div></div>`+
+    `<button id="bpi_run" class="btn btn-primary" style="width:100%;font-size:14px" onclick="bpiRun()">Run BPI audit</button>`+
+    `<div id="bpi_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div><div id="bpi_out" style="margin-top:10px"></div>`;
+  bpiAddConcern(); bpiAddRead('e'); bpiAddRead('g'); bpiAddEquip(); _bpiLoadMeasures();
+}
+// ---- Existing-equipment lookup (AI helper: make/model → specs, grounded) ----
+function bpiAddEquip(){ const c=document.getElementById('bpi_equip'); if(!c) return;
+  const d=document.createElement('div'); d.className='bpi-eq';
+  d.style.cssText='border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;margin-bottom:8px';
+  d.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`+
+    `<select class="admin-inp bpi-eqtype"><option value="furnace">Furnace</option><option value="boiler">Boiler</option><option value="water_heater">Water heater</option><option value="ac">Central AC</option><option value="heat_pump">Heat pump</option><option value="mini_split">Mini-split</option></select>`+
+    `<input class="admin-inp bpi-eqyear" placeholder="Year (opt)" inputmode="numeric">`+
+    `<input class="admin-inp bpi-eqmake" placeholder="Make (e.g. Trane)">`+
+    `<input class="admin-inp bpi-eqmodel" placeholder="Model #">`+
+    `<input class="admin-inp bpi-eqserial" placeholder="Serial # (opt)" style="grid-column:1 / -1"></div>`+
+    `<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="bpiFindSpecs(this)">🔎 Find specs (AI)</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.closest('.bpi-eq').remove()">✕</button></div>`+
+    `<div class="bpi-eqout" style="font-size:12px;margin-top:6px;color:var(--t2)"></div>`;
+  c.appendChild(d);
+}
+async function bpiFindSpecs(btn){ const row=btn.closest('.bpi-eq'); if(!row) return; const E=window.sysEsc;
+  const g=sel=>((row.querySelector(sel)||{}).value||'').trim();
+  const type=g('.bpi-eqtype'), make=g('.bpi-eqmake'), model=g('.bpi-eqmodel'), year=g('.bpi-eqyear'), serial=g('.bpi-eqserial');
+  const out=row.querySelector('.bpi-eqout');
+  if(!make && !model && !serial){ if(out) out.innerHTML='<span style="color:var(--yw)">Enter a make/model (or at least a serial #) first.</span>'; return; }
+  if(out) out.innerHTML='Searching spec sheets…'; btn.disabled=true;
+  const d=await fetch('/api/equipment-lookup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({make:make,model:model,serial:serial,type:type,year:year})}).then(r=>r.json()).catch(()=>null);
+  btn.disabled=false;
+  if(!d || d.ok===false){ if(out) out.innerHTML='<span style="color:var(--red)">Lookup failed'+(d&&d.error?(' ('+E(d.error)+')'):'')+'.</span>'; return; }
+  const specLine=s=>Object.keys(s||{}).map(k=>E(k)+': <b>'+E(s[k])+'</b>').join(' · ');
+  let h='';
+  const eq=d.equipment||{};
+  const serialLine=()=> (serial||eq.serial||eq.manufactureDate)?`<div style="margin-top:3px;font-size:11px;color:var(--t2)">`+((serial||eq.serial)?('S/N: '+E(serial||eq.serial)):'')+(eq.manufactureDate?`  ·  Mfg date: <b>${E(eq.manufactureDate)}</b> (verify)`:'')+`</div>`:'';
+  if(d.found && d.equipment){
+    const badge=d.verified?'<span style="color:var(--gr);border:1px solid var(--gr);border-radius:4px;padding:0 4px;font-size:10px">✓ VERIFIED</span>':'<span style="color:var(--yw);border:1px solid var(--yw);border-radius:4px;padding:0 4px;font-size:10px">UNVERIFIED</span>';
+    h+=`<div>${badge} ${E(eq.brand||make)} ${E(eq.model||model)}${eq.fuel?(' · '+E(eq.fuel)):''}</div>`;
+    h+=`<div style="margin-top:3px">${specLine(eq.specs)}</div>`+serialLine();
+    if(eq.combustion){ h+=`<div style="color:var(--red);margin-top:3px">⚠ Combustion appliance — CAZ combustion-safety testing required before air-sealing.</div>`;
+      const fs=document.getElementById('bpi_fuel'); if(fs && eq.fuel) _bpiFuelMatch(fs,eq.fuel); }
+    if(d.sources&&d.sources.length){ h+=`<div style="margin-top:3px;font-size:11px">Source: `+d.sources.slice(0,2).map(u=>`<a href="${E(u)}" target="_blank" rel="noopener" style="color:var(--cy)">link</a>`).join(' · ')+`</div>`; }
+    row.dataset.eq=JSON.stringify({type:eq.type,make:make,model:model,serial:serial||eq.serial,manufactureDate:eq.manufactureDate,year:year,fuel:eq.fuel,specs:eq.specs,verified:!!d.verified,combustion:!!eq.combustion});
+  } else {
+    h+=`<div style="color:var(--yw)">Model not found — enter the nameplate manually.</div>`+serialLine();
+    row.dataset.eq=JSON.stringify({type:type,make:make,model:model,serial:serial||eq.serial,manufactureDate:eq.manufactureDate,year:year,verified:false});
+  }
+  if(d.fallback && d.fallback.specs){ h+=`<div style="margin-top:3px;font-size:11px;color:var(--t2)">Typical for this type/era (ESTIMATE, not this unit): ${specLine(d.fallback.specs)}${d.fallback.note?(' — '+E(d.fallback.note)):''}</div>`; }
+  h+=`<div style="margin-top:3px;font-size:10px;color:var(--t2)">${E(d.note||'')}</div>`;
+  if(out) out.innerHTML=h;
+}
+function _bpiEquip(){ const rows=document.querySelectorAll('#bpi_equip .bpi-eq'); const list=[];
+  rows.forEach(row=>{ const g=sel=>((row.querySelector(sel)||{}).value||'').trim();
+    const make=g('.bpi-eqmake'), model=g('.bpi-eqmodel'), serial=g('.bpi-eqserial'); if(!make && !model && !serial) return;
+    let looked=null; try{ looked=row.dataset.eq?JSON.parse(row.dataset.eq):null; }catch(e){}
+    if(looked && serial && !looked.serial) looked.serial=serial;
+    list.push(looked || { type:g('.bpi-eqtype'), make:make, model:model, serial:serial, year:g('.bpi-eqyear') });
+  });
+  return list;
+}
+async function _bpiLoadMeasures(){
+  const host=document.getElementById('bpi_measures'); if(!host) return; const E=window.sysEsc;
+  const d=await fetch('/api/energy-audit').then(r=>r.json()).catch(()=>null);
+  const cat=(d&&d.catalog)||[];
+  if(!cat.length){ host.innerHTML='<div style="font-size:12px;color:var(--t2)">Measure catalog unavailable.</div>'; return; }
+  host.innerHTML=cat.map(m=>`<div class="bpi-m" data-id="${E(m.id)}" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px">`+
+    `<input type="checkbox" class="bpi-mrec" style="width:18px;height:18px;margin-top:3px">`+
+    `<div style="flex:1"><div style="font-size:13px">${E(m.name)}${m.mgsf?' <span style="font-size:10px;color:var(--or);border:1px solid var(--or);border-radius:4px;padding:0 4px">MGSF</span>':''}</div>`+
+    `<div style="display:flex;gap:6px;margin-top:3px"><input class="admin-inp bpi-mcost" placeholder="Cost $" inputmode="decimal" style="flex:1"><input class="admin-inp bpi-mincpct" placeholder="Inc %" inputmode="decimal" style="width:64px"><input class="admin-inp bpi-mincdol" placeholder="Inc $" inputmode="decimal" style="width:76px"></div></div></div>`).join('');
+}
+function bpiAddConcern(){ const c=document.getElementById('bpi_concerns'); if(!c) return;
+  const d=document.createElement('div'); d.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start';
+  d.innerHTML=`<div style="flex:1"><input class="admin-inp bpi-csum" placeholder="Concern (e.g. cold floors)" style="width:100%;margin-bottom:4px"><input class="admin-inp bpi-cdet" placeholder="Detail (optional)" style="width:100%"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.parentNode.remove()">✕</button>`;
+  c.appendChild(d);
+}
+function bpiAddRead(kind){ const c=document.getElementById(kind==='e'?'bpi_ereads':'bpi_greads'); if(!c) return;
+  const unit=kind==='e'?'kWh':'therms'; const d=document.createElement('div');
+  d.style.cssText='display:flex;gap:6px;margin-bottom:4px;align-items:center';
+  d.innerHTML=`<input class="admin-inp bpi-${kind}end" placeholder="End date YYYY-MM-DD" style="flex:1.2">`+
+    `<input class="admin-inp bpi-${kind}use" placeholder="Usage" inputmode="decimal" style="flex:1"><span style="font-size:11px;color:var(--t2);width:46px">${unit}</span>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.parentNode.remove()">✕</button>`;
+  c.appendChild(d);
+}
+function bpiAutoDates(kind){ const start=(document.getElementById(kind==='e'?'bpi_estart':'bpi_gstart')||{}).value;
+  const t=Date.parse(String(start||'').slice(0,10)); if(!isFinite(t)){ if(typeof notify==='function') notify('Enter a valid start date first (YYYY-MM-DD)','alert'); return; }
+  document.querySelectorAll('#'+(kind==='e'?'bpi_ereads':'bpi_greads')+' .bpi-'+kind+'end').forEach((inp,i)=>{ const d=new Date(t); d.setUTCMonth(d.getUTCMonth()+i+1); inp.value=d.toISOString().slice(0,10); });
+}
+function _bpiReads(kind){ const start=((document.getElementById(kind==='e'?'bpi_estart':'bpi_gstart')||{}).value||'').slice(0,10);
+  const ends=document.querySelectorAll('#'+(kind==='e'?'bpi_ereads':'bpi_greads')+' .bpi-'+kind+'end');
+  const uses=document.querySelectorAll('#'+(kind==='e'?'bpi_ereads':'bpi_greads')+' .bpi-'+kind+'use');
+  const reads=[]; ends.forEach((e,i)=>{ const u=parseFloat(((uses[i]||{}).value)); if(e.value && isFinite(u)) reads.push({end:e.value.slice(0,10),usage:u}); });
+  return { start:start, reads:reads };
+}
+async function bpiRun(){
+  const st=document.getElementById('bpi_status'), out=document.getElementById('bpi_out');
+  const num=id=>{ const v=parseFloat((document.getElementById(id)||{}).value); return isFinite(v)?v:undefined; };
+  const concerns=[]; document.querySelectorAll('#bpi_concerns > div').forEach(d=>{ const s=((d.querySelector('.bpi-csum')||{}).value||'').trim(); const det=((d.querySelector('.bpi-cdet')||{}).value||'').trim(); if(s) concerns.push({summary:s,detail:det}); });
+  const payload={
+    building:{ yearBuilt:num('bpi_year'), conditionedArea:num('bpi_area'), wallHeight:num('bpi_wallh'), floors:num('bpi_floors'), length:num('bpi_len'), width:num('bpi_wid'), bedrooms:num('bpi_beds'), occupants:num('bpi_occ') },
+    concerns:concerns, electric:_bpiReads('e'), gas:_bpiReads('g'),
+    hdd:num('bpi_hdd'), typicalHdd:num('bpi_thdd'), reductionPct:num('bpi_redpct'),
+  };
+  if(!payload.electric.reads.length) delete payload.electric;
+  if(!payload.gas.reads.length) delete payload.gas;
+  const measures=[]; document.querySelectorAll('#bpi_measures .bpi-m').forEach(row=>{
+    const id=row.getAttribute('data-id'); const rec=!!(row.querySelector('.bpi-mrec')||{}).checked;
+    const cost=parseFloat((row.querySelector('.bpi-mcost')||{}).value), incp=parseFloat((row.querySelector('.bpi-mincpct')||{}).value), incd=parseFloat((row.querySelector('.bpi-mincdol')||{}).value);
+    if(rec || isFinite(cost)){ const m={id:id, recommend:rec}; if(isFinite(cost)) m.cost=cost; if(isFinite(incp)) m.incentivePct=incp; if(isFinite(incd)) m.incentiveDollar=incd; measures.push(m); }
+  });
+  if(measures.length) payload.measures=measures;
+  const equipment=_bpiEquip(); if(equipment.length) payload.equipment=equipment;
+  if(st) st.textContent='Running the audit…';
+  const d=await _sysPost('/api/energy-audit',payload);
+  if(st) st.textContent='';
+  if(!d || d.__err){ if(out) out.innerHTML='<p style="color:var(--red);font-size:13px">Couldn\'t run the audit ('+((d&&d.__err)||'error')+').</p>'; return; }
+  if(d.__gated){ if(out) out.innerHTML='<p style="color:var(--yw);font-size:13px">🔒 Crew code required.</p>'; return; }
+  if(d.ok===false){ if(out) out.innerHTML='<p style="color:var(--yw);font-size:13px">'+window.sysEsc(d.note||'Enter bills, building, and/or concerns.')+'</p>'; return; }
+  bpiRenderResult(d);
+}
+function bpiRenderResult(d){
+  const out=document.getElementById('bpi_out'); if(!out) return; const E=window.sysEsc;
+  const fuel=(f,name)=> f? `<div class="jsa-card"><h4 style="margin:0 0 4px">${E(name)}</h4><div style="font-size:13px;line-height:1.6">`+
+    `Annual use: <b>${E(f.annualUsage)}</b> <span style="color:var(--t2)">(${E(f.basis)})</span><br>`+
+    `Base load: ${E(f.baseAnnual)} · Seasonal: <b>${E(f.seasonalAnnual)}</b> (${E(f.seasonalPct)}%)<br>`+
+    (f.weatherNormalized&&f.weatherNormalized.normalized?`Weather-normalized seasonal: ${E(f.weatherNormalized.normalizedSeasonal)}<br>`:'')+
+    (f.savings&&f.savings.estimated?`<span style="color:var(--gr)">Est. energy saved: ${E(f.savings.unitsSaved)} at ${E(f.savings.reductionPct)}% — ESTIMATE, actual savings vary</span>`:'<span style="color:var(--t2)">Add HDD + reduction % for a savings estimate.</span>')+
+    `</div></div>` : '';
+  let html='';
+  if(d.safetyFlag) html+=`<div class="jsa-card" style="border-left:3px solid var(--red)"><b style="color:var(--red)">⚠ Safety:</b> ${E(d.safetyFlag)}</div>`;
+  if(d.geometry){ const g=d.geometry; html+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Building</h4><div style="font-size:13px;line-height:1.6">`+
+    (g.volume?`Volume: <b>${E(g.volume)} ft³</b> <span style="color:var(--t2)">(feeds blower-door ACH50 + ASHRAE 62.2)</span><br>`:'')+
+    (g.bedrooms!=null?`Bedrooms: ${E(g.bedrooms)}`:'')+(g.footprint?` · Footprint: ${E(g.footprint)} ft²`:'')+`</div></div>`; }
+  html+=fuel(d.electric,'Electric (kWh)')+fuel(d.gas,'Gas (therms)');
+  if(d.siteEnergyMMBtu) html+=`<div class="jsa-card" style="font-size:13px">Combined site energy: <b>${E(d.siteEnergyMMBtu)} MMBtu/yr</b> (ESTIMATE)</div>`;
+  if(d.equipment&&d.equipment.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Existing equipment</h4>`;
+    d.equipment.forEach(eq=>{ const sp=Object.keys(eq.specs||{}).map(k=>E(k)+' '+E(eq.specs[k])).join(' · ');
+      html+=`<div style="font-size:12px;margin-bottom:4px"><span>${E(eq.type)}: ${E(eq.make||'')} ${E(eq.model||'')}${eq.fuel?(' ('+E(eq.fuel)+')'):''}</span>`+
+        `${eq.verified?' <span style="color:var(--gr);font-size:10px">✓</span>':' <span style="color:var(--yw);font-size:10px">unverified</span>'}`+
+        (eq.serial?`<br><span style="color:var(--t2)">S/N: ${E(eq.serial)}${eq.manufactureDate?(' · mfg '+E(eq.manufactureDate)):''}</span>`:'')+
+        (sp?`<br><span style="color:var(--t2)">${sp}</span>`:'')+(eq.combustion?`<br><span style="color:var(--red)">⚠ combustion — CAZ before air-sealing</span>`:'')+`</div>`; });
+    html+=`</div>`; }
+  if(d.sizing){ const s=d.sizing; html+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Right-sizing after the work (ESTIMATE)</h4><div style="font-size:12px;line-height:1.6">`+
+    `Est. current heating load: <b>${E(s.currentLoadBtu.low)}–${E(s.currentLoadBtu.high)} BTU/hr</b> <span style="color:var(--t2)">(${E(s.basis)})</span><br>`+
+    `After ${E(s.reductionAppliedPct)}% envelope improvement: <b>${E(s.postRetrofitLoadBtu.low)}–${E(s.postRetrofitLoadBtu.high)} BTU/hr</b><br>`+
+    `Suggested new furnace: <b>${E(s.recommendedFurnaceInputMBH)}k BTU input</b>`+(s.recommendedCoolingTons?` · cooling <b>${E(s.recommendedCoolingTons)} tons</b>`:'')+`</div>`+
+    `<div style="margin-top:4px">`+(s.options||[]).map(o=>`<div style="font-size:12px;color:var(--t2)">• ${E(o)}</div>`).join('')+`</div>`+
+    `<div style="font-size:11px;color:var(--yw);margin-top:4px">${E(s.note)}</div></div>`; }
+  if(d.measures&&d.measures.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Measures (ranked by cost-effectiveness)</h4>`;
+    d.measures.forEach(m=>{ html+=`<div style="font-size:12px;margin-bottom:4px;display:flex;justify-content:space-between;gap:8px"><span>${E(m.rank)}. ${E(m.name)}${m.mgsf?' <span style="color:var(--or)">•MGSF</span>':''}</span>`+
+      `<span style="color:var(--t2)">$${E(m.cost)} − $${E(m.incentive)} = <b>$${E(m.netCost)}</b>${m.costPerUnitSaved!=null?' · $'+E(m.costPerUnitSaved)+'/unit':''}</span></div>`; });
+    if(d.measuresTotal){ const t=d.measuresTotal; html+=`<div style="font-size:13px;margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">Total: $${E(t.cost)} − incentive $${E(t.incentive)} = <b>net $${E(t.netCost)}</b>`+
+      (t.incentiveAfterCap!=null?` <span style="color:var(--t2)">(after program cap: net $${E(t.netCostAfterCap)})</span>`:'')+`</div>`; }
+    html+=`<div style="font-size:11px;color:var(--t2);margin-top:4px">Costs/incentives owner-entered — ESTIMATE, not MGSF pricing.</div></div>`; }
+  if(d.recommendations&&d.recommendations.length){ html+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Recommended measures</h4>`;
+    d.recommendations.forEach(r=>{ html+=`<div style="margin-bottom:8px"><div style="font-weight:600;font-size:13px">${E(r.summary)}</div>`;
+      (r.measures||[]).forEach(m=>{ html+=`<div style="font-size:12px;color:${m.safety?'var(--red)':'inherit'};margin-left:8px">• ${m.safety?'⚠ ':''}${E(m.measure)}<br><span style="color:var(--t2)">${E(m.why)}</span></div>`; });
+      html+=`</div>`; });
+    html+=`</div>`; }
+  html+=`<div style="font-size:11px;color:var(--t2);margin-top:6px">ESTIMATE only — energy units, no dollars, no guaranteed savings. Combustion-safety (CAZ) testing required before air-sealing a home with gas/propane/oil appliances.</div>`;
+  html+=`<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="bpiToEstimator()">→ Send building to Estimator (price these measures)</button>`;
+  out.innerHTML=html;
+}
+// ---- Bidirectional BPI ↔ Estimator handoff ----
+// Both live in this shared origin. BPI→estimator reuses the mgsf_prefill_v1 channel (selects the
+// BPI service + fills geometry on load / storage event) and also posts to the live iframe; the
+// estimator→BPI direction asks the iframe for its current BPI fields via postMessage.
+function _bpiFuelMatch(sel,val){ if(!sel||val==null||val==='') return; const norm=s=>String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  let v=norm(val), want=v;
+  if(/natural|gas/.test(v)) want='naturalgas'; else if(/propane|lp/.test(v)) want='propane';
+  else if(/elec/.test(v)) want='electric'; else if(/oil/.test(v)) want='fueloil'; else if(/wood|pellet/.test(v)) want='woodpellet';
+  for(let i=0;i<sel.options.length;i++){ if(norm(sel.options[i].value)===want||norm(sel.options[i].text)===want){ sel.selectedIndex=i; return; } }
+  for(let j=0;j<sel.options.length;j++){ if(norm(sel.options[j].text).indexOf(want.slice(0,4))>=0){ sel.selectedIndex=j; return; } }
+}
+function _bpiGeom(){ const num=id=>{ const v=parseFloat((document.getElementById(id)||{}).value); return isFinite(v)?v:undefined; };
+  return { sf:num('bpi_area'), ch:num('bpi_wallh'), year:num('bpi_year'), fuel:(document.getElementById('bpi_fuel')||{}).value||'' };
+}
+function bpiToEstimator(){
+  const g=_bpiGeom();
+  try{ localStorage.setItem('mgsf_prefill_v1', JSON.stringify({ ts:Date.now(), service:'bpi', bpiSf:g.sf, bpiCh:g.ch, bpiYear:g.year, bpiFuel:g.fuel })); }catch(e){}
+  switchModule('estimate');
+  const f=document.getElementById('estFrame');
+  if(f){ if(!f.src && f.dataset.src){ f.src=f.dataset.src; } // first open → estimator reads prefill on load
+    else { try{ f.contentWindow.postMessage({type:'mgsf-bpi-handoff',payload:g},'*'); }catch(e){} } }
+  if(typeof notify==='function') notify('Building sent to estimator — BPI service selected','success');
+}
+function bpiPullFromEstimator(){
+  const f=document.getElementById('estFrame');
+  if(!f || !f.src){ if(typeof notify==='function') notify('Open the Estimator once first, then pull','alert'); return; }
+  try{ f.contentWindow.postMessage({type:'mgsf-bpi-req'},'*'); }catch(e){}
+}
+function _bpiWireBridge(){ if(window._bpiBridgeWired) return; window._bpiBridgeWired=true;
+  window.addEventListener('message',function(ev){ const m=ev&&ev.data; if(!m||typeof m!=='object'||m.type!=='mgsf-bpi-ctx'||!m.payload) return;
+    const p=m.payload; const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
+    set('bpi_area',p.sf); set('bpi_wallh',p.ch); set('bpi_year',p.year);
+    if(p.fuel) _bpiFuelMatch(document.getElementById('bpi_fuel'),p.fuel);
+    if(typeof notify==='function') notify('Building pulled from estimator','success');
+  });
+}
+
+// ---- Subcontractor roster: prime-with-subs compliance readiness (Supabase-gated) ----
+async function renderSubs(){
+  const b=document.getElementById('subs_body'); if(!b) return; const E=window.sysEsc;
+  b.innerHTML='<div style="opacity:.6">Loading roster…</div>';
+  const d=await fetch('/api/subs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'expiring'})}).then(r=>r.json()).catch(()=>null);
+  let h='';
+  if(!d || d.configured===false){
+    h+='<div class="jsa-card" style="border-left:3px solid var(--yw)"><b>Roster storage not connected.</b> Add Supabase (see db/SETUP.md) to persist subs. Until then, collect each sub\'s required packet — signed subcontract, W-9, COI (MGSF additional insured), license, lien waivers, safety — before any sub works under MGSF as prime.</div>'+_subsForm();
+    b.innerHTML=h; return;
+  }
+  const rows=d.results||[], alerts=d.alerts||[];
+  const cnt={ready:0,expiring:0,blocked:0}; rows.forEach(r=>{ if(r.compliance) cnt[r.compliance.readiness]=(cnt[r.compliance.readiness]||0)+1; });
+  h+=`<div class="jsa-card"><b>${rows.length}</b> subs · <span style="color:var(--gr)">${cnt.ready||0} ready</span> · <span style="color:var(--yw)">${cnt.expiring||0} expiring</span> · <span style="color:var(--red)">${cnt.blocked||0} blocked</span></div>`;
+  if(alerts.length){ h+=`<div class="jsa-card" style="border-left:3px solid var(--yw)"><h4 style="margin:0 0 6px">⚠ Needs attention</h4>`+
+    alerts.map(a=>`<div style="font-size:13px;margin-bottom:4px">${_subBadge(a.readiness)} <b>${E(a.name||'')}</b> <span style="color:var(--t2)">(${E(a.trade||'')})</span> — ${a.readiness==='blocked'?('missing/expired: '+E((a.blockers||[]).join(', ')||'—')):('expiring: '+E((a.expiring||[]).map(x=>x.type+' in '+x.daysLeft+'d').join(', ')))}</div>`).join('')+`</div>`; }
+  h+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Roster</h4>`+(rows.length?rows.map(r=>{ const c=r.compliance||{};
+    return `<div style="font-size:13px;border-bottom:1px solid rgba(255,255,255,.08);padding:4px 0">${_subBadge(c.readiness)} <b>${E(r.name||'')}</b> <span style="color:var(--t2)">${E(r.trade||'')}${r.company?(' · '+E(r.company)):''}${r.state?(' · '+E(r.state)):''}</span></div>`; }).join(''):'<div style="opacity:.6">No subs yet — add one below.</div>')+`</div>`;
+  h+=_subsForm();
+  b.innerHTML=h;
+}
+function _subBadge(r){ const m={ready:['var(--gr)','READY'],expiring:['var(--yw)','EXPIRING'],blocked:['var(--red)','BLOCKED']}; const x=m[r]||['var(--t2)','?']; return `<span style="color:${x[0]};border:1px solid ${x[0]};border-radius:4px;padding:0 4px;font-size:10px">${x[1]}</span>`; }
+function _subsForm(){ return `<div class="jsa-card"><h4 style="margin:0 0 6px">Add / update a sub</h4>`+
+  `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`+
+  `<input class="admin-inp" id="sub_name" placeholder="Name">`+
+  `<input class="admin-inp" id="sub_trade" placeholder="Trade (e.g. electrical)">`+
+  `<input class="admin-inp" id="sub_company" placeholder="Company">`+
+  `<input class="admin-inp" id="sub_phone" placeholder="Phone">`+
+  `<input class="admin-inp" id="sub_state" placeholder="State (MT/ND/SD/WY)">`+
+  `<input class="admin-inp" id="sub_license" placeholder="License #"></div>`+
+  `<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Compliance docs on file (COI + license carry an expiry we watch):</div>`+
+  `<div id="sub_docs">`+
+    ['subcontract','w9','coi','license','lien-waivers','safety'].map(t=>{ const dated=(t==='coi'||t==='license');
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px"><input type="checkbox" class="sub-doc" data-t="${t}" style="width:16px;height:16px">${t}`+
+        (dated?`<input class="admin-inp sub-doc-exp" data-t="${t}" placeholder="expires YYYY-MM-DD" style="flex:1;max-width:180px">`:'')+`</label>`; }).join('')+`</div>`+
+  `<button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="subsSave()">Save sub (approved)</button>`+
+  `<div id="sub_msg" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>`;
+}
+async function subsSave(){
+  const g=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=g('sub_name'), trade=g('sub_trade'), msg=document.getElementById('sub_msg');
+  if(!name||!trade){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Name and trade are required.'; } return; }
+  const docs=[]; document.querySelectorAll('#sub_docs .sub-doc').forEach(cb=>{ if(cb.checked){ const t=cb.getAttribute('data-t'); const exp=((document.querySelector('.sub-doc-exp[data-t="'+t+'"]')||{}).value||''); const doc={type:t,onFile:true}; if(exp) doc.expires=exp.slice(0,10); docs.push(doc); } });
+  const sub={ name:name, trade:trade, company:g('sub_company'), phone:g('sub_phone'), state:g('sub_state'), license_no:g('sub_license'), docs:docs };
+  if(msg){ msg.style.color='var(--cy)'; msg.textContent='Saving…'; }
+  const d=await fetch('/api/subs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'save',sub:sub,approved:true})}).then(r=>r.json()).catch(()=>null);
+  if(!d){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Save failed.'; } return; }
+  if(d.configured===false){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Storage not connected (Supabase) — not saved.'; } return; }
+  if(d.reason==='needs_approval'){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Approval required.'; } return; }
+  if(!d.ok){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Save failed'+(d.errors?(' ('+d.errors.join(', ')+')'):'')+'.'; } return; }
+  if(msg){ msg.style.color='var(--gr)'; msg.textContent='Saved.'; }
+  renderSubs();
+}
+window.renderSubs = renderSubs;
+
+// ---- Blueprint reader: upload a plan sheet → read title block / legend / scope (vision) ----
+function renderBlueprint(){
+  const b=document.getElementById('blueprint_body'); if(!b) return;
+  b.innerHTML=`<div class="jsa-card"><div style="font-size:12px;color:var(--t2);margin-bottom:8px">Upload a plan sheet (image or PDF). Klyfton reads the title block, legend/key, and scope of work, and maps the trades. It is NOT a measurement tool — measure to scale in Bluebeam; nothing here is a price.</div>`+
+    `<input type="file" id="bp_file" accept="image/*,application/pdf" class="admin-inp" style="width:100%">`+
+    `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="blueprintRun()">Read the plan</button>`+
+    `<div id="bp_status" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>`+
+    `<div id="bp_out"></div>`+
+    `<div class="jsa-card"><h4 style="margin:0 0 6px">🗺️ Job workflow / wiring map</h4>`+
+    `<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Reading a plan builds this automatically. Or type the trades on a job (comma-separated) and Klyfton orders the phases, shows what must finish before what (the wiring), the inspection gates, and who's prime vs sub.</div>`+
+    `<input type="text" id="wf_trades" class="admin-inp" style="width:100%" placeholder="e.g. sitework, foundation, framing, electrical, plumbing, hvac, spray foam, drywall">`+
+    `<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="bpWorkflow(((document.getElementById('wf_trades')||{}).value||'').split(','))">Build the workflow</button></div>`+
+    `<div id="bp_workflow"></div>`;
+}
+// Job workflow / wiring map — POST trades → /api/job-workflow → ordered phases + dependency wiring +
+// inspection gates + prime/sub. Auto-called after a blueprint read; also manual from the trades box.
+async function bpWorkflow(trades){
+  const out=document.getElementById('bp_workflow'); if(!out) return; const E=window.sysEsc;
+  const list=(Array.isArray(trades)?trades:[]).map(t=>String(t||'').trim()).filter(Boolean);
+  if(!list.length){ out.innerHTML='<div class="jsa-card" style="color:var(--yw);font-size:12px">Enter at least one trade, or read a plan first.</div>'; return; }
+  out.innerHTML='<div style="opacity:.6;font-size:12px;padding:8px">Mapping the workflow…</div>';
+  const d=await _sysPost('/api/job-workflow',{trades:list});
+  if(!d||d.__err||!d.steps){ out.innerHTML='<div class="jsa-card" style="color:var(--red);font-size:12px">Workflow unavailable ('+((d&&d.__err)||'error')+').</div>'; return; }
+  if(!d.steps.length){ out.innerHTML='<div class="jsa-card" style="color:var(--yw);font-size:12px">No known trades to sequence'+((d.unknownTrades&&d.unknownTrades.length)?(' — unrecognized: '+E(d.unknownTrades.join(', '))):'')+'.</div>'; return; }
+  let h='<div class="jsa-card"><h4 style="margin:0 0 8px">🗺️ Job workflow — '+d.steps.length+' phases</h4>';
+  d.steps.forEach(s=>{
+    const badge=s.mgsfSelfPerform?'<span style="color:var(--or);font-size:10px"> [MGSF self-perform]</span>':'';
+    const trades=(s.trades||[]).map(t=>E(t.name)+(t.role==='self-perform'?' ★':'')).join(', ');
+    h+='<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+      '<div style="font-weight:600">'+s.order+'. '+E(s.name)+badge+'</div>'+
+      (trades?'<div style="font-size:12px;color:var(--tx)">'+trades+'</div>':'')+
+      (s.dependsOn&&s.dependsOn.length?'<div style="font-size:11px;color:var(--cy)">⟵ after: '+E(s.dependsOn.join(', '))+'</div>':'')+
+      '<div style="font-size:11px;color:var(--t2)">🛂 '+E(s.gate)+'</div>'+
+    '</div>';
+  });
+  if(d.criticalGate) h+='<div style="margin-top:8px;padding:8px;background:rgba(249,115,22,.12);border:1px solid var(--or);border-radius:6px;font-size:12px;color:var(--or)">⚠ '+E(d.criticalGate)+'</div>';
+  if(d.unknownTrades&&d.unknownTrades.length) h+='<div style="font-size:11px;color:var(--yw);margin-top:6px">Unrecognized (not sequenced): '+E(d.unknownTrades.join(', '))+'</div>';
+  h+='<div style="font-size:11px;color:var(--t2);margin-top:6px">'+E(d.label||'GUIDANCE')+'</div></div>';
+  out.innerHTML=h;
+}
+window.bpWorkflow = bpWorkflow;
+async function blueprintRun(){
+  const f=(document.getElementById('bp_file')||{}).files; const st=document.getElementById('bp_status'), out=document.getElementById('bp_out');
+  if(!f || !f.length){ if(st){ st.style.color='var(--yw)'; st.textContent='Pick a plan file first.'; } return; }
+  const file=f[0];
+  if(file.size>10*1024*1024){ if(st){ st.style.color='var(--yw)'; st.textContent='File is large (>10MB) — a single sheet reads best.'; } }
+  if(st){ st.style.color='var(--cy)'; st.textContent='Reading the plan…'; }
+  const dataUrl=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }).catch(()=>null);
+  if(!dataUrl){ if(st){ st.style.color='var(--red)'; st.textContent='Could not read the file.'; } return; }
+  const d=await _sysPost('/api/blueprint',{image:String(dataUrl),mediaType:file.type||'image/png'});
+  if(st) st.textContent='';
+  if(!d || d.__err){ if(out) out.innerHTML='<p style="color:var(--red);font-size:13px">Read failed ('+((d&&d.__err)||'error')+').</p>'; return; }
+  if(d.configured===false){ if(out) out.innerHTML='<p style="color:var(--yw);font-size:13px">🔒 Vision not configured (ANTHROPIC_API_KEY).</p>'; return; }
+  blueprintRender(d);
+}
+function blueprintRender(d){
+  const out=document.getElementById('bp_out'); if(!out) return; const E=window.sysEsc;
+  if(d.error){ out.innerHTML='<p style="color:var(--red);font-size:13px">'+E(d.note||d.error)+'</p>'; return; }
+  let h='';
+  if(d.readable===false){ h+='<div class="jsa-card" style="border-left:3px solid var(--yw)">Sheet or scale unreadable — upload a clearer single sheet.</div>'; }
+  const tb=d.titleBlock||{};
+  if(Object.keys(tb).some(k=>tb[k])){ h+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Title block</h4><div style="font-size:13px;line-height:1.6">`+
+    (tb.project?`Project: <b>${E(tb.project)}</b><br>`:'')+(tb.address?`Address: ${E(tb.address)}<br>`:'')+
+    (tb.sheet?`Sheet: ${E(tb.sheet)}`:'')+(tb.scale?` · Scale: <b>${E(tb.scale)}</b>`:'')+(tb.date?` · ${E(tb.date)}`:'')+
+    (tb.drawnBy?`<br>By: ${E(tb.drawnBy)}`:'')+`</div></div>`; }
+  if(d.legend&&d.legend.length){ h+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Legend / key</h4><div style="font-size:12px;line-height:1.6">`+
+    d.legend.map(l=>`<b>${E(l.symbol||'')}</b> — ${E(l.meaning||'')}`).join('<br>')+`</div></div>`; }
+  if(d.scope&&d.scope.length){ h+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Scope of work</h4>`+
+    d.scope.map(s=>`<div style="font-size:12px;margin-bottom:3px">• ${E(s.item||'')} ${s.role?`<span style="color:${/self/.test(s.role)?'var(--or)':'var(--cy)'};font-size:10px">[${E(s.role)}${s.division?(' · Div '+E(s.division)):''}]</span>`:''}</div>`).join('')+`</div>`; }
+  if(d.structure && d.structure.subs && d.structure.subs.length){ h+=`<div class="jsa-card" style="font-size:12px">Subs needed: <b>${E(d.structure.subs.map(s=>s.name).join(', '))}</b> — each needs its compliance packet (see 👷 SUBS).</div>`; }
+  if(d.dimensionsStated&&d.dimensionsStated.length){ h+=`<div class="jsa-card"><h4 style="margin:0 0 4px">Dimensions printed on the sheet</h4><div style="font-size:12px;line-height:1.6">`+
+    d.dimensionsStated.map(x=>`${E(x.label||'')}: <b>${E(x.value||'')}</b>`).join('<br>')+`<div style="color:var(--yw);margin-top:4px">Verify to scale — measure in Bluebeam before quoting.</div></div></div>`; }
+  if(d.note) h+=`<div class="jsa-card" style="font-size:12px;color:var(--t2)">${E(d.note)}</div>`;
+  h+=`<div style="font-size:11px;color:var(--t2);margin-top:6px">${E(d.label||'READING')} — ${E((d.verify||[]).join(' '))}</div>`;
+  out.innerHTML=h;
+  // Auto-build the job workflow from the resolved trades (prime/sub ids), else the scope trade strings.
+  let wfTrades=[];
+  if(d.structure){ wfTrades=(d.structure.selfPerform||[]).concat(d.structure.subs||[]).map(x=>x.trade).filter(Boolean); }
+  if(!wfTrades.length && d.scope){ wfTrades=d.scope.map(s=>s.trade).filter(Boolean); }
+  const box=document.getElementById('wf_trades'); if(box && wfTrades.length) box.value=wfTrades.join(', ');
+  if(wfTrades.length) bpWorkflow(wfTrades);
+}
+window.renderBlueprint = renderBlueprint;
+
+// ── Owner Tools (Command Center): AI Business Audit + Predictive Cost ──────────────────────────
+async function renderBizAudit(){
+  const out=document.getElementById('bizAuditOut'); if(!out) return;
+  out.innerHTML='<span style="color:var(--t2)">Running audit…</span>';
+  const d=await _sysPost('/api/business-audit',{action:'audit'});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Audit unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS tab) to run the audit.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Audit needs the data spine (Vercel KV) switched on — see GO_LIVE.')+'</span>'; return; }
+  const findings=(d.findings)||[];
+  const head=d.headline?('<div style="font-weight:700;margin-bottom:6px">'+_cE(d.headline)+'</div>'):'';
+  if(!findings.length){ out.innerHTML=head+'<span style="color:var(--gr)">No issues flagged — clean bill of health.</span>'; return; }
+  const sev={high:'#ef4444',medium:'#f59e0b',low:'#8a8a9a'};
+  out.innerHTML=head+findings.slice(0,12).map(f=>
+    '<div style="border-left:3px solid '+(sev[String(f.severity||'').toLowerCase()]||'#8a8a9a')+';padding:3px 0 3px 8px;margin-bottom:7px">'+
+    '<b>'+_cE(f.title||f.area||'')+'</b> <span style="font-size:10px;color:var(--t2)">'+_cE(String(f.severity||'').toUpperCase())+'</span>'+
+    (f.detail?'<br><span style="color:var(--t2)">'+_cE(f.detail)+'</span>':'')+
+    (f.action?'<br><span style="color:var(--cy)">→ '+_cE(f.action)+'</span>':'')+'</div>').join('');
+}
+async function renderPredictCost(){
+  const out=document.getElementById('predictCostOut'); if(!out) return;
+  const svc=((document.getElementById('pcSvc')||{}).value||'').trim();
+  const size=parseFloat((document.getElementById('pcSize')||{}).value||'');
+  if(!svc || !(size>0)){ out.innerHTML='<span style="color:var(--yw)">Enter a service and a size to predict.</span>'; return; }
+  out.innerHTML='<span style="color:var(--t2)">Predicting from your job history…</span>';
+  const d=await _sysPost('/api/predictive-cost',{service:svc,size:size});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Prediction unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS tab) to predict.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Predictive costing needs the data spine (Vercel KV) switched on.')+'</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||('Not enough history yet ('+(d.samples||0)+'/'+(d.needed||3)+' completed jobs with size + logged cost).'))+'</span>'; return; }
+  out.textContent=d.formatted||JSON.stringify(d.prediction);
+}
+window.renderBizAudit = renderBizAudit;
+window.renderPredictCost = renderPredictCost;
+// Guided workflow — the whole pipeline's "what's next" from the app's own leads+jobs (api/projects).
+// Overdue first (red), then the next step per open record, with a jump-to-tab button. Draft-only.
+async function renderWorkflow(){
+  const out=document.getElementById('workflowOut'); if(!out) return;
+  out.innerHTML='<span style="color:var(--t2)">Reading your pipeline…</span>';
+  const jobs=[].concat(appState.leads||[],appState.jobs||[]).map(r=>({customer:r.customer||r.name,name:r.name,status:r.status||r.stage,date:r.date,scheduled:r.scheduled}));
+  if(!jobs.length){ out.innerHTML='<span style="color:var(--t2)">No leads or jobs on file yet — add one in CRM.</span>'; return; }
+  const d=await _sysPost('/api/projects',{jobs:jobs});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Workflow unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  const jump={lead:'crm',bid:'crm',scheduled:'jobs',in_progress:'jobs',done:'invoice',invoiced:'invoice',paid:'crm'};
+  let h='';
+  const od=d.overdue||[];
+  if(od.length){ h+='<div style="font-weight:700;color:#ef4444;margin-bottom:4px">⚠ Overdue ('+od.length+')</div>'+
+    od.slice(0,8).map(o=>'<div style="border-left:3px solid #ef4444;padding:2px 0 2px 8px;margin-bottom:4px"><b>'+_cE(o.who)+'</b> — '+_cE(o.reason)+'</div>').join('')+'<div style="height:8px"></div>'; }
+  const na=d.nextActions||[];
+  if(na.length){ h+='<div style="font-weight:700;color:var(--or);margin-bottom:4px">Next step ('+(d.open||na.length)+' open)</div>'+
+    na.slice(0,14).map(a=>'<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid var(--bd,#2a2a3a);padding:4px 0">'+
+      '<div><b>'+_cE(a.who)+'</b> <span style="font-size:10px;color:var(--t2)">'+_cE(String(a.stage).toUpperCase())+'</span><br><span style="color:var(--t2)">'+_cE(a.action)+'</span></div>'+
+      '<button class="btn btn-ghost" style="font-size:11px;flex:none" onclick="switchModule(\''+(jump[a.stage]||'crm')+'\')">Open</button></div>').join(''); }
+  else if(!od.length){ h='<span style="color:var(--gr)">Nothing open — pipeline clear.</span>'; }
+  out.innerHTML=h;
+}
+window.renderWorkflow = renderWorkflow;
+
+// ---- Trade Calculators: pick a trade → run its wired quantity engine. Built for the whole crew
+// (incl. Clifton's nephews across their own trades) — plain, forgiving, and LOUD about ESTIMATE/verify.
+// Trade→engine wiring is pulled from /api/construction (single source of truth); pricing stays in the
+// estimator, never here. Subbed trades are handled honestly (no fabricated MGSF calc). ----
+function _cE(s){ return (window.sysEsc||String)(s); }
+const CALC_ENGINES = {
+  'foam-calc': { label:'Foam yield (board-feet + sets)', path:'/api/foam-calc', fields:[
+    {id:'type',label:'Foam',type:'select',opts:[['closed','Closed-cell'],['open','Open-cell']]},
+    {id:'area',label:'Area (ft²)',ph:'1000'},{id:'thickness',label:'Thickness (in)',ph:'2'},{id:'waste',label:'Waste (0–0.5)',ph:'0.1'}],
+    render:(d)=> d && d.boardFeet!=null ? `Board-feet: <b>${_cE(d.boardFeet)}</b> (+waste ${_cE(d.boardFeetWithWaste)})<br>Sets to order: <b>${_cE(d.setsToOrder)}</b>` : null },
+  'rvalue-calc': { label:'R-value + code check (IECC Zone 6/7)', path:'/api/rvalue-calc', fields:[
+    {id:'assembly',label:'Assembly',type:'select',opts:[['wall','Wall'],['ceiling','Ceiling/attic'],['floor','Floor'],['basement','Basement'],['crawl','Crawl'],['slab','Slab']]},
+    {id:'zone',label:'Climate zone',type:'select',opts:[['6','Zone 6'],['7','Zone 7']]},
+    {id:'type',label:'Foam',type:'select',opts:[['closed','Closed-cell'],['open','Open-cell']]},
+    {id:'thickness',label:'Foam thickness (in)',ph:'3'},{id:'battR',label:'Batt R (flash+batt, opt)',ph:''}],
+    render:(d)=> d && d.installed ? `Installed: <b>R-${_cE(d.installed.total)}</b> vs code R-${_cE(d.code.min)} → ${d.meets===true?'<span style="color:var(--gr)">MEETS</span>':(d.meets===false?('<span style="color:var(--yw)">SHORT by R-'+_cE(d.shortfallR)+' (~'+_cE(d.addThicknessIn)+'" more foam)</span>'):'—')}<br><span style="color:var(--t2)">${_cE(d.code.paths)}</span>` : null },
+  'coating-calc': { label:'Coating gallons', path:'/api/coating-calc', fields:[
+    {id:'area',label:'Area (ft²)',ph:'2000'},{id:'dryMils',label:'Dry mils',ph:'20'},{id:'solidsPct',label:'Solids % (TDS)',ph:'92'},{id:'coats',label:'Coats',ph:'1'},{id:'waste',label:'Waste (0–0.5)',ph:'0.1'}],
+    render:(d)=> d && d.gallonsToOrder!=null ? `Gallons to order: <b>${_cE(d.gallonsToOrder)}</b> · coverage ${_cE(d.coverageSqftPerGal)} ft²/gal` : null },
+  'concrete-calc': { label:'Concrete lift / void / seawall', path:'/api/concrete-calc', fields:[
+    {id:'mode',label:'Mode',type:'select',opts:[['lift','Slab lift'],['void','Void fill'],['seawall','Seawall'],['soil','Soil (blocked)']]},
+    {id:'area',label:'Area ft² (lift)',ph:'120'},{id:'avgLiftInches',label:'Avg gap in (lift)',ph:'2'},
+    {id:'length',label:'Length ft (void)',ph:''},{id:'width',label:'Width ft (void)',ph:''},{id:'depthInches',label:'Depth in (void)',ph:''},
+    {id:'density',label:'Density lb/ft³ (TDS)',ph:'4'},{id:'lbsPerSet',label:'Set weight lb (opt)',ph:''}],
+    render:(d)=> d && d.poundsCured!=null ? `Volume: <b>${_cE(d.volumeWithWaste)} ft³</b> → cured <b>${_cE(d.poundsCured)} lb</b>${d.setsToOrder?(' → sets '+_cE(d.setsToOrder)):''}${d.blocked?('<br><span style="color:var(--red)">'+_cE(d.blockedReason)+'</span>'):''}` : null },
+  'air-barrier-calc': { label:'Air / vapor barrier', path:'/api/air-barrier-calc', fields:[
+    {id:'method',label:'Method',type:'select',opts:[['fluid','Fluid-applied'],['membrane','Membrane']]},
+    {id:'area',label:'Area (ft²)',ph:'1500'},{id:'coverageSqftPerGal',label:'Coverage ft²/gal (fluid)',ph:'100'},{id:'rollSqft',label:'Roll ft² (membrane)',ph:''},
+    {id:'zone',label:'Climate zone',type:'select',opts:[['6','Zone 6'],['7','Zone 7']]},{id:'combustion',label:'Gas/propane/oil appliances?',type:'select',opts:[['','No'],['1','Yes']]}],
+    render:(d)=> d && (d.gallons!=null||d.rollsToOrder!=null) ? `${d.gallons!=null?('Gallons: <b>'+_cE(d.gallons)+'</b> '):''}${d.rollsToOrder!=null?('Rolls: <b>'+_cE(d.rollsToOrder)+'</b>'):''}<br><span style="color:var(--t2)">${_cE(d.vapor&&d.vapor.vaporControl)}</span>${d.safetyFlag?('<br><span style="color:var(--red)">⚠ '+_cE(d.safetyFlag)+'</span>'):''}` : null },
+  'measure': { label:'Takeoff (area)', path:'/api/measure', fields:[
+    {id:'mode',label:'Mode',type:'select',opts:[['wall','Wall'],['roof','Roof']]},
+    {id:'perimeter',label:'Perimeter ft (wall)',ph:'120'},{id:'height',label:'Height ft (wall)',ph:'10'},
+    {id:'footprint',label:'Footprint ft² (roof)',ph:''},{id:'pitchRise',label:'Pitch rise /12 (roof)',ph:'4'},{id:'waste',label:'Waste (0–0.6)',ph:'0.1'}],
+    render:(d)=> d && (d.netAreaSqft!=null||d.roofAreaWithWaste!=null) ? `Area: <b>${_cE(d.netAreaSqft!=null?d.netAreaSqft:d.roofAreaWithWaste)} ft²</b>${d.squares?(' · '+_cE(d.squares)+' squares'):''}` : null },
+  'electrical-load': { label:'Electrical service load (NEC 220)', path:'/api/electrical-load', fields:[
+    {id:'area',label:'Floor area (ft²)',ph:'2000'},{id:'smallAppliance',label:'Small-appliance circuits',ph:'2'},{id:'laundry',label:'Laundry circuits',ph:'1'},
+    {id:'rangeVA',label:'Range demand VA (Tbl 220.55)',ph:'8000'},{id:'dryerVA',label:'Dryer VA (min 5000)',ph:'5000'},{id:'acVA',label:'A/C VA',ph:'3600'},{id:'heatVA',label:'Heat VA',ph:'10000'}],
+    render:(d)=> d && d.calculatedAmps!=null ? `Calculated load: <b>${_cE(d.calculatedAmps)} A</b> → service <b>${_cE(d.recommendedService)}</b><br><span style="color:var(--t2)">A licensed electrician + the AHJ must design/permit.</span>` : null },
+  'plumbing-calc': { label:'Plumbing fixture units + sizing (IPC)', path:'/api/plumbing-calc', fields:[
+    {id:'wc',label:'Water closets',ph:'2'},{id:'lav',label:'Lavatories',ph:'2'},{id:'shower',label:'Showers',ph:'1'},{id:'tub',label:'Tubs',ph:'1'},{id:'ksink',label:'Kitchen sinks',ph:'1'},{id:'washer',label:'Clothes washers',ph:'1'}],
+    render:(d)=> d && d.wsfu!=null ? `Load: <b>${_cE(d.wsfu)} WSFU</b> / <b>${_cE(d.dfu)} DFU</b><br>Drain: <b>${_cE(d.drain&&d.drain.recommendedDrain)}</b> · Supply: <b>${_cE(d.supply&&d.supply.roughSupplySize)}</b> (~${_cE(d.supply&&d.supply.peakGPM)} GPM)` : null },
+  'hvac-load': { label:'HVAC load + tonnage (rule of thumb)', path:'/api/hvac-load', fields:[
+    {id:'area',label:'Floor area (ft²)',ph:'2000'},{id:'tightness',label:'Envelope',type:'select',opts:[['typical','Typical'],['tight','Tight/new'],['leaky','Leaky/old']]},{id:'bedrooms',label:'Bedrooms (vent)',ph:'3'}],
+    render:(d)=> d && d.heatingBtu ? `Heating: <b>${_cE(d.heatingBtu.low)}–${_cE(d.heatingBtu.high)} BTU/hr</b><br>Cooling: <b>${_cE(d.coolingBtu.low)}–${_cE(d.coolingBtu.high)} BTU/hr</b> (~${_cE(d.coolingTons.low)}–${_cE(d.coolingTons.high)} tons)<br><span style="color:var(--yw)">Rule of thumb — get a Manual J; don't oversize.</span>` : null },
+  'framing-calc': { label:'Framing takeoff (studs/plates/sheathing)', path:'/api/framing-calc', fields:[
+    {id:'lengthFt',label:'Wall length (ft)',ph:'40'},{id:'heightFt',label:'Wall height (ft)',ph:'8'},{id:'oc',label:'Stud spacing',type:'select',opts:[['16','16" OC'],['24','24" OC'],['12','12" OC']]},{id:'openings',label:'Openings (doors/windows)',ph:'2'},{id:'studSize',label:'Stud size',type:'select',opts:[['2x6','2x6'],['2x4','2x4']]}],
+    render:(d)=> d && d.studs!=null ? `Studs: <b>${_cE(d.studs)}</b> · Plates: <b>${_cE(d.plates)}</b> · Sheathing: <b>${_cE(d.sheathingSheets)}</b> sheets<br>Board-feet: <b>${_cE(d.boardFeet)}</b><br><span style="color:var(--t2)">Member sizing/spans → IRC tables + AHJ/engineer.</span>` : null },
+  'drywall-calc': { label:'Drywall takeoff (sheets)', path:'/api/drywall-calc', fields:[
+    {id:'wallArea',label:'Wall area (ft²)',ph:'1200'},{id:'ceilingArea',label:'Ceiling area (ft²)',ph:'800'},{id:'sheet',label:'Sheet size',type:'select',opts:[['4x8','4×8'],['4x10','4×10'],['4x12','4×12']]},{id:'waste',label:'Waste (0–0.6)',ph:'0.1'}],
+    render:(d)=> d && d.sheetsToOrder!=null ? `Sheets: <b>${_cE(d.sheetsToOrder)}</b><br>Screws ~${_cE(d.consumables&&d.consumables.screws)} · Mud <b>${_cE(d.consumables&&d.consumables.jointCompoundGallons)}</b> gal · Tape ${_cE(d.consumables&&d.consumables.tapeFeet)} ft<br><span style="color:var(--t2)">Board TYPE (type-X/mold/cement) per GA-216 + AHJ.</span>` : null },
+  'flatwork-calc': { label:'Concrete flatwork (cubic yards)', path:'/api/flatwork-calc', fields:[
+    {id:'area',label:'Area (ft²)',ph:'400'},{id:'thickness',label:'Thickness (in)',ph:'4'},{id:'waste',label:'Waste (0–0.5)',ph:'0.1'}],
+    render:(d)=> d && d.yardsToOrder!=null ? `Order: <b>${_cE(d.yardsToOrder)} yd³</b> ready-mix (${_cE(d.cubicYards)} cy)${d.bagOption?`<br>or ~<b>${_cE(d.bagOption.bagsNeeded)}</b> × ${_cE(d.bagOption.bagSizeLb)}lb bags (small pour)`:''}<br><span style="color:var(--t2)">Rebar/mix/frost-depth → ACI/IRC + AHJ/engineer.</span>` : null },
+  'roofing-shingle-calc': { label:'Shingle/metal roofing (squares)', path:'/api/roofing-shingle-calc', fields:[
+    {id:'roofArea',label:'Roof-SURFACE area (ft²)',ph:'2000'},{id:'waste',label:'Waste (0–0.4)',ph:'0.12'},{id:'eaveRakeFt',label:'Eave+rake (ft)',ph:'180'},{id:'ridgeHipFt',label:'Ridge+hip (ft)',ph:'60'}],
+    render:(d)=> d && d.squares!=null ? `Squares: <b>${_cE(d.squares)}</b> · Bundles: <b>${_cE(d.bundles)}</b><br>Underlayment ${_cE(d.underlaymentRolls&&d.underlaymentRolls.rolls)} rolls · Drip/starter ${_cE(d.accessories&&d.accessories.dripEdgeFt||'—')} ft<br><span style="color:var(--yw)">Zone 6/7: ice-and-water barrier required (IRC R905).</span>` : null },
+  'masonry-calc': { label:'Masonry (block/brick count)', path:'/api/masonry-calc', fields:[
+    {id:'wallArea',label:'Wall face area (ft²)',ph:'800'},{id:'unit',label:'Unit',type:'select',opts:[['cmu-8','CMU 8"'],['cmu-12','CMU 12"'],['brick-mod','Modular brick'],['brick-std','Standard brick']]},{id:'waste',label:'Waste (0–0.4)',ph:'0.05'},{id:'groutedCellPct',label:'Grouted cells (0–1)',ph:'0'}],
+    render:(d)=> d && d.units!=null ? `Units: <b>${_cE(d.units)}</b> · Mortar <b>${_cE(d.mortarBags&&d.mortarBags.bags)}</b> bags${d.grout?`<br>Grout <b>${_cE(d.grout.cubicYards)}</b> cy (${_cE(d.grout.groutedCellPct)}% cells)`:''}<br><span style="color:var(--t2)">Reinforcing/structural → TMS 402/602 + engineer.</span>` : null },
+  'excavation-calc': { label:'Excavation (cut/fill cubic yards)', path:'/api/excavation-calc', fields:[
+    {id:'area',label:'Area (ft²)',ph:'1000'},{id:'depth',label:'Depth (ft)',ph:'3'},{id:'swellPct',label:'Swell (0–1)',ph:'0.25'},{id:'truckYd',label:'Truck (cy/load)',ph:'10'}],
+    render:(d)=> d && d.bankCubicYards!=null ? `Bank (cut): <b>${_cE(d.bankCubicYards)} cy</b> · Haul (loose): <b>${_cE(d.looseCubicYards)} cy</b><br>Trucks: <b>${_cE(d.truckLoads&&d.truckLoads.loads)}</b> · Fill-borrow ${_cE(d.fillBankYardsToPlaceCompacted)} cy<br><span style="color:var(--yw)">811 locate first · trench ≥5 ft: OSHA Subpart P protective system.</span>` : null },
+  'sitework-calc': { label:'Sitework / paving (tons)', path:'/api/sitework-calc', fields:[
+    {id:'material',label:'Material',type:'select',opts:[['asphalt','Asphalt (HMA)'],['base','Aggregate base']]},{id:'area',label:'Area (ft²)',ph:'10000'},{id:'thickness',label:'Thickness (in)',ph:'2'},{id:'waste',label:'Waste (0–0.4)',ph:'0.05'}],
+    render:(d)=> d && d.tons!=null ? `<b>${_cE(d.tons)} tons</b> ${_cE(d.material)} (${_cE(d.cubicYards)} cy)<br><span style="color:var(--t2)">Density is ESTIMATE — verify mix/DOT. 811 · drainage · SWPPP if ≥1 acre.</span>` : null },
+};
+function renderCalcs(){
+  const b=document.getElementById('calcs_body'); if(!b) return;
+  b.innerHTML=`<div class="jsa-card" style="border-left:3px solid var(--yw)"><b>Estimating helpers — NOT quotes.</b> Every result is an ESTIMATE of quantities only. Always verify against the product data sheet (TDS) and your local code official (AHJ). Pricing is done in the Estimator, not here.</div>`+
+    `<div class="jsa-card"><label style="font-size:12px;color:var(--t2)">Pick a trade</label>`+
+    `<select id="calc_trade" class="admin-inp" style="width:100%" onchange="calcPickTrade()"><option value="">— choose a trade —</option></select>`+
+    `<div id="calc_engines" style="margin-top:8px;opacity:.6;font-size:12px">Loading trades…</div></div>`+
+    `<div id="calc_form"></div>`;
+  fetch('/api/construction').then(r=>r.json()).then(d=>{
+    const sel=document.getElementById('calc_trade'), host=document.getElementById('calc_engines');
+    if(host) host.innerHTML='';
+    if(!sel||!d||!Array.isArray(d.trades)) return;
+    window._calcTrades=d.trades;
+    d.trades.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=(t.selfPerform?'🔨 ':'🤝 ')+t.name; sel.appendChild(o); });
+  }).catch(()=>{ const host=document.getElementById('calc_engines'); if(host) host.innerHTML='<span style="color:var(--yw)">Couldn\'t load trades (endpoint offline). Calculators still work once deployed.</span>'; });
+}
+function calcPickTrade(){
+  const id=((document.getElementById('calc_trade')||{}).value)||''; const host=document.getElementById('calc_engines'), form=document.getElementById('calc_form');
+  if(form) form.innerHTML=''; if(!host) return;
+  const t=(window._calcTrades||[]).find(x=>x.id===id); if(!t){ host.innerHTML=''; return; }
+  const engines=(t.engines||[]).filter(e=>CALC_ENGINES[e]);
+  let h='';
+  if(!t.selfPerform){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:6px">🤝 <b>${_cE(t.name)}</b> is usually <b>subcontracted</b>. Use these to size the job or <b>check a sub's bid</b>, then compare quotes in <a onclick="switchModule('subs');renderSubs()" style="color:var(--cy);cursor:pointer">Subs</a>.</div>`; }
+  if(engines.length){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">Calculators${t.selfPerform?(' for '+_cE(t.name)):''}:</div>`+
+    engines.map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join(''); }
+  else { h+='<div style="font-size:13px;color:var(--t2)">No calculator for this trade yet — use Takeoff for a rough area.</div><div style="margin-top:6px"><button class="btn btn-ghost" onclick="calcOpen(\'measure\')">📐 Takeoff (area)</button></div>'; }
+  h+=`<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><button class="btn btn-ghost" style="margin:2px" onclick="calcOpenPack('${_cE(t.id)}')">🧰 Toolbox (code/permit/safety)</button><button class="btn btn-ghost" style="margin:2px" onclick="calcOpenEstimate('${_cE(t.id)}')">💵 Estimate (your rates)</button></div>`;
+  host.innerHTML=h;
+}
+function calcOpen(engineId){
+  const spec=CALC_ENGINES[engineId], form=document.getElementById('calc_form'); if(!spec||!form) return;
+  form.innerHTML=`<div class="jsa-card"><h4 style="margin:0 0 6px">${_cE(spec.label)}</h4>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`+
+    spec.fields.map(f=> f.type==='select'
+      ? `<div><label style="font-size:11px;color:var(--t2)">${_cE(f.label)}</label><select class="admin-inp calc-f" data-id="${_cE(f.id)}" style="width:100%">`+f.opts.map(o=>`<option value="${_cE(o[0])}">${_cE(o[1])}</option>`).join('')+`</select></div>`
+      : `<div><label style="font-size:11px;color:var(--t2)">${_cE(f.label)}</label><input class="admin-inp calc-f" data-id="${_cE(f.id)}" inputmode="decimal" placeholder="${_cE(f.ph||'')}" style="width:100%"></div>`).join('')+
+    `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="calcRun('${_cE(engineId)}')">Calculate</button>`+
+    `<div id="calc_out" style="font-size:13px;line-height:1.6;margin-top:8px"></div></div>`;
+}
+async function calcRun(engineId){
+  const spec=CALC_ENGINES[engineId], out=document.getElementById('calc_out'); if(!spec||!out) return;
+  const body={}; document.querySelectorAll('#calc_form .calc-f').forEach(el=>{ const v=(el.value||'').trim(); if(v!=='') body[el.getAttribute('data-id')]=v; });
+  out.innerHTML='Calculating…';
+  const d=await _sysPost(spec.path,body);
+  if(!d || d.__err){ out.innerHTML='<span style="color:var(--red)">Error ('+_cE((d&&d.__err)||'?')+'). Loads once deployed.</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">🔒 Crew code required.</span>'; return; }
+  const html=spec.render(d);
+  try{ window._lastCalc={engineId:engineId, data:d}; }catch(e){}
+  out.innerHTML=(html||('<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check your inputs.')+'</span>'))+
+    `<div style="font-size:10px;color:var(--t2);margin-top:6px">ESTIMATE — verify the TDS + the AHJ. Not a quote.</div>`+
+    `<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="calcPrice()">💵 Price this (your rates)</button>`;
+}
+window.renderCalcs = renderCalcs;
+
+// ---- Per-trade Estimator: price a trade's quantities from the OWNER's own rates (never fabricated).
+// Material (qty×cost) + labor (hrs×rate) per line + owner markup + owner tax → DRAFT total. ----
+const CALC_SEED = {
+  'foam-calc': (d)=> d.setsToOrder!=null?{desc:'Foam (closed/open-cell)',qty:d.setsToOrder,unit:'sets'}:null,
+  'coating-calc': (d)=> d.gallonsToOrder!=null?{desc:'Coating',qty:d.gallonsToOrder,unit:'gal'}:null,
+  'concrete-calc': (d)=> d.setsToOrder!=null?{desc:'Polyurethane foam',qty:d.setsToOrder,unit:'sets'}:(d.poundsCured!=null?{desc:'Polyurethane foam',qty:d.poundsCured,unit:'lb'}:null),
+  'air-barrier-calc': (d)=> d.gallons!=null?{desc:'Air/vapor barrier',qty:d.gallons,unit:'gal'}:(d.rollsToOrder!=null?{desc:'Membrane',qty:d.rollsToOrder,unit:'rolls'}:null),
+  'framing-calc': (d)=> d.studs!=null?{desc:'Studs',qty:d.studs,unit:'ea'}:null,
+  'measure': (d)=> (d.netAreaSqft!=null||d.roofAreaWithWaste!=null)?{desc:'Area',qty:(d.netAreaSqft!=null?d.netAreaSqft:d.roofAreaWithWaste),unit:'ft²'}:null,
+  'drywall-calc': (d)=> d.sheetsToOrder!=null?{desc:'Drywall sheets',qty:d.sheetsToOrder,unit:'sheets'}:null,
+  'flatwork-calc': (d)=> d.yardsToOrder!=null?{desc:'Concrete (ready-mix)',qty:d.yardsToOrder,unit:'yd³'}:null,
+  'roofing-shingle-calc': (d)=> d.bundles!=null?{desc:'Shingles',qty:d.bundles,unit:'bundles'}:null,
+  'masonry-calc': (d)=> d.units!=null?{desc:'Block/brick',qty:d.units,unit:'ea'}:null,
+  'excavation-calc': (d)=> d.looseCubicYards!=null?{desc:'Excavation (haul)',qty:d.looseCubicYards,unit:'cy'}:null,
+  'sitework-calc': (d)=> d.tons!=null?{desc:'Paving material',qty:d.tons,unit:'tons'}:null,
+};
+function calcPrice(){ // from the last calc result → seed the estimator for the selected trade
+  const trade=((document.getElementById('calc_trade')||{}).value)||'';
+  let seed=null; try{ const lc=window._lastCalc; if(lc&&CALC_SEED[lc.engineId]) seed=CALC_SEED[lc.engineId](lc.data||{}); }catch(e){}
+  calcOpenEstimate(trade, seed);
+}
+function calcOpenEstimate(tradeId, seed){
+  const form=document.getElementById('calc_form'); if(!form) return; const t=(window._calcTrades||[]).find(x=>x.id===tradeId);
+  form.innerHTML=`<div class="jsa-card"><h4 style="margin:0 0 4px">💵 Estimate — ${_cE((t&&t.name)||tradeId||'trade')} <span style="font-size:11px;color:var(--t2)">(your rates)</span></h4>`+
+    `<div style="font-size:11px;color:var(--yw);margin-bottom:6px">DRAFT. Enter YOUR material costs + labor — nothing is priced for you. Add markup + tax. Review before it goes to a customer.</div>`+
+    `<input class="admin-inp" id="est_cust" placeholder="Customer name (for proposal, optional)" style="width:100%;margin-bottom:6px">`+
+    `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="calcApplyRates('${_cE(tradeId||'')}')">⤓ Load my saved rates</button>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="calcSaveRates('${_cE(tradeId||'')}')">💾 Save these rates</button></div>`+
+    `<div id="est_ratemsg" style="font-size:11px;color:var(--cy);margin-bottom:6px"></div>`+
+    `<div id="est_lines"></div>`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="calcAddLine()">+ Add line</button>`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">`+
+    `<div><label style="font-size:11px;color:var(--t2)">Markup / OH&P %</label><input class="admin-inp" id="est_markup" inputmode="decimal" placeholder="e.g. 20" style="width:100%"></div>`+
+    `<div><label style="font-size:11px;color:var(--t2)">Material tax %</label><input class="admin-inp" id="est_tax" inputmode="decimal" placeholder="opt" style="width:100%"></div></div>`+
+    `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="calcRunEstimate('${_cE(tradeId||'')}')">Calculate estimate</button>`+
+    `<div id="est_out" style="font-size:13px;line-height:1.7;margin-top:8px"></div></div>`;
+  calcAddLine(seed); if(!seed) calcAddLine();
+}
+function calcAddLine(seed){ const c=document.getElementById('est_lines'); if(!c) return; seed=seed||{};
+  const v=x=>(x!=null&&x!=='')?_cE(x):'';
+  const d=document.createElement('div'); d.className='est-line'; d.style.cssText='border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px;margin-bottom:6px';
+  d.innerHTML=`<input class="admin-inp est-desc" placeholder="Description" value="${v(seed.desc)}" style="width:100%;margin-bottom:4px">`+
+    `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">`+
+    `<input class="admin-inp est-qty" inputmode="decimal" placeholder="Qty" value="${v(seed.qty)}">`+
+    `<input class="admin-inp est-unit" placeholder="Unit" value="${v(seed.unit)}">`+
+    `<input class="admin-inp est-cost" inputmode="decimal" placeholder="$/unit" value="${v(seed.unitCost)}">`+
+    `<input class="admin-inp est-lh" inputmode="decimal" placeholder="Labor hrs" value="${v(seed.laborHours)}">`+
+    `<input class="admin-inp est-lr" inputmode="decimal" placeholder="$/hr" value="${v(seed.laborRate)}">`+
+    `<button class="btn btn-ghost" style="font-size:12px" onclick="this.closest('.est-line').remove()">✕</button></div>`;
+  c.appendChild(d);
+}
+function _estGatherLines(){ const lines=[]; document.querySelectorAll('#est_lines .est-line').forEach(row=>{ const g=s=>((row.querySelector(s)||{}).value||'').trim();
+  const li={desc:g('.est-desc'),qty:g('.est-qty'),unit:g('.est-unit'),unitCost:g('.est-cost'),laborHours:g('.est-lh'),laborRate:g('.est-lr')};
+  if(li.desc||li.qty||li.unitCost||li.laborHours) lines.push(li); }); return lines; }
+async function calcApplyRates(tradeId){ const msg=document.getElementById('est_ratemsg');
+  const d=await _sysPost('/api/trade-rates',{action:'apply',trade:tradeId,lineItems:_estGatherLines()});
+  if(!d){ if(msg) msg.textContent='Rate lookup failed.'; return; }
+  if(d.configured===false){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Rate memory needs Supabase (see db/SETUP.md).'; } return; }
+  const c=document.getElementById('est_lines'); if(c&&Array.isArray(d.lineItems)){ c.innerHTML=''; d.lineItems.forEach(li=>calcAddLine(li)); if(!d.lineItems.length) calcAddLine(); }
+  if(msg){ msg.style.color='var(--gr)'; msg.textContent=_cE(d.note||('Filled '+(d.filled||0)+' rate(s).')); }
+}
+async function calcSaveRates(tradeId){ const msg=document.getElementById('est_ratemsg');
+  const d=await _sysPost('/api/trade-rates',{action:'save',trade:tradeId,rates:_estGatherLines(),approved:true});
+  if(!d){ if(msg) msg.textContent='Save failed.'; return; }
+  if(d.configured===false){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Rate memory needs Supabase to save.'; } return; }
+  if(msg){ msg.style.color=d.ok?'var(--gr)':'var(--yw)'; msg.textContent=d.ok?('Saved '+d.saved+' rate(s) for next time.'):_cE(d.note||d.reason||'Nothing saved.'); }
+}
+async function calcEstimateProposal(tradeId){ const out=document.getElementById('est_out'); if(!out) return;
+  const lineItems=_estGatherLines(); if(!lineItems.length){ out.innerHTML='<span style="color:var(--yw)">Add a line first.</span>'; return; }
+  const body={action:'proposal',trade:tradeId,lineItems:lineItems,proposal:{customer:{name:((document.getElementById('est_cust')||{}).value||'').trim()}}};
+  const mk=((document.getElementById('est_markup')||{}).value||'').trim(),tx=((document.getElementById('est_tax')||{}).value||'').trim();
+  if(mk!=='') body.markupPct=mk; if(tx!=='') body.taxPct=tx;
+  const p=await _sysPost('/api/trade-estimate',body);
+  if(!p||!p.ok||!p.proposal){ out.innerHTML='<span style="color:var(--red)">Couldn\'t build the proposal.</span>'; return; }
+  const pdf=await _sysPost('/api/proposal-pdf',Object.assign({},p.proposal,{base64:true}));
+  if(!pdf||!pdf.base64){ out.innerHTML='<span style="color:var(--red)">Proposal PDF unavailable (loads once deployed).</span>'; return; }
+  try{ const a=document.createElement('a'); a.href='data:application/pdf;base64,'+pdf.base64; a.download=(pdf.filename||'Proposal.pdf'); document.body.appendChild(a); a.click(); a.remove();
+    out.innerHTML='<span style="color:var(--gr)">Proposal PDF downloaded — review before sending.</span>'; }catch(e){ out.innerHTML='<span style="color:var(--yw)">PDF ready but download blocked by the browser.</span>'; }
+}
+async function calcRunEstimate(tradeId){
+  const out=document.getElementById('est_out'); if(!out) return;
+  const lineItems=[]; document.querySelectorAll('#est_lines .est-line').forEach(row=>{ const g=s=>((row.querySelector(s)||{}).value||'').trim();
+    const li={desc:g('.est-desc'),qty:g('.est-qty'),unit:g('.est-unit'),unitCost:g('.est-cost'),laborHours:g('.est-lh'),laborRate:g('.est-lr')};
+    if(li.desc||li.qty||li.unitCost||li.laborHours) lineItems.push(li); });
+  if(!lineItems.length){ out.innerHTML='<span style="color:var(--yw)">Add at least one line.</span>'; return; }
+  const body={trade:tradeId,lineItems:lineItems}; const mk=((document.getElementById('est_markup')||{}).value||'').trim(); const tx=((document.getElementById('est_tax')||{}).value||'').trim();
+  if(mk!=='') body.markupPct=mk; if(tx!=='') body.taxPct=tx;
+  out.innerHTML='Calculating…';
+  const d=await _sysPost('/api/trade-estimate',body);
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--red)">Error ('+_cE((d&&d.__err)||'?')+').</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check inputs.')+'</span>'; return; }
+  let h=`Material: <b>$${_cE(d.subtotalMaterial)}</b> · Labor: <b>$${_cE(d.subtotalLabor)}</b><br>Subtotal: <b>${_cE(d.subtotalLabel)}</b>`;
+  if(d.markup&&d.markup.amount!=null) h+=`<br>Markup (${_cE(d.markup.pct)}%): $${_cE(d.markup.amount)}`;
+  if(d.tax&&d.tax.amount!=null) h+=`<br>Tax (${_cE(d.tax.pct)}%): $${_cE(d.tax.amount)}`;
+  h+=`<br><span style="font-size:15px">Total: <b>${_cE(d.totalLabel)}</b></span>`;
+  if(d.warning) h+=`<br><span style="color:var(--yw)">⚠ ${_cE(d.warning)}</span>`;
+  if(d.doctrineNote) h+=`<br><span style="color:var(--cy)">${_cE(d.doctrineNote)}</span>`;
+  h+=`<div style="font-size:10px;color:var(--t2);margin-top:6px">DRAFT — your rates. Review before sending.</div>`;
+  h+=`<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="calcEstimateProposal('${_cE(tradeId||'')}')">📄 Save as proposal PDF</button>`;
+  out.innerHTML=h;
+}
+window.calcOpenEstimate = calcOpenEstimate;
+
+// ---- Per-trade Toolbox: the trade's calculators + its own needs (code/permit/license/safety/checklist) ----
+async function calcOpenPack(tradeId){
+  const form=document.getElementById('calc_form'); if(!form) return;
+  form.innerHTML='<div class="jsa-card" style="opacity:.6">Loading toolbox…</div>';
+  const d=await _sysPost('/api/trade-pack',{trade:tradeId});
+  if(!d||d.ok===false){ form.innerHTML='<div class="jsa-card"><span style="color:var(--yw)">Toolbox unavailable'+(d&&d.error?(' ('+_cE(d.error)+')'):'')+' — loads once deployed.</span></div>'; return; }
+  const list=a=>(a||[]).map(x=>`<li>${_cE(x)}</li>`).join('');
+  let h=`<div class="jsa-card"><h4 style="margin:0 0 4px">🧰 ${_cE(d.name)} — Toolbox</h4>`+
+    `<div style="font-size:11px;color:var(--yw);margin-bottom:8px">${_cE(d.label)}</div>`;
+  if(d.calculators&&d.calculators.length){ h+=`<div style="font-size:12px;color:var(--t2);margin-bottom:3px">Calculators</div>`+
+    d.calculators.filter(e=>CALC_ENGINES[e]).map(e=>`<button class="btn btn-ghost" style="margin:2px" onclick="calcOpen('${_cE(e)}')">${_cE(CALC_ENGINES[e].label)}</button>`).join('')+`<div style="height:8px"></div>`; }
+  const sec=(t,v)=> v?`<div style="margin-top:6px"><b style="font-size:12px">${t}</b><div style="font-size:12px;color:var(--t2);line-height:1.5">${_cE(v)}</div></div>`:'';
+  h+=sec('Code',d.code)+sec('Permit &amp; inspections',d.permit)+sec('Licensing',d.license);
+  if(d.safety&&d.safety.length) h+=`<div style="margin-top:6px"><b style="font-size:12px">Safety</b><ul style="font-size:12px;color:var(--t2);margin:2px 0 0 16px;line-height:1.5">${list(d.safety)}</ul></div>`;
+  if(d.checklist&&d.checklist.length) h+=`<div style="margin-top:6px"><b style="font-size:12px">Spec checklist</b><ul style="font-size:12px;color:var(--t2);margin:2px 0 0 16px;line-height:1.5">${list(d.checklist)}</ul></div>`;
+  if(d.materials&&d.materials.length) h+=`<div style="margin-top:6px"><b style="font-size:12px">Common materials</b><div style="font-size:12px;color:var(--t2)">${_cE(d.materials.join(' · '))}</div></div>`;
+  h+=`<div style="font-size:10px;color:var(--t2);margin-top:8px">GUIDANCE — verify code/permit/license with the AHJ + state board. Not a code ruling.</div>`;
+  h+=`<div style="margin-top:8px"><button class="btn btn-primary" style="width:100%" onclick="calcOpenEstimate('${_cE(tradeId)}')">💵 Estimate this trade</button></div></div>`;
+  form.innerHTML=h;
+}
+window.calcOpenPack = calcOpenPack;
 
 // ---- Agents page: preview a goal-runner's plan (draft only; nothing dispatches without approval) ----
 window.renderAgents = function(){
@@ -5062,6 +5276,12 @@ function calculateBid(){
   const blendedGM  = totalSell>0?totalGP/totalSell:0;
   const gm         = MGSF.gmTargets[market]||0.50;
   const projectGO  = blendedGM>=gm-0.001;
+  // For the "vs past jobs" predictive sanity-check: total sqft across scopes + a service label from the
+  // primary scope type (predictive-cost fuzzy-matches service; an unmatched label honestly returns "thin").
+  const bidTotalSqft = scopeItems.reduce((s,si)=>s+(parseFloat((document.getElementById('si'+si.id+'_sqft')||{}).value)||0),0);
+  const _svcMap = {wall:'spray foam',attic:'spray foam',lid:'spray foam',crawl:'spray foam',roof:'spf roofing',roofing:'spf roofing',coat:'coating',coating:'coating',lift:'concrete lifting',lifting:'concrete lifting',slab:'concrete lifting',void:'void fill'};
+  const _pt = (scopeItems[0]&&String(scopeItems[0].type||'').toLowerCase())||'';
+  const bidPrimarySvc = _svcMap[Object.keys(_svcMap).find(k=>_pt.indexOf(k)>=0)]||_pt;
 
   // Auto prep & time — crew-hours + days from production rates, foam sets to order,
   // and a masking estimate (9ft×200ft roll = 1800 sq ft). All labeled as estimates.
@@ -5130,10 +5350,12 @@ function calculateBid(){
   <div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;font-size:11px;color:var(--yw)">
     ⚠️ DRAFT ONLY — Clifton approves all numbers before any bid is sent. Unsigned change orders are a hard closeout block.
   </div>
-  <div style="margin-top:8px;display:flex;gap:8px">
+  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-primary" onclick="saveEstimate(${Math.round(totalSell)},'${custName.replace(/'/g,"\\'")}',${(blendedGM||0).toFixed(4)})">💾 SAVE ESTIMATE</button>
     <button class="btn btn-ghost" onclick="createLeadFromEstimate('${custName.replace(/'/g,"\\'")}',${Math.round(totalSell)})">→ CREATE LEAD</button>
-  </div>`;
+    <button class="btn btn-ghost" onclick="calcComparePast('${(bidPrimarySvc||'').replace(/'/g,"\\'")}',${Math.round(bidTotalSqft)},${Math.round(totalDirect)})" title="Sanity-check this bid's cost against what similar past jobs actually cost">🔮 vs past jobs</button>
+  </div>
+  <div id="bidPredictOut" style="margin-top:8px;font-size:12px;line-height:1.5"></div>`;
 
   document.getElementById('bidResult').innerHTML=html;
   speak(`Bid calculated. Total: ${formatSpeakDollar(totalSell)} for ${custName}.`);
@@ -5267,19 +5489,79 @@ function saveEstimate(val, name, gm){
   const g=parseFloat(gm); if(Number.isFinite(g)&&g>0) est.gm=Math.round(g*1000)/1000;
   appState.estimates.push(est);
   save('estimates');
-  notify(`Estimate $${val.toLocaleString()} saved for ${name}`);
+  // Auto-hallway: the saved estimate flows straight into the CRM pipeline (create/update lead +
+  // advance stage). Idempotent + never regresses a further-along lead. See upsertLeadFromEstimate.
+  const link = upsertLeadFromEstimate(name, val);
+  notify(`Estimate $${val.toLocaleString()} saved for ${name}`+(link?` · lead ${link.action} → Estimate Sent`:''));
   playSound('success');
 }
 
-function createLeadFromEstimate(name, val){
-  const lead={id:Date.now(),name,value:val,service:'From Estimate',
-    state:document.getElementById('eState').value,market:document.getElementById('eMarket').value,
-    status:'Estimate Sent',date:new Date().toISOString().split('T')[0],
-    notes:document.getElementById('eNotes').value,source:'Estimator'};
-  appState.leads.push(lead);
+// ── Estimate → CRM auto-hallway ──────────────────────────────────────────────
+// Saving/closing an estimate automatically creates OR updates the matching lead and advances its
+// pipeline stage to "Estimate Sent" — the #1 module-to-module link (v2.0 item 10). Internal CRM
+// record only (no outward customer action), so it runs without a confirm; it stays transparent
+// (owner is notified) and IDEMPOTENT: re-saving the same customer's estimate UPDATES the one lead
+// (never duplicates) and never REGRESSES a lead already further along (Follow-Up/Won/Lost stay put).
+function upsertLeadFromEstimate(name, val, opts){
+  opts = opts||{};
+  const nm = String(name||'').trim();
+  if(!nm || nm.toLowerCase()==='customer'){ if(opts.announce) notify('Add a customer name to the estimate first','alert'); return null; }
+  const val0 = Math.round(Number(val)||0);
+  const g = id => ((document.getElementById(id)||{}).value||'').trim();
+  const state = g('eState'), market = g('eMarket'), notes = g('eNotes');
+  const key = nm.toLowerCase();
+  // stages AT OR AFTER "Estimate Sent" — a lead already here or beyond doesn't get pulled backward
+  const AHEAD = {'Estimate Sent':1,'Follow-Up':1,'Won':1,'Lost':1};
+  const stamp = new Date().toISOString().split('T')[0];
+  const noteLine = 'Estimate saved '+stamp+': $'+val0.toLocaleString();
+  let lead = (appState.leads||[]).find(l => String(l.name||'').trim().toLowerCase()===key);
+  let action;
+  if(lead){
+    lead.value = val0;
+    lead.lastEstimate = val0;
+    if(!AHEAD[lead.status]) lead.status = 'Estimate Sent';   // advance only from New/Qualified/blank/Follow-Up-earlier
+    if(state && !lead.state)  lead.state  = state;
+    if(market && !lead.market) lead.market = market;
+    if(notes && (!lead.notes || lead.notes.indexOf(notes)<0)) lead.notes = lead.notes ? (lead.notes+'\n'+notes) : notes;
+    lead.notes = lead.notes ? (lead.notes+'\n'+noteLine) : noteLine;
+    action = 'updated';
+  } else {
+    lead = {id:Date.now(), name:nm, value:val0, service:'From Estimate', state, market,
+      status:'Estimate Sent', date:stamp, notes:(notes?notes+'\n':'')+noteLine, source:'Estimator', lastEstimate:val0};
+    appState.leads.push(lead);
+    action = 'created';
+  }
   save('leads');
-  notify(`Lead created for ${name}`);
-  switchModule('crm');
+  try{ if(window.renderPipeline && document.getElementById('mod-crm')) renderPipeline(); }catch(e){}
+  try{ if(window.renderDashMetrics) renderDashMetrics(); }catch(e){}
+  if(opts.switchToCrm) switchModule('crm');
+  return {lead, action};
+}
+// Predictive sanity-check: what did similar past jobs actually cost? Compares the prediction (from YOUR
+// completed-job history) to THIS bid's own direct cost. Advisory — never changes the bid or the price.
+async function calcComparePast(service, sqft, directCost){
+  const out=document.getElementById('bidPredictOut'); if(!out) return;
+  if(!(sqft>0)){ out.innerHTML='<span style="color:var(--t2)">Add a sq-ft scope to compare against past jobs.</span>'; return; }
+  out.innerHTML='<span style="color:var(--t2)">Checking your job history…</span>';
+  const d=await _sysPost('/api/predictive-cost',{service:service,size:sqft});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">History check unavailable.</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS) to compare.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">Turn on the data spine (Vercel KV) to compare against job history.</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--t2)">Not enough history yet ('+(d.samples||0)+'/'+(d.needed||3)+' similar completed jobs) — this builds as you log job costs.</span>'; return; }
+  const p=d.prediction||{}; const pred=Math.round(p.predicted||0);
+  const conf={high:'✅ high',medium:'⚠️ medium',low:'❌ low'}[p.confidence]||p.confidence||'';
+  const delta=directCost-pred; const dir=delta>=0?'above':'below';
+  const col=Math.abs(delta)<=pred*0.15?'var(--gr)':'var(--yw)';
+  out.innerHTML='<div style="background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);border-radius:6px;padding:8px">'+
+    '<b style="color:var(--cy)">🔮 vs '+p.samples+' past '+_cE(service||'job')+' job'+(p.samples===1?'':'s')+'</b> <span style="font-size:11px;color:var(--t2)">('+_cE(conf)+' confidence)</span><br>'+
+    'History predicts a cost near <b>$'+pred.toLocaleString()+'</b> for ~'+Math.round(sqft).toLocaleString()+' sq ft.<br>'+
+    'This bid\'s direct cost is <b>$'+Math.round(directCost).toLocaleString()+'</b> — <span style="color:'+col+'">$'+Math.abs(delta).toLocaleString()+' '+dir+'</span> the historical trend.'+
+    '<div style="font-size:10px;color:var(--t2);margin-top:4px">Advisory sanity-check from your own logged jobs — not a quote; doctrine still sets price.</div></div>';
+}
+window.calcComparePast = calcComparePast;
+function createLeadFromEstimate(name, val){
+  const r = upsertLeadFromEstimate(name, val, {switchToCrm:true, announce:true});
+  if(r) notify('Lead '+r.action+' for '+name+' → Estimate Sent');
 }
 
 function exportEstimate(){
@@ -6551,10 +6833,33 @@ function openLeadDetail(id){
   <div class="modal-actions">
     <button class="btn btn-danger" onclick="deleteLead(${id})">DELETE</button>
     <button class="btn btn-cyan" onclick="estimateFromLead(${id})" title="Open the estimator prefilled with this lead">🧾 CREATE BID</button>
+    <button class="btn btn-ghost" onclick="sharePortalLink(${id},'${esc((l.name||'').replace(/'/g,"\\'"))}')" title="Generate a private status-portal link to share with this customer">🔗 PORTAL LINK</button>
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="updateLead(${id})">SAVE CHANGES</button>
-  </div>`);
+  </div>
+  <div id="portalLinkOut" style="font-size:12px;margin-top:8px"></div>`);
 }
+// Generate + share a customer status-portal link (owner action; crew-gated server-side). Shows the URL
+// to copy and drafts a customer-friendly share text (draft only — you send it).
+async function sharePortalLink(id, name){
+  const out=document.getElementById('portalLinkOut'); if(out) out.innerHTML='<span style="color:var(--t2)">Generating link…</span>';
+  const d=await _sysPost('/api/portal',{action:'link',id:id});
+  if(!out) return;
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Couldn\'t generate ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.__gated){ out.innerHTML='<span style="color:var(--yw)">Enter your crew code (SYS tab) to generate a portal link.</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Set PORTAL_SECRET in Vercel to enable the customer portal.')+'</span>'; return; }
+  if(!d.ok||!d.url){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.reason||'Could not generate a link.')+'</span>'; return; }
+  const url=d.url;
+  const msg='Hi'+(name?(' '+name):'')+', here\'s your live project status with Machine Gun Spray Foam: '+url;
+  out.innerHTML='<div style="background:var(--s2,#1a1a26);border:1px solid var(--bd,#2a2a3a);border-radius:8px;padding:8px">'+
+    '<div style="word-break:break-all;color:var(--cy)">'+_cE(url)+'</div>'+
+    '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'+
+    '<button class="btn btn-ghost" style="font-size:12px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+url.replace(/'/g,"\\'")+'\');notify(\'Link copied\')">Copy link</button>'+
+    '<button class="btn btn-ghost" style="font-size:12px" onclick="klyftonDraftText(\''+msg.replace(/'/g,"\\'")+'\')">Draft text to customer</button>'+
+    '</div><div style="font-size:11px;color:var(--t2);margin-top:5px">Private link — only this customer can open it. Shows status, quote & docs to sign; never your costs or margin.</div></div>';
+}
+function klyftonDraftText(msg){ try{ if(navigator.clipboard) navigator.clipboard.writeText(msg); }catch(e){} notify('Draft copied — review, then send from your phone'); }
+window.sharePortalLink = sharePortalLink;
 
 // One-click: open the Estimate tab (Ultimate Estimator) prefilled with this lead's info.
 // Uses the same shared-origin channel — we write a short-lived prefill payload that the
@@ -7576,6 +7881,25 @@ function govRenderNaicsChips(){
   }).join('');
 }
 function renderGov(){ govStatus(); govRenderNaicsChips(); }
+// State + workforce program checklist for a state (gov-programs). GUIDANCE only; every item verify-pointed.
+async function renderGovPrograms(state){
+  const out=document.getElementById('govProgOut'); if(!out) return;
+  out.innerHTML='<span style="color:var(--t2)">Loading '+_cE(state)+' programs…</span>';
+  const d=await _sysPost('/api/gov-programs',{state:state});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  const sec=(title,body)=> body?('<div style="margin-top:8px"><b style="color:var(--or);font-size:12px">'+_cE(title)+'</b><div style="margin-top:2px">'+body+'</div></div>'):'';
+  let h='';
+  const reg=(d.registration||[]);
+  if(reg.length) h+=sec('Register to bid ('+_cE(state)+')', reg.map(r=>'• '+_cE(r.step||r)+(r.url?' <span style="color:var(--cy)">'+_cE(r.url)+'</span>':'')).join('<br>'));
+  const pw=d.prevailingWage;
+  if(pw) h+=sec('Prevailing wage', (pw.has?('<span style="color:var(--yw)">APPLIES</span> — '+_cE(pw.law||'')):'<span style="color:var(--gr)">No state law</span> — '+_cE(pw.note||''))+((pw.obligations&&pw.obligations.length)?('<br>'+pw.obligations.map(o=>'– '+_cE(o)).join('<br>')):''));
+  const wf=d.workforce;
+  if(wf){ const items=Array.isArray(wf)?wf:(wf.incentives||wf.programs||Object.values(wf).filter(x=>x&&x.value));
+    if(items&&items.length) h+=sec('Hiring / workforce incentives', items.map(i=>'• <b>'+_cE(i.name||i.id||'')+'</b> — '+_cE(i.value||'')+(i.how?'<br><span style="color:var(--t2)">'+_cE(i.how)+'</span>':'')).join('<br>')); }
+  h+='<div style="font-size:10px;color:var(--t2);margin-top:8px">'+_cE(d.disclaimer||'GUIDANCE — verify current rules/rates/portals on the official source.')+'</div>';
+  out.innerHTML=h||'<span style="color:var(--t2)">No program data returned.</span>';
+}
+window.renderGovPrograms = renderGovPrograms;
 
 // ================= DATA SHEETS — SDS & TDS (📑 SHEETS tab) =================
 function sheetUrl(name, kind){ return 'https://www.google.com/search?q='+encodeURIComponent(name+' '+kind); }
@@ -7902,11 +8226,12 @@ function addStreamingAiBubble(){
 // Optional crew code. If the owner sets CREW_CODE in Vercel, the server requires a
 // matching { code } — without this the app would brick with "🔒 Crew code required".
 // The code is stored per-device once entered.
-function klyftonCode(){ try{ return (localStorage.getItem('klyfton_crew_code')||'').trim(); }catch(e){ return ''; } }
+function klyftonCode(){ try{ const c=(localStorage.getItem('klyfton_crew_code')||'').trim(); if(c) window.appCrewCode=c; return c; }catch(e){ return ''; } }
+try{ const _cc=(localStorage.getItem('klyfton_crew_code')||'').trim(); if(_cc) window.appCrewCode=_cc; }catch(e){}  // init on load so gated calls carry the code
 function klyftonLocked(text){ return typeof text==='string' && (text.indexOf('Crew code required')>=0 || text.indexOf('🔒')===0); }
 function klyftonPromptCode(){
   const code = (typeof prompt==='function') ? prompt('Klyfton is locked. Enter the crew code your owner set:') : '';
-  if(code && code.trim()){ try{ localStorage.setItem('klyfton_crew_code', code.trim()); }catch(e){} return true; }
+  if(code && code.trim()){ try{ localStorage.setItem('klyfton_crew_code', code.trim()); }catch(e){} window.appCrewCode=code.trim(); return true; }
   return false;
 }
 
@@ -8002,9 +8327,10 @@ function sendChat(){
     const ac = new AbortController();
     let timedOut = false;
     // Client-side deadline, generous because the answer streams in (you see tokens as they
-    // arrive, so it's never dead air). Sits under the function's maxDuration so a genuinely
-    // stuck call still ends cleanly instead of hanging forever.
-    const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 240000);
+    // arrive, so it's never dead air). Sits just under the function's maxDuration (Pro = 300s) so a
+    // genuinely stuck call still ends cleanly instead of hanging forever, but a legit long turn
+    // isn't cut short before the server's own near-the-wall guard returns.
+    const to = setTimeout(()=>{ timedOut = true; try{ ac.abort(); }catch(e){} }, 290000);
 
     return klyftonStream({
       message:text,
@@ -10287,9 +10613,9 @@ ${s.sig?`<img class="sig" src="${e(s.sig)}" alt="signature">`:'<div class="sub">
       +'Stockman, financials + 8832 from ProTax, SBA VetCert). Numbers-first, decision-ready, one screen, no fluff. If a spray '
       +'job is on deck, factor the weather GO/NO-GO. Never put work on a Sunday.\n\n'
       +'TODAY: '+jobs.length+' active job(s), '+leads.length+' open lead(s), '+stale.length+' quiet 7+ days. Weather: '+(wx||'n/a');
-    fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:(typeof _brainKey==='function'?_brainKey():'')||undefined})})
-      .then(function(r){return r.json();})
+    const payload={message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:(typeof _brainKey==='function'?_brainKey():'')||undefined};
+    // Stream the plan so it writes into the card live instead of blocking on one big response.
+    klyftonStream(payload, undefined, function(preview){ box.innerHTML=planHTML(preview); })
       .then(function(d){
         if(d&&d.configured===false){ box.innerHTML='<div style="font-size:12px;color:var(--yw)">⚙️ Add your Anthropic key in Admin → API Keys to get AI daily plans.</div>'; return; }
         if(d&&d.capped){ box.innerHTML='<div style="font-size:12px;color:var(--yw)">🧯 Month’s AI budget reached — plan paused. The brief above still works.</div>'; return; }
@@ -11211,9 +11537,11 @@ function roiRun(prompt){
   const out=document.getElementById('roi_out'), st=document.getElementById('roi_status');
   if(st) st.textContent='Klyfton is crunching the numbers…';
   if(out) out.innerHTML='';
-  fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined})})
-  .then(function(r){return r.json();})
+  const payload={message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined};
+  // Stream so a long ROI writeup fills in live instead of blocking on one big response.
+  klyftonStream(payload, undefined, function(preview){
+    if(out) out.innerHTML='<div class="msg-bubble ai" style="white-space:pre-wrap;font-size:13px;line-height:1.5">'+esc(preview)+'</div>';
+  })
   .then(function(d){
     if(typeof klyftonLocked==='function' && klyftonLocked(d&&d.text)){ if(typeof klyftonPromptCode==='function'&&klyftonPromptCode()){ roiRun(prompt); return; } }
     const text=(d&&d.text)||"Klyfton didn't return an ROI — try again.";
@@ -11337,9 +11665,12 @@ function growGenerate(prompt){
   const out=document.getElementById('grow_out'), st=document.getElementById('grow_status');
   if(st) st.textContent='Klyfton is working…';
   if(out) out.innerHTML='';
-  fetch('/api/klyfton',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined})})
-  .then(function(r){return r.json();})
+  const payload={message:prompt, context:(typeof gatherBizContext==='function'?gatherBizContext():{}), memory:(appState.memory||[]).slice(-20), code:(typeof klyftonCode==='function'?klyftonCode():''), apiKey:_brainKey()||undefined};
+  // Stream the hive so a long generation fills in live instead of blocking on one big response.
+  // onDelta shows a plain preview bubble while it writes; on finish we swap in the copy/schedule box.
+  klyftonStream(payload, undefined, function(preview){
+    if(out) out.innerHTML='<div class="msg-bubble ai" style="white-space:pre-wrap;font-size:13px;line-height:1.5">'+esc(preview)+'</div>';
+  })
   .then(function(d){
     if(typeof klyftonLocked==='function' && klyftonLocked(d&&d.text)){ if(klyftonPromptCode()){ growGenerate(prompt); return; } }
     const text=(d&&d.text)||"Klyfton didn't return anything — try again."; if(out) out.innerHTML=growResultBox(text); if(st) st.textContent=(d&&d.configured===false)?'⚙️ Turn on ANTHROPIC_API_KEY in Vercel to use this.':''; })
@@ -12804,6 +13135,7 @@ Verify current requirements with the local building department (AHJ) before fili
 // Operations Command Center (Phase 2) — reads real KPIs/leaderboard/roster from /api/command-center.
 // Self-contained; honest empty state when telemetry isn't configured yet. Never shows fake numbers.
 window.renderCommand = async function(){
+  try{ if(window.renderWorkflow) renderWorkflow(); }catch(e){}   // auto-populate the What's-Next workflow card
   var e = function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var set = function(id,html){var el=document.getElementById(id); if(el) el.innerHTML=html;};
   set('ccKpis','<div class="metric-card"><div class="metric-val">…</div><div class="metric-lbl">loading</div></div>');

@@ -12,6 +12,7 @@
 // GET -> the roster. POST { agent, jobs, nowMs } -> the plan.
 
 const projects = require("./projects");
+const subs = require("./subs");
 let toolBag = { catalog: () => ({ tools: [] }) };
 try { toolBag = require("./tools"); } catch (e) {}
 let arms = null;
@@ -46,6 +47,13 @@ const AGENTS = {
     label: "Lead Closer",
     goal: "Respond to new leads fast (speed-to-lead).",
     select: (jobs, nowMs) => jobs.filter((j) => stageOf(j) === "lead"),
+  },
+  // Agent #5 operates on the SUBS roster, not the jobs board — routed via planSubCompliance.
+  "sub-compliance": {
+    label: "Sub-Compliance Chaser",
+    goal: "Keep every sub's COI + license current — chase renewals before they lapse so an uninsured/unlicensed sub never lands on a job.",
+    source: "subs",
+    select: () => [], // not job-based; handler routes to planSubCompliance
   },
 };
 
@@ -155,6 +163,59 @@ async function run(agentId, jobs, nowMs, env, opts) {
   };
 }
 
+// ---- Agent #5: Sub-Compliance Chaser (operates on the subs roster, not the jobs board) ----
+// Pure/deterministic on nowMs. Reuses subs.sweepExpiring to find subs with an expiring/expired/missing
+// COI or license, and drafts an approval-gated renewal chase for each. Never fabricates the message.
+function planSubCompliance(subRecords, nowMs, env) {
+  const a = AGENTS["sub-compliance"];
+  const alerts = subs.sweepExpiring(Array.isArray(subRecords) ? subRecords : [], nowMs);
+  const cat = (toolBag.catalog ? toolBag.catalog(env || {}) : { tools: [] }).tools || [];
+  const armsTool = cat.find((t) => t.id === "arms");
+  const armsLive = armsTool ? !!armsTool.live : null;
+  const steps = alerts.map((s) => {
+    const issue = s.readiness === "blocked"
+      ? ("missing/expired — " + ((s.blockers || []).join(", ") || "required doc"))
+      : ("expiring — " + (s.expiring || []).map((e) => e.type + " in " + e.daysLeft + "d").join(", "));
+    const target = (s.expiring && s.expiring[0] && s.expiring[0].type) || (s.blockers && s.blockers[0]) || "document";
+    return { who: clean(s.name, 120), stage: s.readiness, trade: clean(s.trade, 60), issue,
+      action: "Request renewed " + target + " from the sub", tool: "arms", live: armsLive, approval: true,
+      blockedBy: armsLive === false ? (armsTool && armsTool.gatedBy) : null };
+  });
+  return { ok: true, agent: "sub-compliance", label: a.label, goal: a.goal, count: steps.length,
+    ready: steps.filter((s) => s.live === true).length, blocked: steps.filter((s) => s.live === false).length, steps,
+    note: "Draft renewal chases for subs whose COI/license is expiring, expired, or missing. Outward sends are approval-gated through the arms — nothing is sent automatically and the message is drafted by the brain, never fabricated here." };
+}
+// Contact skeleton for a sub renewal chase — empty subject/body (owner drafts; never fabricated). Pure.
+function buildSubAction(step, rec) {
+  const email = clean(rec && rec.email, 120), phone = clean(rec && rec.phone, 20);
+  if (email) return { type: "send_email", to: email, subject: "", body: "", _for: step.who };
+  if (phone) return { type: "send_sms", to: phone, body: "", _for: step.who };
+  return null; // no contact on file → handle manually
+}
+// Closed loop for the chaser: plan → build the arm action per sub → run gated through the arms.
+async function runSubCompliance(subRecords, nowMs, env, opts) {
+  const p = planSubCompliance(subRecords, nowMs, env);
+  const o = opts || {};
+  const exec = typeof o.exec === "function" ? o.exec : (arms && arms.execute);
+  const hist = Array.isArray(o.history) ? o.history : [];
+  const list = Array.isArray(subRecords) ? subRecords : [];
+  const results = [];
+  for (const step of p.steps) {
+    if (shouldSkip(step, hist, nowMs, o.cooldownDays)) { results.push({ step, outcome: "skipped", reason: "chased within cooldown" }); continue; }
+    const rec = list.find((r) => clean(r && r.name, 120) === step.who) || {};
+    const action = buildSubAction(step, rec);
+    if (!action) { results.push({ step, outcome: "in_app", reason: "no contact on file — chase manually" }); continue; }
+    if (step.live === false) { results.push({ step, outcome: "blocked", reason: "arms dark", blockedBy: step.blockedBy }); continue; }
+    if (typeof exec !== "function") { results.push({ step, outcome: "no_executor" }); continue; }
+    const r = await exec(action, { approved: o.approved === true, actor: o.actor });
+    results.push({ step, action: { type: action.type, for: action._for }, result: r, outcome: (r && r.status) || "unknown" });
+  }
+  const tally = (s) => results.filter((r) => r.outcome === s).length;
+  return { ...p, approved: o.approved === true, dispatched: tally("dispatched"),
+    drafts: tally("needs_approval") + tally("incomplete"), skipped: tally("skipped"), blocked: tally("blocked"), results,
+    note: o.approved === true ? "Approved run: renewal chases dispatched through the arms (each still act.js-gated)." : "Preview: every chase ran through the arms as a GATED draft. Nothing sent." };
+}
+
 async function sbFetch(pathStr, opts) {
   return fetch(SB_URL.replace(/\/$/, "") + pathStr, { ...opts,
     headers: { apikey: SB_KEY, authorization: "Bearer " + SB_KEY, "content-type": "application/json", ...(opts && opts.headers) } });
@@ -187,7 +248,7 @@ module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ service: "klyfton-agents",
       roster: Object.keys(AGENTS).map((id) => ({ id, label: AGENTS[id].label, goal: AGENTS[id].goal })),
-      note: "POST { agent, jobs:[...], nowMs } for a plan. Agents plan + stage drafts; the arms send, approval-gated." });
+      note: "POST { agent, jobs:[...], nowMs } for a plan (sub-compliance takes subs:[...] instead of jobs). Agents plan + stage drafts; the arms send, approval-gated." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -198,8 +259,11 @@ module.exports = async (req, res) => {
   try {
     const nowMs = Number.isFinite(body.nowMs) ? body.nowMs : (Date.parse(body.now || "") || null);
     const hist = await history(body.agent, 200);           // observe: recent runs (gated/graceful)
-    const out = await run(body.agent, body.jobs, nowMs, process.env,
-      { approved: body.approved === true, actor: body.actor, history: hist.results, cooldownDays: body.cooldownDays });
+    const out = clean(body.agent, 40) === "sub-compliance"
+      ? await runSubCompliance(Array.isArray(body.subs) ? body.subs : (Array.isArray(body.jobs) ? body.jobs : []), nowMs, process.env,
+          { approved: body.approved === true, actor: body.actor, history: hist.results, cooldownDays: body.cooldownDays })
+      : await run(body.agent, body.jobs, nowMs, process.env,
+          { approved: body.approved === true, actor: body.actor, history: hist.results, cooldownDays: body.cooldownDays });
     if (out.ok) { try { await logRun(body.agent, out.results, nowMs); } catch (e) {} } // record for next time
     res.status(200).json(out);
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
@@ -213,3 +277,6 @@ module.exports.buildAction = buildAction;
 module.exports.shouldSkip = shouldSkip;
 module.exports.logRun = logRun;
 module.exports.history = history;
+module.exports.planSubCompliance = planSubCompliance;
+module.exports.buildSubAction = buildSubAction;
+module.exports.runSubCompliance = runSubCompliance;

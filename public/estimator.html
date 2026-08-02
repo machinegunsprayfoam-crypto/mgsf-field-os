@@ -1614,6 +1614,16 @@ if('serviceWorker' in navigator && location.protocol==='https:'){navigator.servi
    Self-contained + global so it never depends on the main app script's scope. Populates the
    customer fields and selects the service by clicking the matching .svc button. */
 (function(){
+  // Fuel-name normalizer — the app's BPI panel and this estimator label fuels slightly
+  // differently ("Natural Gas" vs "Natural gas"); match on a normalized token.
+  function _mgMatchFuel(sel,val){ if(!sel||val==null||val==='') return; var norm=function(s){return String(s||'').toLowerCase().replace(/[^a-z]/g,'');};
+    var v=norm(val), want=v;
+    if(/natural|gas/.test(v)) want='naturalgas'; else if(/propane|lp/.test(v)) want='propane';
+    else if(/elec/.test(v)) want='electric'; else if(/oil/.test(v)) want='fueloil'; else if(/wood|pellet/.test(v)) want='woodpellet';
+    for(var i=0;i<sel.options.length;i++){ if(norm(sel.options[i].value)===want||norm(sel.options[i].text)===want){ sel.selectedIndex=i; return; } }
+    for(var j=0;j<sel.options.length;j++){ if(norm(sel.options[j].text).indexOf(want.slice(0,4))>=0){ sel.selectedIndex=j; return; } }
+  }
+  window._mgMatchFuel = _mgMatchFuel;
   function applyPrefill(){
     try{
       var raw=localStorage.getItem('mgsf_prefill_v1'); if(!raw) return;
@@ -1624,6 +1634,9 @@ if('serviceWorker' in navigator && location.protocol==='https:'){navigator.servi
       set('cust-name',p.name); set('cust-phone',p.phone); set('cust-email',p.email);
       set('cust-addr',p.addr); set('cust-source',p.source||'CRM Lead');
       if(p.state){ var st=document.getElementById('cust-state'); if(st){ for(var i=0;i<st.options.length;i++){ if(st.options[i].value===p.state||st.options[i].text===p.state){ st.selectedIndex=i; break; } } } }
+      // BPI audit → estimator: carry building geometry into the BPI service panel.
+      set('bpi-sf',p.bpiSf); set('bpi-ch',p.bpiCh); set('bpi-year',p.bpiYear);
+      if(p.bpiFuel){ _mgMatchFuel(document.getElementById('bpi-fuel'),p.bpiFuel); }
       if(p.service){
         var map={roof:'roof',roofing:'roof',coat:'coatings',coating:'coatings',coatings:'coatings',seal:'coatings',lift:'concrete',lifting:'concrete',concrete:'concrete',level:'concrete',slab:'concrete',mudjack:'concrete',removal:'removal',remove:'removal',demo:'removal',tear:'removal',bpi:'bpi',audit:'bpi',energy:'bpi',blower:'bpi',polyurea:'polyurea',soil:'soil',geo:'soil',stab:'soil'};
         var key=String(p.service).toLowerCase(), svcKey=null, k;
@@ -1645,6 +1658,27 @@ if('serviceWorker' in navigator && location.protocol==='https:'){navigator.servi
   else setTimeout(applyPrefill,250);
   // If the host writes a prefill while we're already open, this fires in our window.
   window.addEventListener('storage',function(e){ if(e && e.key==='mgsf_prefill_v1') applyPrefill(); });
+
+  // BPI ↔ estimator live bridge (iframe). Two messages from the host BPI panel:
+  //  • 'mgsf-bpi-req'     → reply with the estimator's current BPI building fields.
+  //  • 'mgsf-bpi-handoff' → push building geometry into the BPI service panel + select it.
+  window.addEventListener('message',function(ev){
+    var m=ev&&ev.data; if(!m||typeof m!=='object') return;
+    var g=function(id){ var el=document.getElementById(id); return el?el.value:''; };
+    if(m.type==='mgsf-bpi-req'){
+      var payload={ sf:g('bpi-sf'), ch:g('bpi-ch'), year:g('bpi-year'), fuel:g('bpi-fuel'),
+        stories:g('bpi-stories'), appl:g('bpi-appl'), cfm50:g('bpi-cfm50'), ach50:g('bpi-ach50'),
+        name:g('cust-name'), addr:g('cust-addr') };
+      try{ (ev.source||window.parent).postMessage({type:'mgsf-bpi-ctx',payload:payload},'*'); }catch(e){}
+    } else if(m.type==='mgsf-bpi-handoff' && m.payload){
+      var p=m.payload, set=function(id,v){ var el=document.getElementById(id); if(el&&v!=null&&v!==''){ el.value=v; try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){} } };
+      var btns=document.querySelectorAll('.svc'); for(var j=0;j<btns.length;j++){ if((btns[j].getAttribute('onclick')||'').indexOf("setSvc('bpi'")>=0){ btns[j].click(); break; } }
+      set('bpi-sf',p.sf); set('bpi-ch',p.ch); set('bpi-year',p.year);
+      if(p.fuel) _mgMatchFuel(document.getElementById('bpi-fuel'),p.fuel);
+      try{ if(typeof recalc==='function') recalc(); }catch(e){}
+      try{ if(typeof toast==='function') toast('BPI building loaded from audit'); }catch(e){}
+    }
+  });
 
   // When embedded inside Klyfton (iframe), this is ONLY the bid builder. Hide the standalone
   // app's other modes (Jobs / Stock / Clients / Console / Admin) — Klyfton owns those screens,

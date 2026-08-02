@@ -1,0 +1,154 @@
+/* ============================================================================
+   THEME-2026 — "APEX" refit. A modern, cutting-edge polish layer loaded AFTER
+   app.css. Additive + override only: it changes design TOKENS and the styling of
+   existing components (cards, nav, buttons, inputs, metrics, chat, tables) — it
+   never renames a class, moves a hook, or changes the layout skeleton, so all
+   JS wiring and all 17 selectable data-theme skins keep working. Toggle the
+   whole redesign by removing the <link> to this file. No content/logic changes.
+   ============================================================================ */
+
+/* ---- 1. Refined type + rendering ------------------------------------------ */
+:root{
+  --font:'Segoe UI Variable','Segoe UI',-apple-system,BlinkMacSystemFont,Inter,system-ui,'Helvetica Neue',Arial,sans-serif;
+  --el1:0 1px 2px rgba(0,0,0,.35);
+  --el2:0 4px 14px rgba(0,0,0,.40), 0 1px 3px rgba(0,0,0,.30);
+  --el3:0 12px 34px rgba(0,0,0,.52), 0 3px 10px rgba(0,0,0,.34);
+  --ring:0 0 0 3px rgba(249,115,22,.22);
+  --rlg:16px; --rmd:12px; --rsm:9px;
+}
+html,body{font-size:15px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;letter-spacing:.1px}
+
+/* ---- 2. Deeper, cooler default surface (only the base GRID theme) --------- */
+:root:not([data-theme]),
+:root[data-theme="grid"]{
+  --bg:#070a12; --s1:#0e131f; --s2:#141a28; --s3:#1e2536;
+  --tx:#eef1f8; --t2:#94a0b8; --t3:#3a4356;
+  --bd:rgba(255,255,255,.09); --glow:rgba(249,115,22,.45);
+}
+
+/* Premium ambient wash on the app background (sits under the FX layers) */
+body{
+  background:
+    radial-gradient(1200px 620px at 12% -14%, rgba(34,211,238,.08), transparent 58%),
+    radial-gradient(1000px 520px at 108% -8%, rgba(249,115,22,.10), transparent 55%),
+    radial-gradient(900px 700px at 50% 120%, rgba(99,102,241,.06), transparent 60%),
+    var(--bg) !important;
+}
+/* Soften the retro grid/scanline for a cleaner, more premium read */
+:root:not([data-theme]) #tronFloor,:root[data-theme="grid"] #tronFloor{opacity:.34}
+:root:not([data-theme]) #tronScan,:root[data-theme="grid"] #tronScan{opacity:.30}
+
+/* ---- 3. Top bar — frosted HUD strip -------------------------------------- */
+#topbar{
+  height:58px;
+  background:linear-gradient(180deg,rgba(14,19,31,.86),rgba(10,13,20,.72)) !important;
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border-bottom:1px solid var(--bd);
+  box-shadow:0 1px 0 rgba(255,255,255,.04),0 8px 30px rgba(0,0,0,.35);
+}
+.logo-text{font-weight:850;letter-spacing:5px;background:linear-gradient(92deg,var(--or),#ffd0a3 60%,var(--or));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;filter:drop-shadow(0 0 14px rgba(249,115,22,.45))}
+.logo-badge{border-radius:999px;font-weight:700}
+.top-btn{border-radius:999px;padding:7px 13px;border-color:var(--bd);background:rgba(255,255,255,.02);transition:all .18s}
+.top-btn:hover{background:rgba(249,115,22,.10);transform:translateY(-1px)}
+.top-btn.active{background:linear-gradient(180deg,rgba(249,115,22,.20),rgba(249,115,22,.08))}
+#layoutSeg{border-radius:999px;background:rgba(255,255,255,.03);padding:2px}
+#layoutSeg button{border:0;border-radius:999px;padding:7px 12px;transition:all .16s}
+#layoutSeg button.on{background:linear-gradient(180deg,rgba(249,115,22,.24),rgba(249,115,22,.10));color:var(--or);box-shadow:var(--el1)}
+.top-clock{opacity:.9}
+
+/* ---- 4. Sidebar nav — premium rail --------------------------------------- */
+#sidebar{
+  background:linear-gradient(180deg,rgba(12,16,26,.96),rgba(8,11,18,.98)) !important;
+  border-right:1px solid var(--bd);
+}
+.nav-item{width:52px;height:52px;border-radius:14px;gap:4px;transition:transform .16s ease,background .16s ease,box-shadow .16s ease}
+.nav-item:hover{background:rgba(255,255,255,.05);transform:translateY(-1px)}
+.nav-item.active{
+  background:linear-gradient(160deg,rgba(249,115,22,.22),rgba(249,115,22,.06));
+  border-color:rgba(249,115,22,.45);
+  box-shadow:inset 0 0 0 1px rgba(249,115,22,.18),0 6px 18px rgba(249,115,22,.14);
+}
+.nav-item.active::before{content:"";position:absolute;left:-6px;top:50%;transform:translateY(-50%);width:3px;height:26px;border-radius:3px;background:linear-gradient(180deg,var(--or),#ffb877);box-shadow:0 0 10px var(--or)}
+.nav-icon{font-size:20px}
+.nav-label{font-size:8.5px;font-weight:700;letter-spacing:.6px}
+
+/* ---- 5. Cards — clear elevated planes ------------------------------------ */
+.card,.admin-section,.jsa-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0)) , var(--s1) !important;
+  border:1px solid var(--bd) !important;
+  border-radius:var(--rlg) !important;
+  box-shadow:var(--el2) !important;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
+}
+.card:hover,.admin-section:hover,.jsa-card:hover{
+  border-color:rgba(249,115,22,.32) !important;
+  box-shadow:var(--el3),0 0 24px rgba(249,115,22,.08) !important;
+  transform:translateY(-2px);
+}
+.card::before{height:2px;background:linear-gradient(90deg,transparent,var(--or),var(--cy),transparent);opacity:.5}
+.card-title,.admin-section-title{letter-spacing:1.4px;font-size:11px}
+.card-title::before{height:13px;border-radius:2px;background:linear-gradient(180deg,var(--or),#ffb877)}
+
+/* ---- 6. Metric cards — the headline numbers ------------------------------ */
+.metric-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01)),var(--s1) !important;
+  border:1px solid var(--bd) !important;border-radius:var(--rlg) !important;
+  padding:18px 14px !important;box-shadow:var(--el2) !important;
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.metric-card:hover{transform:translateY(-3px);border-color:rgba(249,115,22,.4) !important;box-shadow:var(--el3),0 0 30px rgba(249,115,22,.12) !important}
+.metric-val{font-size:30px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(180deg,var(--tx),var(--or));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none}
+.metric-lbl{font-size:10px;letter-spacing:1.4px;color:var(--t2);margin-top:6px}
+.metric-spark{height:3px;opacity:.7;background:linear-gradient(90deg,var(--or),var(--cy))}
+
+/* ---- 7. Buttons — depth + gradient primary ------------------------------- */
+.btn{border-radius:var(--rsm);font-weight:650;letter-spacing:.3px;transition:transform .12s ease,box-shadow .2s ease,background .2s ease}
+.btn:active{transform:translateY(1px)}
+.btn-primary{
+  background:linear-gradient(180deg,#ff9142,var(--or)) !important;color:#160a02 !important;
+  box-shadow:0 6px 16px rgba(249,115,22,.32),inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+.btn-primary:hover{box-shadow:0 8px 24px rgba(249,115,22,.5),inset 0 1px 0 rgba(255,255,255,.4) !important;transform:translateY(-1px)}
+.btn-ghost{background:rgba(255,255,255,.03) !important;border:1px solid var(--bd) !important;color:var(--tx) !important}
+.btn-ghost:hover{border-color:rgba(249,115,22,.5) !important;background:rgba(249,115,22,.08) !important;color:var(--or) !important}
+.btn-orange{border-radius:var(--rsm);background:linear-gradient(180deg,rgba(249,115,22,.24),rgba(249,115,22,.10)) !important}
+
+/* ---- 8. Inputs / selects — premium fields -------------------------------- */
+.inp,.admin-inp,#chatInput{
+  background:rgba(255,255,255,.035) !important;border:1px solid var(--bd) !important;
+  border-radius:var(--rsm) !important;padding:10px 12px;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.inp:focus,.admin-inp:focus,#chatInput:focus{border-color:var(--or) !important;background:rgba(255,255,255,.05) !important;box-shadow:var(--ring) !important}
+.form-label{letter-spacing:.6px;color:var(--t2)}
+
+/* ---- 9. Chat panel — cleaner assistant ----------------------------------- */
+#chatPanel{background:linear-gradient(180deg,rgba(12,16,26,.96),rgba(9,12,19,.98)) !important;border-left:1px solid var(--bd)}
+.klyfton-avatar{box-shadow:0 0 18px rgba(249,115,22,.5),inset 0 1px 0 rgba(255,255,255,.3)}
+.msg{border-radius:14px;line-height:1.55;box-shadow:var(--el1)}
+.msg.user{background:linear-gradient(180deg,rgba(249,115,22,.20),rgba(249,115,22,.10)) !important;border:1px solid rgba(249,115,22,.28) !important;border-radius:14px 14px 4px 14px !important}
+.msg.ai{background:rgba(255,255,255,.035) !important;border:1px solid var(--bd) !important;border-radius:14px 14px 14px 4px !important}
+.chat-chip{border-radius:999px;background:rgba(255,255,255,.035);transition:all .16s}
+.chat-chip:hover{background:rgba(249,115,22,.10);transform:translateY(-1px)}
+.chat-send{border-radius:var(--rsm);background:linear-gradient(180deg,#ff9142,var(--or));box-shadow:0 4px 14px rgba(249,115,22,.3)}
+
+/* ---- 10. Tables + badges ------------------------------------------------- */
+.tbl th{letter-spacing:1.2px;color:var(--t2);border-bottom:1px solid var(--bd)}
+.tbl td{padding:11px 12px}
+.tbl tr:hover td{background:rgba(249,115,22,.05)}
+.badge{border-radius:999px;padding:3px 10px;font-weight:650}
+
+/* ---- 11. Misc polish ----------------------------------------------------- */
+.module{padding:20px}
+.module.active{gap:16px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--or)}
+.job-card,.pipe-card{border-radius:var(--rmd);transition:transform .16s ease,box-shadow .2s ease,border-color .2s ease}
+.job-card:hover,.pipe-card:hover{transform:translateY(-2px);box-shadow:var(--el2)}
+
+/* ---- 12. Accessibility: honor reduced-motion (calmer in the field / for sensitive users) ---- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
+  #tronFloor::before,#ambientBar{animation:none !important}
+}
