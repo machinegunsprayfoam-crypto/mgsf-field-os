@@ -1,14 +1,15 @@
-# MGSF FieldOS
+# MGSF FieldOS — Klyfton AI
 
-Private business operating system for **Machine Gun Spray Foam & Concrete Lifting LLC**.
+Private business operating system for **Machine Gun Spray Foam & Concrete Lifting LLC**, powered by the Klyfton AI multi-agent platform.
 
 Owner: Clifton Behner  
+App: https://app.machinegunsprayfoam.info  
 Website: https://www.machinegunsprayfoam.info  
 Service region: Montana, Wyoming, North Dakota, South Dakota
 
-## Mission
+## What this is
 
-Build one source of truth for estimating, lead qualification, project tracking, proposal creation, job photos, customer records, government contracting prep, and business automation.
+Klyfton AI is the single operational platform for MGSF — lead qualification, estimating, project management, invoicing, scheduling, government contracting, and business automation in one place. The frontend is a single-file PWA; the backend is a set of Vercel serverless functions; the brain is Claude AI. See [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) for current build state.
 
 ## Core services
 
@@ -21,46 +22,40 @@ Build one source of truth for estimating, lead qualification, project tracking, 
 - Polyurea coatings
 - Building performance services
 
-## Operating modules
-
-| Module | Purpose |
-|---|---|
-| Lead Intake | Capture customer info, project type, urgency, budget, photos, location, and next step |
-| Estimating | Calculate materials, labor, consumables, margin, travel, equipment, and proposal pricing |
-| Proposals | Generate professional customer-facing bid packages |
-| Projects | Track active jobs, photos, notes, invoices, change orders, and closeout documents |
-| Marketing | Feed website, Google Business Profile, social media, and ad content |
-| Government Contracting | Store SAM/UEI readiness docs, capability statement, NAICS/PSC codes, and opportunity notes |
-| Automations | Connect forms, Google Drive, Sheets, CRM, email, reminders, and reporting |
-
 ## Repo structure
 
 ```text
-/docs/                 Business process documents and SOPs
-/data/                 Schemas, templates, and non-sensitive operating data
-/estimating/           Pricing logic, calculators, assumptions, and quote templates
-/forms/                Lead intake and project intake templates
-/proposals/            Proposal templates and reusable customer language
-/projects/             Project tracking templates and folder conventions
-/government-contracts/ SAM, NAICS, PSC, capability statement, and bid-readiness docs
-/automations/          Zapier, Google Drive, Apps Script, webhook, and workflow notes
-/.github/              Issue templates and GitHub task management
+api/                   ~90 Vercel serverless functions (the app's backend + AI brains)
+public/                Single-file PWA (index.html), CSS, brain-graph viz, portal, service worker
+db/                    Supabase schema SQL files and wiki seed data
+docs/                  Architecture notes, SOPs, and spec documents
+lib/                   Shared pure helpers (pdf.js)
+tests/                 Test suites — run with: node tests/run-all.js
+tools/                 Dev utilities (UI QA sweep, doctrine reconciler)
+google-apps-script/    Google Drive backup Apps Script + setup guide
+data/                  Schemas and non-sensitive reference data
+.github/               CI workflows
+vercel.json            Vercel config (functions, cron schedules)
+PROJECT_MEMORY.md      Single source of truth — read this first every session
+CLAUDE.md              AI session-start protocol
 ```
+
+## Running the tests
+
+```bash
+node tests/run-all.js
+```
+
+All tests are keyless and run offline. Exit 0 = all green.
+
+## Deployment
+
+Auto-deploys to Vercel from `main`. Branch work stays on feature branches until Clifton approves a merge. Environment variables (API keys, webhook URLs, secrets) live in Vercel Settings → Environment Variables — never in the repo.
 
 ## Rules
 
 1. Do not commit passwords, API keys, EIN, bank info, customer private data, medical data, or private documents.
-2. Put private business identifiers in Google Drive or a secure vault, not public code.
-3. Every automation should have a plain-English SOP before code is added.
-4. Every estimating formula must show assumptions.
+2. Put private business identifiers in Google Drive or a secure vault, not in code.
+3. Every outward action (email, SMS, invoice, CRM write) requires `approved:true` — never fires autonomously.
+4. Every estimating formula must show assumptions; pricing doctrine in `mgsf-core.skill` wins over everything.
 5. Every customer-facing proposal must be reviewed before sending.
-
-## First build priorities
-
-- Lead intake form schema
-- Estimator data model
-- Google Drive folder mapping
-- Proposal template
-- Customer/project photo workflow
-- Government contracting readiness checklist
-- Marketing content calendar
