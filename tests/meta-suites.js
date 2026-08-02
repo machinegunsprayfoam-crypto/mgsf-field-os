@@ -5,6 +5,9 @@
 //      (coverage lost, no error); a SUITES entry with no file is a dead reference. tests/ ↔ SUITES 1:1.
 //  (2) DB GO-LIVE DOCS: every db/*.sql must be listed in db/SETUP.md's run-order — else at go-live the
 //      owner runs the checklist, misses a table, and a subsystem stays dark with no obvious cause.
+//  (3) ENV GO-LIVE DOCS: every process.env.X the code reads must be documented in .env.example (or be a
+//      known fallback alias) — else the owner never knows to set it and the subsystem stays dark. Same
+//      failure class as (2), for env vars. The alias allowlist is itself guarded against going stale.
 
 const fs = require("fs");
 const path = require("path");
@@ -48,6 +51,52 @@ if (fs.existsSync(dbDir) && fs.existsSync(setupPath)) {
   ok("every db/*.sql is listed in db/SETUP.md (owner won't miss a table at go-live)", undocumented.length === 0, undocumented.join(","));
 } else {
   ok("db/ + SETUP.md present to audit", false, "missing db dir or SETUP.md");
+}
+
+// ---- (3) env go-live docs: every process.env.X read by code is documented in .env.example ----
+// Fallback aliases the code accepts but that share a documented primary's slot (see .env.example
+// comments). Each MUST actually be read by code, or this allowlist has gone stale.
+const ENV_ALIASES = {
+  HUBSPOT_API_KEY: "HUBSPOT_TOKEN", SAMGOV_API_KEY: "SAM_API_KEY", MAPS_API_KEY: "GOOGLE_MAPS_API_KEY",
+  GOOGLE_APPS_SCRIPT_URL: "GDRIVE_WEBAPP_URL", NOTIFY_WEBHOOK_URL: "ALERTS_WEBHOOK_URL",
+  TWILIO_FROM: "TWILIO_PHONE_NUMBER", ALERT_SMS_TO: "OWNER_SMS", ALERTS_WEBHOOK_SECRET: "WEBHOOK_SECRET",
+};
+const root = path.join(testsDir, "..");
+const envExamplePath = path.join(root, ".env.example");
+function walkJs(dir) {
+  let out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out = out.concat(walkJs(p));
+    else if (e.name.endsWith(".js")) out.push(p);
+  }
+  return out;
+}
+if (fs.existsSync(envExamplePath)) {
+  const codeDirs = ["api", "lib"].map((d) => path.join(root, d)).filter((d) => fs.existsSync(d));
+  const read = new Set();
+  codeDirs.flatMap(walkJs).forEach((f) => {
+    const src = fs.readFileSync(f, "utf8");
+    for (const m of src.matchAll(/process\.env\.([A-Z0-9_]+)/g)) read.add(m[1]);
+  });
+  const example = fs.readFileSync(envExamplePath, "utf8");
+  const documented = new Set([...example.matchAll(/^([A-Z0-9_]+)=/gm)].map((m) => m[1]));
+  const aliasNames = new Set(Object.keys(ENV_ALIASES));
+
+  ok(".env.example documents a non-trivial number of vars", documented.size >= 25, String(documented.size));
+  ok("code reads a non-trivial number of env vars", read.size >= 25, String(read.size));
+
+  const undocumented = [...read].filter((v) => !documented.has(v) && !aliasNames.has(v)).sort();
+  ok("every process.env var is documented in .env.example (or a known alias)", undocumented.length === 0, undocumented.join(","));
+
+  // the alias allowlist must not rot: every alias is actually read, and its primary is documented
+  const staleAlias = [...aliasNames].filter((a) => !read.has(a)).sort();
+  ok("every ENV_ALIAS is actually read by code (no stale allowlist entry)", staleAlias.length === 0, staleAlias.join(","));
+  const aliasNoPrimary = Object.entries(ENV_ALIASES).filter(([, prim]) => !documented.has(prim)).map(([a]) => a).sort();
+  ok("every alias's documented primary is in .env.example", aliasNoPrimary.length === 0, aliasNoPrimary.join(","));
+} else {
+  ok(".env.example present to audit", false, "missing .env.example");
 }
 
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
