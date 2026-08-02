@@ -18,6 +18,9 @@ function ok(name, cond, detail) { if (cond) { pass++; } else { fail++; console.l
 console.log("Frontend wiring integrity (public/index.html)\n");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+const themeEngine = fs.readFileSync(path.join(__dirname, "..", "public", "theme-engine.js"), "utf8");
+ok("theme engine is an external frontend foundation", html.indexOf("theme-engine.js") >= 0 && !/THEME ENGINE/.test(html));
+ok("theme engine preserves the supported theme registry and public functions", /KLYFTON_THEMES/.test(themeEngine) && /window\.applyTheme/.test(themeEngine) && /window\.renderThemePicker/.test(themeEngine));
 
 // ---- collect every defined name (functions, window.X, const/let/var assignments, obj-literal methods) ----
 const defs = new Set();
