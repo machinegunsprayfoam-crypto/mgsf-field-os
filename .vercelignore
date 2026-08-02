@@ -1,14 +1,2 @@
 # --- Vercel deploy exclusions ---
-# NOTE (2026-07-25): the account is now on Vercel PRO, so the old 12-function Hobby cap no longer
-# applies (api/ already ships ~38 functions). The original "shelved v2.0 / Silvr" note that lived
-# here was STALE and misleading:
-#   - 6 of the 7 files it listed DO NOT EXIST in the repo (never committed): silvr.js,
-#     silvr-bridge.js, govcon-scanner.js, jobs-sync.js, multi-agent-task-queue.js,
-#     predictive-lead-scoring.js. Nothing to "un-shelve" — there was never a file.
-#   - Their intent was since rebuilt correctly in plain fetch: arms/execution = api/act.js,
-#     multi-agent parallelism = the live Queen->worker hive, job persistence = the agent_runs
-#     telemetry table, GovCon scan = api/samgov.js, HubSpot = api/hubspot.js.
-#   - The only real file below, hubspot-sync.js, is pure fetch (no npm) and would deploy fine on
-#     Pro — but it duplicates the larger api/hubspot.js, so it stays ignored to avoid a redundant
-#     endpoint. Un-ignore it only if you deliberately want that second endpoint (owner's call).
-api/hubspot-sync.js
+# Nothing is excluded from deploy. All files in api/ are active endpoints.
