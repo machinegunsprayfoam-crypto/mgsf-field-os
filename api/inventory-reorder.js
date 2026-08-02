@@ -74,6 +74,8 @@ function sweep(inventory) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   if (req.method === "GET") {
     if (req.query && String(req.query.sweep) === "1") {
       if (!KV_ON) { res.status(200).json({ ok: false, error: "kv_not_attached" }); return; }

@@ -43,6 +43,8 @@ async function getIndex() {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   if (!KV_URL || !KV_TOKEN) { res.status(200).json({ configured: false }); return; }
 
   try {

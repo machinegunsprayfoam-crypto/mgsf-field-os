@@ -125,6 +125,8 @@ function summarize(jobs, nowMs, opts) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   if (req.method === "GET") {
     res.status(200).json({ service: "klyfton-projects", stages: STAGES, terminal: Array.from(TERMINAL),
       cadenceDefaults: DEFAULT_CADENCE,

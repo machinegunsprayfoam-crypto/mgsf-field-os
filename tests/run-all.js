@@ -39,6 +39,7 @@ const SUITES = [
   ["agents", "agents runtime: goal-driven job selection + planning + approval/dark-tool guards"],
   ["boot", "boot manifest: live self-map (components/deps/tools/brain/agents) computed from env"],
   ["guard", "access guard: dormant-safe CREW_CODE gate (no lockout until set, then enforced)"],
+  ["auth", "auth endpoint hardening: no public account bootstrap, seed roster, or credential-bearing diagnostic route"],
   ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
   ["inventory-reorder", "reorder sweep: qty<=reorderAt rule + short-fall + per-supplier grouping/draft"],

@@ -61,6 +61,7 @@ async function syncLeadToHubSpot(lead) {
 module.exports = { syncLeadToHubSpot, findContact };
 
 module.exports.handler = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
   if (req.method === "POST") {
     const result = await syncLeadToHubSpot(req.body);
     return res.json(result);
