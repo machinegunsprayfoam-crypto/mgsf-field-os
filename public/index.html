@@ -2580,7 +2580,7 @@ window.renderSystem = async function(){
   const card = (title, inner) => '<div class="card" style="margin-bottom:12px"><div class="card-title">'+e(title)+'</div>'+inner+'</div>';
   const tile = (label, val) => '<div style="min-width:110px"><div style="font-size:11px;opacity:.6;text-transform:uppercase">'+e(label)+'</div><div style="font-size:18px;font-weight:600">'+e(String(val))+'</div></div>';
   body.innerHTML = '<div style="opacity:.6;padding:16px">Loading system map…</div>';
-  async function get(url){ try{ const r=await fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}); if(r.status===401) return {__gated:true}; if(!r.ok) return {__err:r.status}; return await r.json(); }catch(err){ return {__err:String(err).slice(0,80)}; } }
+  async function get(url){ try{ const cc=(window.appCrewCode||(function(){try{return (localStorage.getItem('klyfton_crew_code')||'').trim();}catch(e){return '';}})()); const r=await fetch(url,{headers:{'x-crew-code':cc}}); if(r.status===401) return {__gated:true}; if(!r.ok) return {__err:r.status}; return await r.json(); }catch(err){ return {__err:String(err).slice(0,80)}; } }
   const [boot, health, tele, cmdb] = await Promise.all([get('/api/boot'), get('/api/health'), get('/api/telemetry'), get('/api/cmdb')]);
   let html = '';
 
@@ -2648,8 +2648,12 @@ window.renderSystem = async function(){
 
 // ---- shared helpers for the interactive panels (additive; no app deps) ----
 window.sysEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function _sysGet(url){ return fetch(url,{headers:{'x-crew-code':(window.appCrewCode||'')}}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
-function _sysPost(url,body){ return fetch(url,{method:'POST',headers:{'content-type':'application/json','x-crew-code':(window.appCrewCode||'')},body:JSON.stringify(body)}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+// The crew code the owner sets in Vercel (CREW_CODE) is entered once per device and stored in
+// localStorage('klyfton_crew_code'); send THAT on every gated call. (window.appCrewCode is never
+// assigned, so relying on it alone 401'd every system panel the moment CREW_CODE was set.)
+function _crewCode(){ try{ return (window.appCrewCode||localStorage.getItem('klyfton_crew_code')||'').trim(); }catch(e){ return String(window.appCrewCode||''); } }
+function _sysGet(url){ return fetch(url,{headers:{'x-crew-code':_crewCode()}}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
+function _sysPost(url,body){ return fetch(url,{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},body:JSON.stringify(body)}).then(r=>r.status===401?{__gated:true}:(r.ok?r.json():{__err:r.status})).catch(err=>({__err:String(err).slice(0,80)})); }
 
 // ============================================================
 // BPI — Home Energy Audit intake panel (mirrors the field audit tool). Collects building geometry,
@@ -8222,11 +8226,12 @@ function addStreamingAiBubble(){
 // Optional crew code. If the owner sets CREW_CODE in Vercel, the server requires a
 // matching { code } — without this the app would brick with "🔒 Crew code required".
 // The code is stored per-device once entered.
-function klyftonCode(){ try{ return (localStorage.getItem('klyfton_crew_code')||'').trim(); }catch(e){ return ''; } }
+function klyftonCode(){ try{ const c=(localStorage.getItem('klyfton_crew_code')||'').trim(); if(c) window.appCrewCode=c; return c; }catch(e){ return ''; } }
+try{ const _cc=(localStorage.getItem('klyfton_crew_code')||'').trim(); if(_cc) window.appCrewCode=_cc; }catch(e){}  // init on load so gated calls carry the code
 function klyftonLocked(text){ return typeof text==='string' && (text.indexOf('Crew code required')>=0 || text.indexOf('🔒')===0); }
 function klyftonPromptCode(){
   const code = (typeof prompt==='function') ? prompt('Klyfton is locked. Enter the crew code your owner set:') : '';
-  if(code && code.trim()){ try{ localStorage.setItem('klyfton_crew_code', code.trim()); }catch(e){} return true; }
+  if(code && code.trim()){ try{ localStorage.setItem('klyfton_crew_code', code.trim()); }catch(e){} window.appCrewCode=code.trim(); return true; }
   return false;
 }
 
