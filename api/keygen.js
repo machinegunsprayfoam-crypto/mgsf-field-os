@@ -33,10 +33,13 @@ function parseBody(body) {
 function configured(env) { return !!(env && env.KEYGEN_SECRET); }
 
 function presentedSecret(req, body) {
+  // HEADER or BODY only — deliberately NOT ?secret= / ?keygen_secret=.
+  // Query strings are written to Vercel access logs, browser history, and the Referer header
+  // of any outbound link. Accepting one here would leak the credential that mints every other
+  // credential, which makes this the worst endpoint in the codebase to put in a URL.
   const h = req && req.headers ? (req.headers["x-keygen-secret"] || req.headers["x-admin-secret"] || "") : "";
-  const q = req && req.query ? (req.query.keygen_secret || req.query.secret || "") : "";
   const b = body && (body.secret || body.keygen_secret || "");
-  return String(h || q || b || "");
+  return String(h || b || "");
 }
 
 function isAuthorized(req, body, env) {
