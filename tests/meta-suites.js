@@ -79,6 +79,11 @@ if (fs.existsSync(envExamplePath)) {
   codeDirs.flatMap(walkJs).forEach((f) => {
     const src = fs.readFileSync(f, "utf8");
     for (const m of src.matchAll(/process\.env\.([A-Z0-9_]+)/g)) read.add(m[1]);
+    // Registry-style reads: this codebase's hub modules (api/provider.js) keep env var NAMES
+    // as data and read them via process.env[spec.key], which the literal scan above cannot
+    // see. Without this, a whole family of keys can be read by code, undocumented, and still
+    // report all-clear — exactly how 7 provider keys (5 of them free) stayed invisible.
+    for (const m of src.matchAll(/(?:key|urlEnv):\s*"([A-Z][A-Z0-9]*_[A-Z0-9_]+)"/g)) read.add(m[1]);
   });
   const example = fs.readFileSync(envExamplePath, "utf8");
   const documented = new Set([...example.matchAll(/^([A-Z0-9_]+)=/gm)].map((m) => m[1]));
