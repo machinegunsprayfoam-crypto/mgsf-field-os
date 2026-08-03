@@ -1652,7 +1652,7 @@ If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
 // Run one specialist mind on the question.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}`;
+  const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}${TOOLBELT_NOTE}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
