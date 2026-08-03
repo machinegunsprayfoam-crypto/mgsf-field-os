@@ -113,6 +113,7 @@ const GATED_TOOLS = [
   { id: "command-center",  category: "ops",     kind: "read",    does: "ops dashboard read API — the real live numbers", module: "api/command-center.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase/KV)" },
   { id: "telemetry",       category: "infra",   kind: "read",    does: "runtime observability — agent runs rolled up by agent/outcome/day", module: "api/telemetry.js", gate: { subsystem: "storage" }, arm: "attach storage (Supabase) — agents log to agent_runs" },
   { id: "mcp-server",      category: "infra",   kind: "read",    does: "Klyfton's own MCP server (read-only data tools for the brain)", module: "api/mcp.js", gate: { subsystem: "storage" }, arm: "attach storage + set MCP_BEARER_TOKEN" },
+  { id: "keygen",          category: "infra",   kind: "endpoint", does: "universal API key generator for internal secrets/codes (secure random presets + custom alphabets); locked behind KEYGEN_SECRET", module: "api/keygen.js", gate: { allOf: ["KEYGEN_SECRET"] }, arm: "set KEYGEN_SECRET and call POST /api/keygen with x-keygen-secret" },
 ];
 
 function statusOf(sub, env) {

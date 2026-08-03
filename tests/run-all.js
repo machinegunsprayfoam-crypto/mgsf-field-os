@@ -85,6 +85,7 @@ const SUITES = [
   ["klyfton", "Queen router pure exports: shouldSkipSynth time-budget guard, bestAnswer (fullest worker answer), routerToolHint LIVE/OFF status, toolBagBlock, assembleBrainBlocks — no network/no synth"],
   ["smoke", "live smoke-test scaffold: pure plan() of which real-service checks run vs skip"],
   ["meta-suites", "harness integrity: tests/*.js and the SUITES registry stay 1:1 in sync (no silently-skipped suite, no dead reference)"],
+  ["keygen", "universal API key generator: KEYGEN_SECRET gate + secure random key shapes + preset/bounds guards"],
   ["business-audit", "business audit: ranked findings from records (pipeline/stale bids/close rate/cold leads/AR aging/overdue jobs/concentration/margin), severity-sorted, margin only graded when a target is supplied — no fabricated numbers, no pricing"],
   ["job-workflow", "job workflow / wiring map: trades → ordered construction phases + dependency edges (the wiring) + inspection gates + prime/sub tags + the MGSF never-cover-foam-before-inspection rule; dependency resolves to nearest present phase; GUIDANCE, no pricing/durations"],
   ["estimate-crm-hallway", "estimate → CRM auto-hallway (index.html): saving an estimate creates/updates the matching lead + advances stage to Estimate Sent — idempotent (no dup), case-insensitive match, never regresses a Won/Lost/Follow-Up lead, guards blank names"],
