@@ -178,16 +178,20 @@ const TOOLS = {
 
 // ---- MCP JSON-RPC plumbing (stateless streamable-HTTP, JSON responses) ----
 const PROTOCOL = "2025-06-18";
+// Versions we actually speak. Claude's connector client may request any of these; if it
+// asks for something newer/unknown, spec says answer with our latest supported, not echo.
+const PROTOCOLS_SUPPORTED = ["2025-03-26", "2025-06-18", "2025-11-25"];
 function rpcResult(id, result) { return { jsonrpc: "2.0", id, result }; }
 function rpcError(id, code, message) { return { jsonrpc: "2.0", id, error: { code, message } }; }
 
 async function handleRpc(msg) {
   const { id, method, params } = msg || {};
   if (method === "initialize") {
+    const asked = params && params.protocolVersion;
     return rpcResult(id, {
-      protocolVersion: (params && params.protocolVersion) || PROTOCOL,
+      protocolVersion: PROTOCOLS_SUPPORTED.includes(asked) ? asked : PROTOCOL,
       capabilities: { tools: {} },
-      serverInfo: { name: "klyfton-field-os", version: "1.0.0-phase1" },
+      serverInfo: { name: "klyfton-field-os", title: "MGSF Field-OS (Klyfton)", version: "1.1.0-phase1" },
       instructions: "Read-only Phase 1 tools over the MGSF field-os shared store. Nothing here writes. If a tool answers configured:false, the KV sync backbone isn't attached yet; not_tracked_yet means the collection is real but empty.",
     });
   }
@@ -210,9 +214,16 @@ async function handleRpc(msg) {
   return rpcError(id, -32601, "Method not found: " + String(method).slice(0, 60));
 }
 
-module.exports = async (req, res) => {
-  // Status probe (no data): confirms the route exists and whether storage + auth are configured.
+async function handler(req, res) {
+  // GET: an MCP client asking for text/event-stream is opening a listen stream — we run
+  // stateless JSON mode with no server push, so the spec answer is 405 (client then stays
+  // POST-only). Plain GET (curl, uptime monitors) keeps the status probe.
   if (req.method === "GET") {
+    if (/text\/event-stream/i.test(String(req.headers["accept"] || ""))) {
+      res.setHeader("Allow", "POST");
+      res.status(405).json({ error: "sse_not_offered", note: "stateless JSON mode; POST JSON-RPC only" });
+      return;
+    }
     res.status(200).json({ ok: true, server: "klyfton-field-os", phase: 1, transport: "mcp-streamable-http/json", kv: KV_ON, auth_required: true });
     return;
   }
@@ -224,7 +235,14 @@ module.exports = async (req, res) => {
   const auth = String(req.headers["authorization"] || "");
   const token = _bearerToken();
   const expected = "Bearer " + (token || "");
-  if (!token || auth !== expected) { res.status(401).json({ error: "unauthorized" }); return; }
+  if (!token || auth !== expected) {
+    // RFC 6750 challenge so MCP clients recognize bearer auth. Deliberately no
+    // resource_metadata pointer: we run static-header auth, not OAuth discovery —
+    // a dangling metadata URL would send Claude on a doomed .well-known crawl.
+    res.setHeader("WWW-Authenticate", auth ? 'Bearer realm="mgsf-mcp", error="invalid_token"' : 'Bearer realm="mgsf-mcp"');
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
@@ -243,4 +261,10 @@ module.exports = async (req, res) => {
   } catch (e) {
     res.status(200).json(rpcError(body && body.id != null ? body.id : null, -32603, String(e && e.message || e).slice(0, 200)));
   }
-};
+}
+
+// Vercel serves the handler; the in-app brain (api/klyfton.js) imports TOOLS so the chat
+// and the MCP endpoint share ONE tool implementation — one schema, two consumers, no
+// duplicate logic (per MGSF_Klyfton_MCP_Server_Spec). TOOLS stays READ-ONLY.
+module.exports = handler;
+module.exports.TOOLS = TOOLS;
