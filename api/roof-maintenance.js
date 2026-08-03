@@ -104,6 +104,8 @@ function quote(body) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   const asOfMs = (req.query && Date.parse((clean(req.query.asOf, 20) || "") + "T00:00:00Z")) || Date.now();
   if (req.method === "GET") {
     if (req.query && String(req.query.sweep) === "1") {
