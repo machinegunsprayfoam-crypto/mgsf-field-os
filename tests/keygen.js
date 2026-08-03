@@ -5,7 +5,7 @@
 const path = require("path");
 const K = require(path.join(__dirname, "..", "api", "keygen.js"));
 let pass = 0, fail = 0;
-function ok(name, cond, detail) { if (cond) pass++; else { fail++; console.log("  ✗ " + name + (detail !== undefined ? "  [" + detail + "]" : "")); } }
+function ok(name, cond) { if (cond) pass++; else { fail++; console.log("  ✗ " + name); } }
 
 console.log("Key generator — security and shape\n");
 
@@ -24,9 +24,9 @@ ok("isAuthorized false on wrong gate", K.isAuthorized(reqHdr, {}, { KEYGEN_SECRE
 const n1 = K.normalizeSpec({ purpose: "crew_code" });
 ok("preset crew_code resolves", n1.ok && n1.spec.length === 10 && n1.spec.alphabet.includes("A"));
 const n2 = K.normalizeSpec({ length: 2, count: 99, prefix: "mgsf!!!@@@" });
-ok("length clamped min 8", n2.ok && n2.spec.length === 8, JSON.stringify(n2.spec));
-ok("count clamped max 20", n2.ok && n2.spec.count === 20, JSON.stringify(n2.spec));
-ok("prefix sanitized", n2.ok && n2.spec.prefix === "mgsf", n2.spec.prefix);
+ok("length clamped min 8", n2.ok && n2.spec.length === 8);
+ok("count clamped max 20", n2.ok && n2.spec.count === 20);
+ok("prefix sanitized", n2.ok && n2.spec.prefix === "mgsf");
 ok("alphabet too small rejected", K.normalizeSpec({ alphabet: "a" }).ok === false);
 
 const token = K.generateToken(32, "ABCDEF");
