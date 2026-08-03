@@ -15,6 +15,7 @@ turns on. `GET /api/health` and `GET /api/cmdb` then show what's live and the bi
 | 5 | **`agent_runs.sql`** | `agent_runs` (same table as #1 defines — harmless if already made) | agent **run-history** + **telemetry** |
 | 6 | **`subcontractors.sql`** | `subcontractors` (roster + compliance docs jsonb) | **subcontractor roster** (prime-with-subs) |
 | 7 | **`trade_rates.sql`** | `trade_rates` (owner rates by trade+item) | **per-trade rate memory** (estimator pre-fill) |
+| 8 | **`api_requests.sql`** | `api_requests` (route/status/ms/capability — no bodies, no query strings) | **request log + per-key usage** (`/api/reqlog`) |
 
 ## Table → env var → feature (what each unlocks)
 | Subsystem | Needs (in Vercel) | Notes |
@@ -27,6 +28,7 @@ turns on. `GET /api/health` and `GET /api/cmdb` then show what's live and the bi
 | **CRM call list** | `HUBSPOT_TOKEN` | HubSpot leads → scored call list |
 | **Budget throttle (ATS)** | `KLYFTON_MONTHLY_BUDGET_USD` | caps monthly AI spend |
 | **Maps / mobilization** | `GOOGLE_MAPS_API_KEY` | drive-distance (math works keyless) |
+| **Request log + key usage** | (storage only) | `/api/reqlog` — traffic, error rate, p50/p95, and which paid keys are **armed but idle**. Without the table it falls back to a per-instance memory buffer and says so. Never estimates spend. |
 
 ## Seed content (optional, after #2)
 Load the 8 starter wiki articles: `POST /api/wiki { "action":"save", "article":{…}, "approved":true }`
