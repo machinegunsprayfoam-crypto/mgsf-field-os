@@ -11,6 +11,8 @@
 <title>KLYFTON AI — Machine Gun Spray Foam</title>
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="theme-2026.css">
+<link rel="stylesheet" href="win11.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css" crossorigin="anonymous">
 
 </head>
 <body>
@@ -151,17 +153,17 @@
       <span class="status-label" id="statusLabel">ONLINE</span>
     </div>
     <div id="layoutSeg" title="Pick the layout for your device">
-      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout">📱<span class="tbl"> Phone</span></button>
-      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout">▭<span class="tbl"> Tablet</span></button>
-      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout">🖥<span class="tbl"> Desk</span></button>
+      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout"><i class="ti ti-device-mobile"></i><span class="tbl"> Phone</span></button>
+      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout"><i class="ti ti-device-tablet"></i><span class="tbl"> Tablet</span></button>
+      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout"><i class="ti ti-device-desktop"></i><span class="tbl"> Desk</span></button>
     </div>
     <div class="top-spacer"></div>
     <div class="top-clock" id="topClock">00:00:00 MT</div>
-    <button class="top-btn active" id="soundBtn" onclick="toggleSound()">🔊<span class="tbl"> SOUND</span></button>
-    <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()">🎙️<span class="tbl"> VOICE</span></button>
-    <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version">⟳<span class="tbl"> UPDATE</span></button>
-    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on">💡<span class="tbl"> HELP</span></button>
-    <button class="top-btn" onclick="toggleChat()">💬<span class="tbl"> KLYFTON</span></button>
+    <button class="top-btn active" id="soundBtn" onclick="toggleSound()"><i class="ti ti-volume"></i><span class="tbl"> SOUND</span></button>
+    <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()"><i class="ti ti-microphone"></i><span class="tbl"> VOICE</span></button>
+    <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version"><i class="ti ti-refresh"></i><span class="tbl"> UPDATE</span></button>
+    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on"><i class="ti ti-help-circle"></i><span class="tbl"> HELP</span></button>
+    <button class="top-btn" onclick="toggleChat()"><i class="ti ti-message-circle-2"></i><span class="tbl"> KLYFTON</span></button>
   </div>
   <script>
   // Device layout selector: forces Phone/Tablet/Desktop layout (body class), persisted per device,
@@ -179,121 +181,121 @@
     <div id="sidebar">
       <div id="navResize" title="Drag to resize the menu"></div>
       <div class="nav-item active" onclick="switchModule('dashboard')" id="nav-dashboard">
-        <div class="nav-icon">⚡</div><div class="nav-label">HQ</div>
+        <div class="nav-icon"><i class="ti ti-home-bolt"></i></div><div class="nav-label">HQ</div>
       </div>
       <div class="nav-item" onclick="switchModule('chat')" id="nav-chat">
-        <div class="nav-icon">🤖</div><div class="nav-label">AI</div>
+        <div class="nav-icon"><i class="ti ti-robot"></i></div><div class="nav-label">AI</div>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" onclick="switchModule('estimate')" id="nav-estimate">
-        <div class="nav-icon">🔢</div><div class="nav-label">EST</div>
+        <div class="nav-icon"><i class="ti ti-calculator"></i></div><div class="nav-label">EST</div>
       </div>
       <div class="nav-item" onclick="switchModule('jobs')" id="nav-jobs">
-        <div class="nav-icon">🏗️</div><div class="nav-label">JOBS</div>
+        <div class="nav-icon"><i class="ti ti-building-factory-2"></i></div><div class="nav-label">JOBS</div>
       </div>
       <div class="nav-item" onclick="switchModule('crm')" id="nav-crm">
-        <div class="nav-icon">👥</div><div class="nav-label">CRM</div>
+        <div class="nav-icon"><i class="ti ti-users"></i></div><div class="nav-label">CRM</div>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" onclick="switchModule('intel')" id="nav-intel">
-        <div class="nav-icon">📊</div><div class="nav-label">INTEL</div>
+        <div class="nav-icon"><i class="ti ti-chart-bar"></i></div><div class="nav-label">INTEL</div>
       </div>
       <div class="nav-item" onclick="switchModule('command');renderCommand()" id="nav-command">
-        <div class="nav-icon">📟</div><div class="nav-label">OPS</div>
+        <div class="nav-icon"><i class="ti ti-terminal-2"></i></div><div class="nav-label">OPS</div>
       </div>
       <div class="nav-item" onclick="switchModule('gov');renderGov()" id="nav-gov">
-        <div class="nav-icon">🎯</div><div class="nav-label">GOV</div>
+        <div class="nav-icon"><i class="ti ti-target"></i></div><div class="nav-label">GOV</div>
       </div>
       <div class="nav-item" onclick="switchModule('skills')" id="nav-skills">
-        <div class="nav-icon">🔌</div><div class="nav-label">SKILLS</div>
+        <div class="nav-icon"><i class="ti ti-plug"></i></div><div class="nav-label">SKILLS</div>
       </div>
       <div class="nav-item" onclick="switchModule('system');renderSystem()" id="nav-system">
-        <div class="nav-icon">🩺</div><div class="nav-label">SYS</div>
+        <div class="nav-icon"><i class="ti ti-stethoscope"></i></div><div class="nav-label">SYS</div>
       </div>
       <div class="nav-item" onclick="switchModule('agents');renderAgents()" id="nav-agents">
-        <div class="nav-icon">🐝</div><div class="nav-label">AGENTS</div>
+        <div class="nav-icon"><i class="ti ti-cpu"></i></div><div class="nav-label">AGENTS</div>
       </div>
       <div class="nav-item" onclick="switchModule('wiki');renderWiki()" id="nav-wiki">
-        <div class="nav-icon">📚</div><div class="nav-label">WIKI</div>
+        <div class="nav-icon"><i class="ti ti-books"></i></div><div class="nav-label">WIKI</div>
       </div>
       <div class="nav-item" onclick="switchModule('scenarios');renderScenarios()" id="nav-scenarios">
-        <div class="nav-icon">⚙️</div><div class="nav-label">AUTO</div>
+        <div class="nav-icon"><i class="ti ti-settings-automation"></i></div><div class="nav-label">AUTO</div>
       </div>
       <div class="nav-item" onclick="switchModule('bpi');renderBpi()" id="nav-bpi">
-        <div class="nav-icon">🏠</div><div class="nav-label">BPI</div>
+        <div class="nav-icon"><i class="ti ti-home-eco"></i></div><div class="nav-label">BPI</div>
       </div>
       <div class="nav-item" onclick="switchModule('subs');renderSubs()" id="nav-subs">
-        <div class="nav-icon">👷</div><div class="nav-label">SUBS</div>
+        <div class="nav-icon"><i class="ti ti-hard-hat"></i></div><div class="nav-label">SUBS</div>
       </div>
       <div class="nav-item" onclick="switchModule('blueprint');renderBlueprint()" id="nav-blueprint">
-        <div class="nav-icon">📐</div><div class="nav-label">PLANS</div>
+        <div class="nav-icon"><i class="ti ti-ruler-measure"></i></div><div class="nav-label">PLANS</div>
       </div>
       <div class="nav-item" onclick="switchModule('calcs');renderCalcs()" id="nav-calcs">
-        <div class="nav-icon">🧮</div><div class="nav-label">CALCS</div>
+        <div class="nav-icon"><i class="ti ti-math-symbols"></i></div><div class="nav-label">CALCS</div>
       </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
-        <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
+        <div class="nav-icon"><i class="ti ti-folder-open"></i></div><div class="nav-label">DOCS</div>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" onclick="switchModule('jsa');renderJSA()" id="nav-jsa">
-        <div class="nav-icon">🦺</div><div class="nav-label">JSA</div>
+        <div class="nav-icon"><i class="ti ti-shield-check"></i></div><div class="nav-label">JSA</div>
       </div>
       <div class="nav-item" onclick="switchModule('spray');renderSpray()" id="nav-spray">
-        <div class="nav-icon">🔧</div><div class="nav-label">Spray</div>
+        <div class="nav-icon"><i class="ti ti-ripple"></i></div><div class="nav-label">Spray</div>
       </div>
       <div class="nav-item" onclick="switchModule('clock');renderClock()" id="nav-clock">
-        <div class="nav-icon">⏱️</div><div class="nav-label">CLOCK</div>
+        <div class="nav-icon"><i class="ti ti-clock-hour-4"></i></div><div class="nav-label">CLOCK</div>
       </div>
       <div class="nav-item" onclick="switchModule('weather');renderWeather()" id="nav-weather">
-        <div class="nav-icon">🌦️</div><div class="nav-label">WEATHER</div>
+        <div class="nav-icon"><i class="ti ti-cloud-rain"></i></div><div class="nav-label">WEATHER</div>
       </div>
       <div class="nav-item" onclick="switchModule('photos');renderPhotos()" id="nav-photos">
-        <div class="nav-icon">📸</div><div class="nav-label">PHOTOS</div>
+        <div class="nav-icon"><i class="ti ti-camera"></i></div><div class="nav-label">PHOTOS</div>
       </div>
       <div class="nav-item" onclick="switchModule('materials');renderMaterials()" id="nav-materials">
-        <div class="nav-icon">🛢️</div><div class="nav-label">MATERIAL</div>
+        <div class="nav-icon"><i class="ti ti-cylinder"></i></div><div class="nav-label">MATERIAL</div>
       </div>
       <div class="nav-item" onclick="switchModule('sheets');renderSheets()" id="nav-sheets">
-        <div class="nav-icon">📑</div><div class="nav-label">SHEETS</div>
+        <div class="nav-icon"><i class="ti ti-clipboard-list"></i></div><div class="nav-label">SHEETS</div>
       </div>
       <div class="nav-item" onclick="switchModule('certs');renderCerts()" id="nav-certs">
-        <div class="nav-icon">🎖️</div><div class="nav-label">CERTS</div>
+        <div class="nav-icon"><i class="ti ti-award"></i></div><div class="nav-label">CERTS</div>
       </div>
       <div class="nav-item" onclick="switchModule('signoff');renderSignoff()" id="nav-signoff">
-        <div class="nav-icon">✍️</div><div class="nav-label">SIGN-OFF</div>
+        <div class="nav-icon"><i class="ti ti-signature"></i></div><div class="nav-label">SIGN-OFF</div>
       </div>
       <div class="nav-item" onclick="switchModule('proposal');renderProposal()" id="nav-proposal">
-        <div class="nav-icon">📄</div><div class="nav-label">PROPOSAL</div>
+        <div class="nav-icon"><i class="ti ti-file-description"></i></div><div class="nav-label">PROPOSAL</div>
       </div>
       <div class="nav-item" onclick="switchModule('forms');renderForms()" id="nav-forms">
-        <div class="nav-icon">📝</div><div class="nav-label">FORMS</div>
+        <div class="nav-icon"><i class="ti ti-forms"></i></div><div class="nav-label">FORMS</div>
       </div>
       <div class="nav-item" onclick="switchModule('changeorder');renderCO()" id="nav-changeorder">
-        <div class="nav-icon">🔧</div><div class="nav-label">CHG ORDER</div>
+        <div class="nav-icon"><i class="ti ti-file-diff"></i></div><div class="nav-label">CHG ORDER</div>
       </div>
       <div class="nav-item" onclick="switchModule('compliance');renderCompliance()" id="nav-compliance">
-        <div class="nav-icon">🛡️</div><div class="nav-label">COMPLY</div>
+        <div class="nav-icon"><i class="ti ti-shield-half"></i></div><div class="nav-label">COMPLY</div>
       </div>
       <div class="nav-item" onclick="switchModule('invoice');renderInvoice()" id="nav-invoice">
-        <div class="nav-icon">🧾</div><div class="nav-label">INVOICE</div>
+        <div class="nav-icon"><i class="ti ti-receipt"></i></div><div class="nav-label">INVOICE</div>
       </div>
       <div class="nav-item" onclick="switchModule('pricebook');renderPriceBook()" id="nav-pricebook">
-        <div class="nav-icon">📕</div><div class="nav-label">PRICE BOOK</div>
+        <div class="nav-icon"><i class="ti ti-tag"></i></div><div class="nav-label">PRICE BOOK</div>
       </div>
       <div class="nav-item" onclick="switchModule('roi');renderROI()" id="nav-roi">
-        <div class="nav-icon">📈</div><div class="nav-label">ROI</div>
+        <div class="nav-icon"><i class="ti ti-trending-up"></i></div><div class="nav-label">ROI</div>
       </div>
       <div class="nav-item" onclick="switchModule('grow');renderGrow()" id="nav-grow">
-        <div class="nav-icon">📣</div><div class="nav-label">GROW</div>
+        <div class="nav-icon"><i class="ti ti-speakerphone"></i></div><div class="nav-label">GROW</div>
       </div>
       <div class="nav-item" onclick="switchModule('ops');renderOps()" id="nav-ops">
-        <div class="nav-icon">🧰</div><div class="nav-label">OPS CENTER</div>
+        <div class="nav-icon"><i class="ti ti-tools"></i></div><div class="nav-label">OPS CENTER</div>
       </div>
       <div class="nav-item" onclick="switchModule('calendar');renderCalendar()" id="nav-calendar">
-        <div class="nav-icon">📆</div><div class="nav-label">SCHEDULE</div>
+        <div class="nav-icon"><i class="ti ti-calendar-event"></i></div><div class="nav-label">SCHEDULE</div>
       </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
-        <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
+        <div class="nav-icon"><i class="ti ti-settings"></i></div><div class="nav-label">ADMIN</div>
       </div>
     </div>
 
