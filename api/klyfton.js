@@ -1657,7 +1657,7 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
   messages.push({ role: "user", content: buildUserContent(userText, attachments) });
-  const data = await callClaude(key, {
+  const data = await callClaudeTools(key, {
     model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
     // and fast (the synth writes the full final answer). Big worker budgets + adaptive
