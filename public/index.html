@@ -6778,6 +6778,7 @@ function saveLead(){
     status:(document.getElementById('ml_status')||{}).value,
     date:new Date().toISOString().split('T')[0],
   };
+  lead.score = scoreLead(lead).score;
   appState.leads.push(lead);
   save('leads');
   closeModal();
@@ -6905,6 +6906,7 @@ function updateLead(id){
   l.status  = (document.getElementById('eld_status')||{}).value;
   l.source  = (document.getElementById('eld_src')||{}).value;
   l.notes   = (document.getElementById('eld_notes')||{}).value;
+  l.score   = scoreLead(l).score;
   save('leads');
   if(l.estSource){ estWriteback('bid', l.estRef, _estBidPatch(l)); }  // two-way sync → Estimator
   closeModal();
@@ -7076,6 +7078,38 @@ function openNewJob(defaultStatus){
 function isSundayISO(d){ return !!d && new Date(d+'T12:00:00').getDay()===0; }
 function sundayOkay(d){ return !isSundayISO(d) || confirm("That's a Sunday — MGSF protects Sundays and doesn't schedule work. Schedule it anyway?"); }
 
+// Background spray-window check for a newly scheduled job.
+// Non-blocking (fire-and-forget). Uses free Open-Meteo — no key needed.
+// Toasts a warning if the forecast on the job date looks risky for SPF/coatings.
+async function checkJobSprayWeather(job){
+  try{
+    if(!job.date || !job.address) return;
+    const jobTs=Date.parse(job.date+'T12:00:00'); const now=Date.now();
+    if(isNaN(jobTs) || jobTs < now - 86400000 || jobTs > now + 7*86400000) return;
+    const query=(job.address||'').split(',')[0].trim(); if(!query) return;
+    const g=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(query));
+    const gj=await g.json(); const hit=(gj.results||[])[0]; if(!hit) return;
+    const jobDate=job.date.slice(0,10);
+    const u='https://api.open-meteo.com/v1/forecast?latitude='+hit.latitude+'&longitude='+hit.longitude
+      +'&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max,wind_speed_10m_max'
+      +'&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=7&timezone=auto';
+    const r=await fetch(u); const d=await r.json();
+    if(!d.daily||!d.daily.time) return;
+    const idx=d.daily.time.indexOf(jobDate); if(idx<0) return;
+    const tmin=d.daily.temperature_2m_min[idx], tmax=d.daily.temperature_2m_max[idx];
+    const precip=d.daily.precipitation_probability_max[idx], wind=d.daily.wind_speed_10m_max[idx];
+    const flags=[];
+    if(tmin!=null && tmin<40) flags.push('low '+Math.round(tmin)+'°F');
+    if(tmax!=null && tmax>95) flags.push('high '+Math.round(tmax)+'°F');
+    if(precip!=null && precip>=60) flags.push(precip+'% precip chance');
+    if(wind!=null && wind>=25) flags.push(Math.round(wind)+' mph wind');
+    if(flags.length){
+      const place=hit.name+(hit.admin1?(', '+hit.admin1):'');
+      notify('⚠️ Weather alert for '+job.date+' at '+place+': '+flags.join(' · ')+' — verify spray conditions','alert');
+    }
+  }catch(_){}
+}
+
 function saveJob(){
   const name=(document.getElementById('nj_name')||{}).value.trim();
   if(!name){notify('Job name required','alert');return;}
@@ -7108,6 +7142,7 @@ function saveJob(){
   notify(`Job created: ${job.jobNum} — ${name}`,'ok');
   if(window.klyftonNotify) klyftonNotify('job_scheduled',{job:{customer:job.customer,name:job.name,service:job.service,date:job.date,address:job.address,value:job.value,status:job.status}});
   playSound('success');
+  checkJobSprayWeather(job);
 }
 
 function openJobDetail(id){
@@ -7194,13 +7229,26 @@ function deleteJob(id){
 // Invoiced → the work is done + an invoice is due (QuickBooks/PayPal Zap).
 // Paid     → wrapped, so nudge a review request (Google My Business Zap).
 function emitJobEvent(j, oldStatus){
-  if(!window.klyftonNotify || !j || j.status===oldStatus) return;
+  if(!j || j.status===oldStatus) return;
   const base={customer:j.customer,name:j.name,service:j.service,date:j.date,address:j.address,value:j.value,status:j.status};
-  if(j.status==='Invoiced'){
-    klyftonNotify('job_completed',{job:base});
-    klyftonNotify('invoice',{job:base, invoice:{customer:j.customer,amount:j.value,number:j.jobNum}});
-  } else if(j.status==='Paid'){
-    klyftonNotify('review_ask',{job:base});
+  if(window.klyftonNotify){
+    if(j.status==='Invoiced'){
+      klyftonNotify('job_completed',{job:base});
+      klyftonNotify('invoice',{job:base, invoice:{customer:j.customer,amount:j.value,number:j.jobNum}});
+    } else if(j.status==='Paid'){
+      klyftonNotify('review_ask',{job:base});
+    }
+  }
+  // When a job lands on Paid, open a ready-to-send review request draft.
+  if(j.status==='Paid'){
+    try{
+      const fn=(j.customer||'').split(' ')[0]||'there';
+      const reviewLink=(typeof MGSF!=='undefined'&&MGSF.reviewLink)||'https://g.page/r/Camo7qu2xWrVEAE/review';
+      const msg='Hi '+fn+',\n\nThanks again for choosing Machine Gun Spray Foam — it was a pleasure working on your project. If you were happy with it, would you take 60 seconds to leave us a Google review? It makes a real difference for a veteran-owned shop.\n\n'+reviewLink+'\n\nNo pressure either way. — Clifton, 406-939-8301';
+      const phone=j.phone||'';
+      const smsHref=phone?('sms:'+encodeURIComponent(phone)+'?body='+encodeURIComponent(msg)):null;
+      if(window.showKlyftonDraft){ if(appState&&!appState.chatOpen&&window.toggleChat) toggleChat(); showKlyftonDraft('REVIEW REQUEST — '+(j.customer||'job'), msg, smsHref||null); }
+    }catch(_){}
   }
 }
 
