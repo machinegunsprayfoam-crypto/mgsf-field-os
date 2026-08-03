@@ -19,6 +19,9 @@ function storageOn(e) { return suffix(e, /SUPABASE_URL$/i) && (suffix(e, /SERVIC
 // Infra CAPABILITIES (the roots tools depend on). Each: a live predicate + how to arm it.
 const CAPS = {
   anthropic: { label: "Claude API (the hive)", on: (e) => has(e, "ANTHROPIC_API_KEY"), arm: "set ANTHROPIC_API_KEY" },
+  // Resilience, not a gate: with any of these set, chatWithFallback (api/provider.js) keeps the
+  // hive answering on a free model when Claude is down or the ATS monthly cap has throttled us.
+  aifallback: { label: "Free AI fallback (provider hub)", on: (e) => anyOf(e, ["GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "CEREBRAS_API_KEY", "TOGETHER_API_KEY", "XAI_API_KEY", "MISTRAL_API_KEY", "OPENAI_COMPAT_URL"]), arm: "set any free-tier key: GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, CEREBRAS_API_KEY or TOGETHER_API_KEY (all free to start)" },
   storage:   { label: "Supabase storage", on: storageOn, arm: "set SUPABASE_URL + a service-role key, run the db schema" },
   embed:     { label: "Embedding key (semantic recall)", on: (e) => has(e, "OPENAI_API_KEY"), arm: "set OPENAI_API_KEY" },
   webhook:   { label: "Outbound webhook (arms + universal bus)", on: (e) => anyOf(e, ["ALERTS_WEBHOOK_URL", "NOTIFY_WEBHOOK_URL"]), arm: "set ALERTS_WEBHOOK_URL" },
