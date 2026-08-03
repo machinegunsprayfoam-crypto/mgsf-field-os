@@ -523,3 +523,265 @@ textarea:focus, select:focus {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* =============================================================================
+   DE-ARCADE PASS — removes everything that reads "1980s Tron arcade machine":
+   perspective grid floor, CRT scanlines, neon text glows, pulsing animations,
+   bloom on every surface. Keeps the dark theme but makes it clean + modern.
+   ============================================================================= */
+
+/* ── A. Kill the Tron FX layers entirely ─────────────────────────────────── */
+#tronFloor  { display: none !important; }
+#tronScan   { display: none !important; }
+/* Hide the JS-driven animated canvas background (CSS gradient beneath it is kept) */
+#bgCanvas   { opacity: 0 !important; pointer-events: none !important; }
+/* Kill the sweeping ambient scan bar at the bottom */
+#ambientBar { display: none !important; }
+
+/* ── B. Kill neon text-shadows everywhere ─────────────────────────────────── */
+.logo-text, .boot-logo,
+.card-title, .admin-section-title,
+.metric-val, h2, h3 {
+  text-shadow: none !important;
+  filter: none !important;
+}
+/* Boot logo — replace pulsing neon with a calm fade-in, no glow */
+.boot-logo {
+  animation: none !important;
+  font-size: 44px !important;
+  letter-spacing: 10px !important;
+  color: var(--or) !important;
+}
+/* Card title should be gray, not neon cyan */
+.card-title {
+  color: var(--t2) !important;
+}
+/* Admin section title — muted orange, no bloom */
+.admin-section-title {
+  color: var(--or) !important;
+  opacity: .85 !important;
+}
+
+/* ── C. Replace neon box-shadows on cards with clean elevation ────────────── */
+.card, .metric-card, .admin-section, .jsa-card, .log-row, .tc-card {
+  box-shadow: var(--f-el2) !important;
+}
+.card:hover, .admin-section:hover, .jsa-card:hover {
+  box-shadow: var(--f-el3) !important;
+}
+.metric-card:hover {
+  box-shadow: var(--f-el3) !important;
+}
+
+/* ── D. Remove neon inset glow from active nav item ──────────────────────── */
+.nav-item.active {
+  box-shadow: 0 2px 12px rgba(249,115,22,.10), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+/* Icon drop-shadow on active was a neon filter — kill it */
+.nav-item.active .nav-icon,
+.nav-item.active .nav-icon i {
+  filter: none !important;
+}
+/* The left-edge pill stays but loses the outer glow */
+.nav-item.active::before {
+  box-shadow: none !important;
+}
+
+/* ── E. Replace neon button shadows with depth-only shadows ──────────────── */
+.btn-primary {
+  box-shadow: 0 4px 14px rgba(249,115,22,.24), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(249,115,22,.38), inset 0 1px 0 rgba(255,255,255,.36) !important;
+}
+.btn-cyan {
+  box-shadow: none !important;
+}
+.btn-cyan:hover {
+  box-shadow: 0 3px 12px rgba(0,212,255,.14) !important;
+}
+
+/* ── F. Input focus ring — subtle orange, not neon cyan ──────────────────── */
+.inp:focus, .admin-inp:focus,
+input[type="email"]:focus, input[type="password"]:focus,
+input[type="text"]:focus, input[type="number"]:focus,
+textarea:focus, select:focus {
+  border-color: var(--or) !important;
+  box-shadow: 0 0 0 3px rgba(249,115,22,.16) !important;
+}
+
+/* ── G. Top bar — remove neon bottom border glow ─────────────────────────── */
+#topbar {
+  box-shadow: 0 1px 0 rgba(255,255,255,.05), var(--f-el2) !important;
+}
+
+/* ── H. Logo in topbar — clean gradient, no bloom ───────────────────────── */
+.logo-text {
+  background: linear-gradient(135deg, var(--or) 30%, #ffb877 70%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* =============================================================================
+   EXPANDABLE SIDEBAR — Win11-style nav rail.
+   Collapsed (default): 60px icon-only.
+   Expanded (pinned or hovered on desktop): 224px icon + label side-by-side.
+   The expanded state overlays content (no layout shift); a subtle scrim
+   appears behind it on mobile so the user knows to tap away.
+   ============================================================================= */
+
+/* ── I. Collapsed rail — default state ───────────────────────────────────── */
+#sidebar {
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 60px !important;
+  padding: 56px 5px 100px !important;   /* top pad leaves room for the toggle btn */
+  gap: 2px !important;
+  /* turn off wrapping — we want a single vertical column */
+  flex-flow: column nowrap !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  align-content: stretch !important;
+  overflow: hidden !important;
+  transition: width .24s var(--f-ease), box-shadow .24s var(--f-ease) !important;
+  /* sidebar floats OVER content when expanded */
+  position: absolute !important;
+  left: 0 !important;
+  top: 56px !important;   /* below topbar */
+  bottom: 0 !important;
+  z-index: 40 !important;
+}
+/* Content area gains left margin equal to the collapsed rail width */
+#main {
+  position: relative !important;
+  padding-left: 60px !important;
+}
+/* Dividers stretch full width */
+.nav-divider {
+  flex-basis: auto !important;
+  width: auto !important;
+  margin: 2px 5px !important;
+}
+/* Nav items fill the column, icon + label row by default */
+.nav-item {
+  width: auto !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  padding: 0 0 0 14px !important;
+  gap: 0 !important;
+  border-radius: var(--f-r8) !important;
+  overflow: hidden !important;
+}
+.nav-item:hover { padding-left: 14px !important; }
+.nav-icon {
+  width: 30px !important;
+  min-width: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+.nav-icon i { font-size: 19px !important; }
+/* Labels hidden when sidebar is narrow */
+.nav-label {
+  opacity: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: .3px !important;
+  text-transform: none !important;
+  margin-left: 10px !important;
+  transition: opacity .18s var(--f-ease) !important;
+  pointer-events: none !important;
+}
+
+/* ── J. Expanded state ────────────────────────────────────────────────────── */
+#sidebar.nav-expanded {
+  width: 224px !important;
+  max-width: 224px !important;
+  box-shadow: 4px 0 32px rgba(0,0,0,.55), 1px 0 0 rgba(255,255,255,.04) !important;
+}
+#sidebar.nav-expanded .nav-label {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+#sidebar.nav-expanded .nav-item.active::before {
+  height: 18px !important;
+}
+/* Phone layout stays narrow — no hover expand */
+body.lay-phone #sidebar {
+  top: 52px !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+body.lay-phone #main { padding-left: 56px !important; }
+body.lay-phone #sidebar.nav-expanded {
+  width: 56px !important;
+  max-width: 56px !important;
+}
+
+/* ── K. Sidebar toggle button ─────────────────────────────────────────────── */
+#navToggle {
+  position: absolute !important;
+  top: 8px !important;
+  left: 8px !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: var(--f-r8) !important;
+  background: none !important;
+  border: 1px solid transparent !important;
+  color: var(--t2) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  transition: background .14s var(--f-ease), border-color .14s var(--f-ease), color .14s var(--f-ease) !important;
+  z-index: 5 !important;
+  flex-shrink: 0 !important;
+}
+#navToggle:hover {
+  background: rgba(255,255,255,.07) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  color: var(--tx) !important;
+}
+#navToggle.pinned {
+  background: rgba(249,115,22,.12) !important;
+  border-color: rgba(249,115,22,.25) !important;
+  color: var(--or) !important;
+}
+
+/* ── L. Mobile scrim (shown behind expanded sidebar) ─────────────────────── */
+#navScrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0,0,0,.38);
+  backdrop-filter: blur(2px);
+  animation: scrimIn .2s var(--f-ease) both;
+}
+@keyframes scrimIn { from { opacity: 0 } to { opacity: 1 } }
+#navScrim.show { display: block; }
+
+/* ── M. Hide legacy drag-resize handle; neutralise old layout overrides ───── */
+#navResize { display: none !important; }
+body.lay-tablet #sidebar {
+  width: 60px !important; min-width: 60px !important; max-width: 60px !important;
+}
+body.lay-tablet #main { padding-left: 60px !important; }
+body.lay-tablet #sidebar.nav-expanded { width: 224px !important; max-width: 224px !important; }
+/* Desktop keeps the same rail — explicit width resets override app.css !important rules */
+body.lay-desktop #sidebar {
+  width: 60px !important; min-width: 60px !important; max-width: 60px !important;
+}
+body.lay-desktop #main { padding-left: 60px !important; }
+body.lay-desktop #sidebar.nav-expanded { width: 224px !important; max-width: 224px !important; }

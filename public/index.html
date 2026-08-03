@@ -174,11 +174,62 @@
   (function(){var s=null;try{s=localStorage.getItem('mgsf_layout');}catch(e){}
     var m=s||(innerWidth<700?'phone':innerWidth<1100?'tablet':'desktop');window.setLayout(m,false);})();
   </script>
+  <script>
+  // ── Sidebar expand/collapse (Win11 nav rail) ──────────────────────────────
+  (function(){
+    var _pinned = false;
+    try { _pinned = localStorage.getItem('nav_pinned') === '1'; } catch(e){}
+    window.toggleNav = function(){
+      _pinned = !_pinned;
+      try { localStorage.setItem('nav_pinned', _pinned ? '1' : '0'); } catch(e){}
+      _applyNav();
+    };
+    window.collapseNav = function(){
+      _pinned = false;
+      try { localStorage.setItem('nav_pinned', '0'); } catch(e){}
+      _applyNav();
+    };
+    function _applyNav(){
+      var sb  = document.getElementById('sidebar');
+      var btn = document.getElementById('navToggle');
+      var scrim = document.getElementById('navScrim');
+      if(!sb) return;
+      if(_pinned){
+        sb.classList.add('nav-expanded');
+        if(btn){ btn.classList.add('pinned'); btn.innerHTML='<i class="ti ti-layout-sidebar-left-collapse"></i>'; btn.title='Collapse navigation'; }
+        if(scrim && (innerWidth < 900)){ scrim.classList.add('show'); }
+      } else {
+        sb.classList.remove('nav-expanded');
+        if(btn){ btn.classList.remove('pinned'); btn.innerHTML='<i class="ti ti-layout-sidebar-left-expand"></i>'; btn.title='Pin navigation open'; }
+        if(scrim){ scrim.classList.remove('show'); }
+      }
+    }
+    // Hover-expand on desktop (non-touch) — no JS hover on phones
+    var _hoverTimer = null;
+    document.addEventListener('DOMContentLoaded', function(){
+      _applyNav();
+      var sb = document.getElementById('sidebar');
+      if(!sb) return;
+      if(!('ontouchstart' in window)){
+        sb.addEventListener('mouseenter', function(){
+          _hoverTimer = setTimeout(function(){ sb.classList.add('nav-expanded'); }, 80);
+        });
+        sb.addEventListener('mouseleave', function(){
+          clearTimeout(_hoverTimer);
+          if(!_pinned) sb.classList.remove('nav-expanded');
+        });
+      }
+    });
+  })();
+  </script>
 
   <!-- MAIN AREA -->
   <div id="main">
+    <!-- NAV SCRIM (mobile) -->
+    <div id="navScrim" onclick="collapseNav()"></div>
     <!-- SIDEBAR NAV -->
     <div id="sidebar">
+      <button id="navToggle" title="Pin navigation open" onclick="toggleNav()"><i class="ti ti-layout-sidebar-left-expand"></i></button>
       <div id="navResize" title="Drag to resize the menu"></div>
       <div class="nav-item active" onclick="switchModule('dashboard')" id="nav-dashboard">
         <div class="nav-icon"><i class="ti ti-home-bolt"></i></div><div class="nav-label">HQ</div>
