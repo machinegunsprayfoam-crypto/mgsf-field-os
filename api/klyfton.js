@@ -1320,6 +1320,100 @@ current info.`,
 
 const WEB_TOOL = { type: "web_search_20260209", name: "web_search", max_uses: 2 };
 
+// ---- FIELD-OS DATA TOOLBELT (v2.0 hallway: the brain's sense of touch, in-app) ----
+// The same 9 READ-ONLY tools the MCP server exposes (api/mcp.js) are handed to the worker
+// minds as Anthropic custom tools, so chat answers "this customer / this bid / this deadline"
+// questions from the REAL shared store instead of doctrine-only. One tool schema, two
+// consumers (MCP server + in-app brain) — no duplicate logic. Nothing here writes.
+let FIELD_TOOLS = {};
+try { FIELD_TOOLS = require("./mcp.js").TOOLS || {}; } catch (e) { FIELD_TOOLS = {}; }
+
+// HubSpot lookup folded INTO the chat (graph finding 2026-07-24: "the assistant and the
+// rolodex do not talk"). READ-ONLY search against the CRM. Uses the secure env token only —
+// if HUBSPOT_TOKEN isn't set in Vercel, the tool answers honestly instead of failing.
+const HS_OBJECTS = {
+  contacts: ["firstname", "lastname", "email", "phone", "company", "city", "state"],
+  deals: ["dealname", "amount", "dealstage", "closedate", "pipeline"],
+  companies: ["name", "domain", "phone", "city", "state"],
+  tickets: ["subject", "content", "hs_pipeline_stage"],
+};
+async function hubspotLookupTool(a) {
+  const token = (process.env.HUBSPOT_TOKEN && String(process.env.HUBSPOT_TOKEN).trim()) || "";
+  if (!token) return { configured: false, hint: "HUBSPOT_TOKEN not set in Vercel env — owner can add it (Settings → Environment Variables) to give chat CRM eyes. The manual HubSpot Lookup card in CRM still works with the in-app token." };
+  const object = HS_OBJECTS[a.object] ? a.object : "contacts";
+  const body = { limit: 8, properties: HS_OBJECTS[object], sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }] };
+  if (a.query && String(a.query).trim()) body.query = String(a.query).trim().slice(0, 100);
+  try {
+    const r = await fetch("https://api.hubapi.com/crm/v3/objects/" + object + "/search", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return { ok: false, error: "hubspot_" + r.status };
+    const d = await r.json();
+    const rows = (d.results || []).map((x) => ({ id: x.id, ...(x.properties || {}) }));
+    return { ok: true, object, count: rows.length, records: rows };
+  } catch (e) { return { ok: false, error: "hubspot_unreachable" }; }
+}
+
+// Anthropic-format tool definitions: the 9 field-os reads + the CRM lookup.
+const FIELD_TOOL_DEFS = Object.keys(FIELD_TOOLS).map((name) => ({
+  name,
+  description: FIELD_TOOLS[name].description,
+  input_schema: FIELD_TOOLS[name].inputSchema || { type: "object", properties: {} },
+})).concat([{
+  name: "hubspot_lookup",
+  description: "READ-ONLY HubSpot CRM search. object: contacts|deals|companies|tickets. query: name/email/keyword (omit for most recent). Use for customer history, deal stages, contact info.",
+  input_schema: { type: "object", properties: { object: { type: "string", description: "contacts|deals|companies|tickets (default contacts)" }, query: { type: "string", description: "Search text; omit for most recent" } } },
+}]);
+
+const TOOLBELT_NOTE = `
+
+LIVE DATA TOOLBELT (v2.0): you now have READ-ONLY tools into the field-os shared store
+(leads, estimates + days_open, jobs, job costs, inventory, reviews, schedule) and a
+read-only hubspot_lookup into the CRM. RULES:
+- For any question about a specific customer, lead, bid, deadline, schedule, stock level,
+  or review status: CALL THE TOOL. Never guess a number a tool can answer; tool data beats
+  the (possibly stale) context snapshot above.
+- {"not_tracked_yet":true} = the collection is real but empty — say so honestly, it's a
+  capture gap, not zero business. {"configured":false} = backbone/env not attached — say so.
+- Tools never write. To change a record, tell the owner what to change and where.
+- Don't call tools for doctrine/pricing/how-to questions you can already answer.`;
+
+// callClaude + custom-tool execution loop. Server tools (web search) resume via pause_turn
+// inside callClaude; THIS loop handles stop_reason "tool_use" for the field-os toolbelt:
+// run the tool locally (same process — KV reads, ~fast), hand back tool_result, continue.
+async function callClaudeTools(key, payload, meter) {
+  let data = await callClaude(key, payload, meter);
+  for (let round = 0; round < 5 && data && data.stop_reason === "tool_use"; round++) {
+    const calls = (data.content || []).filter((b) => b.type === "tool_use");
+    if (!calls.length) break;
+    const results = [];
+    for (const c of calls) {
+      let out;
+      try {
+        if (c.name === "hubspot_lookup") out = await hubspotLookupTool(c.input || {});
+        else if (FIELD_TOOLS[c.name]) out = await FIELD_TOOLS[c.name].run(c.input || {});
+        else out = { ok: false, error: "unknown_tool" };
+      } catch (e) { out = { ok: false, error: String((e && e.message) || e).slice(0, 160) }; }
+      let text = "";
+      try { text = JSON.stringify(out); } catch (e) { text = String(out); }
+      if (text.length > 7000) text = text.slice(0, 7000) + `…(truncated — ask with a filter/limit for more)`;
+      results.push({ type: "tool_result", tool_use_id: c.id, content: text });
+      try { console.log("[klyfton] tool " + c.name + " → " + text.length + " chars"); } catch (e) {}
+    }
+    payload = {
+      ...payload,
+      messages: payload.messages.concat([
+        { role: "assistant", content: data.content },
+        { role: "user", content: results },
+      ]),
+    };
+    data = await callClaude(key, payload, meter);
+  }
+  return data;
+}
+
 function textFrom(content) {
   return (content || [])
     .filter((b) => b.type === "text")
