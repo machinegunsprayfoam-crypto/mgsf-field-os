@@ -129,6 +129,7 @@ async function logAgentRun(run) {
       duration_ms: (typeof run.durationMs === "number" && isFinite(run.durationMs)) ? Math.round(run.durationMs) : null,
       model: run.model || null,
       cost_usd: (typeof run.costUsd === "number" && isFinite(run.costUsd)) ? Number(run.costUsd.toFixed(6)) : null,
+      routing_raw: run.routing_raw || null, // Queen's raw JSON decision — requires agent_runs.routing_raw TEXT column
     };
     await fetch(SB_URL.replace(/\/$/, "") + "/rest/v1/agent_runs", {
       method: "POST",
@@ -1660,10 +1661,15 @@ Routing rules:
 - "proposal"   → writing or drafting a full customer proposal, scope of work, payment schedule
 - "customer"   → follow-up scripts, objection handling, re-engagement, referral asks, review requests
 - "general"    → anything else or unclear
-Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
+Return ONLY JSON, no prose:
+{"minds":["..."],"complexity":"simple"|"complex","confidence":0.85,"intents":{"mind_key":"one-line focus ≤15 words"}}.
+Fields:
+- confidence: 0.0–1.0 how sure you are. Use <0.4 when the question is ambiguous or spans many topics.
+- intents: optional per-mind one-liner (≤15 words) steering what angle that mind should take; omit a
+  mind from intents when the question is clear enough that no extra steering is needed.
 Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
-If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
+If unsure, {"minds":["general"],"complexity":"simple","confidence":0.3,"intents":{}}.` + routerToolHint();
   const recent = (history || [])
     .slice(-8)
     .map((m) => (m.role === "user" ? "U: " : "A: ") + String(m.content).slice(0, 200))
@@ -1671,31 +1677,51 @@ If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
   try {
     const data = await callClaude(key, {
       model: ROUTER_MODEL,
-      max_tokens: 300,
+      max_tokens: 400,
       system: sys,
       messages: [{ role: "user", content: (recent ? recent + "\n\n" : "") + "U: " + userText }],
     }, meter);
     const j = textFrom(data.content).match(/\{[\s\S]*\}/);
     const parsed = j ? JSON.parse(j[0]) : null;
+    const routing_raw = j ? j[0] : null;
     let minds = (parsed && Array.isArray(parsed.minds) ? parsed.minds : [])
       .filter((k) => SPECIALISTS[k])
       .slice(0, 4); // hive cap: at most 4 minds — bounds worker fan-out (latency/timeout control)
     if (!minds.length) minds = ["general"];
-    const complexity = parsed && parsed.complexity === "complex" ? "complex" : "simple";
-    return { minds: complexity === "simple" ? [minds[0]] : minds, complexity };
+    const complexity = (parsed && parsed.complexity === "complex") ? "complex" : "simple";
+    // confidence: 0.0–1.0 how sure the Queen is; defaults to 1 if absent (same behavior as before).
+    const confidence = (parsed && typeof parsed.confidence === "number")
+      ? Math.max(0, Math.min(1, parsed.confidence)) : 1.0;
+    // intents: per-mind one-liner hint; empty object when absent.
+    const intents = (parsed && parsed.intents && typeof parsed.intents === "object" && !Array.isArray(parsed.intents))
+      ? parsed.intents : {};
+    // Low-confidence fallback: when the Queen isn't sure (<0.4), add "general" as a safety net
+    // and promote to complex so the synthesizer can merge the two opinions.
+    if (confidence < 0.4 && !minds.includes("general")) {
+      minds = minds.concat(["general"]).slice(0, 4);
+    }
+    // Final complexity: complex whenever >1 mind runs (including low-conf fallback).
+    const effectiveComplexity = (minds.length > 1) ? "complex" : "simple";
+    return { minds, complexity: effectiveComplexity, confidence, intents, routing_raw };
   } catch {
-    return { minds: ["general"], complexity: "simple" };
+    return { minds: ["general"], complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
   }
 }
 
 // Run one specialist mind on the question.
-async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
+// hint: optional per-mind one-liner from the Queen steering what angle to answer;
+//       prepended to the user content so each specialist focuses on its slice of a complex ask.
+//       Brain-block selection (assembleBrainBlocks) still uses the original userText so topic
+//       detection isn't distorted by the hint prefix.
+async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
   const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
-  messages.push({ role: "user", content: buildUserContent(userText, attachments) });
+  const focusedText = (hint && typeof hint === "string" && hint.trim())
+    ? `[FOCUS: ${hint.trim()}]\n${userText}` : userText;
+  messages.push({ role: "user", content: buildUserContent(focusedText, attachments) });
   const data = await callClaude(key, {
     model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
@@ -1717,13 +1743,13 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
 // Capped at a single extra call so we never blow the function's time / cost budget. The
 // synthesizer+critic still catches fabrication and doctrine-gate failures downstream; this layer
 // only recovers flaky/empty runs so one hiccup doesn't silently drop a mind from the hive.
-async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
+async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint) {
   try {
-    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride);
+    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint);
     if (first && first.text && first.text.trim()) return first;
   } catch (e) { /* fall through to one retry */ }
   try {
-    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride);
+    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint);
     return (retry && retry.text && retry.text.trim()) ? retry : null;
   } catch (e) { return null; }
 }
@@ -1737,6 +1763,59 @@ function isTrivial(text, attachments) {
   if (t.length <= 12) return true;
   if (t.length < 40 && /^(hi|hey|hello|yo|sup|thanks|thank you|thx|ty|ok|okay|k|cool|nice|great|good morning|good afternoon|good evening|good job|well done|test|testing|ping|you there|u there)\b/i.test(t)) return true;
   return false;
+}
+
+// Pure-command bypass: common field commands (update_job, add_lead, schedule, invoice) clearly
+// resolve to a single mind without needing the Haiku router round-trip. Saves ~0.5s and one
+// API call per command. Returns a ready plan (same shape as route()) or null when not matched.
+// Short messages only (≤180 chars) — long queries are questions, not commands.
+const ACTION_CMD_PATTERNS = [
+  { re: /\b(update|mark|change|set|close|cancel|complete)\b.{0,60}\bjob\b/i,       minds: ["ops"] },
+  { re: /\bjob\b.{0,60}\b(completed?|cancelled?|in progress|scheduled|done)\b/i,   minds: ["ops"] },
+  { re: /\b(add|new|create|log)\b.{0,30}\b(lead|customer|contact)\b/i,             minds: ["general"] },
+  { re: /\b(schedule|book|reschedule|move)\b.{0,60}\b(job|appointment|visit)\b/i,  minds: ["ops"] },
+  { re: /\b(create|send|generate|make)\b.{0,30}\binvoice\b/i,                      minds: ["finance"] },
+  { re: /\b(log|record|save)\b.{0,40}\b(note|material|cost|expense)\b/i,           minds: ["ops"] },
+];
+function isActionCommand(text, attachments) {
+  if (Array.isArray(attachments) && attachments.length) return null; // never bypass a photo message
+  const t = (text || "").trim();
+  if (!t || t.length > 180) return null;
+  for (const p of ACTION_CMD_PATTERNS) {
+    if (p.re.test(t)) {
+      return { minds: p.minds, complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
+    }
+  }
+  return null;
+}
+
+// Memory-warm routing enrichment (pure, testable): if semantic recall results mention a topic
+// that the Queen didn't already pick, add that mind to the plan (up to cap=4). Only applies
+// to complex queries — avoids ballooning simple direct questions into multi-mind runs.
+// Never removes minds; never downgrades complexity. Runs after routing so the hive benefits
+// from in-session memory without delaying the concurrent Haiku router call.
+const MEMORY_MIND_MAP = [
+  { re: /\b(invoice|billing|AR|receivable|margin|profit|cash flow|payment)\b/i, mind: "finance" },
+  { re: /\b(estimate|quote|bid|board.?feet|foam price|coverage|proposal)\b/i,   mind: "estimator" },
+  { re: /\b(schedule|appointment|crew|timeline|deadline)\b/i,                    mind: "ops" },
+  { re: /\b(SAM\.?gov|federal|SDVOSB|solicitation|government contract)\b/i,     mind: "govcon" },
+  { re: /\b(marketing|social|post|ad campaign|hashtag|content)\b/i,             mind: "marketing" },
+  { re: /\b(safety|PPE|JSA|OSHA|respirator|re-?occupancy)\b/i,                  mind: "safety" },
+];
+function applyMemoryContext(plan, recall) {
+  if (!plan || !Array.isArray(plan.minds)) return plan;
+  if (plan.complexity !== "complex") return plan; // keep simple queries simple
+  if (!recall || !Array.isArray(recall.results) || !recall.results.length) return plan;
+  const memText = recall.results.map((r) => (r && r.note) ? r.note : "").join(" ");
+  const added = [];
+  for (const m of MEMORY_MIND_MAP) {
+    if (!plan.minds.includes(m.mind) && !added.includes(m.mind) && m.re.test(memText)) {
+      added.push(m.mind);
+    }
+  }
+  if (!added.length) return plan;
+  const newMinds = plan.minds.concat(added).slice(0, 4); // respect hive cap
+  return { ...plan, minds: newMinds };
 }
 
 // --- Streaming (SSE) plumbing: cut the dead-air on long hive answers ---
@@ -1902,9 +1981,15 @@ module.exports = async (req, res) => {
   // grounding context nor the ATS state, so overlap its Haiku call under the grounding wall instead
   // of running it afterward (saves ~1-2s off every non-trivial turn). route() self-catches to a
   // safe {general,simple} default, so this promise never rejects — safe to leave in flight.
+  // isActionCommand short-circuits known field commands (update_job, add_lead…) to a ready plan
+  // with no API call, saving the Haiku round-trip for obvious single-mind commands.
+  const _trivialPlan = { minds: ["general"], complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
+  const _actionPlan = isActionCommand(userText, attachments);
   const routeP = isTrivial(userText, attachments)
-    ? Promise.resolve({ minds: ["general"], complexity: "simple" })
-    : route(key, routeText, history, meter);
+    ? Promise.resolve(_trivialPlan)
+    : _actionPlan
+      ? Promise.resolve(_actionPlan)
+      : route(key, routeText, history, meter);
 
   // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
   // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
@@ -1916,6 +2001,7 @@ module.exports = async (req, res) => {
   let memList = Array.isArray(body.memory) ? body.memory.slice() : [];
   let liveCtx = "";
   let wikiCtx = "";
+  let semanticRec = null; // hoisted so applyMemoryContext() can use it after routing resolves
   if (userText && !isTrivial(userText, attachments)) {
     const cap = (p, ms) => Promise.race([
       Promise.resolve(p).catch(() => null),
@@ -1928,6 +2014,7 @@ module.exports = async (req, res) => {
       wantsLive ? cap(brainContext.gather({}), 2600) : Promise.resolve(null),
       cap(wiki.retrieve(userText, 3), 2500),
     ]);
+    semanticRec = rec; // saved for memory-warm routing enrichment below
     // Semantic memory: relevant recalls first, de-duped ahead of client-sent memory.
     if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
       const hits = rec.results.map((x) => x && x.note).filter(Boolean);
@@ -1981,7 +2068,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   // Agent-run telemetry accumulator: filled in at each terminal point below, then written
   // once in the finally. Defaults to 'error' so an exception path is logged as a failure.
   const startedAt = Date.now();
-  const run = { mode: null, minds: [], status: "error", model: null };
+  const run = { mode: null, minds: [], status: "error", model: null, routing_raw: null };
 
   // The finally records this request's spend to KV (even with no budget set — so the
   // running monthly total is always watchable), on both the success and error paths.
@@ -1992,10 +2079,12 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     try {
       let plan = await routeP; // routing already in flight (started concurrently with grounding)
       plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
+      run.routing_raw = plan.routing_raw || null; // capture Queen's raw decision for telemetry
+      plan = applyMemoryContext(plan, semanticRec); // memory-warm: add context-relevant minds
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
-        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
+        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[plan.minds[0]]);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
         await persistSemanticMemory(remember);
         run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
@@ -2006,7 +2095,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
       // Complex job → run the swarm (non-streamed), then stream the synthesizer.
       const workers = await Promise.all(
-        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel))
+        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[m]))
       );
       const answers = workers.filter((w) => w && w.text);
       if (!answers.length) {
@@ -2074,10 +2163,12 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     // 1) Queen recruits the minds — routing already in flight (started concurrently with grounding).
     let plan = await routeP;
     plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
+    run.routing_raw = plan.routing_raw || null; // capture Queen's raw decision for telemetry
+    plan = applyMemoryContext(plan, semanticRec); // memory-warm: add context-relevant minds
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
+      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[plan.minds[0]]);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       await persistSemanticMemory(remember);
       run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
@@ -2095,7 +2186,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel))
+      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[m]))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
@@ -2168,3 +2259,7 @@ module.exports.toolBagBlock = toolBagBlock;
 module.exports.routerToolHint = routerToolHint;
 module.exports.shouldSkipSynth = shouldSkipSynth;
 module.exports.bestAnswer = bestAnswer;
+module.exports.isActionCommand = isActionCommand;
+module.exports.applyMemoryContext = applyMemoryContext;
+module.exports.ACTION_CMD_PATTERNS = ACTION_CMD_PATTERNS;
+module.exports.MEMORY_MIND_MAP = MEMORY_MIND_MAP;
