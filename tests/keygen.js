@@ -21,6 +21,20 @@ ok("presentedSecret reads header", K.presentedSecret(reqHdr, {}) === "gate");
 ok("isAuthorized true on right gate", K.isAuthorized(reqHdr, {}, { KEYGEN_SECRET: "gate" }) === true);
 ok("isAuthorized false on wrong gate", K.isAuthorized(reqHdr, {}, { KEYGEN_SECRET: "nope" }) === false);
 
+// The secret must NEVER be accepted from the query string. Query strings are written to
+// Vercel access logs, browser history, and the Referer header of any outbound link — and this
+// is the endpoint that mints every other credential, so a URL-borne secret here is the worst
+// case in the codebase. These assertions exist so the convenience cannot be re-added.
+const viaQuery  = { headers: {}, query: { secret: "gate" }, body: {} };
+const viaQuery2 = { headers: {}, query: { keygen_secret: "gate" }, body: {} };
+ok("?secret= is NOT read as the secret", K.presentedSecret(viaQuery, {}) === "");
+ok("?keygen_secret= is NOT read as the secret", K.presentedSecret(viaQuery2, {}) === "");
+ok("?secret= does NOT authorize", K.isAuthorized(viaQuery, {}, { KEYGEN_SECRET: "gate" }) === false);
+ok("?keygen_secret= does NOT authorize", K.isAuthorized(viaQuery2, {}, { KEYGEN_SECRET: "gate" }) === false);
+// the two supported channels keep working
+ok("body secret still authorizes", K.isAuthorized({ headers: {}, query: {} }, { secret: "gate" }, { KEYGEN_SECRET: "gate" }) === true);
+ok("x-admin-secret header still authorizes", K.isAuthorized({ headers: { "x-admin-secret": "gate" }, query: {} }, {}, { KEYGEN_SECRET: "gate" }) === true);
+
 const n1 = K.normalizeSpec({ purpose: "crew_code" });
 ok("preset crew_code resolves", n1.ok && n1.spec.length === 10 && n1.spec.alphabet.includes("A"));
 const n2 = K.normalizeSpec({ length: 2, count: 99, prefix: "mgsf!!!@@@" });
