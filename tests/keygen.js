@@ -30,8 +30,8 @@ ok("prefix sanitized", n2.ok && n2.spec.prefix === "mgsf", n2.spec.prefix);
 ok("alphabet too small rejected", K.normalizeSpec({ alphabet: "a" }).ok === false);
 
 const token = K.generateToken(32, "ABCDEF");
-ok("generateToken exact length", token.length === 32, token.length);
-ok("generateToken only alphabet chars", /^[ABCDEF]+$/.test(token), token);
+ok("generateToken exact length", token.length === 32);
+ok("generateToken only alphabet chars", /^[ABCDEF]+$/.test(token));
 
 const key = K.makeKey({ length: 12, alphabet: "abc123", prefix: "mgsf_" });
 ok("makeKey adds prefix", key.startsWith("mgsf_"));
