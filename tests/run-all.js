@@ -29,6 +29,7 @@ const SUITES = [
   ["memory", "semantic memory: gated behavior + backfill/schema-check"],
   ["curriculum", "learning curriculum: bank integrity + grader + guardrail enforcement + eval wiring"],
   ["tools", "tool bag: self-describing capability catalog + honest live-status (sourced from health)"],
+  ["openapi", "OpenAPI 3.1 spec GENERATED from the tool bag — guards anti-drift (every catalogued api/ tool has a route) + honesty (no fabricated schemas, no secrets)"],
   ["act", "arms: outward-action classify + approval gate + universal Zapier bus"],
   ["wiki", "knowledge base: pure retrieval ranking + gated/graceful store + owner-gated writes"],
   ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
