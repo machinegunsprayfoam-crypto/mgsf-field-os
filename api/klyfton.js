@@ -1667,7 +1667,8 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
     max_tokens: 4000,
     system,
     thinking: { type: "adaptive" },
-    tools: [WEB_TOOL],
+    // Web search + the field-os data toolbelt (READ-ONLY) + CRM lookup.
+    tools: [WEB_TOOL].concat(FIELD_TOOL_DEFS),
     messages,
   }, meter);
   return { mind: spec.name, text: textFrom(data.content), model: data.model || modelOverride || WORKER_MODEL };
