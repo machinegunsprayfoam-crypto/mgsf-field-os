@@ -32,6 +32,7 @@ const CAPS = {
   pricingfeed: { label: "Live pricing feed", on: (e) => has(e, "PRICING_CSV_URL"), arm: "set PRICING_CSV_URL" },
   crewcode:  { label: "Access gate", on: (e) => has(e, "CREW_CODE"), arm: "set CREW_CODE" },
   cronsecret: { label: "Cron/axle secret", on: (e) => anyOf(e, ["CRON_SECRET", "AXLE_SECRET"]), arm: "set CRON_SECRET" },
+  keygensecret: { label: "Key generator secret", on: (e) => has(e, "KEYGEN_SECRET"), arm: "set KEYGEN_SECRET" },
 };
 
 // DEPENDENCY EDGES: tool id -> [capability ids] it needs. Mirrors the tool-bag gating; a tool with
@@ -45,7 +46,7 @@ const DEPS = {
   "daily-brief": ["webhook"], "follow-up": ["webhook"], "estimate-followup": ["webhook"],
   "invoice-remind": ["webhook"], "inventory-reorder": ["webhook"], "roof-maintenance": ["webhook"],
   // self-gated subsystems (each needs its own single switch)
-  storage: ["storage"], ats: ["budget"], pricing: ["pricingfeed"], access: ["crewcode"], cron: ["cronsecret"],
+  storage: ["storage"], ats: ["budget"], pricing: ["pricingfeed"], access: ["crewcode"], cron: ["cronsecret"], keygen: ["keygensecret"],
 };
 
 function depsOf(toolId) { return DEPS[toolId] || []; }
