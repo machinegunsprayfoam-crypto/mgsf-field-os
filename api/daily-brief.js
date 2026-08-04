@@ -101,6 +101,9 @@ module.exports = async (req, res) => {
     const brief = compose({ jobs, leads, invoices, findings });
 
     const wantSend = req.query && String(req.query.send) === "1";
+    if (wantSend) {
+      const cronGuard = require("./cron-guard"); if (!cronGuard.ok(req)) { res.status(401).json(cronGuard.denied()); return; }
+    }
     // Never fire on Sundays — owner boundary (family day). Preview still works any day.
     const isSunday = new Date().getUTCDay() === 0;
     let sent = false;

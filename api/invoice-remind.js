@@ -131,6 +131,7 @@ module.exports = async (req, res) => {
 
   if (req.method === "GET") {
     if (req.query && String(req.query.sweep) === "1") {
+      const cronGuard = require("./cron-guard"); if (!cronGuard.ok(req)) { res.status(401).json(cronGuard.denied()); return; }
       if (!KV_ON) { res.status(200).json({ ok: false, error: "kv_not_attached" }); return; }
       try {
         const invoices = await kvGet("invoices");
