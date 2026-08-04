@@ -43,6 +43,7 @@ const SUITES = [
   ["sync-access", "cloud-sync reads and writes require CREW_CODE when enabled"],
   ["lead-intake", "public website lead intake validates and bounds submitted records"],
   ["notify-access", "generic notifications require CREW_CODE when enabled"],
+  ["external-access", "HubSpot and Drive integrations require CREW_CODE when enabled"],
   ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
   ["inventory-reorder", "reorder sweep: qty<=reorderAt rule + short-fall + per-supplier grouping/draft"],

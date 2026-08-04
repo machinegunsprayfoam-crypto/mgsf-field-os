@@ -36,6 +36,7 @@ async function readBody(req) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
   // configured=true only when a server-side URL exists; clientConfigurable tells the app it
   // may instead supply its own (validated) webappUrl per request.
   if (req.method === "GET") { res.status(200).json({ configured: !!ENV_URL, clientConfigurable: true }); return; }

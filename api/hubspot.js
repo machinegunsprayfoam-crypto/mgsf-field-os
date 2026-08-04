@@ -118,6 +118,8 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
   if (req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
+  const guard = require('./guard');
+  if (!guard.ok(req)) { sendJson(res, 401, guard.denied()); return; }
 
   let body;
   try { body = await readBody(req); }
