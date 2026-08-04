@@ -127,6 +127,8 @@ function sweep(invoices, asOf) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   const asOf = Date.parse((req.query && clean(req.query.asOf, 20)) || "") || Date.now();
 
   if (req.method === "GET") {

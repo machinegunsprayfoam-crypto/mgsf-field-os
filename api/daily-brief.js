@@ -92,6 +92,8 @@ function compose(data) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   if (!KV_ON) { res.status(200).json({ configured: false, note: "Attach Vercel KV to enable the daily brief." }); return; }
   try {
     const [jobs, leads, invoices, estimates, certs] = await Promise.all([kvGet("jobs"), kvGet("leads"), kvGet("invoices"), kvGet("estimates"), kvGet("certs")]);
