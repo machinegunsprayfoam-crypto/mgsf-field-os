@@ -5,7 +5,7 @@ already known. If something here conflicts with a vague memory, **this file wins
 current: when you finish a unit of work or make a decision, update the relevant section here in
 the same commit. Doctrine numbers (`mgsf-core.skill`) still win over everything.
 
-_Last updated: 2026-07-26._
+_Last updated: 2026-08-04._
 
 ## 1. What this is / repos
 - **mgsf-field-os** — Klyfton AI (the app): `api/klyfton.js` = Queen router → worker minds → synthesizer/critic hive; `public/index.html` = single-file app; Supabase brain; **Vercel PRO**, auto-deploys **from `main`**.
@@ -16,6 +16,7 @@ _Last updated: 2026-07-26._
 ## 2. Current build state
 **★ DEPLOYED TO MAIN 2026-07-27 (Clifton's go):** field-os branch fast-forward-merged to main + live on Vercel (prod deploy READY, commit ad06190). LIVE now: 3D brain-graph boot screen, GraphRAG block-selection in the brain (both builders, safe full-brain fallback), live-data grounding (brainContext, pipeline-gated), warranty-cert button, + all prior staged subsystems (Command Center, ATS, axle, gearbox, memory, act.js[inert until ALERTS_WEBHOOK_URL], crons now on their Mon-Sat schedule). HUBSPOT_TOKEN + KV set in Vercel. Smoke test `/api/brain-context` = {configured:true, source:kv, 12 open leads / 11 cold}. **Hardening flag:** read endpoints (`/api/brain-context`, `/api/command-center`) return aggregate pipeline data UNAUTHENTICATED (noindex, but public) — existing app posture; consider gating behind CREW_CODE.
 **Klyfton backend (field-os) — shipped to branch, not merged:**
+- **✅ MCP status-filter fix (2026-08-04, found live by the outreach agent):** `api/mcp.js` treated `status:"all"` (the spec's documented default) as a literal status — consumers passing it got `not_tracked_yet` while 6 live leads sat in KV. Fix: `"all"`/`"any"`/omit are wildcards on `list_leads` + `list_estimates`; a filter that matches nothing now answers `count:0` + `statuses_present` note (empty-store `not_tracked_yet` reserved for a truly empty collection; review-window miss same contract); server `1.1.1-phase1`. New `tests/mcp.js` (19 checks, KV stubbed via fetch) registered. Gate 91/2112 green. READ-ONLY surface unchanged — no Phase-2 gate impact.
 - `agent_runs` telemetry table + KPI views (Command Center **Phase 1**). Owner step to activate: re-run `db/schema.sql` in Supabase + confirm `SUPABASE_URL`/service-role key in Vercel.
 - Command Center **Phase C** ✅ — live drivetrain strip in the app (recent gear-turns from `events`).
 - **VEHICLE ARCHITECTURE** ([`VEHICLE_ARCHITECTURE.md`](VEHICLE_ARCHITECTURE.md)) — Clifton's frame: the whole system is a car (engine=hive, transmission=gearbox, clutch=arms/approval, driveshaft=event spine, differential=Queen router, dashboard=Command Center, battery=memory, brakes=doctrine gates, wheels=outward actions). **★ Two prime movers:** the ENGINE (event-driven/reactive) and the **AXLE that drives TIME** (the scheduler — daily brief, sweeps, cert-expiry, SAM scans turn the same drivetrain on a cadence). Powertrain refinements: **engine powers the Queen** (Queen is driven); **dual AI⟷owner transmission** — same gears driven from both sides, gated gears owner-only (= the approval gate as a transmission); **RPM sets speed** (speed ≈ rpm × engaged; throttle=throughput). 3D model updated (same URL).
