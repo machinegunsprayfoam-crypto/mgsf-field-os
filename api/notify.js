@@ -62,25 +62,18 @@ function lineFor(event, body) {
   }
 }
 
-module.exports = async (req, res) => {
-  // Status probe (webhook + text alerts).
-  if (req.method === "GET") { res.status(200).json({ configured: !!WEBHOOK, sms: { configured: SMS_ON, hasDefaultTo: !!TW_TO } }); return; }
-  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-
-  let body = req.body;
-  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+async function dispatch(body) {
   body = body || {};
 
   // Direct text send (Admin "Send test text").
   if (body.testSms) {
-    if (!SMS_ON) { res.status(200).json({ sms: { configured: false } }); return; }
+    if (!SMS_ON) return { sms: { configured: false } };
     const to = String(body.smsTo || TW_TO || "").trim();
     const text = String(body.smsText || body.message || "").slice(0, 1200);
-    if (!to) { res.status(400).json({ error: "No recipient — set ALERT_SMS_TO or pass smsTo." }); return; }
-    if (!text) { res.status(400).json({ error: "Empty message." }); return; }
-    try { const s = await sendSms(to, text); res.status(200).json({ sms: { configured: true, sent: s.ok, status: s.status, error: s.error } }); }
-    catch (e) { res.status(200).json({ sms: { configured: true, sent: false, error: String(e.message || e).slice(0, 160) } }); }
-    return;
+    if (!to) return { error: "No recipient — set ALERT_SMS_TO or pass smsTo." };
+    if (!text) return { error: "Empty message." };
+    try { const s = await sendSms(to, text); return { sms: { configured: true, sent: s.ok, status: s.status, error: s.error } }; }
+    catch (e) { return { sms: { configured: true, sent: false, error: String(e.message || e).slice(0, 160) } }; }
   }
 
   const event = body.event || "alert";
@@ -129,5 +122,16 @@ module.exports = async (req, res) => {
   if (SMS_ON && smsText && TW_TO) {
     try { const s = await sendSms(TW_TO, smsText); smsSent = s.ok; } catch (e) {}
   }
-  res.status(200).json({ configured: !!WEBHOOK, sent: webhookSent, status: webhookStatus, sms: { configured: SMS_ON, sent: smsSent } });
+  return { configured: !!WEBHOOK, sent: webhookSent, status: webhookStatus, sms: { configured: SMS_ON, sent: smsSent } };
+}
+
+module.exports = async (req, res) => {
+  // Generic events and SMS are crew-only. Public website leads use /api/lead-intake.
+  if (req.method === "GET") { res.status(200).json({ configured: !!WEBHOOK, sms: { configured: SMS_ON, hasDefaultTo: !!TW_TO } }); return; }
+  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+  let body = req.body;
+  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+  res.status(200).json(await dispatch(body));
 };
+module.exports.dispatch = dispatch;

@@ -114,10 +114,8 @@ function mergeById(existing, incoming) {
 }
 
 module.exports = async (req, res) => {
-  // Cloud sync returns the full crew data set; require the existing crew gate for reads.
-  if (req.method === "GET") {
-    const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
-  }
+  // Cloud sync carries the complete crew data set; require the existing crew gate for every operation.
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
   // Supabase-mirror status probe (independent of KV).
   if (req.method === "GET" && req.query && String(req.query.db) === "1") {
     res.status(200).json({ supabase: SB_ON });
