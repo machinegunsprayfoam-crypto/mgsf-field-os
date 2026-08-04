@@ -66,17 +66,31 @@ function daysOpen(dateStr) {
 const notConfigured = { configured: false, hint: "Vercel KV not attached — data lives on-device only. Connect KV storage to bring the sync backbone (and this server) online." };
 const empty = (what) => ({ not_tracked_yet: true, reason: "No " + what + " records in the shared store yet. Honest beats empty." });
 
+// Status-filter helpers. "all" / "any" / "" / omitted are WILDCARDS, not literal statuses —
+// the spec's documented default was status:"all", and treating it as a literal made every
+// consumer that passed it see not_tracked_yet while real rows sat in the store (found by the
+// outreach agent 2026-08-04). A filter that matches nothing must also say "no match", never
+// "store empty" — those are different facts and the honest-beats-empty rule cuts both ways.
+const _statusAll = (s) => /^(all|any)?$/i.test(String(s || "").trim());
+const _statusesPresent = (rows) => [...new Set(rows.map((r) => String(r.status || "").trim() || "(blank)"))].sort();
+const noMatch = (what, key, allRows, want) => ({
+  count: 0, [key]: [], status_filter: want, statuses_present: _statusesPresent(allRows),
+  note: allRows.length + " " + what + " record(s) exist; none with status \"" + want + "\".",
+});
+
 // ---- tool implementations (ALL READ-ONLY) ----
 const TOOLS = {
   list_leads: {
-    description: "List leads from the field-os. Optional status filter (e.g. New, Contacted, Quoted, Won, Lost) and limit.",
-    inputSchema: { type: "object", properties: { status: { type: "string", description: "Filter by exact status; omit for all" }, limit: { type: "number", description: "Max rows, default 25" } } },
+    description: "List leads from the field-os. Optional status filter (e.g. New, Contacted, Quoted, Won, Lost; \"all\" or omit = every status) and limit.",
+    inputSchema: { type: "object", properties: { status: { type: "string", description: "Filter by exact status; \"all\", \"any\", or omit for every status" }, limit: { type: "number", description: "Max rows, default 25" } } },
     run: async (a) => {
       if (!KV_ON) return notConfigured;
-      let rows = await liveRows("leads");
-      if (a.status) rows = rows.filter((r) => String(r.status || "").toLowerCase() === String(a.status).toLowerCase());
+      const all = await liveRows("leads");
+      if (!all.length) return empty("lead");
+      const want = String(a.status || "").trim();
+      const rows = (_statusAll(want) ? all : all.filter((r) => String(r.status || "").toLowerCase() === want.toLowerCase())).slice();
+      if (!rows.length) return noMatch("lead", "leads", all, want);
       rows.sort((x, y) => _day(y.date).localeCompare(_day(x.date)));
-      if (!rows.length) return empty("lead");
       return { count: rows.length, leads: rows.slice(0, a.limit > 0 ? a.limit : 25) };
     },
   },
@@ -90,13 +104,15 @@ const TOOLS = {
     },
   },
   list_estimates: {
-    description: "List estimates with days_open (for chase logic). Optional status filter (e.g. open, accepted, declined) and limit.",
-    inputSchema: { type: "object", properties: { status: { type: "string" }, limit: { type: "number" } } },
+    description: "List estimates with days_open (for chase logic). Optional status filter (e.g. open, accepted, declined; \"all\" or omit = every status) and limit.",
+    inputSchema: { type: "object", properties: { status: { type: "string", description: "Filter by exact status; \"all\", \"any\", or omit for every status" }, limit: { type: "number" } } },
     run: async (a) => {
       if (!KV_ON) return notConfigured;
-      let rows = await liveRows("estimates");
-      if (a.status) rows = rows.filter((r) => String(r.status || "").toLowerCase() === String(a.status).toLowerCase());
-      if (!rows.length) return empty("estimate");
+      const all = await liveRows("estimates");
+      if (!all.length) return empty("estimate");
+      const want = String(a.status || "").trim();
+      const rows = _statusAll(want) ? all : all.filter((r) => String(r.status || "").toLowerCase() === want.toLowerCase());
+      if (!rows.length) return noMatch("estimate", "estimates", all, want);
       const out = rows.map((r) => ({ ...r, days_open: daysOpen(r.date || r.at) }));
       out.sort((x, y) => (y.days_open || 0) - (x.days_open || 0));
       return { count: out.length, estimates: out.slice(0, a.limit > 0 ? a.limit : 25) };
@@ -155,11 +171,13 @@ const TOOLS = {
       if (!KV_ON) return notConfigured;
       const days = a.days > 0 ? a.days : 30;
       const cutoff = Date.now() - days * 86400000;
-      const rows = (await liveRows("reviews")).filter((r) => {
+      const all = await liveRows("reviews");
+      if (!all.length) return empty("review");
+      const rows = all.filter((r) => {
         const t = Date.parse(_day(r.date || r.at || r.ts));
         return !Number.isFinite(t) || t >= cutoff;
       });
-      if (!rows.length) return empty("review");
+      if (!rows.length) return { window_days: days, count: 0, reviews: [], note: all.length + " review record(s) exist; none dated in the last " + days + " days." };
       return { window_days: days, count: rows.length, reviews: rows };
     },
   },
@@ -191,7 +209,7 @@ async function handleRpc(msg) {
     return rpcResult(id, {
       protocolVersion: PROTOCOLS_SUPPORTED.includes(asked) ? asked : PROTOCOL,
       capabilities: { tools: {} },
-      serverInfo: { name: "klyfton-field-os", title: "MGSF Field-OS (Klyfton)", version: "1.1.0-phase1" },
+      serverInfo: { name: "klyfton-field-os", title: "MGSF Field-OS (Klyfton)", version: "1.1.1-phase1" },
       instructions: "Read-only Phase 1 tools over the MGSF field-os shared store. Nothing here writes. If a tool answers configured:false, the KV sync backbone isn't attached yet; not_tracked_yet means the collection is real but empty.",
     });
   }
