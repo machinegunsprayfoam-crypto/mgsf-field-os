@@ -6,7 +6,7 @@
 // approved automation). No npm, no keys required for the draft; the webhook is optional.
 //
 // POST { caller, phone, at, service, missedReason } -> { sms, ownerAlert, callbackTask, ... }
-// GET  ?event=1 &phone=... &caller=... -> draft + fire webhook (for a Twilio "missed call" hook)
+// GET  ?event=1 &phone=... &caller=... -> draft + fire webhook (requires MISSED_CALL_WEBHOOK_SECRET when configured)
 // GET  (no query) -> shape.
 
 function _kvEnv(suffixRe, excludeRe) {
@@ -15,6 +15,16 @@ function _kvEnv(suffixRe, excludeRe) {
 }
 const WEBHOOK = process.env.ALERTS_WEBHOOK_URL || process.env.NOTIFY_WEBHOOK_URL || "";
 const SECRET = process.env.WEBHOOK_SECRET || process.env.ALERTS_WEBHOOK_SECRET || "";
+// Dedicated inbound secret for the Twilio/automation callback. It is intentionally optional so
+// existing deployments stay live until the provider has been updated with the new credential.
+function safeEqual(a, b) { a = String(a); b = String(b); if (a.length !== b.length) return false; let diff = 0; for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i); return diff === 0; }
+function eventAuthorized(req, env) {
+  const secret = String((env || process.env).MISSED_CALL_WEBHOOK_SECRET || "");
+  if (!secret) return true;
+  const headers = (req && req.headers) || {}, query = (req && req.query) || {};
+  const supplied = headers["x-missed-call-secret"] || headers["X-Missed-Call-Secret"] || query.secret || "";
+  return safeEqual(supplied, secret);
+}
 async function fireWebhook(event, message, extra) {
   if (!WEBHOOK) return false;
   try {
@@ -91,6 +101,7 @@ module.exports = async (req, res) => {
   if (req.method === "GET") {
     const q = req.query || {};
     if (String(q.event) === "1") {
+      if (!eventAuthorized(req)) { res.status(401).json({ ok: false, error: "unauthorized" }); return; }
       try {
         const out = build({ caller: q.caller, phone: q.phone, service: q.service, at: q.at }, Date.now());
         const notified = await fireWebhook("missed_call",
@@ -102,7 +113,7 @@ module.exports = async (req, res) => {
       return;
     }
     res.status(200).json({ ok: true, configured: true, draftOnly: true, webhook: !!WEBHOOK,
-      note: "POST { caller, phone, at, service } for a draft speed-to-lead text; or GET ?event=1&phone=... from a Twilio missed-call hook to also fire the webhook. Never sends on its own." });
+      note: "POST { caller, phone, at, service } for a draft speed-to-lead text; or GET ?event=1&phone=... from a Twilio missed-call hook to also fire the webhook. Set MISSED_CALL_WEBHOOK_SECRET and send it in x-missed-call-secret (or secret query parameter) to protect the inbound trigger. Never sends on its own." });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
@@ -114,3 +125,4 @@ module.exports = async (req, res) => {
 };
 
 module.exports.build = build;
+module.exports.eventAuthorized = eventAuthorized;

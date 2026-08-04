@@ -14,6 +14,7 @@ const SUITES = [
   ["brain-assembly", "brain block selection (live wiring)"],
   ["brain-context", "live-data grounding (gated)"],
   ["missed-call", "speed-to-lead / missed-call recovery"],
+  ["missed-call-access", "missed-call inbound webhook secret guard"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
