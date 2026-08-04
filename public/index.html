@@ -11393,7 +11393,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
       .forEach(fn=>{ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){} });
   }
   async function pull(){
-    const r = await fetch('/api/sync'); const d = await r.json();
+    const r = await fetch('/api/sync',{headers:{'x-crew-code':_crewCode()}}); const d = await r.json();
     if(!d || !d.configured) return false;
     let changed=false;
     COLS.forEach(k=>{ if(d.data && mergeIn(k, d.data[k])) changed=true; });
@@ -11420,20 +11420,20 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
   }
   async function pushMem(){
     try{
-      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},
         body:JSON.stringify({collection:'memory', records: Array.isArray(appState.memory)?appState.memory:[]})});
       last.memory=JSON.stringify(appState.memory||[]);
     }catch(e){}
   }
   async function push(k){
     try{
-      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+      await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},
         body:JSON.stringify({collection:k, records:arr(k)})});
       last[k]=JSON.stringify(arr(k));
     }catch(e){}
   }
   async function del(k, ids){
-    try{ await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+    try{ await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},
       body:JSON.stringify({collection:k, remove:ids})}); }catch(e){}
   }
   function tick(){
@@ -11454,7 +11454,7 @@ Machine Gun Spray Foam & Concrete Lifting, LLC
       let prevMem=[]; try{ prevMem=JSON.parse(last.memory||'[]'); }catch(e){}
       const curSet=new Set((appState.memory||[]).map(s=>String(s).trim()));
       const removedMem=prevMem.map(s=>String(s).trim()).filter(s=>s && !curSet.has(s));
-      if(removedMem.length){ try{ fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},
+      if(removedMem.length){ try{ fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},
         body:JSON.stringify({collection:'memory', remove:removedMem})}); }catch(e){} }
       pushMem();
     }
@@ -11781,7 +11781,7 @@ async function driveBackup(){
 /* ===== Structured Database (Supabase) — mirror KV collections for reporting via /api/sync ===== */
 async function dbStatus(){
   const s=document.getElementById('dbStatus'); if(!s) return;
-  try{ const r=await fetch('/api/sync?db=1'); const j=await r.json();
+  try{ const r=await fetch('/api/sync?db=1',{headers:{'x-crew-code':_crewCode()}}); const j=await r.json();
     if(j.supabase) s.innerHTML='<span style="color:var(--gr)">Connected ✓ — tap sync to push your latest data.</span>';
     else s.innerHTML='<span style="color:var(--yw)">Not connected — run db/schema.sql, then add SUPABASE_URL + SUPABASE_SECRET_KEY in Vercel.</span>';
   }catch(e){ s.textContent='Status unavailable offline.'; }
@@ -11791,7 +11791,7 @@ async function dbMirror(){
   const E=(typeof esc==='function')?esc:(x=>String(x==null?'':x));
   out.textContent='Syncing to the database…';
   try{
-    const r=await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'mirror'})});
+    const r=await fetch('/api/sync',{method:'POST',headers:{'content-type':'application/json','x-crew-code':_crewCode()},body:JSON.stringify({action:'mirror'})});
     const j=await r.json();
     if(!j.supabase){ out.innerHTML='<span style="color:var(--yw)">Not connected yet — run db/schema.sql in Supabase and add SUPABASE_URL + SUPABASE_SECRET_KEY in Vercel, then Redeploy.</span>'; return; }
     if(!j.ok){ out.innerHTML='<span style="color:var(--red)">Sync error: '+E(j.error||'unknown')+'</span>'; return; }

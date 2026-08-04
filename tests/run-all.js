@@ -39,6 +39,8 @@ const SUITES = [
   ["agents", "agents runtime: goal-driven job selection + planning + approval/dark-tool guards"],
   ["boot", "boot manifest: live self-map (components/deps/tools/brain/agents) computed from env"],
   ["guard", "access guard: dormant-safe CREW_CODE gate (no lockout until set, then enforced)"],
+  ["cron-guard", "scheduled trigger guard: Vercel Cron bearer secret when configured"],
+  ["sync-access", "cloud-sync reads require CREW_CODE when enabled"],
   ["idempotency", "idempotency: deterministic key + no double-send (check before, commit after success)"],
   ["telemetry", "telemetry: runtime rollup of agent runs by agent/outcome/day"],
   ["inventory-reorder", "reorder sweep: qty<=reorderAt rule + short-fall + per-supplier grouping/draft"],
