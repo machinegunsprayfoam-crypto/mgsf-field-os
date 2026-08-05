@@ -5494,6 +5494,19 @@ function saveEstimate(val, name, gm){
   const link = upsertLeadFromEstimate(name, val);
   notify(`Estimate $${val.toLocaleString()} saved for ${name}`+(link?` · lead ${link.action} → Estimate Sent`:''));
   playSound('success');
+  // Technical→action hallway (closes brain-graph gap #1): emit estimate.ready to the gearbox so the
+  // arms DRAFT a gated proposal off this estimate. Fire-and-forget + fully guarded — never blocks or
+  // breaks the save; the gear produces a needs-approval draft server-side, never an auto-send. Gearbox
+  // is idempotent on the customer key, so re-saving updates the one event instead of duplicating.
+  try{
+    const _nm=String(name||'').trim();
+    if(window._sysPost && _nm && _nm.toLowerCase()!=='customer' && Number(val)>0){
+      _sysPost('/api/gearbox',{action:'turn',event:{name:'estimate.ready',key:_nm.toLowerCase(),
+        payload:{customer:_nm,total:Math.round(Number(val)||0),
+          state:(document.getElementById('eState')||{}).value||'',market:(document.getElementById('eMarket')||{}).value||''},
+        source:'estimator'}}).catch(function(){});
+    }
+  }catch(e){}
 }
 
 // ── Estimate → CRM auto-hallway ──────────────────────────────────────────────
