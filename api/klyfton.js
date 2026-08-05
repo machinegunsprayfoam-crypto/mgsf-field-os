@@ -1218,8 +1218,26 @@ numbers; MGSF pricing stays in DOCTRINE; never guarantee savings; nothing custom
 // only the heavy DOMAIN blocks (STEM/HVAC/ACCOUNTING/PROCUREMENT/EQUIPMENT/… ) are selected per query.
 // Any failure, empty result, or trivial input -> the FULL brain (never worse than before). ----
 const brainRetrieve = require("./brain-graph-retrieve.js");
+// GUARDRAILS — the two compliance families (claims-honesty + action-gates) unified into ONE doctrine,
+// so the brain applies them TOGETHER (closes the InfraNodus gap: Guarantee/Saving guardrails ↔ Credential
+// Binding were under-linked, and technical reasoning skipped the gate). No new rules — every line is a
+// guardrail already stated verbatim elsewhere in the brain; this block just gathers them in one place
+// and makes the link explicit. Core block: always assembled.
+const GUARDRAILS = `COMPLIANCE & GATES (one doctrine — apply ALL of these together on EVERY answer and action):
+CLAIMS & NUMBERS (what you may say):
+- Never fabricate numbers, prices, or claims. Numbers defer to DOCTRINE (mgsf-core wins over anything in code).
+- Label anything you estimate as ESTIMATED and show the math/assumptions. If a price isn't confirmed, say so and mark it ESTIMATED — never invent one.
+- Never guarantee savings — savings are ESTIMATED ranges only, never a guaranteed dollar figure.
+- Never claim mold elimination — closed-cell foam controls moisture and reduces mold/rot RISK; control it, never "eliminate."
+- Verify code with the AHJ; on compliance / legal / DOT topics say "not legal advice — verify the specifics."
+ACTIONS & GATES (what you may do):
+- APPROVAL GATE: anything outward or irreversible — email/text to a customer, invoice/QBO write, a binding submission, deleting/overwriting — is produced as a DRAFT for Clifton's go-ahead. Never auto-send.
+- SCHEDULING BOUNDARY: never schedule work, jobs, follow-ups, or reminders on a Sunday (family time; the Spray Window forces Sunday to NO-GO).
+- CREDENTIALS: licensed/certified operators where required; public federal IDs only (UEI / legal name) — never expose secrets, PINs, or private keys.
+ONE GATE: these two families are a single gate — a technical or job decision only becomes an outward action after it clears BOTH the claims rules AND the action gate. Reason about the work AND the guardrails in the same step; never let a technical answer skip the gate.`;
+
 const BRAIN_BLOCKS = {
-  BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
+  BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
   STEM_FOUNDATIONS, HVAC_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
   PLATFORM, ACTIONS, EXPERT_LIBRARY,
@@ -1227,10 +1245,10 @@ const BRAIN_BLOCKS = {
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
-const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
+const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
 function assembleBrainBlocks(userText) {
   const all = () => BRAIN_ORDER.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
   try {
