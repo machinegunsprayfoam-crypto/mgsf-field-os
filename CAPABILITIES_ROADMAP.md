@@ -7,6 +7,25 @@ then a ranked "add to the build" list. Legend: ✓ have · ◐ partial · ✗ ga
 **Grounding:** competitor abilities from live web search; Klyfton status read from `api/*.js`.
 No fabricated features or prices. Sources at the bottom.
 
+## ⚠️ STATUS RECONCILIATION (2026-08-05) — several July gaps are now BUILT
+The matrix below is the **July snapshot**; since then these shipped (verified in code / the test gate),
+so treat their ✗/◐ as **✓** now:
+- **Vector / semantic RAG** → ✓ `api/memory.js` (pgvector, 1536-dim, `match_memory` RPC; embeddings live).
+- **Self-healing retry** → ✓ `api/klyfton.js` (bounded worker re-run on thrown error / empty answer).
+- **Missed-call auto-recovery** → ✓ `api/missed-call.js` (tested).
+- **Estimate-from-photo (stitched)** → ✓ `api/photo-estimate.js` (measure→foam-calc, draft only).
+- **Eval / regression harness** → ✓ `tests/calc-invariants.js` + the 93-suite gate.
+- **Guardrails / PII redaction gate** → ✓ `api/redact.js` (tested).
+- **Cross-session learning (coding lessons)** → ✓ `api/lessons.js` (own Supabase pgvector — roadmap "B").
+- **Live-data grounding** → ✓ `api/brain-context.js` (real pipeline into the answer; HubSpot live).
+
+**Still genuinely open** (real remaining wants): inbound **voice / STT / booking** (needs Twilio + STT — its
+own #1 gap), **critic-*quality*-driven re-run** (today's retry is failure/empty only), **mesh** so work
+chains estimate→proposal→schedule→invoice (`gearbox.js` seed), **proactive** briefs/alerts (`axle.js` seed;
+partially met by the new "Alert Nerve"), agent-to-agent delegation, browser use, image generation. The
+**keys/subscriptions** it wants (ALERTS_WEBHOOK_URL, Twilio, QBO, SAM, Maps, budget cap) are owner-set —
+not buildable in code.
+
 ## Capability matrix
 
 ### Perception / input
