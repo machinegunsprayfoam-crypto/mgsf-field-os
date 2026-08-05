@@ -268,6 +268,7 @@ _Last updated: 2026-08-04._
 - Do NOT touch pricing or the `g.pe`/`g.page` review link (flagged for Clifton).
 - **No Sunday** work/scheduling. Commit author: `Machine Gun Spray Foam <machinegunsprayfoam@gmail.com>`. Never put the model identifier in commits/PRs/code. Verify code parses before commit.
 - Reference existing PRs (MGSF #3, marketing #1, setup-assistant #3, html-parsing #2) — don't open new ones unless asked.
+- **Phone calls = handled by Hearth AI** (owner's service, confirmed 2026-08-05). Inbound voice/booking is therefore **NOT an MGSF/Klyfton gap** — do **not** recommend Twilio (or any telephony/STT) for call handling. Twilio is only relevant if the owner wants *programmatic SMS text-back*, which is optional and separate. (Distinct from **Hearth financing** — the `$0-down` partner on the marketing site; don't conflate the two functions.)
 
 ## 5. Open threads / pending (what to pick up)
 - **Owner-gated (do NOT do unilaterally):** merge branch→main; confirm Terra-Lok/soil pricing; fix `g.pe`→`g.page`; submit sitemap to Search Console; enter real fleet #s in `equipment_database.csv`; wire `ALERTS_WEBHOOK_URL` to bring the arms live.
