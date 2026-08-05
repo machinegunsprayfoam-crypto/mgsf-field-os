@@ -276,6 +276,9 @@ async function handler(req, res) {
     const out = await handleRpc(body);
     if (out === null) { res.status(202).end(); return; } // notification — accepted, nothing to say
     res.status(200).json(out);
+    // Alert Nerve piggyback: fire-and-forget, self-debounced (30 min), every error swallowed
+    // inside maybeRunAlerts — it can never touch this response or break this request.
+    try { require("./alerts").maybeRunAlerts().catch(() => {}); } catch {}
   } catch (e) {
     res.status(200).json(rpcError(body && body.id != null ? body.id : null, -32603, String(e && e.message || e).slice(0, 200)));
   }
