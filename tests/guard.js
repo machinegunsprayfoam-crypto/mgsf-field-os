@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Klyfton access guard — CREW_CODE gate semantics. Run: `node tests/guard.js`. Keyless, no network.
 // The critical properties: DORMANT (no lockout) until CREW_CODE is set; once set, only the right
-// code (header/query/body) passes; wrong/missing code is denied; compare is length-safe.
+// code (header/body) passes; query parameters are rejected to keep credentials out of URLs; wrong/missing code is denied; compare is length-safe.
 
 const path = require("path");
 const G = require(path.join(__dirname, "..", "api", "guard.js"));
@@ -18,13 +18,13 @@ ok("unset CREW_CODE ⇒ ok even with a random code present", G.ok({ headers: { "
 const ENV = { CREW_CODE: "s3cret" };
 ok("set + no code ⇒ denied", G.ok({ headers: {} }, ENV) === false);
 ok("set + correct code in x-crew-code header ⇒ ok", G.ok({ headers: { "x-crew-code": "s3cret" } }, ENV) === true);
-ok("set + correct code in ?code= ⇒ ok", G.ok({ headers: {}, query: { code: "s3cret" } }, ENV) === true);
+ok("set + correct code in ?code= ⇒ denied", G.ok({ headers: {}, query: { code: "s3cret" } }, ENV) === false);
 ok("set + correct code in body ⇒ ok", G.ok({ headers: {}, body: { code: "s3cret" } }, ENV) === true);
 ok("set + body as JSON string ⇒ parsed + ok", G.ok({ headers: {}, body: JSON.stringify({ code: "s3cret" }) }, ENV) === true);
 ok("set + WRONG code ⇒ denied", G.ok({ headers: { "x-crew-code": "nope" } }, ENV) === false);
 
 // ---- present() extraction + safeEqual ----
-ok("present() reads header/query/body", G.present({ headers: { "x-crew-code": "h" } }) === "h" && G.present({ query: { code: "q" } }) === "q");
+ok("present() reads header/body but excludes query", G.present({ headers: { "x-crew-code": "h" } }) === "h" && G.present({ query: { code: "q" } }) === "");
 ok("present() no code ⇒ empty string, no throw", G.present({}) === "");
 ok("safeEqual true on match", G.safeEqual("abc", "abc") === true);
 ok("safeEqual false on mismatch", G.safeEqual("abc", "abd") === false);
