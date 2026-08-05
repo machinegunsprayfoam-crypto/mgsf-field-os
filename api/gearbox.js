@@ -51,6 +51,13 @@ const HANDLERS = {
     const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "review request" }, { approved: ok === true });
     return { note: ok ? "Review request engaged (owner side)" : "Review request drafted — owner approval to send", draft: r }; } }],
   "roofmaint.enroll": [{ drive: "ai", fn: async () => ({ note: "enrolled on the roof-maintenance cycle (internal)" }) }],
+  // TECHNICAL → ACTION hallway (closes the graph's #1 structural gap: Spray-System → Action-Approval).
+  // A freshly-computed estimate is a technical output; this gear routes it into a GATED proposal draft
+  // via the arms (send_email), so the brain's job reasoning flows into a draftable outward action
+  // instead of dead-ending. Leaf owner gear (no cascade) — approval stays per-action, like the others.
+  "estimate.ready": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
+    const draft = await arms.execute({ type: "send_email", to: p.email || "", subject: "Your quote from Machine Gun Spray Foam & Concrete Lifting", body: "proposal ready — " + (p.service || "job") + (p.total || p.amount ? " ($" + (p.total || p.amount) + ")" : "") }, { approved: ok === true });
+    return { note: ok ? "Proposal send engaged (owner side)" : "Proposal drafted — owner approval to send", draft }; } }],
   "estimate.sent": [{ drive: "ai", fn: async (e) => ({ note: "follow-up scheduled (2/7/21-day)", emits: [evt("followup.scheduled", e.key, e.payload || {}, "gearbox:estimate.sent")] }) }],
   "followup.scheduled": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
     const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "reheat nudge" }, { approved: ok === true });

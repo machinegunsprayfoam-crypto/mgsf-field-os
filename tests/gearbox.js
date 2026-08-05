@@ -44,6 +44,14 @@ const names = (trace) => trace.map((n) => n.event);
   const wall = await A.turn("job.completed", "job-4", { service: "wall foam" }, "unit", false);
   ok("non-roof job does NOT enroll roof-maintenance", !names(wall.trace).includes("roofmaint.enroll") && names(wall.trace).includes("review.requested"));
 
+  // ---- estimate.ready: the technical→action hallway (gated proposal draft) ----
+  const erBlocked = await A.turn("estimate.ready", "job-5", { customer: "Dave", email: "dave@x.com", service: "SPF roof", total: 9000 }, "unit", false);
+  ok("estimate.ready un-approved ⇒ blocked (proposal drafted, not sent)", erBlocked.ok === true && erBlocked.blocked === true);
+  ok("estimate.ready blocked ⇒ reverse mile (machine asked for approval)", erBlocked.miles.reverse >= 1 && erBlocked.miles.net < 0);
+  ok("estimate.ready is a leaf owner gear — no cascade when blocked", names(erBlocked.trace).length === 1 && names(erBlocked.trace)[0] === "estimate.ready");
+  const erOk = await A.turn("estimate.ready", "job-5", { customer: "Dave", email: "dave@x.com", service: "SPF roof", total: 9000 }, "unit", true);
+  ok("estimate.ready approved ⇒ not blocked + forward mile", erOk.blocked === false && erOk.miles.forward >= 1);
+
   // ---- unknown event: turns, no consumer, no crash ----
   const unknown = await A.turn("nope.nothere", "k", {}, "unit", false);
   ok("unknown event ⇒ ok, empty/handled-0, not blocked", unknown.ok === true && unknown.blocked === false);
