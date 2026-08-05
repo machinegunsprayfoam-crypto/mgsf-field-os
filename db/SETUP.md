@@ -16,6 +16,7 @@ turns on. `GET /api/health` and `GET /api/cmdb` then show what's live and the bi
 | 6 | **`subcontractors.sql`** | `subcontractors` (roster + compliance docs jsonb) | **subcontractor roster** (prime-with-subs) |
 | 7 | **`trade_rates.sql`** | `trade_rates` (owner rates by trade+item) | **per-trade rate memory** (estimator pre-fill) |
 | 8 | **`api_requests.sql`** | `api_requests` (route/status/ms/capability — no bodies, no query strings) | **request log + per-key usage** (`/api/reqlog`) |
+| 9 | **`lessons_schema.sql`** | `lessons` (+ `embedding` vector, `match_lessons` RPC) | cross-session **coding-lesson memory** (`/api/lessons`) |
 
 ## Table → env var → feature (what each unlocks)
 | Subsystem | Needs (in Vercel) | Notes |

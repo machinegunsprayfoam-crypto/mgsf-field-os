@@ -35,6 +35,7 @@ const SUITES = [
   ["projects", "job-lifecycle PM: stage engine + next-action routing + overdue detection + board"],
   ["cmdb", "AI-augmented CMDB: dependency graph + root-cause + blast-radius + biggest-unlock"],
   ["wiki-seed", "wiki starter articles: valid + hard-rule-clean + retrievable"],
+  ["lessons", "cross-session coding-lesson memory: normalize/validate, stable normalized id, tag hygiene, canonical embed text + inert/graceful when Supabase unconfigured"],
   ["scenarios", "AI scenario builder: validate against real triggers/tools + approval + dark-tool guard"],
   ["rag", "unified RAG: fan-out across brain/wiki/memory + merge/dedupe/rank + truth-order context"],
   ["agents", "agents runtime: goal-driven job selection + planning + approval/dark-tool guards"],
