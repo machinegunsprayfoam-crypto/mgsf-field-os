@@ -44,6 +44,31 @@ const names = (trace) => trace.map((n) => n.event);
   const wall = await A.turn("job.completed", "job-4", { service: "wall foam" }, "unit", false);
   ok("non-roof job does NOT enroll roof-maintenance", !names(wall.trace).includes("roofmaint.enroll") && names(wall.trace).includes("review.requested"));
 
+  // ---- estimate.ready: the technical→action hallway (gated proposal draft) ----
+  const erBlocked = await A.turn("estimate.ready", "job-5", { customer: "Dave", email: "dave@x.com", service: "SPF roof", total: 9000 }, "unit", false);
+  ok("estimate.ready un-approved ⇒ blocked (proposal drafted, not sent)", erBlocked.ok === true && erBlocked.blocked === true);
+  ok("estimate.ready blocked ⇒ reverse mile (machine asked for approval)", erBlocked.miles.reverse >= 1 && erBlocked.miles.net < 0);
+  ok("estimate.ready is a leaf owner gear — no cascade when blocked", names(erBlocked.trace).length === 1 && names(erBlocked.trace)[0] === "estimate.ready");
+  const erOk = await A.turn("estimate.ready", "job-5", { customer: "Dave", email: "dave@x.com", service: "SPF roof", total: 9000 }, "unit", true);
+  ok("estimate.ready approved ⇒ not blocked + forward mile", erOk.blocked === false && erOk.miles.forward >= 1);
+
+  // ---- proposalEmail: pure proposal builder + Hearth financing CTA (only when a price exists) ----
+  const propPriced = A.proposalEmail({ email: "dave@x.com", service: "SPF roof", total: 9000 });
+  ok("proposalEmail sets to + branded subject", propPriced.to === "dave@x.com" && /Machine Gun/.test(propPriced.subject));
+  ok("proposalEmail includes the service and price", propPriced.body.includes("SPF roof") && propPriced.body.includes("$9000"));
+  ok("proposalEmail with a price shows the Hearth financing CTA", propPriced.body.includes(A.FINANCING_URL) && /financing partner Hearth/i.test(propPriced.body));
+  const propNoPrice = A.proposalEmail({ email: "dave@x.com", service: "SPF roof" });
+  ok("proposalEmail WITHOUT a price omits financing (nothing to spread out)", !propNoPrice.body.includes(A.FINANCING_URL));
+  ok("proposalEmail never guarantees savings / quotes a rate", !/save \$|\d+% off|guarantee/i.test(propPriced.body));
+  ok("FINANCING_URL is a Hearth link", /gethearth\.com/.test(A.FINANCING_URL));
+
+  // ---- payment.received: money-loop closer (Stripe) → job.completed → review request ----
+  const pay = await A.turn("payment.received", "job-pay", { customer: "Jane", email: "jane@x.com", amount: 9000, service: "SPF roof" }, "stripe", false);
+  ok("payment.received turns ok", pay.ok === true && pay.turned === "payment.received");
+  ok("payment.received cascades to job.completed → review.requested", names(pay.trace).includes("job.completed") && names(pay.trace).includes("review.requested"));
+  ok("payment.received (roof) also enrolls roof-maintenance", names(pay.trace).includes("roofmaint.enroll"));
+  ok("payment.received review SMS stays a gated draft (blocked, not sent)", pay.blocked === true);
+
   // ---- unknown event: turns, no consumer, no crash ----
   const unknown = await A.turn("nope.nothere", "k", {}, "unit", false);
   ok("unknown event ⇒ ok, empty/handled-0, not blocked", unknown.ok === true && unknown.blocked === false);

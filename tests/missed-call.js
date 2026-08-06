@@ -65,6 +65,31 @@ console.log("Speed-to-lead / missed-call invariants\n");
   ok("empty body: phone null (nothing invented)", o && o.phone === null);
 })();
 
+// ---- field tolerance: any vendor's field names (Hearth AI / Twilio / Zapier / Make) work ----
+(() => {
+  // Hearth-AI-ish payload: from_name / from_number / reason / called_at (none of the "canonical" keys)
+  const o = mc.build({ from_name: "Dana Reed", from_number: "4065557777", reason: "attic foam quote", called_at: "2026-07-27T18:00:00Z" }, OPEN_MON);
+  ok("alt fields: caller from from_name", o.caller === "Dana Reed" && o.channels.sms.text.includes("Dana"));
+  ok("alt fields: phone from from_number", o.phone === "4065557777");
+  ok("alt fields: service from reason", o.service === "attic foam quote" && o.channels.sms.text.includes("attic foam quote"));
+
+  // Twilio-ish: From / Caller / CallStatus (capitalized keys) — case-insensitive match
+  const t = mc.build({ From: "4065558888", Caller: "Lee Vasquez" }, OPEN_MON);
+  ok("alt fields: case-insensitive keys (Twilio From/Caller)", t.phone === "4065558888" && t.caller === "Lee Vasquez");
+
+  // generic: number / name / topic / time
+  const g = mc.build({ name: "Kim", number: "4065556666", topic: "concrete lifting", time: "2026-07-27T18:00:00Z" }, OPEN_MON);
+  ok("alt fields: generic number/name/topic", g.caller === "Kim" && g.phone === "4065556666" && g.service === "concrete lifting");
+
+  // canonical still works (no regression), and canonical wins when both present
+  const c = mc.build({ caller: "Primary", name: "Fallback", phone: "4065551111", from: "4065559999" }, OPEN_MON);
+  ok("canonical fields still win over aliases", c.caller === "Primary" && c.phone === "4065551111");
+
+  // null-ish / whitespace values are skipped, not treated as present
+  const n = mc.build({ caller: "  ", name: "Real Name", phone: "", from: "4065552222" }, OPEN_MON);
+  ok("empty/whitespace alias skipped for next alias", n.caller === "Real Name" && n.phone === "4065552222");
+})();
+
 // ---- brand safety: no barred claims in any generated copy ----
 (() => {
   const variants = [OPEN_MON, AFTER_MON, SUNDAY].map(t =>

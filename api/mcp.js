@@ -66,17 +66,31 @@ function daysOpen(dateStr) {
 const notConfigured = { configured: false, hint: "Vercel KV not attached — data lives on-device only. Connect KV storage to bring the sync backbone (and this server) online." };
 const empty = (what) => ({ not_tracked_yet: true, reason: "No " + what + " records in the shared store yet. Honest beats empty." });
 
+// Status-filter helpers. "all" / "any" / "" / omitted are WILDCARDS, not literal statuses —
+// the spec's documented default was status:"all", and treating it as a literal made every
+// consumer that passed it see not_tracked_yet while real rows sat in the store (found by the
+// outreach agent 2026-08-04). A filter that matches nothing must also say "no match", never
+// "store empty" — those are different facts and the honest-beats-empty rule cuts both ways.
+const _statusAll = (s) => /^(all|any)?$/i.test(String(s || "").trim());
+const _statusesPresent = (rows) => [...new Set(rows.map((r) => String(r.status || "").trim() || "(blank)"))].sort();
+const noMatch = (what, key, allRows, want) => ({
+  count: 0, [key]: [], status_filter: want, statuses_present: _statusesPresent(allRows),
+  note: allRows.length + " " + what + " record(s) exist; none with status \"" + want + "\".",
+});
+
 // ---- tool implementations (ALL READ-ONLY) ----
 const TOOLS = {
   list_leads: {
-    description: "List leads from the field-os. Optional status filter (e.g. New, Contacted, Quoted, Won, Lost) and limit.",
-    inputSchema: { type: "object", properties: { status: { type: "string", description: "Filter by exact status; omit for all" }, limit: { type: "number", description: "Max rows, default 25" } } },
+    description: "List leads from the field-os. Optional status filter (e.g. New, Contacted, Quoted, Won, Lost; \"all\" or omit = every status) and limit.",
+    inputSchema: { type: "object", properties: { status: { type: "string", description: "Filter by exact status; \"all\", \"any\", or omit for every status" }, limit: { type: "number", description: "Max rows, default 25" } } },
     run: async (a) => {
       if (!KV_ON) return notConfigured;
-      let rows = await liveRows("leads");
-      if (a.status) rows = rows.filter((r) => String(r.status || "").toLowerCase() === String(a.status).toLowerCase());
+      const all = await liveRows("leads");
+      if (!all.length) return empty("lead");
+      const want = String(a.status || "").trim();
+      const rows = (_statusAll(want) ? all : all.filter((r) => String(r.status || "").toLowerCase() === want.toLowerCase())).slice();
+      if (!rows.length) return noMatch("lead", "leads", all, want);
       rows.sort((x, y) => _day(y.date).localeCompare(_day(x.date)));
-      if (!rows.length) return empty("lead");
       return { count: rows.length, leads: rows.slice(0, a.limit > 0 ? a.limit : 25) };
     },
   },
@@ -90,13 +104,15 @@ const TOOLS = {
     },
   },
   list_estimates: {
-    description: "List estimates with days_open (for chase logic). Optional status filter (e.g. open, accepted, declined) and limit.",
-    inputSchema: { type: "object", properties: { status: { type: "string" }, limit: { type: "number" } } },
+    description: "List estimates with days_open (for chase logic). Optional status filter (e.g. open, accepted, declined; \"all\" or omit = every status) and limit.",
+    inputSchema: { type: "object", properties: { status: { type: "string", description: "Filter by exact status; \"all\", \"any\", or omit for every status" }, limit: { type: "number" } } },
     run: async (a) => {
       if (!KV_ON) return notConfigured;
-      let rows = await liveRows("estimates");
-      if (a.status) rows = rows.filter((r) => String(r.status || "").toLowerCase() === String(a.status).toLowerCase());
-      if (!rows.length) return empty("estimate");
+      const all = await liveRows("estimates");
+      if (!all.length) return empty("estimate");
+      const want = String(a.status || "").trim();
+      const rows = _statusAll(want) ? all : all.filter((r) => String(r.status || "").toLowerCase() === want.toLowerCase());
+      if (!rows.length) return noMatch("estimate", "estimates", all, want);
       const out = rows.map((r) => ({ ...r, days_open: daysOpen(r.date || r.at) }));
       out.sort((x, y) => (y.days_open || 0) - (x.days_open || 0));
       return { count: out.length, estimates: out.slice(0, a.limit > 0 ? a.limit : 25) };
@@ -155,11 +171,13 @@ const TOOLS = {
       if (!KV_ON) return notConfigured;
       const days = a.days > 0 ? a.days : 30;
       const cutoff = Date.now() - days * 86400000;
-      const rows = (await liveRows("reviews")).filter((r) => {
+      const all = await liveRows("reviews");
+      if (!all.length) return empty("review");
+      const rows = all.filter((r) => {
         const t = Date.parse(_day(r.date || r.at || r.ts));
         return !Number.isFinite(t) || t >= cutoff;
       });
-      if (!rows.length) return empty("review");
+      if (!rows.length) return { window_days: days, count: 0, reviews: [], note: all.length + " review record(s) exist; none dated in the last " + days + " days." };
       return { window_days: days, count: rows.length, reviews: rows };
     },
   },
@@ -178,16 +196,20 @@ const TOOLS = {
 
 // ---- MCP JSON-RPC plumbing (stateless streamable-HTTP, JSON responses) ----
 const PROTOCOL = "2025-06-18";
+// Versions we actually speak. Claude's connector client may request any of these; if it
+// asks for something newer/unknown, spec says answer with our latest supported, not echo.
+const PROTOCOLS_SUPPORTED = ["2025-03-26", "2025-06-18", "2025-11-25"];
 function rpcResult(id, result) { return { jsonrpc: "2.0", id, result }; }
 function rpcError(id, code, message) { return { jsonrpc: "2.0", id, error: { code, message } }; }
 
 async function handleRpc(msg) {
   const { id, method, params } = msg || {};
   if (method === "initialize") {
+    const asked = params && params.protocolVersion;
     return rpcResult(id, {
-      protocolVersion: (params && params.protocolVersion) || PROTOCOL,
+      protocolVersion: PROTOCOLS_SUPPORTED.includes(asked) ? asked : PROTOCOL,
       capabilities: { tools: {} },
-      serverInfo: { name: "klyfton-field-os", version: "1.0.0-phase1" },
+      serverInfo: { name: "klyfton-field-os", title: "MGSF Field-OS (Klyfton)", version: "1.1.1-phase1" },
       instructions: "Read-only Phase 1 tools over the MGSF field-os shared store. Nothing here writes. If a tool answers configured:false, the KV sync backbone isn't attached yet; not_tracked_yet means the collection is real but empty.",
     });
   }
@@ -210,9 +232,16 @@ async function handleRpc(msg) {
   return rpcError(id, -32601, "Method not found: " + String(method).slice(0, 60));
 }
 
-module.exports = async (req, res) => {
-  // Status probe (no data): confirms the route exists and whether storage + auth are configured.
+async function handler(req, res) {
+  // GET: an MCP client asking for text/event-stream is opening a listen stream — we run
+  // stateless JSON mode with no server push, so the spec answer is 405 (client then stays
+  // POST-only). Plain GET (curl, uptime monitors) keeps the status probe.
   if (req.method === "GET") {
+    if (/text\/event-stream/i.test(String(req.headers["accept"] || ""))) {
+      res.setHeader("Allow", "POST");
+      res.status(405).json({ error: "sse_not_offered", note: "stateless JSON mode; POST JSON-RPC only" });
+      return;
+    }
     res.status(200).json({ ok: true, server: "klyfton-field-os", phase: 1, transport: "mcp-streamable-http/json", kv: KV_ON, auth_required: true });
     return;
   }
@@ -224,7 +253,14 @@ module.exports = async (req, res) => {
   const auth = String(req.headers["authorization"] || "");
   const token = _bearerToken();
   const expected = "Bearer " + (token || "");
-  if (!token || auth !== expected) { res.status(401).json({ error: "unauthorized" }); return; }
+  if (!token || auth !== expected) {
+    // RFC 6750 challenge so MCP clients recognize bearer auth. Deliberately no
+    // resource_metadata pointer: we run static-header auth, not OAuth discovery —
+    // a dangling metadata URL would send Claude on a doomed .well-known crawl.
+    res.setHeader("WWW-Authenticate", auth ? 'Bearer realm="mgsf-mcp", error="invalid_token"' : 'Bearer realm="mgsf-mcp"');
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
@@ -240,7 +276,16 @@ module.exports = async (req, res) => {
     const out = await handleRpc(body);
     if (out === null) { res.status(202).end(); return; } // notification — accepted, nothing to say
     res.status(200).json(out);
+    // Alert Nerve piggyback: fire-and-forget, self-debounced (30 min), every error swallowed
+    // inside maybeRunAlerts — it can never touch this response or break this request.
+    try { require("./alerts").maybeRunAlerts().catch(() => {}); } catch {}
   } catch (e) {
     res.status(200).json(rpcError(body && body.id != null ? body.id : null, -32603, String(e && e.message || e).slice(0, 200)));
   }
-};
+}
+
+// Vercel serves the handler; the in-app brain (api/klyfton.js) imports TOOLS so the chat
+// and the MCP endpoint share ONE tool implementation — one schema, two consumers, no
+// duplicate logic (per MGSF_Klyfton_MCP_Server_Spec). TOOLS stays READ-ONLY.
+module.exports = handler;
+module.exports.TOOLS = TOOLS;

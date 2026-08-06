@@ -1219,8 +1219,26 @@ numbers; MGSF pricing stays in DOCTRINE; never guarantee savings; nothing custom
 // only the heavy DOMAIN blocks (STEM/HVAC/ACCOUNTING/PROCUREMENT/EQUIPMENT/… ) are selected per query.
 // Any failure, empty result, or trivial input -> the FULL brain (never worse than before). ----
 const brainRetrieve = require("./brain-graph-retrieve.js");
+// GUARDRAILS — the two compliance families (claims-honesty + action-gates) unified into ONE doctrine,
+// so the brain applies them TOGETHER (closes the InfraNodus gap: Guarantee/Saving guardrails ↔ Credential
+// Binding were under-linked, and technical reasoning skipped the gate). No new rules — every line is a
+// guardrail already stated verbatim elsewhere in the brain; this block just gathers them in one place
+// and makes the link explicit. Core block: always assembled.
+const GUARDRAILS = `COMPLIANCE & GATES (one doctrine — apply ALL of these together on EVERY answer and action):
+CLAIMS & NUMBERS (what you may say):
+- Never fabricate numbers, prices, or claims. Numbers defer to DOCTRINE (mgsf-core wins over anything in code).
+- Label anything you estimate as ESTIMATED and show the math/assumptions. If a price isn't confirmed, say so and mark it ESTIMATED — never invent one.
+- Never guarantee savings — savings are ESTIMATED ranges only, never a guaranteed dollar figure.
+- Never claim mold elimination — closed-cell foam controls moisture and reduces mold/rot RISK; control it, never "eliminate."
+- Verify code with the AHJ; on compliance / legal / DOT topics say "not legal advice — verify the specifics."
+ACTIONS & GATES (what you may do):
+- APPROVAL GATE: anything outward or irreversible — email/text to a customer, invoice/QBO write, a binding submission, deleting/overwriting — is produced as a DRAFT for Clifton's go-ahead. Never auto-send.
+- SCHEDULING BOUNDARY: never schedule work, jobs, follow-ups, or reminders on a Sunday (family time; the Spray Window forces Sunday to NO-GO).
+- CREDENTIALS: licensed/certified operators where required; public federal IDs only (UEI / legal name) — never expose secrets, PINs, or private keys.
+ONE GATE: these two families are a single gate — a technical or job decision only becomes an outward action after it clears BOTH the claims rules AND the action gate. Reason about the work AND the guardrails in the same step; never let a technical answer skip the gate.`;
+
 const BRAIN_BLOCKS = {
-  BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
+  BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
   STEM_FOUNDATIONS, HVAC_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
   PLATFORM, ACTIONS, EXPERT_LIBRARY,
@@ -1228,10 +1246,10 @@ const BRAIN_BLOCKS = {
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
-const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
+const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
 function assembleBrainBlocks(userText) {
   const all = () => BRAIN_ORDER.map((k) => BRAIN_BLOCKS[k]).join("\n\n");
   try {
@@ -1440,6 +1458,100 @@ const WEB_TOOL_BASE = { type: "web_search_20260209", name: "web_search" };
 function webTool(mindKey) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
   return { ...WEB_TOOL_BASE, max_uses: spec.webUses || 2 };
+}
+
+// ---- FIELD-OS DATA TOOLBELT (v2.0 hallway: the brain's sense of touch, in-app) ----
+// The same 9 READ-ONLY tools the MCP server exposes (api/mcp.js) are handed to the worker
+// minds as Anthropic custom tools, so chat answers "this customer / this bid / this deadline"
+// questions from the REAL shared store instead of doctrine-only. One tool schema, two
+// consumers (MCP server + in-app brain) — no duplicate logic. Nothing here writes.
+let FIELD_TOOLS = {};
+try { FIELD_TOOLS = require("./mcp.js").TOOLS || {}; } catch (e) { FIELD_TOOLS = {}; }
+
+// HubSpot lookup folded INTO the chat (graph finding 2026-07-24: "the assistant and the
+// rolodex do not talk"). READ-ONLY search against the CRM. Uses the secure env token only —
+// if HUBSPOT_TOKEN isn't set in Vercel, the tool answers honestly instead of failing.
+const HS_OBJECTS = {
+  contacts: ["firstname", "lastname", "email", "phone", "company", "city", "state"],
+  deals: ["dealname", "amount", "dealstage", "closedate", "pipeline"],
+  companies: ["name", "domain", "phone", "city", "state"],
+  tickets: ["subject", "content", "hs_pipeline_stage"],
+};
+async function hubspotLookupTool(a) {
+  const token = (process.env.HUBSPOT_TOKEN && String(process.env.HUBSPOT_TOKEN).trim()) || "";
+  if (!token) return { configured: false, hint: "HUBSPOT_TOKEN not set in Vercel env — owner can add it (Settings → Environment Variables) to give chat CRM eyes. The manual HubSpot Lookup card in CRM still works with the in-app token." };
+  const object = HS_OBJECTS[a.object] ? a.object : "contacts";
+  const body = { limit: 8, properties: HS_OBJECTS[object], sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }] };
+  if (a.query && String(a.query).trim()) body.query = String(a.query).trim().slice(0, 100);
+  try {
+    const r = await fetch("https://api.hubapi.com/crm/v3/objects/" + object + "/search", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return { ok: false, error: "hubspot_" + r.status };
+    const d = await r.json();
+    const rows = (d.results || []).map((x) => ({ id: x.id, ...(x.properties || {}) }));
+    return { ok: true, object, count: rows.length, records: rows };
+  } catch (e) { return { ok: false, error: "hubspot_unreachable" }; }
+}
+
+// Anthropic-format tool definitions: the 9 field-os reads + the CRM lookup.
+const FIELD_TOOL_DEFS = Object.keys(FIELD_TOOLS).map((name) => ({
+  name,
+  description: FIELD_TOOLS[name].description,
+  input_schema: FIELD_TOOLS[name].inputSchema || { type: "object", properties: {} },
+})).concat([{
+  name: "hubspot_lookup",
+  description: "READ-ONLY HubSpot CRM search. object: contacts|deals|companies|tickets. query: name/email/keyword (omit for most recent). Use for customer history, deal stages, contact info.",
+  input_schema: { type: "object", properties: { object: { type: "string", description: "contacts|deals|companies|tickets (default contacts)" }, query: { type: "string", description: "Search text; omit for most recent" } } },
+}]);
+
+const TOOLBELT_NOTE = `
+
+LIVE DATA TOOLBELT (v2.0): you now have READ-ONLY tools into the field-os shared store
+(leads, estimates + days_open, jobs, job costs, inventory, reviews, schedule) and a
+read-only hubspot_lookup into the CRM. RULES:
+- For any question about a specific customer, lead, bid, deadline, schedule, stock level,
+  or review status: CALL THE TOOL. Never guess a number a tool can answer; tool data beats
+  the (possibly stale) context snapshot above.
+- {"not_tracked_yet":true} = the collection is real but empty — say so honestly, it's a
+  capture gap, not zero business. {"configured":false} = backbone/env not attached — say so.
+- Tools never write. To change a record, tell the owner what to change and where.
+- Don't call tools for doctrine/pricing/how-to questions you can already answer.`;
+
+// callClaude + custom-tool execution loop. Server tools (web search) resume via pause_turn
+// inside callClaude; THIS loop handles stop_reason "tool_use" for the field-os toolbelt:
+// run the tool locally (same process — KV reads, ~fast), hand back tool_result, continue.
+async function callClaudeTools(key, payload, meter) {
+  let data = await callClaude(key, payload, meter);
+  for (let round = 0; round < 5 && data && data.stop_reason === "tool_use"; round++) {
+    const calls = (data.content || []).filter((b) => b.type === "tool_use");
+    if (!calls.length) break;
+    const results = [];
+    for (const c of calls) {
+      let out;
+      try {
+        if (c.name === "hubspot_lookup") out = await hubspotLookupTool(c.input || {});
+        else if (FIELD_TOOLS[c.name]) out = await FIELD_TOOLS[c.name].run(c.input || {});
+        else out = { ok: false, error: "unknown_tool" };
+      } catch (e) { out = { ok: false, error: String((e && e.message) || e).slice(0, 160) }; }
+      let text = "";
+      try { text = JSON.stringify(out); } catch (e) { text = String(out); }
+      if (text.length > 7000) text = text.slice(0, 7000) + `…(truncated — ask with a filter/limit for more)`;
+      results.push({ type: "tool_result", tool_use_id: c.id, content: text });
+      try { console.log("[klyfton] tool " + c.name + " → " + text.length + " chars"); } catch (e) {}
+    }
+    payload = {
+      ...payload,
+      messages: payload.messages.concat([
+        { role: "assistant", content: data.content },
+        { role: "user", content: results },
+      ]),
+    };
+    data = await callClaude(key, payload, meter);
+  }
+  return data;
 }
 
 function textFrom(content) {
@@ -1715,14 +1827,14 @@ If unsure, {"minds":["general"],"complexity":"simple","confidence":0.3,"intents"
 //       detection isn't distorted by the hint prefix.
 async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
-  const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}`;
+  const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}${TOOLBELT_NOTE}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
   const focusedText = (hint && typeof hint === "string" && hint.trim())
     ? `[FOCUS: ${hint.trim()}]\n${userText}` : userText;
   messages.push({ role: "user", content: buildUserContent(focusedText, attachments) });
-  const data = await callClaude(key, {
+  const data = await callClaudeTools(key, {
     model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
     // and fast (the synth writes the full final answer). Big worker budgets + adaptive
@@ -1732,7 +1844,8 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
     max_tokens: 4000,
     system,
     thinking: { type: "adaptive" },
-    tools: [webTool(mindKey)],
+    // Web search (per-mind) + the field-os data toolbelt (READ-ONLY) + CRM lookup.
+    tools: [webTool(mindKey)].concat(FIELD_TOOL_DEFS),
     messages,
   }, meter);
   return { mind: spec.name, text: textFrom(data.content), model: data.model || modelOverride || WORKER_MODEL };

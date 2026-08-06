@@ -7,6 +7,30 @@ then a ranked "add to the build" list. Legend: ✓ have · ◐ partial · ✗ ga
 **Grounding:** competitor abilities from live web search; Klyfton status read from `api/*.js`.
 No fabricated features or prices. Sources at the bottom.
 
+## ⚠️ STATUS RECONCILIATION (2026-08-05) — several July gaps are now BUILT
+The matrix below is the **July snapshot**; since then these shipped (verified in code / the test gate),
+so treat their ✗/◐ as **✓** now:
+- **Vector / semantic RAG** → ✓ `api/memory.js` (pgvector, 1536-dim, `match_memory` RPC; embeddings live).
+- **Self-healing retry** → ✓ `api/klyfton.js` (bounded worker re-run on thrown error / empty answer).
+- **Missed-call auto-recovery** → ✓ `api/missed-call.js` (tested).
+- **Estimate-from-photo (stitched)** → ✓ `api/photo-estimate.js` (measure→foam-calc, draft only).
+- **Eval / regression harness** → ✓ `tests/calc-invariants.js` + the 93-suite gate.
+- **Guardrails / PII redaction gate** → ✓ `api/redact.js` (tested).
+- **Cross-session learning (coding lessons)** → ✓ `api/lessons.js` (own Supabase pgvector — roadmap "B").
+- **Live-data grounding** → ✓ `api/brain-context.js` (real pipeline into the answer; HubSpot live).
+
+**CORRECTION (2026-08-05, owner):** inbound **phone calls are handled by Hearth AI** (Clifton's existing
+service) — so inbound voice / call-booking is **NOT an MGSF gap**, and the earlier "Twilio + STT is the #1
+gap / #1 pick" recommendation is **withdrawn**. Twilio would only be for *programmatic SMS text-back* if
+wanted — separate from phone calls, and optional.
+
+**Still genuinely open** (real remaining wants): **critic-*quality*-driven re-run** (today's retry is
+failure/empty only), **mesh** so work chains estimate→proposal→schedule→invoice (`gearbox.js` seed —
+now wired estimate→gated proposal), **proactive** briefs/alerts (`axle.js` seed; largely met by the new
+"Alert Nerve"), agent-to-agent delegation, browser use, image generation. The **keys/subscriptions** it
+wants (ALERTS_WEBHOOK_URL, QBO, SAM, Maps, budget cap; Twilio only if you want SMS text-back) are
+owner-set — not buildable in code.
+
 ## Capability matrix
 
 ### Perception / input
@@ -15,7 +39,7 @@ No fabricated features or prices. Sources at the bottom.
 | Text chat | ✓ | Queen→worker→critic hive |
 | Vision / photo understanding | ◐ | workers accept image+PDF attachments (`buildUserContent`); no dedicated pipeline |
 | Document OCR → structured data | ◐ | PDFs read as attachments; no structured extraction (field: 90%+ OCR accuracy) |
-| Voice **input** / transcription (STT) | ✗ | biggest gap — no telephony/STT |
+| Voice **input** / transcription (STT) | n/a | phone handled by **Hearth AI** (external); no in-app telephony/STT needed |
 | Multilingual | ◐ | model-native; not configured (field: 70+ languages in voice) |
 
 ### Reasoning / orchestration
@@ -49,7 +73,7 @@ No fabricated features or prices. Sources at the bottom.
 | Recurring-revenue (roof maintenance) | ✓ | `api/roof-maintenance.js` |
 | Image generation | ✗ | none in core (field: QuoteIQ, Grok) |
 | Browser / computer use | ✗ | none (field: Lindy, ChatGPT Operator) |
-| Inbound **voice calls** / booking | ✗ | **top gap** — where contractors lose the most leads |
+| Inbound **voice calls** / booking | ✓ (external) | handled by **Hearth AI** (owner's phone service) — not built into Klyfton, and not an MGSF gap |
 
 ### Trust / ops
 | Ability | Klyfton | Notes |
@@ -78,7 +102,7 @@ No fabricated features or prices. Sources at the bottom.
 | 2 | **Estimate-from-photo pipeline** (photo → measure → foam/coating calc → draft estimate) | `photo.js` + `measure.js` + `foam-calc`/`coating-calc` | Med | ✅ BUILT — `api/photo-estimate.js` |
 | 3 | **Unsold-estimate re-engagement** (reheat quotes that didn't close) | extend `follow-up.js` to estimates | Low–Med | ✅ BUILT — `api/estimate-followup.js` |
 | 4 | **Self-healing critic retry** (re-run worker on empty/error, bounded) | the existing critic in `klyfton.js` | Med | ✅ BUILT — `runMindResilient` |
-| 5 | **Inbound voice agent** (answer/qualify/book after-hours) | `tts.js` + `notify.js` + Bland/Twilio + STT | **Med–High** | next up — needs telephony vendor + budget |
+| 5 | ~~**Inbound voice agent**~~ | — | **DROPPED (2026-08-05)** — owner uses **Hearth AI** for phone calls; not an MGSF build |
 | 6 | **PII redaction / guardrail gate** before LLM calls | new pre-processor in `klyfton.js` | **Low–Med** | matches "never leak secrets"; cheap insurance |
 | 7 | **Vector RAG over the brain + CSVs** (semantic retrieval, not just notes) | Supabase `pgvector` + `mcp.js` | **Med** | adaptive retrieval; better grounding at scale |
 | 8 | **Eval/regression harness** (test estimator vs locked doctrine before deploy) | node test rig like MGSF's gate | **Med** | Relevance-style; protects pricing correctness |
@@ -88,8 +112,8 @@ No fabricated features or prices. Sources at the bottom.
 ## Recommendation
 Start with **#1 + #3** (missed-call recovery + unsold-estimate re-engagement) — **low effort because the
 webhook + follow-up plumbing already exists**, and they directly recover revenue. Then **#2
-estimate-from-photo** (biggest capability leap, stitches parts we already have). **#5 voice** is the
-flashiest but needs a telephony vendor + budget — schedule it after the cheap wins land.
+estimate-from-photo** (biggest capability leap, stitches parts we already have). _(#5 inbound voice was
+dropped 2026-08-05 — owner uses Hearth AI for phone calls, so Klyfton doesn't build telephony.)_
 
 Everything stays draft-for-approval (doctrine), numbers defer to mgsf-core, nothing merges to main
 without your OK.

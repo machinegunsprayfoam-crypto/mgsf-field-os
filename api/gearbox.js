@@ -20,6 +20,24 @@ const SB_KEY = _kvEnv(/SUPABASE_SERVICE_ROLE_KEY$/i) || _kvEnv(/SERVICE_ROLE_KEY
 const SB_ON = !!(SB_URL && SB_KEY);
 
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 200); }
+
+// Financing CTA — owner's Hearth partner link. Env override (HEARTH_FINANCING_URL) wins; otherwise
+// the standing short link. It's a PUBLIC marketing link, not a secret, so a default is fine. Used
+// only where a real price exists (a lump sum to spread out). No fabricated rates, no guaranteed
+// savings — doctrine-clean: it points to Hearth's own prequalification, we quote no numbers.
+const FINANCING_URL = _kvEnv(/HEARTH_FINANCING_URL$/i) || "https://l.gethearth.com/v1/r/wUBj57Wj";
+
+// Pure: build the gated proposal email (subject/body/to) from an estimate payload. Testable without
+// the arms. Financing line appears only when a total/amount is present.
+function proposalEmail(payload) {
+  const p = payload || {};
+  const service = clean(p.service, 60) || "your job";
+  const amount = p.total || p.amount;
+  const priceBit = amount ? " ($" + amount + ")" : "";
+  let body = "Your proposal for " + service + priceBit + " is ready — we'll send the full details for your review.";
+  if (amount) body += " Prefer to spread it out? See monthly-payment options with our financing partner Hearth: " + FINANCING_URL;
+  return { to: clean(p.email, 120), subject: "Your quote from Machine Gun Spray Foam & Concrete Lifting", body: body };
+}
 function eid(name, key) { return crypto.createHash("sha1").update(clean(name) + "|" + clean(key)).digest("hex"); }
 function evt(name, key, payload, source) {
   return { name: clean(name, 60), key: clean(key, 120), payload: payload && typeof payload === "object" ? payload : {}, source: clean(source, 60) || "gearbox", at: new Date().toISOString() };
@@ -51,6 +69,19 @@ const HANDLERS = {
     const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "review request" }, { approved: ok === true });
     return { note: ok ? "Review request engaged (owner side)" : "Review request drafted — owner approval to send", draft: r }; } }],
   "roofmaint.enroll": [{ drive: "ai", fn: async () => ({ note: "enrolled on the roof-maintenance cycle (internal)" }) }],
+  // MONEY-LOOP closer: a verified Stripe payment (api/stripe-webhook.js) turns this gear, which
+  // records the win and cascades into job.completed → review request (+ roof-maint). AI side —
+  // internal/reversible; the review SMS downstream is still an owner-gated draft. Closes
+  // lead → … → paid → review. The payment already happened at Stripe; this never moves money.
+  "payment.received": [{ drive: "ai", fn: async (e) => { const p = e.payload || {};
+    return { note: "payment recorded — job.completed gear engaged (review next)", emits: [evt("job.completed", e.key, p, "gearbox:payment.received")] }; } }],
+  // TECHNICAL → ACTION hallway (closes the graph's #1 structural gap: Spray-System → Action-Approval).
+  // A freshly-computed estimate is a technical output; this gear routes it into a GATED proposal draft
+  // via the arms (send_email), so the brain's job reasoning flows into a draftable outward action
+  // instead of dead-ending. Leaf owner gear (no cascade) — approval stays per-action, like the others.
+  "estimate.ready": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
+    const draft = await arms.execute(Object.assign({ type: "send_email" }, proposalEmail(p)), { approved: ok === true });
+    return { note: ok ? "Proposal send engaged (owner side)" : "Proposal drafted — owner approval to send", draft }; } }],
   "estimate.sent": [{ drive: "ai", fn: async (e) => ({ note: "follow-up scheduled (2/7/21-day)", emits: [evt("followup.scheduled", e.key, e.payload || {}, "gearbox:estimate.sent")] }) }],
   "followup.scheduled": [{ drive: "owner", fn: async (e, ok) => { const p = e.payload || {};
     const r = await arms.execute({ type: "send_sms", to: p.phone || "", body: "reheat nudge" }, { approved: ok === true });
@@ -186,3 +217,5 @@ module.exports.turn = turn;
 module.exports.dispatch = dispatch;
 module.exports.HANDLERS = HANDLERS;
 module.exports._evt = evt;
+module.exports.proposalEmail = proposalEmail;
+module.exports.FINANCING_URL = FINANCING_URL;

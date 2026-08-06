@@ -1,18 +1,16 @@
-﻿# Klyfton AI × Silvr Integration
+# Klyfton AI — MGSF Field OS (working guide for Claude)
 
-> **⚠️ STATUS CORRECTION (2026-07-26) — the "Silvr" layer below was NEVER BUILT.**
-> There is no `api/silvr.js`, no `SilvrWorker`, and no `SILVR_*` env vars in the live system —
-> per [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) (the authoritative source of truth), Silvr / "v2.0"
-> is **dead scaffolding that never existed**. Treat everything in this file that references Silvr —
-> the SilvrWorker examples, the "Silvr-Enabled" agent tasks, the `SILVR_API_KEY`/`SILVR_ENDPOINT`
-> env vars, and the Silvr deployment steps — as **historical/aspirational only; do NOT act on it.**
-> The intent Silvr described was since rebuilt in plain `fetch`: arms = `api/act.js`, parallelism =
-> the hive in `api/klyfton.js`, persistence = `agent_runs`, GovCon = `api/samgov.js`.
-> **What below IS real and current:** the ⚡ Session-Start Protocol, and the "Existing Stack"
-> (`public/index.html`, `api/klyfton.js`, Supabase, Vercel, HubSpot). For live build state, always
-> defer to `PROJECT_MEMORY.md`.
+Klyfton AI is the multi-agent command system for **Machine Gun Spray Foam & Concrete Lifting, LLC**
+(Glendive, MT — serving MT/ND/SD/WY). It is a single-file PWA over a set of Vercel serverless
+functions, with a Claude "hive" (Queen → worker → critic) as the brain.
 
-Klyfton AI is a multi-agent command system built on Claude AI. This document describes how Silvr (another Claude-powered agent system) integrates as a secondary intelligence layer.
+> **Note on history:** earlier versions of this file described a "Silvr" / "v2.0" integration layer
+> (a `SilvrWorker`, `SILVR_*` env vars, an `api/silvr.js`). **None of that was ever built** — per
+> [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) (the authoritative source of truth) it was dead scaffolding.
+> The capabilities it *described* were since rebuilt in plain `fetch`: **arms** = `api/act.js`,
+> **parallelism** = the hive in `api/klyfton.js`, **persistence** = Supabase (`agent_runs` etc.),
+> **GovCon** = `api/samgov.js`. This file now documents only what actually exists. For live build
+> state, always defer to `PROJECT_MEMORY.md`.
 
 ## ⚡ Session-Start Protocol (do this FIRST, every session)
 
@@ -41,177 +39,61 @@ session, before building or advising:
 
 Skip only if the user explicitly says to skip the Drive check.
 
-## Architecture
+## Architecture (what actually exists)
 
-### Existing Stack (Pre-Silvr)
-- **Frontend**: public/index.html (11,207 lines, single-file app)
-- **Backend**: api/klyfton.js (Queen router + worker + critic pattern)
-- **Database**: Supabase (db/ folder contains schema + structured brain)
-- **Hosting**: Vercel (auto-deploys from GitHub)
-- **CRM**: HubSpot integration for lead/job data
-- **Intelligence**: Claude AI via Anthropic API (already in api/klyfton.js)
+- **Frontend**: `public/index.html` — single-file PWA (~13k lines). All UI/modules live here; it
+  talks to the backend only through `/api/*` endpoints. `public/portal.html` is the customer-facing
+  token-gated portal.
+- **Backend**: Vercel serverless functions in `api/*.js` (plain `fetch`, no `package.json`/npm;
+  `vercel.json` uses `echo skip-install`). Each module = a **pure core** (keyless, deterministic,
+  no `Date.now`) + a **gated live layer** (inert without its env key, never fabricates/throws) +
+  approval-gated outward actions.
+- **The hive**: `api/klyfton.js` — Queen router → worker → critic over the Anthropic API. Brain
+  assembly is a deterministic `BRAIN_ORDER` of blocks; GraphRAG retrieval in
+  `api/brain-graph-retrieve.js` over `api/brain-graph-data.js`.
+- **Arms (outward actions)**: `api/act.js` — every outward action is a draft/suggestion behind an
+  approval gate; nothing auto-sends. Fired over an outbound webhook (`ALERTS_WEBHOOK_URL`) /
+  Zapier bus.
+- **Data spine**: Supabase (`db/` holds schema + seeds; run order in `db/SETUP.md`) + Vercel KV.
+- **Self-map**: `GET /api/boot` computes the live component/capability map FROM THE REAL ENV at
+  call time (never stale). `GET /api/health` is the smoke check. `api/cmdb.js` defines which env
+  var arms each capability.
+- **Access gate**: `api/guard.js` — every data endpoint is dormant until `CREW_CODE` is set; the
+  crew enters the code once in the app.
+- **Hosting**: Vercel (auto-deploys from GitHub `main`). **CRM**: HubSpot. **Intelligence**:
+  Claude via `ANTHROPIC_API_KEY`.
 
-### New Integration (Silvr Layer)
-- **New Module**: api/silvr.js (SilvrWorker class)
-- **Bridge**: Silvr executes tasks on behalf of Klyfton agents
-- **Capabilities**: Email, scheduling, web search, image generation, file operations, memory, system commands
-- **Deployment**: Committed to GitHub, auto-deploys via Vercel CI/CD
+## The test gate (run before every commit — must be green)
 
-## How It Works
+```
+node tests/run-all.js        # every tests/*.js must be registered in the SUITES array
+node -c api/<file>.js         # verify any changed function parses
+```
 
-### 1. Klyfton Agent calls Silvr
-`javascript
-const SilvrWorker = require('./silvr');
-const silvr = new SilvrWorker(process.env.SILVR_API_KEY);
+Keep the gate green. Add a `tests/<x>.js` for any new pure logic and register it in
+`tests/run-all.js` (a meta-suite enforces the 1:1 mapping).
 
-// Example: Lead Intake Agent sends welcome email via Silvr
-await silvr.sendEmail(
-  'lead@company.com',
-  'Welcome to Machine Gun Spray Foam',
-  'We received your inquiry and will follow up shortly.'
-);
-`
+## Go-live / configuration
 
-### 2. Silvr Executes the Task
-Silvr receives the task request and uses its native tools:
-- **email_send** / **email_draft** — Send or draft emails from user's Gmail/Outlook
-- **web_search** — Real-time information lookup
-- **generate_image** — Create before/after mockups, ad creative
-- **create_schedule** — Recurring tasks (daily briefs, weekly reports)
-- **browser_action** — Automate web dashboards (Meta Ads, Shopify, HubSpot, etc.)
-- **run_command** — Execute scripts, manage files, deploy code
-- **add_memory** — Save facts for long-term recall
-- **search_memory** — Retrieve saved context
+Subsystems are **inert until their env var is set in Vercel** (Production scope) and the project is
+redeployed. `.env.example` lists every variable (no secrets — real values go in Vercel only).
+`GET /api/boot` reports which capabilities are live and names the single biggest unlock. Current
+standing unlocks (owner-set): `CREW_CODE` (access gate) and `ALERTS_WEBHOOK_URL` (arms + all
+automation crons — the biggest single unlock).
 
-### 3. Result Returns to Klyfton
-Silvr returns success/failure + metadata back to the calling agent.
+## Owner communication profile (how Clifton wants AI to work)
 
-## 10 Klyfton Agents (Now Silvr-Enabled)
+Clifton Behner — USMC combat veteran, owner of MGSF. Match this style in every reply and in the
+app's AI features:
+- **Blunt, numbers-first, decision-ready.** Lead with a TL;DR + the top numbers driving the choice.
+- **Give 2–3 options** with cost / time / risk, then **name the pick and why**.
+- **Ask ≤2 clarifying questions**, otherwise state 1–2 assumptions and proceed. Don't stall a decision.
+- Provide **checklists, timelines, KPIs/ROI, go/no-go criteria**. Keep to one screen when possible.
+- **Never fabricate** numbers/claims; never guarantee savings; never claim mold elimination.
+  Doctrine (`mgsf-core`) wins over any conflicting number in code.
+- **Boundaries:** never schedule work/meetings/reminders on **Sundays**; protect family time.
+  Brand voice: professional, veteran-owned, direct, confident, practical, blue-collar.
 
-### 1. Lead Intake Specialist
-- Parses form submissions
-- Validates location & phone
-- Scores qualification (0-100)
-- **Silvr Task**: Sync to HubSpot, send auto-followup email, schedule 2-hour callback
-
-### 2. Estimator Pro
-- Analyzes job specs
-- Calculates foam/concrete costs
-- Generates pricing
-- **Silvr Task**: Create before/after mockups, email PDF proposal, track open rates
-
-### 3. Job Scheduler
-- Creates calendar entries
-- Assigns crew by availability
-- Optimises timeline
-- **Silvr Task**: Send customer confirmations, notify field team, handle weather delays
-
-### 4. Billing Master
-- Calculates final costs
-- Generates invoices
-- Syncs to QuickBooks
-- **Silvr Task**: Email invoices, send payment reminders, generate P&L reports
-
-### 5. Zapier Orchestration Master
-- Builds multi-app workflows
-- Manages triggers & conditions
-- Tests & monitors
-- **Silvr Task**: Update workflow diagrams, log automation errors, send status alerts
-
-### 6. Code Manager
-- Monitors GitHub repos
-- Tracks deployments
-- Reviews PRs
-- **Silvr Task**: Check app uptime, trigger Vercel redeploys, patch security vulnerabilities
-
-### 7. GovCon Specialist
-- Scans SAM.gov daily
-- Identifies relevant bids
-- Generates compliance checklists
-- **Silvr Task**: Research bid requirements, draft proposals, track deadlines
-
-### 8. Marketing Strategist
-- Creates content calendar
-- Generates before/after images
-- Writes ad copy
-- **Silvr Task**: Generate hero images (Gemini), create social posts, audit SEO
-
-### 9. Email Automation Agent
-- Manages customer outreach sequences
-- Tracks delivery & engagement
-- Handles compliance
-- **Silvr Task**: Draft/send welcome emails, estimate follow-ups, review reminders, field team alerts
-
-### 10. Executive Dashboard
-- Real-time P&L tracking
-- KPI monitoring
-- Pipeline visibility
-- **Silvr Task**: Pull daily revenue from accounting, generate margin alerts, send briefings
-
-## Environment Variables Required
-
-Add these to your **Vercel Project Settings** → **Environment Variables**:
-
-`
-SILVR_API_KEY=<your-silvr-auth-token>
-SILVR_ENDPOINT=https://silvr.internal:3000
-ANTHROPIC_API_KEY=<your-existing-claude-key>
-SUPABASE_URL=<your-supabase-url>
-SUPABASE_KEY=<your-supabase-key>
-HUBSPOT_API_KEY=<your-hubspot-key>
-`
-
-## Integration Points in Code
-
-### In api/klyfton.js (Queen Router)
-`javascript
-const SilvrWorker = require('./silvr');
-const silvr = new SilvrWorker(process.env.SILVR_API_KEY);
-
-// When a worker needs to execute an external task:
-const result = await silvr.execute({
-  action: 'send_email',
-  params: { to, subject, body }
-});
-`
-
-### In public/index.html (Frontend)
-No changes needed — the frontend doesn't directly call Silvr. All communication flows through the backend.
-
-## Deployment Steps
-
-1. **Commit to GitHub**:
-   `ash
-   git add api/silvr.js CLAUDE.md
-   git commit -m "feat: Add Silvr integration layer"
-   git push origin main
-   `
-
-2. **Vercel Auto-Deploy**:
-   - GitHub webhook triggers Vercel build
-   - New /api/silvr endpoint becomes available
-   - Deployment completes in ~60 seconds
-
-3. **Set Environment Variables**:
-   - Go to Vercel Dashboard → mgsf-field-os Project
-   - Settings → Environment Variables
-   - Add SILVR_API_KEY and SILVR_ENDPOINT
-
-4. **Test the Integration**:
-   - Use Klyfton AI dashboard → INTEL module
-   - Trigger a test task (e.g. "Send welcome email to test@example.com")
-   - Check logs in Vercel → Functions
-
-## Monitoring & Logs
-
-- **Vercel Logs**: Dashboard → Logs → Filter by /api/silvr
-- **Klyfton AI**: INTEL module shows all Silvr task execution history
-- **GitHub Actions**: .github/workflows/deploy.yml tracks CI/CD pipeline
-
-## Future Enhancements
-
-- [ ] Direct Klyfton AI → Silvr memory sharing (context pooling)
-- [ ] Silvr-triggered alerts back to Klyfton dashboard
-- [ ] Real-time field team notifications via Silvr SMS
-- [ ] Automated SEO audits + GBP updates
-- [ ] AI-powered crew scheduling optimization
+## Cross-references
+- [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) — authoritative build state · [`db/SETUP.md`](db/SETUP.md) — go-live DB checklist
+- `GET /api/boot` — live self-map · `tests/run-all.js` — the gate
