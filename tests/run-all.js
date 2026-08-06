@@ -18,6 +18,7 @@ const SUITES = [
   ["hearth-lead", "Hearth call-notification → structured CRM lead"],
   ["stripe-webhook", "Stripe payment webhook → money-loop closer"],
   ["spf-takeoff", "multi-area SPF takeoff engine: BF=SF×inches, R-target→lift, condition/scarf waste, price@GM×state"],
+  ["yield-variance", "bid→actual feedback loop: yield BF/set, productivity BF/hr, margin actual-vs-bid, overrun flags — never fabricates unlogged actuals"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
