@@ -1,0 +1,274 @@
+/* =============================================================================
+   ESTIMATOR-WIN11.CSS — Windows 11 Fluent polish layer for the Estimator
+
+   Companion to public/win11.css, which skins the Klyfton shell (index.html).
+   The Estimator is a self-contained document loaded into the shell through an
+   iframe (#estFrame), so the shell's stylesheet cannot reach it — it needs its
+   own layer to match.
+
+   Scope on purpose: this ports Fluent GEOMETRY (radii, elevation, motion,
+   field/scrollbar treatment) and leaves the USMC scarlet + gold palette alone.
+   The Estimator is the customer-facing surface and those colors are the brand.
+
+   Loaded last; purely additive. Remove the <link> in estimator.html to revert.
+   ============================================================================= */
+
+/* ── 1. Design tokens — same scale as win11.css so the two stay in step ────── */
+:root {
+  --f-el1: 0 1px 2px rgba(0,0,0,.28), 0 0 1px rgba(0,0,0,.14);
+  --f-el2: 0 2px 8px rgba(0,0,0,.32), 0 0 2px rgba(0,0,0,.18);
+  --f-el3: 0 8px 28px rgba(0,0,0,.48), 0 2px 8px rgba(0,0,0,.24);
+  --f-el4: 0 20px 60px rgba(0,0,0,.56), 0 4px 14px rgba(0,0,0,.32);
+
+  --f-r4:  4px;
+  --f-r8:  8px;
+  --f-r12: 12px;
+  --f-r16: 16px;
+  --f-r20: 20px;
+  --f-rpill: 9999px;
+
+  --f-ease:     cubic-bezier(.25,.46,.45,.94);
+  --f-ease-out: cubic-bezier(.0,0,.2,1);
+  --f-spring:   cubic-bezier(.34,1.56,.64,1);
+
+  /* Hairline stroke that reads as Fluent's stroke layer over the warm surfaces */
+  --f-stroke:      rgba(255,255,255,.06);
+  --f-stroke-soft: rgba(255,255,255,.035);
+}
+
+/* ── 2. Typography refinements ────────────────────────────────────────────── */
+html, body {
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── 3. Top bar — Win11 title-bar feel ────────────────────────────────────── */
+/* Keeps the scarlet identity line, drops the heavy 2px slab for a blurred
+   translucent bar that matches the shell's #topbar treatment. */
+.top {
+  background: rgba(23, 17, 12, .82);
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.06);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.06);
+  border-bottom: 1px solid var(--scarlet);
+  box-shadow: 0 1px 0 rgba(255,255,255,.04), var(--f-el2);
+  padding: 10px 16px;
+  gap: 10px;
+}
+
+/* ── 4. Mode switcher — Win11 segmented control ───────────────────────────── */
+.modes {
+  border-radius: var(--f-r8);
+  padding: 3px;
+  border: 1px solid var(--f-stroke);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.28);
+}
+.mbtn {
+  border-radius: var(--f-r4);
+  transition: background .16s var(--f-ease), color .16s var(--f-ease);
+}
+.mbtn:hover:not(.active) { background: rgba(255,255,255,.05); color: var(--fg); }
+.mbtn.active { box-shadow: var(--f-el1); }
+
+/* ── 5. Cards — Fluent elevated surface ───────────────────────────────────── */
+.card {
+  border-radius: var(--f-r12);
+  border-color: var(--f-stroke);
+  box-shadow: var(--f-el1), 0 1px 0 rgba(255,255,255,.02) inset;
+  transition: box-shadow .2s var(--f-ease), border-color .2s var(--f-ease);
+}
+.card:hover { box-shadow: var(--f-el2), 0 1px 0 rgba(255,255,255,.02) inset; }
+
+.seccard {
+  border-radius: var(--f-r8);
+  border-color: var(--f-stroke-soft);
+  box-shadow: var(--f-el1);
+}
+
+/* Bid list items — pressable Fluent tiles */
+.bidi {
+  border-radius: var(--f-r8);
+  border-color: var(--f-stroke);
+  box-shadow: var(--f-el1);
+  transition: transform .14s var(--f-ease), box-shadow .18s var(--f-ease),
+              border-color .18s var(--f-ease);
+}
+.bidi:hover { box-shadow: var(--f-el2); border-color: rgba(255,255,255,.12); }
+.bidi:active { transform: scale(.995); }
+.bidi.sel { box-shadow: var(--f-el2); }
+
+/* ── 6. KPI tiles ─────────────────────────────────────────────────────────── */
+.kpis { gap: 10px; }
+.kpi {
+  border-radius: var(--f-r8);
+  border-color: var(--f-stroke);
+  box-shadow: var(--f-el1);
+  transition: box-shadow .2s var(--f-ease), transform .18s var(--f-ease);
+}
+.kpi:hover { box-shadow: var(--f-el2); transform: translateY(-1px); }
+.kpi-v { font-variant-numeric: tabular-nums; }
+
+/* ── 7. Buttons — Fluent filled + depth ───────────────────────────────────── */
+.btn {
+  border-radius: var(--f-r8);
+  box-shadow: var(--f-el1);
+  transition: filter .14s var(--f-ease), box-shadow .16s var(--f-ease),
+              transform .1s var(--f-ease);
+}
+.btn:hover  { filter: brightness(1.08); box-shadow: var(--f-el2); }
+.btn:active { transform: scale(.975); box-shadow: var(--f-el1); filter: brightness(.96); }
+.btn:focus-visible { outline: 2px solid var(--goldHi); outline-offset: 2px; }
+
+/* Secondary/outline button picks up the Fluent stroke */
+.btn-s { border-color: var(--f-stroke); }
+.btn-s:hover { background: rgba(255,255,255,.05); }
+
+/* Small destructive "x" button */
+.x {
+  border-radius: var(--f-r4);
+  border-color: var(--f-stroke);
+  transition: background .14s var(--f-ease), border-color .14s var(--f-ease);
+}
+.x:hover { background: rgba(239,68,68,.14); border-color: var(--red); }
+
+/* ── 8. Inputs — Win11 field style ────────────────────────────────────────── */
+/* The Win11 signature: a resting hairline that thickens into an accent
+   underline on focus, rather than the whole border changing color. */
+input, select, textarea {
+  border-radius: var(--f-r4);
+  border-color: var(--f-stroke);
+  border-bottom-color: rgba(255,255,255,.14);
+  box-shadow: var(--f-el1);
+  transition: border-color .14s var(--f-ease), box-shadow .14s var(--f-ease),
+              background .14s var(--f-ease);
+}
+input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) {
+  border-bottom-color: rgba(255,255,255,.22);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--f-stroke);
+  border-bottom: 2px solid var(--gold);
+  /* keep the text baseline from jumping when the underline thickens */
+  padding-bottom: 8px;
+  box-shadow: var(--f-el2);
+}
+.cons input:focus, .adrow input:focus, .adrow select:focus,
+.secgrid input:focus, .secgrid select:focus { padding-bottom: 5px; }
+
+input[type=checkbox] { accent-color: var(--scarlet); border-radius: var(--f-r4); }
+
+/* ── 9. PIN overlay — Fluent keypad ───────────────────────────────────────── */
+.pind {
+  border-radius: var(--f-r12);
+  border: 1px solid var(--f-stroke);
+  box-shadow: var(--f-el2);
+  font-variant-numeric: tabular-nums;
+}
+.pad { gap: 12px; }
+.key {
+  border-radius: var(--f-r8);
+  border: 1px solid var(--f-stroke);
+  box-shadow: var(--f-el1);
+  transition: background .12s var(--f-ease), transform .1s var(--f-spring),
+              box-shadow .12s var(--f-ease);
+}
+.key:hover  { background: rgba(255,255,255,.07); box-shadow: var(--f-el2); }
+.key:active { transform: scale(.94); }
+.ubtn {
+  border-radius: var(--f-r8);
+  border-width: 1px;
+  box-shadow: var(--f-el1);
+  transition: background .14s var(--f-ease), border-color .14s var(--f-ease);
+}
+.ubtn:hover:not(.active) { background: rgba(255,255,255,.05); }
+.crest { border-radius: var(--f-r16); }
+.crest-sm { border-radius: var(--f-r8); }
+
+/* ── 10. Tabs, service chips, crew chips — pill/pressable ─────────────────── */
+.tab {
+  border-radius: var(--f-rpill);
+  border-color: var(--f-stroke);
+  transition: background .14s var(--f-ease), border-color .14s var(--f-ease),
+              color .14s var(--f-ease);
+}
+.tab:hover:not(.active) { background: rgba(255,255,255,.05); color: var(--fg); }
+
+.svc {
+  border-radius: var(--f-rpill);
+  border-color: var(--f-stroke);
+  box-shadow: var(--f-el1);
+  transition: transform .12s var(--f-spring), background .14s var(--f-ease),
+              border-color .14s var(--f-ease), color .14s var(--f-ease);
+}
+.svc:hover:not(.active) { background: rgba(255,255,255,.05); color: var(--fg); }
+
+.crewchip {
+  box-shadow: var(--f-el1);
+  transition: background .14s var(--f-ease), transform .12s var(--f-ease);
+}
+.crewchip:active { transform: scale(.97); }
+
+.qa {
+  border-radius: var(--f-rpill);
+  border-color: var(--f-stroke);
+  transition: background .14s var(--f-ease);
+}
+.qa:hover { background: rgba(255,255,255,.06); }
+
+/* ── 11. Badges + chips — pill style ──────────────────────────────────────── */
+.badge { border-radius: var(--f-rpill); padding: 2px 9px; letter-spacing: .05em; }
+.chip  { border-radius: var(--f-rpill); }
+
+/* ── 12. List + stat rows — softer separators ─────────────────────────────── */
+.statrow, .li, .chkrow { border-bottom-color: var(--f-stroke-soft); }
+.li { transition: background .14s var(--f-ease); }
+.li:hover { background: rgba(255,255,255,.025); }
+.statrow .v, .li { font-variant-numeric: tabular-nums; }
+.price { font-variant-numeric: tabular-nums; }
+
+/* Margin bar reads as a Fluent progress track */
+.gmbar { border-radius: var(--f-rpill); box-shadow: inset 0 1px 2px rgba(0,0,0,.3); }
+.gmfill { border-radius: var(--f-rpill); transition: width .3s var(--f-ease-out); }
+
+/* ── 13. Toast — Fluent flyout ────────────────────────────────────────────── */
+.toast {
+  border-radius: var(--f-r12);
+  border-color: var(--f-stroke);
+  background: rgba(32, 24, 16, .92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: var(--f-el3);
+  transition: transform .28s var(--f-spring);
+}
+
+/* ── 14. Wide-mode toggle — match the shell's top buttons ─────────────────── */
+#estWideBtn {
+  border-radius: var(--f-r8);
+  border-color: var(--f-stroke);
+  box-shadow: var(--f-el2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: opacity .14s var(--f-ease), box-shadow .14s var(--f-ease);
+}
+
+/* ── 15. Scrollbars — Win11 thin overlay ──────────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.16);
+  border-radius: var(--f-rpill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); background-clip: content-box; }
+
+/* ── 16. Reduced-motion safety ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .card, .kpi, .bidi, .btn, .key, .svc, .crewchip, .li, .tab, .mbtn,
+  .toast, .gmfill, input, select, textarea, #estWideBtn {
+    transition: none !important;
+  }
+  .btn:active, .key:active, .svc:active, .bidi:active, .crewchip:active,
+  .kpi:hover { transform: none !important; }
+}
