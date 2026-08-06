@@ -52,6 +52,16 @@ const names = (trace) => trace.map((n) => n.event);
   const erOk = await A.turn("estimate.ready", "job-5", { customer: "Dave", email: "dave@x.com", service: "SPF roof", total: 9000 }, "unit", true);
   ok("estimate.ready approved ⇒ not blocked + forward mile", erOk.blocked === false && erOk.miles.forward >= 1);
 
+  // ---- proposalEmail: pure proposal builder + Hearth financing CTA (only when a price exists) ----
+  const propPriced = A.proposalEmail({ email: "dave@x.com", service: "SPF roof", total: 9000 });
+  ok("proposalEmail sets to + branded subject", propPriced.to === "dave@x.com" && /Machine Gun/.test(propPriced.subject));
+  ok("proposalEmail includes the service and price", propPriced.body.includes("SPF roof") && propPriced.body.includes("$9000"));
+  ok("proposalEmail with a price shows the Hearth financing CTA", propPriced.body.includes(A.FINANCING_URL) && /financing partner Hearth/i.test(propPriced.body));
+  const propNoPrice = A.proposalEmail({ email: "dave@x.com", service: "SPF roof" });
+  ok("proposalEmail WITHOUT a price omits financing (nothing to spread out)", !propNoPrice.body.includes(A.FINANCING_URL));
+  ok("proposalEmail never guarantees savings / quotes a rate", !/save \$|\d+% off|guarantee/i.test(propPriced.body));
+  ok("FINANCING_URL is a Hearth link", /gethearth\.com/.test(A.FINANCING_URL));
+
   // ---- unknown event: turns, no consumer, no crash ----
   const unknown = await A.turn("nope.nothere", "k", {}, "unit", false);
   ok("unknown event ⇒ ok, empty/handled-0, not blocked", unknown.ok === true && unknown.blocked === false);
