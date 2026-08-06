@@ -2701,6 +2701,16 @@ window.renderSystem = async function(){
 
 // ---- shared helpers for the interactive panels (additive; no app deps) ----
 window.sysEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Offline-first last-good cache — kills the "Loading…" wall on secondary remote modules. Stash the
+// last successful payload in localStorage; on reopen, render it INSTANTLY (labeled stale) while the
+// fresh fetch runs in the background, then swap. Core tools (estimator/jobs/dashboard) already run
+// off the localStorage-backed appState; this extends the same instant-open feel to the fetch-on-open
+// modules. Pure client storage — never caches gated/errored responses, bounded, silent on failure.
+window.sysCache = {
+  get(key){ try{ const r=localStorage.getItem('mgsf_cache_'+key); if(!r) return null; const o=JSON.parse(r); return (o&&o.v!==undefined)?o:null; }catch(e){ return null; } },
+  set(key,val){ try{ if(val&&!val.__err&&!val.__gated&&val.configured!==false) localStorage.setItem('mgsf_cache_'+key, JSON.stringify({v:val,at:Date.now()})); }catch(e){} },
+  ageMin(o){ return o&&o.at?Math.round((Date.now()-o.at)/60000):null; },
+};
 // The crew code the owner sets in Vercel (CREW_CODE) is entered once per device and stored in
 // localStorage('klyfton_crew_code'); send THAT on every gated call. (window.appCrewCode is never
 // assigned, so relying on it alone 401'd every system panel the moment CREW_CODE was set.)
@@ -2953,22 +2963,28 @@ function _bpiWireBridge(){ if(window._bpiBridgeWired) return; window._bpiBridgeW
 // ---- Subcontractor roster: prime-with-subs compliance readiness (Supabase-gated) ----
 async function renderSubs(){
   const b=document.getElementById('subs_body'); if(!b) return; const E=window.sysEsc;
-  b.innerHTML='<div style="opacity:.6">Loading roster…</div>';
+  // Cache-first (offline-first): paint last-good roster INSTANTLY, refresh in the background.
+  const paint=(d)=>{
+    let h='';
+    if(!d || d.configured===false){
+      h+='<div class="jsa-card" style="border-left:3px solid var(--yw)"><b>Roster storage not connected.</b> Add Supabase (see db/SETUP.md) to persist subs. Until then, collect each sub\'s required packet — signed subcontract, W-9, COI (MGSF additional insured), license, lien waivers, safety — before any sub works under MGSF as prime.</div>'+_subsForm();
+      b.innerHTML=h; return;
+    }
+    const rows=d.results||[], alerts=d.alerts||[];
+    const cnt={ready:0,expiring:0,blocked:0}; rows.forEach(r=>{ if(r.compliance) cnt[r.compliance.readiness]=(cnt[r.compliance.readiness]||0)+1; });
+    h+=`<div class="jsa-card"><b>${rows.length}</b> subs · <span style="color:var(--gr)">${cnt.ready||0} ready</span> · <span style="color:var(--yw)">${cnt.expiring||0} expiring</span> · <span style="color:var(--red)">${cnt.blocked||0} blocked</span></div>`;
+    if(alerts.length){ h+=`<div class="jsa-card" style="border-left:3px solid var(--yw)"><h4 style="margin:0 0 6px">⚠ Needs attention</h4>`+
+      alerts.map(a=>`<div style="font-size:13px;margin-bottom:4px">${_subBadge(a.readiness)} <b>${E(a.name||'')}</b> <span style="color:var(--t2)">(${E(a.trade||'')})</span> — ${a.readiness==='blocked'?('missing/expired: '+E((a.blockers||[]).join(', ')||'—')):('expiring: '+E((a.expiring||[]).map(x=>x.type+' in '+x.daysLeft+'d').join(', ')))}</div>`).join('')+`</div>`; }
+    h+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Roster</h4>`+(rows.length?rows.map(r=>{ const c=r.compliance||{};
+      return `<div style="font-size:13px;border-bottom:1px solid rgba(255,255,255,.08);padding:4px 0">${_subBadge(c.readiness)} <b>${E(r.name||'')}</b> <span style="color:var(--t2)">${E(r.trade||'')}${r.company?(' · '+E(r.company)):''}${r.state?(' · '+E(r.state)):''}</span></div>`; }).join(''):'<div style="opacity:.6">No subs yet — add one below.</div>')+`</div>`;
+    h+=_subsForm();
+    b.innerHTML=h;
+  };
+  const cached=window.sysCache.get('subs');
+  if(cached){ paint(cached.v); } else { b.innerHTML='<div style="opacity:.6">Loading roster…</div>'; }
   const d=await fetch('/api/subs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'expiring'})}).then(r=>r.json()).catch(()=>null);
-  let h='';
-  if(!d || d.configured===false){
-    h+='<div class="jsa-card" style="border-left:3px solid var(--yw)"><b>Roster storage not connected.</b> Add Supabase (see db/SETUP.md) to persist subs. Until then, collect each sub\'s required packet — signed subcontract, W-9, COI (MGSF additional insured), license, lien waivers, safety — before any sub works under MGSF as prime.</div>'+_subsForm();
-    b.innerHTML=h; return;
-  }
-  const rows=d.results||[], alerts=d.alerts||[];
-  const cnt={ready:0,expiring:0,blocked:0}; rows.forEach(r=>{ if(r.compliance) cnt[r.compliance.readiness]=(cnt[r.compliance.readiness]||0)+1; });
-  h+=`<div class="jsa-card"><b>${rows.length}</b> subs · <span style="color:var(--gr)">${cnt.ready||0} ready</span> · <span style="color:var(--yw)">${cnt.expiring||0} expiring</span> · <span style="color:var(--red)">${cnt.blocked||0} blocked</span></div>`;
-  if(alerts.length){ h+=`<div class="jsa-card" style="border-left:3px solid var(--yw)"><h4 style="margin:0 0 6px">⚠ Needs attention</h4>`+
-    alerts.map(a=>`<div style="font-size:13px;margin-bottom:4px">${_subBadge(a.readiness)} <b>${E(a.name||'')}</b> <span style="color:var(--t2)">(${E(a.trade||'')})</span> — ${a.readiness==='blocked'?('missing/expired: '+E((a.blockers||[]).join(', ')||'—')):('expiring: '+E((a.expiring||[]).map(x=>x.type+' in '+x.daysLeft+'d').join(', ')))}</div>`).join('')+`</div>`; }
-  h+=`<div class="jsa-card"><h4 style="margin:0 0 6px">Roster</h4>`+(rows.length?rows.map(r=>{ const c=r.compliance||{};
-    return `<div style="font-size:13px;border-bottom:1px solid rgba(255,255,255,.08);padding:4px 0">${_subBadge(c.readiness)} <b>${E(r.name||'')}</b> <span style="color:var(--t2)">${E(r.trade||'')}${r.company?(' · '+E(r.company)):''}${r.state?(' · '+E(r.state)):''}</span></div>`; }).join(''):'<div style="opacity:.6">No subs yet — add one below.</div>')+`</div>`;
-  h+=_subsForm();
-  b.innerHTML=h;
+  if(d){ window.sysCache.set('subs',d); paint(d); }
+  else if(!cached){ paint(null); }
 }
 function _subBadge(r){ const m={ready:['var(--gr)','READY'],expiring:['var(--yw)','EXPIRING'],blocked:['var(--red)','BLOCKED']}; const x=m[r]||['var(--t2)','?']; return `<span style="color:${x[0]};border:1px solid ${x[0]};border-radius:4px;padding:0 4px;font-size:10px">${x[1]}</span>`; }
 function _subsForm(){ return `<div class="jsa-card"><h4 style="margin:0 0 6px">Add / update a sub</h4>`+
