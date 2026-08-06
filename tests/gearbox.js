@@ -62,6 +62,13 @@ const names = (trace) => trace.map((n) => n.event);
   ok("proposalEmail never guarantees savings / quotes a rate", !/save \$|\d+% off|guarantee/i.test(propPriced.body));
   ok("FINANCING_URL is a Hearth link", /gethearth\.com/.test(A.FINANCING_URL));
 
+  // ---- payment.received: money-loop closer (Stripe) → job.completed → review request ----
+  const pay = await A.turn("payment.received", "job-pay", { customer: "Jane", email: "jane@x.com", amount: 9000, service: "SPF roof" }, "stripe", false);
+  ok("payment.received turns ok", pay.ok === true && pay.turned === "payment.received");
+  ok("payment.received cascades to job.completed → review.requested", names(pay.trace).includes("job.completed") && names(pay.trace).includes("review.requested"));
+  ok("payment.received (roof) also enrolls roof-maintenance", names(pay.trace).includes("roofmaint.enroll"));
+  ok("payment.received review SMS stays a gated draft (blocked, not sent)", pay.blocked === true);
+
   // ---- unknown event: turns, no consumer, no crash ----
   const unknown = await A.turn("nope.nothere", "k", {}, "unit", false);
   ok("unknown event ⇒ ok, empty/handled-0, not blocked", unknown.ok === true && unknown.blocked === false);

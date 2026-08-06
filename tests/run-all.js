@@ -16,6 +16,7 @@ const SUITES = [
   ["missed-call", "speed-to-lead / missed-call recovery"],
   ["financing-event", "Hearth financing-event → hot-lead signal"],
   ["hearth-lead", "Hearth call-notification → structured CRM lead"],
+  ["stripe-webhook", "Stripe payment webhook → money-loop closer"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
