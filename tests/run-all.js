@@ -22,6 +22,7 @@ const SUITES = [
   ["true-profit", "fully-loaded job profit: job-cost + equipment wear/insurance/opportunity → profit-per-day + GO/THIN/NO-GO, lists what was/wasn't counted"],
   ["job-risk", "'Should We Take It?' pre-accept score: distance/weather/access/substrate/margin/past-variance/crew → TAKE/RAISE PRICE/WALK, assessed-only denominator"],
   ["job-actuals", "rig-side session log: normalize/type, drum-lot gather, BF-from-sets (roofing deferred), spray-vs-onsite productivity, chain-of-custody, variance handoff — no fabrication"],
+  ["scorecards", "crew/rig scorecards: per-crew+rig yield/productivity/margin aggregation, adherence ranking, winter-vs-summer split, pattern insights — no fabricated metrics"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
