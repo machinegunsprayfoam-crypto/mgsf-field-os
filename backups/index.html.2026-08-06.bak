@@ -241,9 +241,6 @@
       <div class="nav-item" onclick="switchModule('estimate')" id="nav-estimate">
         <div class="nav-icon"><i class="ti ti-calculator"></i></div><div class="nav-label">EST</div>
       </div>
-      <div class="nav-item" onclick="switchModule('takeoff')" id="nav-takeoff">
-        <div class="nav-icon"><i class="ti ti-ruler-2"></i></div><div class="nav-label">TAKEOFF</div>
-      </div>
       <div class="nav-item" onclick="switchModule('jobs')" id="nav-jobs">
         <div class="nav-icon"><i class="ti ti-building-factory-2"></i></div><div class="nav-label">JOBS</div>
       </div>
@@ -1609,11 +1606,6 @@
           <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
         <div id="calcs_body"></div>
       </div>
-      <div id="mod-takeoff" class="module">
-        <div class="mod-head"><h2>📐 SPF Takeoff — Multi-Area Estimator</h2>
-          <button class="btn btn-ghost" onclick="switchModule('estimate')">Old estimator →</button></div>
-        <div id="takeoff_body"></div>
-      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -2445,7 +2437,6 @@ function switchModule(id){
   if(id==='subs'){ if(window.renderSubs) renderSubs(); }
   if(id==='blueprint'){ if(window.renderBlueprint) renderBlueprint(); }
   if(id==='calcs'){ if(window.renderCalcs) renderCalcs(); }
-  if(id==='takeoff'){ if(window.renderTakeoff) renderTakeoff(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -13439,143 +13430,6 @@ window.renderBattery = function(batt){
   g.font='700 '+Math.round(H*0.085)+'px system-ui,sans-serif';
   g.fillText((pct*100).toFixed(pct<0.01?2:1)+'%  ·  capacity '+cap.toLocaleString(), bx+bw, H-26);
 };
-</script>
-
-<script>
-// ── SPF TAKEOFF — multi-area estimator UI (add-a-row), wired to the api/spf-takeoff engine's math ──
-// Client-side compute mirrors the LOCKED doctrine constants (mgsf-core) so it's instant/offline-first;
-// api/spf-takeoff.js stays the server source of truth (same numbers). The OLD estimator (mod-estimate
-// iframe) is untouched — this is an additive screen. Persists to localStorage so it opens instantly.
-(function(){
-  var COST_PER_BF={open:0.122,closed:0.982,roofing:0.680};   // $/BF (mgsf-core)
-  var R_PER_INCH={open:3.6,closed:6.5,roofing:6.0};
-  var STATE_MULT={MT:1.00,ND:1.05,SD:1.00,WY:1.12};
-  var GM_TARGET={residential:0.55,commercial:0.50,industrial:0.48,government:0.45};
-  var JOB_MIN=1200, RATE_INST=80, RATE_HELP=48;
-  var DEF_BFHR=850, DEF_WASTE=0.12, DEF_BUFFER=0.05;         // app defaults (overridable)
-  var COND_W={clean:0,standard:0,rough:0.05,irregular:0.05,overhead:0.03,tight:0.03,crawl:0.03,retrofit:0.04};
-  var SCARF_W=0.05, YIELD={closed:4000,open:16000};
-  var ASSEMBLIES=[
-    {k:'attic',n:'Attic',cell:'open',r:49},{k:'walls',n:'Walls',cell:'closed',r:21},
-    {k:'rim',n:'Rim joist',cell:'closed',r:21},{k:'cathedral',n:'Cathedral',cell:'closed',r:49},
-    {k:'crawl',n:'Crawl space',cell:'closed',r:19},{k:'metal',n:'Metal building',cell:'closed',r:19},
-    {k:'roof',n:'SPF roof',cell:'roofing',r:0},{k:'custom',n:'Custom',cell:'closed',r:0}
-  ];
-  var CONDITIONS=['standard','rough','overhead','tight','crawl','retrofit'];
-  function mob(mi){ mi=+mi||0; var b=mi<25?100:mi<=50?200:350; if(mi>100) b+=(mi-100)*1.5; return Math.round(b); }
-  function pInch(x){ x=Math.max(0,+x||0); return Math.ceil(x*2-1e-9)/2; }
-  function r1(n){ return Math.round((+n||0)*10)/10; }
-  function money(n){ return '$'+Math.round(+n||0).toLocaleString(); }
-  function LSget(k,d){ try{ var r=localStorage.getItem(k); return r?JSON.parse(r):d; }catch(e){ return d; } }
-  function LSset(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
-  var S = LSget('mgsf_takeoff_v1', {job:{customer:'',state:'MT',segment:'residential',miles:0,installers:1,helpers:1}, areas:[]});
-  function persist(){ LSset('mgsf_takeoff_v1', S); }
-
-  function calcArea(a){
-    var cell=a.cell||'closed';
-    var inches = a.byR ? pInch((+a.rTarget||0)/R_PER_INCH[cell]) : Math.max(0,+a.inches||0);
-    var dR = r1(inches*R_PER_INCH[cell]);
-    var bf = Math.max(0,+a.sqft||0)*inches;
-    var waste = DEF_WASTE + (COND_W[a.condition]||0) + (a.scarf?SCARF_W:0);
-    var applied = bf*(1+waste)*(1+DEF_BUFFER);
-    var material = applied*(COST_PER_BF[cell]||0);
-    var hours = applied/DEF_BFHR;
-    var sets = YIELD[cell] ? applied/YIELD[cell] : null;
-    return {cell:cell,inches:inches,deliveredR:dR,bf:Math.round(bf),applied:Math.round(applied),material:material,hours:hours,sets:sets};
-  }
-  function calcAll(){
-    var j=S.job, tot={bf:0,applied:0,material:0,hours:0,sets:{}};
-    S.areas.forEach(function(a){ var c=calcArea(a); tot.bf+=c.bf; tot.applied+=c.applied; tot.material+=c.material; tot.hours+=c.hours; if(c.sets!=null) tot.sets[c.cell]=(tot.sets[c.cell]||0)+c.applied; });
-    var labor = tot.hours*((+j.installers||0)*RATE_INST+(+j.helpers||0)*RATE_HELP);
-    var mobilization = mob(j.miles);
-    var cost = tot.material+labor+mobilization;
-    var out={bf:tot.bf,applied:tot.applied,material:tot.material,hours:tot.hours,labor:labor,mob:mobilization,cost:cost,sets:{},price:null,gmActual:null,minApplied:false};
-    Object.keys(tot.sets).forEach(function(c){ out.sets[c]=Math.ceil(tot.sets[c]/YIELD[c]-1e-9); });
-    var gm=GM_TARGET[j.segment], mult=STATE_MULT[j.state];
-    if(gm!=null && mult!=null && cost>0){ var p=cost/(1-gm)*mult; if(p<JOB_MIN){ p=JOB_MIN; out.minApplied=true; } out.price=Math.round(p); out.gmActual=r1((out.price-cost)/out.price*100); out.gmTarget=Math.round(gm*100); }
-    return out;
-  }
-
-  window.tkSet=function(f,v){ S.job[f]=v; persist(); tkNumbers(); };
-  window.tkAdd=function(k){ var A=ASSEMBLIES.filter(function(x){return x.k===k;})[0]||ASSEMBLIES[0]; S.areas.push({assembly:A.k,name:A.n,sqft:'',cell:A.cell,byR:A.r>0,rTarget:A.r||'',inches:'',condition:'standard',scarf:false}); persist(); renderTakeoff(); };
-  window.tkRemove=function(i){ S.areas.splice(i,1); persist(); renderTakeoff(); };
-  window.tkEdit=function(i,f,v){ if(!S.areas[i]) return; if(f==='scarf') v=!!v; S.areas[i][f]=v; persist(); tkNumbers(); };
-  window.tkEditR=function(i,f,v){ if(!S.areas[i]) return; S.areas[i][f]=v; persist(); renderTakeoff(); };
-  window.tkSaveBaseline=function(){
-    var c=calcAll(), j=S.job; var sets=Object.keys(c.sets).reduce(function(s,k){return s+c.sets[k];},0);
-    var baseline={customer:j.customer||'',at:new Date().toISOString(),state:j.state,segment:j.segment,boardFeet:c.applied,sets:sets,laborHours:r1(c.hours),material:Math.round(c.material),labor:Math.round(c.labor),cost:Math.round(c.cost),sell:c.price};
-    var all=LSget('mgsf_bid_baselines',[]); all.unshift(baseline); LSset('mgsf_bid_baselines', all.slice(0,200));
-    var m=document.getElementById('tk_msg'); if(m){ m.style.color='var(--gr)'; m.textContent='Bid baseline saved'+(j.customer?(' for '+j.customer):'')+' — ready for actuals/variance.'; }
-  };
-
-  function areaRow(a,i){
-    var c=calcArea(a);
-    var cellSel='<select class="admin-inp" onchange="tkEdit('+i+",'cell',this.value)\" style=\"width:100%\">"+['closed','open','roofing'].map(function(x){return '<option value="'+x+'"'+(a.cell===x?' selected':'')+'>'+({closed:'Closed cell',open:'Open cell',roofing:'SPF roof 3.0#'}[x])+'</option>';}).join('')+'</select>';
-    var modeSel='<select class="admin-inp" onchange="tkEditR('+i+",'byR',this.value==='r')\" style=\"width:100%\">"
-      +'<option value="r"'+(a.byR?' selected':'')+'>By R-target</option>'
-      +'<option value="in"'+(!a.byR?' selected':'')+'>By inches</option></select>';
-    var depthInp = a.byR
-      ? '<input class="admin-inp" type="number" inputmode="decimal" value="'+(a.rTarget||'')+'" oninput="tkEdit('+i+",'rTarget',this.value)\" placeholder=\"R-target\" style=\"width:100%\">"
-      : '<input class="admin-inp" type="number" inputmode="decimal" value="'+(a.inches||'')+'" oninput="tkEdit('+i+",'inches',this.value)\" placeholder=\"inches\" style=\"width:100%\">";
-    var condSel='<select class="admin-inp" onchange="tkEdit('+i+",'condition',this.value)\" style=\"width:100%\">"+CONDITIONS.map(function(x){return '<option value="'+x+'"'+(a.condition===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>';
-    return '<div class="jsa-card" style="border-left:3px solid var(--cy)">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>'+(window.sysEsc?sysEsc(a.name||('Area '+(i+1))):(a.name||('Area '+(i+1))))+'</b>'
-      +'<button class="btn btn-ghost" style="font-size:11px" onclick="tkRemove('+i+')">✕ remove</button></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
-      +'<div><label style="font-size:11px;color:var(--t2)">Sq ft</label><input class="admin-inp" type="number" inputmode="decimal" value="'+(a.sqft||'')+'" oninput="tkEdit('+i+",'sqft',this.value)\" style=\"width:100%\"></div>"
-      +'<div><label style="font-size:11px;color:var(--t2)">Foam</label>'+cellSel+'</div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">Depth mode</label>'+modeSel+'</div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">'+(a.byR?'R-target':'Inches')+'</label>'+depthInp+'</div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">Condition</label>'+condSel+'</div>'
-      +'<div style="display:flex;align-items:flex-end;gap:6px"><label style="font-size:12px;display:flex;align-items:center;gap:6px"><input type="checkbox" '+(a.scarf?'checked':'')+' onchange="tkEdit('+i+",'scarf',this.checked)\" style=\"width:18px;height:18px\">Scarf/trim</label></div>"
-      +'</div>'
-      +'<div id="tk_rowout_'+i+'" style="font-size:12px;color:var(--or);margin-top:6px">'+rowOut(c)+'</div></div>';
-  }
-  function rowOut(c){ return c.bf+' BF → '+c.applied+' applied · '+(c.deliveredR?('R-'+c.deliveredR+' @ '+c.inches+'" · '):'')+(c.sets!=null?(c.sets.toFixed(2)+' sets · '):'roof: order by BF · ')+money(c.material)+' mat'; }
-
-  window.tkNumbers=function(){
-    S.areas.forEach(function(a,i){ var el=document.getElementById('tk_rowout_'+i); if(el) el.innerHTML=rowOut(calcArea(a)); });
-    var c=calcAll(); var el=document.getElementById('tk_totals'); if(el) el.innerHTML=totalsHTML(c);
-  };
-  function totalsHTML(c){
-    var setsStr=Object.keys(c.sets).length?Object.keys(c.sets).map(function(k){return c.sets[k]+' '+k;}).join(' · '):'—';
-    var priceBlk = c.price!=null
-      ? '<div style="font-size:26px;font-weight:800;color:var(--or)">'+money(c.price)+'</div>'
-        +'<div style="font-size:12px;color:var(--t2)">'+c.gmActual+'% GM (target '+c.gmTarget+'%)'+(c.minApplied?' · job-min applied':'')+'</div>'
-      : '<div style="font-size:13px;color:var(--yw)">Pick state + segment to price. Quantities are ready.</div>';
-    return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">'
-      +'<div>Board-feet (applied): <b>'+c.applied.toLocaleString()+'</b></div>'
-      +'<div>Sets to order: <b>'+setsStr+'</b></div>'
-      +'<div>Crew hours: <b>'+r1(c.hours)+'</b></div>'
-      +'<div>Material: <b>'+money(c.material)+'</b></div>'
-      +'<div>Labor: <b>'+money(c.labor)+'</b></div>'
-      +'<div>Mobilization: <b>'+money(c.mob)+'</b></div>'
-      +'<div style="grid-column:1/3">Cost: <b>'+money(c.cost)+'</b></div></div>'
-      +'<div style="margin-top:8px">'+priceBlk+'</div>';
-  }
-
-  window.renderTakeoff=function(){
-    var b=document.getElementById('takeoff_body'); if(!b) return; var j=S.job;
-    var stateOpts=Object.keys(STATE_MULT).map(function(s){return '<option value="'+s+'"'+(j.state===s?' selected':'')+'>'+s+'</option>';}).join('');
-    var segOpts=Object.keys(GM_TARGET).map(function(s){return '<option value="'+s+'"'+(j.segment===s?' selected':'')+'>'+s+'</option>';}).join('');
-    var h='<div class="jsa-card"><div style="font-size:11px;color:var(--t2);margin-bottom:6px">Multi-area SPF takeoff. BF = sq ft × inches (doctrine). Constants locked; waste 12% + 5% buffer + condition/scarf are the app defaults. Nothing here sends — it drafts the bid baseline.</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
-      +'<div><label style="font-size:11px;color:var(--t2)">Customer</label><input class="admin-inp" value="'+(window.sysEsc?sysEsc(j.customer||''):(j.customer||''))+'" oninput="tkSet(\'customer\',this.value)" style="width:100%"></div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">State</label><select class="admin-inp" onchange="tkSet(\'state\',this.value)" style="width:100%">'+stateOpts+'</select></div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">Segment</label><select class="admin-inp" onchange="tkSet(\'segment\',this.value)" style="width:100%">'+segOpts+'</select></div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">Miles (1-way)</label><input class="admin-inp" type="number" inputmode="numeric" value="'+(j.miles||0)+'" oninput="tkSet(\'miles\',this.value)" style="width:100%"></div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">Installers</label><input class="admin-inp" type="number" inputmode="numeric" value="'+(j.installers!=null?j.installers:1)+'" oninput="tkSet(\'installers\',this.value)" style="width:100%"></div>'
-      +'<div><label style="font-size:11px;color:var(--t2)">Helpers</label><input class="admin-inp" type="number" inputmode="numeric" value="'+(j.helpers!=null?j.helpers:1)+'" oninput="tkSet(\'helpers\',this.value)" style="width:100%"></div>'
-      +'</div></div>';
-    h+='<div class="jsa-card"><div style="font-size:12px;color:var(--t2);margin-bottom:6px">Add an area:</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
-      +ASSEMBLIES.map(function(A){return '<button class="btn btn-ghost" style="font-size:12px" onclick="tkAdd(\''+A.k+'\')">+ '+A.n+'</button>';}).join('')+'</div></div>';
-    h+='<div id="tk_rows">'+(S.areas.length?S.areas.map(areaRow).join(''):'<div class="jsa-card" style="opacity:.7">No areas yet — tap an assembly above to start.</div>')+'</div>';
-    h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Job total</h4><div id="tk_totals">'+totalsHTML(calcAll())+'</div>'
-      +'<button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="tkSaveBaseline()">Save bid baseline</button>'
-      +'<div id="tk_msg" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>';
-    b.innerHTML=h;
-  };
-})();
 </script>
 
 </body>
