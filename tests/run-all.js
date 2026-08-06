@@ -14,6 +14,7 @@ const SUITES = [
   ["brain-assembly", "brain block selection (live wiring)"],
   ["brain-context", "live-data grounding (gated)"],
   ["missed-call", "speed-to-lead / missed-call recovery"],
+  ["financing-event", "Hearth financing-event → hot-lead signal"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
