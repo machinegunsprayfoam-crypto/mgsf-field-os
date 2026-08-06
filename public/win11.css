@@ -645,7 +645,13 @@ textarea:focus, select:focus {
   align-items: stretch !important;
   justify-content: flex-start !important;
   align-content: stretch !important;
-  overflow: hidden !important;
+  /* Vertical SCROLL so the full nav (incl. Admin at the bottom) is always reachable on short/phone
+     screens; horizontal stays hidden so collapsed labels don't leak. Was overflow:hidden, which
+     clipped every item past the fold. */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
   transition: width .24s var(--f-ease), box-shadow .24s var(--f-ease) !important;
   /* sidebar floats OVER content when expanded */
   position: absolute !important;
