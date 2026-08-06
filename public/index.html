@@ -244,6 +244,9 @@
       <div class="nav-item" onclick="switchModule('takeoff')" id="nav-takeoff">
         <div class="nav-icon"><i class="ti ti-ruler-2"></i></div><div class="nav-label">TAKEOFF</div>
       </div>
+      <div class="nav-item" onclick="switchModule('fieldlog')" id="nav-fieldlog">
+        <div class="nav-icon"><i class="ti ti-clipboard-check"></i></div><div class="nav-label">LOG</div>
+      </div>
       <div class="nav-item" onclick="switchModule('jobs')" id="nav-jobs">
         <div class="nav-icon"><i class="ti ti-building-factory-2"></i></div><div class="nav-label">JOBS</div>
       </div>
@@ -1614,6 +1617,11 @@
           <button class="btn btn-ghost" onclick="switchModule('estimate')">Old estimator →</button></div>
         <div id="takeoff_body"></div>
       </div>
+      <div id="mod-fieldlog" class="module">
+        <div class="mod-head"><h2>📋 Field Log — Spray Session Actuals</h2>
+          <button class="btn btn-ghost" onclick="switchModule('dashboard')">← Back</button></div>
+        <div id="fieldlog_body"></div>
+      </div>
   </div><!-- /main -->
 </div><!-- /app -->
 <script>
@@ -2446,6 +2454,7 @@ function switchModule(id){
   if(id==='blueprint'){ if(window.renderBlueprint) renderBlueprint(); }
   if(id==='calcs'){ if(window.renderCalcs) renderCalcs(); }
   if(id==='takeoff'){ if(window.renderTakeoff) renderTakeoff(); }
+  if(id==='fieldlog'){ if(window.renderFieldLog) renderFieldLog(); }
   if(id==='changeorder'){ if(window.renderCO) renderCO(); }
   if(id==='clock'){ if(window.renderClock) renderClock(); }
   if(id==='signoff'){ if(window.renderSignoff) renderSignoff(); }
@@ -13573,6 +13582,102 @@ window.renderBattery = function(batt){
     h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Job total</h4><div id="tk_totals">'+totalsHTML(calcAll())+'</div>'
       +'<button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="tkSaveBaseline()">Save bid baseline</button>'
       +'<div id="tk_msg" style="font-size:12px;color:var(--cy);margin-top:6px"></div></div>';
+    b.innerHTML=h;
+  };
+})();
+</script>
+
+<script>
+// ── FIELD LOG — spray-session actuals capture (feeds api/job-actuals). Big-target, offline-first. ──
+// Captures what actually happened at the rig; saves locally (always) and to Supabase via
+// /api/job-actuals when connected. Shows live spray-time-vs-on-site productivity + chain-of-custody
+// completeness. Never invents — blanks stay blank.
+(function(){
+  function LSget(k,d){ try{ var r=localStorage.getItem(k); return r?JSON.parse(r):d; }catch(e){ return d; } }
+  function LSset(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function num(v){ var n=parseFloat(v); return isFinite(n)?n:null; }
+  function r1(n){ return Math.round((+n||0)*10)/10; }
+  var YIELD={closed:4000,open:16000};
+  var S = LSget('mgsf_fieldlog_v1', {jobId:'',customer:'',crew:'',rig:'',date:'',sets:[],substrateType:'',substrateTemp:'',substrateRh:'',ambientTemp:'',ambientRh:'',windMph:'',aTemp:'',bTemp:'',mixNotes:'',pressurePsi:'',tipChanges:'',hoseLenFt:'',gunHours:'',sprayStart:'',sprayStop:'',onsiteStart:'',onsiteStop:'',notes:'',signoff:''});
+  function persist(){ LSset('mgsf_fieldlog_v1', S); }
+  var E=function(s){ return window.sysEsc?sysEsc(s):String(s==null?'':s); };
+  function attr(s){ return String(s==null?'':s).replace(/"/g,'&quot;'); }
+
+  window.flSet=function(f,v){ S[f]=v; persist(); flCompute(); };
+  window.flAddSet=function(){ S.sets.push({cell:'closed',sets:'',lot:''}); persist(); renderFieldLog(); };
+  window.flRemoveSet=function(i){ S.sets.splice(i,1); persist(); renderFieldLog(); };
+  window.flSetRow=function(i,f,v){ if(S.sets[i]){ S.sets[i][f]=v; persist(); flCompute(); } };
+  window.flNewSession=function(){ if(!confirm('Start a fresh log? Current entries are saved to the local queue first.')) return; flQueue(); S={jobId:'',customer:'',crew:'',rig:'',date:'',sets:[],substrateType:'',substrateTemp:'',substrateRh:'',ambientTemp:'',ambientRh:'',windMph:'',aTemp:'',bTemp:'',mixNotes:'',pressurePsi:'',tipChanges:'',hoseLenFt:'',gunHours:'',sprayStart:'',sprayStop:'',onsiteStart:'',onsiteStop:'',notes:'',signoff:''}; persist(); renderFieldLog(); };
+
+  function mins(a,b){ var x=Date.parse(a), y=Date.parse(b); return (isFinite(x)&&isFinite(y)&&y>=x)?Math.round((y-x)/60000):null; }
+  function derive(){
+    var bf=0, haveBf=false;
+    S.sets.forEach(function(s){ var y=YIELD[s.cell]; var n=num(s.sets); if(y&&n){ bf+=n*y; haveBf=true; } });
+    var sprayMin=mins(S.sprayStart,S.sprayStop), onsiteMin=mins(S.onsiteStart,S.onsiteStop);
+    var prod=(sprayMin!=null&&onsiteMin)?r1(sprayMin/onsiteMin*100):null;
+    var lots=S.sets.map(function(s){return (s.lot||'').trim();}).filter(Boolean);
+    var coc={lots:lots.length>0, conditions:(num(S.substrateTemp)!=null||num(S.ambientTemp)!=null), signoff:!!(S.signoff||'').trim(), product:S.sets.length>0};
+    var missing=Object.keys(coc).filter(function(k){return !coc[k];});
+    return {bf:haveBf?Math.round(bf):null, sprayMin:sprayMin, onsiteMin:onsiteMin, prod:prod, missing:missing};
+  }
+  window.flCompute=function(){ var el=document.getElementById('fl_live'); if(el) el.innerHTML=liveHTML(derive()); };
+  function liveHTML(d){
+    return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px">'
+      +'<div>Actual BF: <b>'+(d.bf!=null?d.bf.toLocaleString():'—')+'</b></div>'
+      +'<div>Gun time: <b>'+(d.sprayMin!=null?d.sprayMin+' min':'—')+'</b></div>'
+      +'<div>On-site: <b>'+(d.onsiteMin!=null?d.onsiteMin+' min':'—')+'</b></div>'
+      +'<div>Productive: <b>'+(d.prod!=null?d.prod+'%':'—')+'</b></div></div>'
+      +'<div style="font-size:12px;margin-top:6px;color:'+(d.missing.length?'var(--yw)':'var(--gr)')+'">'
+      +(d.missing.length?('⚠ Chain-of-custody missing: '+d.missing.join(', ')):'✓ Chain-of-custody complete (lots, conditions, sign-off, product)')+'</div>';
+  }
+
+  function flQueue(){ var q=LSget('mgsf_fieldlog_queue',[]); q.unshift(Object.assign({at:new Date().toISOString()},S)); LSset('mgsf_fieldlog_queue', q.slice(0,300)); }
+  window.flSave=async function(){
+    var msg=document.getElementById('fl_msg'); if(msg){ msg.style.color='var(--cy)'; msg.textContent='Saving…'; }
+    if(!(S.jobId||'').trim() && !(S.customer||'').trim()){ if(msg){ msg.style.color='var(--yw)'; msg.textContent='Enter a job # or customer first.'; } return; }
+    flQueue(); // always keep a local copy (offline-first)
+    var log=Object.assign({}, S, {jobId:(S.jobId||S.customer), setsUsed:S.sets});
+    var d=null;
+    try{ d=await fetch('/api/job-actuals',{method:'POST',headers:{'content-type':'application/json','x-crew-code':(window._crewCode?_crewCode():'')},body:JSON.stringify({action:'save',approved:true,log:log})}).then(function(r){return r.json();}); }catch(e){ d=null; }
+    if(!msg) return;
+    if(!d){ msg.style.color='var(--yw)'; msg.textContent='Saved locally (offline). Will need a manual re-save when back online.'; return; }
+    if(d.configured===false){ msg.style.color='var(--yw)'; msg.textContent='Saved to local queue — cloud storage (Supabase) not connected yet.'; return; }
+    if(d.ok){ msg.style.color='var(--gr)'; msg.textContent='Actuals saved. Feeds variance + scorecards + warranty package.'; return; }
+    msg.style.color='var(--red)'; msg.textContent='Save issue'+(d.errors?(' ('+d.errors.join(', ')+')'):'')+' — kept in local queue.';
+  };
+
+  function fi(f,label,ph,type){ return '<div><label style="font-size:11px;color:var(--t2)">'+label+'</label>'
+    +'<input class="admin-inp" '+(type?('type="'+type+'" '):'')+'value="'+attr(S[f])+'" oninput="flSet(\''+f+'\',this.value)" placeholder="'+attr(ph)+'" style="width:100%"></div>'; }
+  function setRow(s,i){
+    var cellSel='<select class="admin-inp" onchange="flSetRow('+i+",'cell',this.value)\" style=\"width:100%\">"
+      +['closed','open','roofing'].map(function(x){return '<option value="'+x+'"'+(s.cell===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>';
+    return '<div style="display:grid;grid-template-columns:1.1fr 0.9fr 1fr auto;gap:6px;align-items:end;margin-bottom:6px">'
+      +'<div><label style="font-size:11px;color:var(--t2)">Cell</label>'+cellSel+'</div>'
+      +'<div><label style="font-size:11px;color:var(--t2)">Sets</label><input class="admin-inp" type="number" inputmode="decimal" value="'+attr(s.sets)+'" oninput="flSetRow('+i+",'sets',this.value)\" style=\"width:100%\"></div>"
+      +'<div><label style="font-size:11px;color:var(--t2)">Drum lot #</label><input class="admin-inp" value="'+attr(s.lot)+'" oninput="flSetRow('+i+",'lot',this.value)\" style=\"width:100%\"></div>"
+      +'<button class="btn btn-ghost" style="font-size:11px" onclick="flRemoveSet('+i+')">✕</button></div>';
+  }
+  window.renderFieldLog=function(){
+    var b=document.getElementById('fieldlog_body'); if(!b) return;
+    var h='<div class="jsa-card"><div style="font-size:11px;color:var(--t2);margin-bottom:6px">Log the spray session at the rig. Saves locally instantly; syncs to the cloud when connected. Feeds variance, scorecards, and the warranty/chain-of-custody package.</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+fi('jobId','Job #','J-100')+fi('customer','Customer','')+fi('crew','Crew','Daniel')+fi('rig','Rig','Rig 1')+fi('date','Date','','date')+'</div></div>';
+    h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Material used (sets + drum lots)</h4>'
+      +(S.sets.length?S.sets.map(setRow).join(''):'<div style="opacity:.6;font-size:12px">No sets logged yet.</div>')
+      +'<button class="btn btn-ghost" style="font-size:12px" onclick="flAddSet()">+ Add set</button></div>';
+    h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Conditions (claims defense + yield)</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      +fi('substrateType','Substrate','e.g. OSB / metal')+fi('substrateTemp','Substrate °F','','number')
+      +fi('ambientTemp','Ambient °F','','number')+fi('ambientRh','Ambient RH %','','number')+fi('windMph','Wind mph','','number')
+      +fi('aTemp','A-side °F','','number')+fi('bTemp','B-side °F','','number')+fi('mixNotes','Mix notes','winter mix?')+'</div></div>';
+    h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Equipment</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      +fi('pressurePsi','Pressure psi','','number')+fi('tipChanges','Tip changes','','number')+fi('hoseLenFt','Hose length ft','','number')+fi('gunHours','Gun hours','','number')+'</div></div>';
+    h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Time (gun time vs on-site)</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      +fi('onsiteStart','On-site start','','datetime-local')+fi('onsiteStop','On-site stop','','datetime-local')
+      +fi('sprayStart','Spray start','','datetime-local')+fi('sprayStop','Spray stop','','datetime-local')+'</div></div>';
+    h+='<div class="jsa-card">'+fi('notes','Notes','what slowed you down? issues?')+'<div style="margin-top:6px">'+fi('signoff','Sign-off (name)','')+'</div></div>';
+    h+='<div class="jsa-card"><h4 style="margin:0 0 6px">Live</h4><div id="fl_live">'+liveHTML(derive())+'</div></div>';
+    h+='<div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" onclick="flSave()">Save actuals</button>'
+      +'<button class="btn btn-ghost" onclick="flNewSession()">New session</button></div>'
+      +'<div id="fl_msg" style="font-size:12px;color:var(--cy);margin-top:8px"></div>';
     b.innerHTML=h;
   };
 })();
