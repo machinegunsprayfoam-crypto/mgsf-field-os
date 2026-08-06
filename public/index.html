@@ -11,6 +11,8 @@
 <title>KLYFTON AI — Machine Gun Spray Foam</title>
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="theme-2026.css">
+<link rel="stylesheet" href="win11.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css" crossorigin="anonymous">
 
 </head>
 <body>
@@ -151,17 +153,17 @@
       <span class="status-label" id="statusLabel">ONLINE</span>
     </div>
     <div id="layoutSeg" title="Pick the layout for your device">
-      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout">📱<span class="tbl"> Phone</span></button>
-      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout">▭<span class="tbl"> Tablet</span></button>
-      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout">🖥<span class="tbl"> Desk</span></button>
+      <button type="button" data-lay="phone"   onclick="setLayout('phone',true)"   title="Phone layout"><i class="ti ti-device-mobile"></i><span class="tbl"> Phone</span></button>
+      <button type="button" data-lay="tablet"  onclick="setLayout('tablet',true)"  title="Tablet layout"><i class="ti ti-device-tablet"></i><span class="tbl"> Tablet</span></button>
+      <button type="button" data-lay="desktop" onclick="setLayout('desktop',true)" title="Desktop layout"><i class="ti ti-device-desktop"></i><span class="tbl"> Desk</span></button>
     </div>
     <div class="top-spacer"></div>
     <div class="top-clock" id="topClock">00:00:00 MT</div>
-    <button class="top-btn active" id="soundBtn" onclick="toggleSound()">🔊<span class="tbl"> SOUND</span></button>
-    <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()">🎙️<span class="tbl"> VOICE</span></button>
-    <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version">⟳<span class="tbl"> UPDATE</span></button>
-    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on">💡<span class="tbl"> HELP</span></button>
-    <button class="top-btn" onclick="toggleChat()">💬<span class="tbl"> KLYFTON</span></button>
+    <button class="top-btn active" id="soundBtn" onclick="toggleSound()"><i class="ti ti-volume"></i><span class="tbl"> SOUND</span></button>
+    <button class="top-btn" id="voiceBtn" onclick="toggleVoiceInput()"><i class="ti ti-microphone"></i><span class="tbl"> VOICE</span></button>
+    <button class="top-btn" id="refreshBtn" onclick="hardRefresh()" title="Load the newest version"><i class="ti ti-refresh"></i><span class="tbl"> UPDATE</span></button>
+    <button class="top-btn" id="helpBtn" onclick="klyHelp()" title="Ask Klyfton about the screen you're on"><i class="ti ti-help-circle"></i><span class="tbl"> HELP</span></button>
+    <button class="top-btn" onclick="toggleChat()"><i class="ti ti-message-circle-2"></i><span class="tbl"> KLYFTON</span></button>
   </div>
   <script>
   // Device layout selector: forces Phone/Tablet/Desktop layout (body class), persisted per device,
@@ -172,128 +174,179 @@
   (function(){var s=null;try{s=localStorage.getItem('mgsf_layout');}catch(e){}
     var m=s||(innerWidth<700?'phone':innerWidth<1100?'tablet':'desktop');window.setLayout(m,false);})();
   </script>
+  <script>
+  // ── Sidebar expand/collapse (Win11 nav rail) ──────────────────────────────
+  (function(){
+    var _pinned = false;
+    try { _pinned = localStorage.getItem('nav_pinned') === '1'; } catch(e){}
+    window.toggleNav = function(){
+      _pinned = !_pinned;
+      try { localStorage.setItem('nav_pinned', _pinned ? '1' : '0'); } catch(e){}
+      _applyNav();
+    };
+    window.collapseNav = function(){
+      _pinned = false;
+      try { localStorage.setItem('nav_pinned', '0'); } catch(e){}
+      _applyNav();
+    };
+    function _applyNav(){
+      var sb  = document.getElementById('sidebar');
+      var btn = document.getElementById('navToggle');
+      var scrim = document.getElementById('navScrim');
+      if(!sb) return;
+      if(_pinned){
+        sb.classList.add('nav-expanded');
+        if(btn){ btn.classList.add('pinned'); btn.innerHTML='<i class="ti ti-layout-sidebar-left-collapse"></i>'; btn.title='Collapse navigation'; }
+        if(scrim && (innerWidth < 900)){ scrim.classList.add('show'); }
+      } else {
+        sb.classList.remove('nav-expanded');
+        if(btn){ btn.classList.remove('pinned'); btn.innerHTML='<i class="ti ti-layout-sidebar-left-expand"></i>'; btn.title='Pin navigation open'; }
+        if(scrim){ scrim.classList.remove('show'); }
+      }
+    }
+    // Hover-expand on desktop (non-touch) — no JS hover on phones
+    var _hoverTimer = null;
+    document.addEventListener('DOMContentLoaded', function(){
+      _applyNav();
+      var sb = document.getElementById('sidebar');
+      if(!sb) return;
+      if(!('ontouchstart' in window)){
+        sb.addEventListener('mouseenter', function(){
+          _hoverTimer = setTimeout(function(){ sb.classList.add('nav-expanded'); }, 80);
+        });
+        sb.addEventListener('mouseleave', function(){
+          clearTimeout(_hoverTimer);
+          if(!_pinned) sb.classList.remove('nav-expanded');
+        });
+      }
+    });
+  })();
+  </script>
 
   <!-- MAIN AREA -->
   <div id="main">
+    <!-- NAV SCRIM (mobile) -->
+    <div id="navScrim" onclick="collapseNav()"></div>
     <!-- SIDEBAR NAV -->
     <div id="sidebar">
+      <button id="navToggle" title="Pin navigation open" onclick="toggleNav()"><i class="ti ti-layout-sidebar-left-expand"></i></button>
       <div id="navResize" title="Drag to resize the menu"></div>
       <div class="nav-item active" onclick="switchModule('dashboard')" id="nav-dashboard">
-        <div class="nav-icon">⚡</div><div class="nav-label">HQ</div>
+        <div class="nav-icon"><i class="ti ti-home-bolt"></i></div><div class="nav-label">HQ</div>
       </div>
       <div class="nav-item" onclick="switchModule('chat')" id="nav-chat">
-        <div class="nav-icon">🤖</div><div class="nav-label">AI</div>
+        <div class="nav-icon"><i class="ti ti-robot"></i></div><div class="nav-label">AI</div>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" onclick="switchModule('estimate')" id="nav-estimate">
-        <div class="nav-icon">🔢</div><div class="nav-label">EST</div>
+        <div class="nav-icon"><i class="ti ti-calculator"></i></div><div class="nav-label">EST</div>
       </div>
       <div class="nav-item" onclick="switchModule('jobs')" id="nav-jobs">
-        <div class="nav-icon">🏗️</div><div class="nav-label">JOBS</div>
+        <div class="nav-icon"><i class="ti ti-building-factory-2"></i></div><div class="nav-label">JOBS</div>
       </div>
       <div class="nav-item" onclick="switchModule('crm')" id="nav-crm">
-        <div class="nav-icon">👥</div><div class="nav-label">CRM</div>
+        <div class="nav-icon"><i class="ti ti-users"></i></div><div class="nav-label">CRM</div>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" onclick="switchModule('intel')" id="nav-intel">
-        <div class="nav-icon">📊</div><div class="nav-label">INTEL</div>
+        <div class="nav-icon"><i class="ti ti-chart-bar"></i></div><div class="nav-label">INTEL</div>
       </div>
       <div class="nav-item" onclick="switchModule('command');renderCommand()" id="nav-command">
-        <div class="nav-icon">📟</div><div class="nav-label">OPS</div>
+        <div class="nav-icon"><i class="ti ti-terminal-2"></i></div><div class="nav-label">OPS</div>
       </div>
       <div class="nav-item" onclick="switchModule('gov');renderGov()" id="nav-gov">
-        <div class="nav-icon">🎯</div><div class="nav-label">GOV</div>
+        <div class="nav-icon"><i class="ti ti-target"></i></div><div class="nav-label">GOV</div>
       </div>
       <div class="nav-item" onclick="switchModule('skills')" id="nav-skills">
-        <div class="nav-icon">🔌</div><div class="nav-label">SKILLS</div>
+        <div class="nav-icon"><i class="ti ti-plug"></i></div><div class="nav-label">SKILLS</div>
       </div>
       <div class="nav-item" onclick="switchModule('system');renderSystem()" id="nav-system">
-        <div class="nav-icon">🩺</div><div class="nav-label">SYS</div>
+        <div class="nav-icon"><i class="ti ti-stethoscope"></i></div><div class="nav-label">SYS</div>
       </div>
       <div class="nav-item" onclick="switchModule('agents');renderAgents()" id="nav-agents">
-        <div class="nav-icon">🐝</div><div class="nav-label">AGENTS</div>
+        <div class="nav-icon"><i class="ti ti-cpu"></i></div><div class="nav-label">AGENTS</div>
       </div>
       <div class="nav-item" onclick="switchModule('wiki');renderWiki()" id="nav-wiki">
-        <div class="nav-icon">📚</div><div class="nav-label">WIKI</div>
+        <div class="nav-icon"><i class="ti ti-books"></i></div><div class="nav-label">WIKI</div>
       </div>
       <div class="nav-item" onclick="switchModule('scenarios');renderScenarios()" id="nav-scenarios">
-        <div class="nav-icon">⚙️</div><div class="nav-label">AUTO</div>
+        <div class="nav-icon"><i class="ti ti-settings-automation"></i></div><div class="nav-label">AUTO</div>
       </div>
       <div class="nav-item" onclick="switchModule('bpi');renderBpi()" id="nav-bpi">
-        <div class="nav-icon">🏠</div><div class="nav-label">BPI</div>
+        <div class="nav-icon"><i class="ti ti-home-eco"></i></div><div class="nav-label">BPI</div>
       </div>
       <div class="nav-item" onclick="switchModule('subs');renderSubs()" id="nav-subs">
-        <div class="nav-icon">👷</div><div class="nav-label">SUBS</div>
+        <div class="nav-icon"><i class="ti ti-hard-hat"></i></div><div class="nav-label">SUBS</div>
       </div>
       <div class="nav-item" onclick="switchModule('blueprint');renderBlueprint()" id="nav-blueprint">
-        <div class="nav-icon">📐</div><div class="nav-label">PLANS</div>
+        <div class="nav-icon"><i class="ti ti-ruler-measure"></i></div><div class="nav-label">PLANS</div>
       </div>
       <div class="nav-item" onclick="switchModule('calcs');renderCalcs()" id="nav-calcs">
-        <div class="nav-icon">🧮</div><div class="nav-label">CALCS</div>
+        <div class="nav-icon"><i class="ti ti-math-symbols"></i></div><div class="nav-label">CALCS</div>
       </div>
       <div class="nav-item" onclick="switchModule('docs')" id="nav-docs">
-        <div class="nav-icon">📁</div><div class="nav-label">DOCS</div>
+        <div class="nav-icon"><i class="ti ti-folder-open"></i></div><div class="nav-label">DOCS</div>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" onclick="switchModule('jsa');renderJSA()" id="nav-jsa">
-        <div class="nav-icon">🦺</div><div class="nav-label">JSA</div>
+        <div class="nav-icon"><i class="ti ti-shield-check"></i></div><div class="nav-label">JSA</div>
       </div>
       <div class="nav-item" onclick="switchModule('spray');renderSpray()" id="nav-spray">
-        <div class="nav-icon">🔧</div><div class="nav-label">Spray</div>
+        <div class="nav-icon"><i class="ti ti-ripple"></i></div><div class="nav-label">Spray</div>
       </div>
       <div class="nav-item" onclick="switchModule('clock');renderClock()" id="nav-clock">
-        <div class="nav-icon">⏱️</div><div class="nav-label">CLOCK</div>
+        <div class="nav-icon"><i class="ti ti-clock-hour-4"></i></div><div class="nav-label">CLOCK</div>
       </div>
       <div class="nav-item" onclick="switchModule('weather');renderWeather()" id="nav-weather">
-        <div class="nav-icon">🌦️</div><div class="nav-label">WEATHER</div>
+        <div class="nav-icon"><i class="ti ti-cloud-rain"></i></div><div class="nav-label">WEATHER</div>
       </div>
       <div class="nav-item" onclick="switchModule('photos');renderPhotos()" id="nav-photos">
-        <div class="nav-icon">📸</div><div class="nav-label">PHOTOS</div>
+        <div class="nav-icon"><i class="ti ti-camera"></i></div><div class="nav-label">PHOTOS</div>
       </div>
       <div class="nav-item" onclick="switchModule('materials');renderMaterials()" id="nav-materials">
-        <div class="nav-icon">🛢️</div><div class="nav-label">MATERIAL</div>
+        <div class="nav-icon"><i class="ti ti-cylinder"></i></div><div class="nav-label">MATERIAL</div>
       </div>
       <div class="nav-item" onclick="switchModule('sheets');renderSheets()" id="nav-sheets">
-        <div class="nav-icon">📑</div><div class="nav-label">SHEETS</div>
+        <div class="nav-icon"><i class="ti ti-clipboard-list"></i></div><div class="nav-label">SHEETS</div>
       </div>
       <div class="nav-item" onclick="switchModule('certs');renderCerts()" id="nav-certs">
-        <div class="nav-icon">🎖️</div><div class="nav-label">CERTS</div>
+        <div class="nav-icon"><i class="ti ti-award"></i></div><div class="nav-label">CERTS</div>
       </div>
       <div class="nav-item" onclick="switchModule('signoff');renderSignoff()" id="nav-signoff">
-        <div class="nav-icon">✍️</div><div class="nav-label">SIGN-OFF</div>
+        <div class="nav-icon"><i class="ti ti-signature"></i></div><div class="nav-label">SIGN-OFF</div>
       </div>
       <div class="nav-item" onclick="switchModule('proposal');renderProposal()" id="nav-proposal">
-        <div class="nav-icon">📄</div><div class="nav-label">PROPOSAL</div>
+        <div class="nav-icon"><i class="ti ti-file-description"></i></div><div class="nav-label">PROPOSAL</div>
       </div>
       <div class="nav-item" onclick="switchModule('forms');renderForms()" id="nav-forms">
-        <div class="nav-icon">📝</div><div class="nav-label">FORMS</div>
+        <div class="nav-icon"><i class="ti ti-forms"></i></div><div class="nav-label">FORMS</div>
       </div>
       <div class="nav-item" onclick="switchModule('changeorder');renderCO()" id="nav-changeorder">
-        <div class="nav-icon">🔧</div><div class="nav-label">CHG ORDER</div>
+        <div class="nav-icon"><i class="ti ti-file-diff"></i></div><div class="nav-label">CHG ORDER</div>
       </div>
       <div class="nav-item" onclick="switchModule('compliance');renderCompliance()" id="nav-compliance">
-        <div class="nav-icon">🛡️</div><div class="nav-label">COMPLY</div>
+        <div class="nav-icon"><i class="ti ti-shield-half"></i></div><div class="nav-label">COMPLY</div>
       </div>
       <div class="nav-item" onclick="switchModule('invoice');renderInvoice()" id="nav-invoice">
-        <div class="nav-icon">🧾</div><div class="nav-label">INVOICE</div>
+        <div class="nav-icon"><i class="ti ti-receipt"></i></div><div class="nav-label">INVOICE</div>
       </div>
       <div class="nav-item" onclick="switchModule('pricebook');renderPriceBook()" id="nav-pricebook">
-        <div class="nav-icon">📕</div><div class="nav-label">PRICE BOOK</div>
+        <div class="nav-icon"><i class="ti ti-tag"></i></div><div class="nav-label">PRICE BOOK</div>
       </div>
       <div class="nav-item" onclick="switchModule('roi');renderROI()" id="nav-roi">
-        <div class="nav-icon">📈</div><div class="nav-label">ROI</div>
+        <div class="nav-icon"><i class="ti ti-trending-up"></i></div><div class="nav-label">ROI</div>
       </div>
       <div class="nav-item" onclick="switchModule('grow');renderGrow()" id="nav-grow">
-        <div class="nav-icon">📣</div><div class="nav-label">GROW</div>
+        <div class="nav-icon"><i class="ti ti-speakerphone"></i></div><div class="nav-label">GROW</div>
       </div>
       <div class="nav-item" onclick="switchModule('ops');renderOps()" id="nav-ops">
-        <div class="nav-icon">🧰</div><div class="nav-label">OPS CENTER</div>
+        <div class="nav-icon"><i class="ti ti-tools"></i></div><div class="nav-label">OPS CENTER</div>
       </div>
       <div class="nav-item" onclick="switchModule('calendar');renderCalendar()" id="nav-calendar">
-        <div class="nav-icon">📆</div><div class="nav-label">SCHEDULE</div>
+        <div class="nav-icon"><i class="ti ti-calendar-event"></i></div><div class="nav-label">SCHEDULE</div>
       </div>
       <div class="nav-item" onclick="switchModule('admin')" id="nav-admin" style="display:none">
-        <div class="nav-icon">⚙️</div><div class="nav-label">ADMIN</div>
+        <div class="nav-icon"><i class="ti ti-settings"></i></div><div class="nav-label">ADMIN</div>
       </div>
     </div>
 
@@ -6791,6 +6844,7 @@ function saveLead(){
     status:(document.getElementById('ml_status')||{}).value,
     date:new Date().toISOString().split('T')[0],
   };
+  lead.score = scoreLead(lead).score;
   appState.leads.push(lead);
   save('leads');
   closeModal();
@@ -6918,6 +6972,7 @@ function updateLead(id){
   l.status  = (document.getElementById('eld_status')||{}).value;
   l.source  = (document.getElementById('eld_src')||{}).value;
   l.notes   = (document.getElementById('eld_notes')||{}).value;
+  l.score   = scoreLead(l).score;
   save('leads');
   if(l.estSource){ estWriteback('bid', l.estRef, _estBidPatch(l)); }  // two-way sync → Estimator
   closeModal();
@@ -7089,6 +7144,38 @@ function openNewJob(defaultStatus){
 function isSundayISO(d){ return !!d && new Date(d+'T12:00:00').getDay()===0; }
 function sundayOkay(d){ return !isSundayISO(d) || confirm("That's a Sunday — MGSF protects Sundays and doesn't schedule work. Schedule it anyway?"); }
 
+// Background spray-window check for a newly scheduled job.
+// Non-blocking (fire-and-forget). Uses free Open-Meteo — no key needed.
+// Toasts a warning if the forecast on the job date looks risky for SPF/coatings.
+async function checkJobSprayWeather(job){
+  try{
+    if(!job.date || !job.address) return;
+    const jobTs=Date.parse(job.date+'T12:00:00'); const now=Date.now();
+    if(isNaN(jobTs) || jobTs < now - 86400000 || jobTs > now + 7*86400000) return;
+    const query=(job.address||'').split(',')[0].trim(); if(!query) return;
+    const g=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(query));
+    const gj=await g.json(); const hit=(gj.results||[])[0]; if(!hit) return;
+    const jobDate=job.date.slice(0,10);
+    const u='https://api.open-meteo.com/v1/forecast?latitude='+hit.latitude+'&longitude='+hit.longitude
+      +'&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max,wind_speed_10m_max'
+      +'&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=7&timezone=auto';
+    const r=await fetch(u); const d=await r.json();
+    if(!d.daily||!d.daily.time) return;
+    const idx=d.daily.time.indexOf(jobDate); if(idx<0) return;
+    const tmin=d.daily.temperature_2m_min[idx], tmax=d.daily.temperature_2m_max[idx];
+    const precip=d.daily.precipitation_probability_max[idx], wind=d.daily.wind_speed_10m_max[idx];
+    const flags=[];
+    if(tmin!=null && tmin<40) flags.push('low '+Math.round(tmin)+'°F');
+    if(tmax!=null && tmax>95) flags.push('high '+Math.round(tmax)+'°F');
+    if(precip!=null && precip>=60) flags.push(precip+'% precip chance');
+    if(wind!=null && wind>=25) flags.push(Math.round(wind)+' mph wind');
+    if(flags.length){
+      const place=hit.name+(hit.admin1?(', '+hit.admin1):'');
+      notify('⚠️ Weather alert for '+job.date+' at '+place+': '+flags.join(' · ')+' — verify spray conditions','alert');
+    }
+  }catch(_){}
+}
+
 function saveJob(){
   const name=(document.getElementById('nj_name')||{}).value.trim();
   if(!name){notify('Job name required','alert');return;}
@@ -7121,6 +7208,7 @@ function saveJob(){
   notify(`Job created: ${job.jobNum} — ${name}`,'ok');
   if(window.klyftonNotify) klyftonNotify('job_scheduled',{job:{customer:job.customer,name:job.name,service:job.service,date:job.date,address:job.address,value:job.value,status:job.status}});
   playSound('success');
+  checkJobSprayWeather(job);
 }
 
 function openJobDetail(id){
@@ -7207,13 +7295,26 @@ function deleteJob(id){
 // Invoiced → the work is done + an invoice is due (QuickBooks/PayPal Zap).
 // Paid     → wrapped, so nudge a review request (Google My Business Zap).
 function emitJobEvent(j, oldStatus){
-  if(!window.klyftonNotify || !j || j.status===oldStatus) return;
+  if(!j || j.status===oldStatus) return;
   const base={customer:j.customer,name:j.name,service:j.service,date:j.date,address:j.address,value:j.value,status:j.status};
-  if(j.status==='Invoiced'){
-    klyftonNotify('job_completed',{job:base});
-    klyftonNotify('invoice',{job:base, invoice:{customer:j.customer,amount:j.value,number:j.jobNum}});
-  } else if(j.status==='Paid'){
-    klyftonNotify('review_ask',{job:base});
+  if(window.klyftonNotify){
+    if(j.status==='Invoiced'){
+      klyftonNotify('job_completed',{job:base});
+      klyftonNotify('invoice',{job:base, invoice:{customer:j.customer,amount:j.value,number:j.jobNum}});
+    } else if(j.status==='Paid'){
+      klyftonNotify('review_ask',{job:base});
+    }
+  }
+  // When a job lands on Paid, open a ready-to-send review request draft.
+  if(j.status==='Paid'){
+    try{
+      const fn=(j.customer||'').split(' ')[0]||'there';
+      const reviewLink=(typeof MGSF!=='undefined'&&MGSF.reviewLink)||'https://g.page/r/Camo7qu2xWrVEAE/review';
+      const msg='Hi '+fn+',\n\nThanks again for choosing Machine Gun Spray Foam — it was a pleasure working on your project. If you were happy with it, would you take 60 seconds to leave us a Google review? It makes a real difference for a veteran-owned shop.\n\n'+reviewLink+'\n\nNo pressure either way. — Clifton, 406-939-8301';
+      const phone=j.phone||'';
+      const smsHref=phone?('sms:'+encodeURIComponent(phone)+'?body='+encodeURIComponent(msg)):null;
+      if(window.showKlyftonDraft){ if(appState&&!appState.chatOpen&&window.toggleChat) toggleChat(); showKlyftonDraft('REVIEW REQUEST — '+(j.customer||'job'), msg, smsHref||null); }
+    }catch(_){}
   }
 }
 

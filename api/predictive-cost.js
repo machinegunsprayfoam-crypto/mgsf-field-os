@@ -142,6 +142,8 @@ async function kvGet(col) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   if (req.method !== "GET" && req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }
   if (!KV_ON) { res.status(200).json({ configured: false, reason: "not_configured", note: "Set KV_REST_API_URL + KV_REST_API_TOKEN in Vercel to enable predictive costing over your logged job history." }); return; }
   let body = req.body; if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }

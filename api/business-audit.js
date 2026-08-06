@@ -190,6 +190,8 @@ async function kvGet(col) {
 }
 
 module.exports = async (req, res) => {
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
+
   if (!KV_ON) { res.status(200).json({ configured: false, service: "business-audit", note: "Attach Vercel KV to run the business audit (reads leads/jobs/estimates/invoices)." }); return; }
   let body = req.body; if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } } body = body || {};
   const action = String((body.action || (req.query && req.query.action) || "audit")).toLowerCase();

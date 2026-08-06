@@ -114,9 +114,11 @@ function mapContact(c) {
 }
 
 module.exports = async (req, res) => {
+  // Preflight returns no business data and must remain available so browsers can send the guarded request.
   setCors(req, res);
-
   if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
+
+  const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
   if (req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return; }
 
   let body;

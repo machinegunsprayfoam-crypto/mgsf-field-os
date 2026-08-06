@@ -3,7 +3,8 @@
 // Deterministic, keyless, no network (only the exported pure helpers; no Anthropic call is made).
 // Covers shouldSkipSynth (the time-budget guard), bestAnswer (pick the fullest worker answer),
 // routerToolHint (LIVE/OFF capability status the router reads), toolBagBlock (non-empty tool bag),
-// and assembleBrainBlocks (always returns brain text; short input ⇒ the full brain).
+// assembleBrainBlocks (always returns brain text; short input ⇒ the full brain), isActionCommand
+// (pure-command bypass), and applyMemoryContext (memory-warm routing enrichment).
 
 const path = require("path");
 const A = require(path.join(__dirname, "..", "api", "klyfton.js"));
@@ -59,6 +60,123 @@ const tr = A.assembleBrainBlocks("how do I size an electrical service panel and 
 ok("electrical query ⇒ brain carries TRADES EXPERT + cites NEC", tr.includes("TRADES EXPERT") && /NEC/.test(tr));
 const plumb = A.assembleBrainBlocks("drain and vent sizing plus water heater T&P");
 ok("plumbing query ⇒ TRADES EXPERT + cites IPC", plumb.includes("TRADES EXPERT") && /IPC/.test(plumb));
+
+// ---- isActionCommand: pure-command bypass (skips Queen API call for clear field commands) ----
+console.log("\n-- isActionCommand --");
+// Should match → returns a ready plan (no null)
+ok("'update job 42 to Completed' ⇒ ops plan", (function() {
+  const p = A.isActionCommand("update job 42 to Completed");
+  return p && p.minds[0] === "ops" && p.complexity === "simple" && p.confidence === 1.0;
+})());
+ok("'mark job as done' ⇒ ops plan", (function() {
+  const p = A.isActionCommand("mark job as done");
+  return p && p.minds[0] === "ops";
+})());
+ok("'close job for TK Barn' ⇒ ops plan", (function() {
+  const p = A.isActionCommand("close job for TK Barn");
+  return p && p.minds[0] === "ops";
+})());
+ok("'add lead for John Smith' ⇒ general plan", (function() {
+  const p = A.isActionCommand("add lead for John Smith");
+  return p && p.minds[0] === "general" && p.complexity === "simple";
+})());
+ok("'new lead: ABC Farms 406-555-1234' ⇒ general plan", (function() {
+  const p = A.isActionCommand("new lead: ABC Farms 406-555-1234");
+  return p && p.minds[0] === "general";
+})());
+ok("'schedule job for Monday at 8am' ⇒ ops plan", (function() {
+  const p = A.isActionCommand("schedule job for Monday at 8am");
+  return p && p.minds[0] === "ops";
+})());
+ok("'create invoice for Shadehill LLC' ⇒ finance plan", (function() {
+  const p = A.isActionCommand("create invoice for Shadehill LLC");
+  return p && p.minds[0] === "finance";
+})());
+ok("'job completed for Deere dealership' ⇒ ops plan", (function() {
+  const p = A.isActionCommand("job completed for Deere dealership");
+  return p && p.minds[0] === "ops";
+})());
+// Should NOT match → returns null (questions are not commands)
+ok("long question ⇒ null (not a command)", A.isActionCommand("what is the best foam to use for a metal building roof in Zone 7?") === null);
+ok("empty string ⇒ null", A.isActionCommand("") === null);
+ok("greeting ⇒ null", A.isActionCommand("hey what's up") === null);
+ok("message with attachment ⇒ null (always defer photo messages to Queen)", A.isActionCommand("update job", [{ kind: "image", data: "x" }]) === null);
+ok("action plan has no routing_raw (bypass skips Queen call)", (function() {
+  const p = A.isActionCommand("update job to Completed");
+  return p && p.routing_raw === null;
+})());
+ok("action plan intents is empty object", (function() {
+  const p = A.isActionCommand("add lead for Dave");
+  return p && typeof p.intents === "object" && Object.keys(p.intents).length === 0;
+})());
+
+// ---- applyMemoryContext: memory-warm routing enrichment ----
+console.log("\n-- applyMemoryContext --");
+const basePlan = { minds: ["estimator"], complexity: "complex", confidence: 0.9, intents: {}, routing_raw: null };
+// Adds a memory-relevant mind not already in plan.
+ok("recall with finance note ⇒ adds finance to complex plan", (function() {
+  const rec = { semantic: true, results: [{ note: "invoice for Shadehill $4,200 still unpaid, AR aging 45 days" }] };
+  const p = A.applyMemoryContext(basePlan, rec);
+  return p.minds.includes("finance") && p.minds.includes("estimator");
+})());
+ok("recall with govcon note ⇒ adds govcon to complex plan", (function() {
+  const rec = { semantic: true, results: [{ note: "SAM.gov solicitation W912EF-26 for spray foam closes Aug 15" }] };
+  const p = A.applyMemoryContext(basePlan, rec);
+  return p.minds.includes("govcon");
+})());
+ok("recall with ops/schedule note ⇒ adds ops to complex plan", (function() {
+  const rec = { semantic: true, results: [{ note: "crew schedule for Langford job, appointment on Tuesday" }] };
+  const p = A.applyMemoryContext(basePlan, rec);
+  return p.minds.includes("ops");
+})());
+// Never exceeds hive cap (4).
+ok("never exceeds cap=4 even with many memory hits", (function() {
+  const rec = { semantic: true, results: [
+    { note: "invoice cash flow payment AR margin profit" },
+    { note: "SAM.gov federal SDVOSB solicitation" },
+    { note: "schedule appointment crew timeline" },
+    { note: "marketing social post ad campaign" },
+    { note: "safety PPE JSA OSHA respirator" },
+  ]};
+  const p = A.applyMemoryContext({ minds: ["estimator"], complexity: "complex", confidence: 0.9, intents: {}, routing_raw: null }, rec);
+  return p.minds.length <= 4;
+})());
+// Simple plans stay simple (no ballooning).
+ok("simple plan ⇒ not enriched (complexity guard)", (function() {
+  const simple = { minds: ["estimator"], complexity: "simple", confidence: 0.9, intents: {}, routing_raw: null };
+  const rec = { semantic: true, results: [{ note: "invoice overdue payment" }] };
+  const p = A.applyMemoryContext(simple, rec);
+  return p.minds.length === 1 && !p.minds.includes("finance");
+})());
+// Null / missing recall ⇒ plan unchanged.
+ok("null recall ⇒ plan unchanged", (function() {
+  const p = A.applyMemoryContext(basePlan, null);
+  return p === basePlan;
+})());
+ok("empty results ⇒ plan unchanged", (function() {
+  const p = A.applyMemoryContext(basePlan, { semantic: true, results: [] });
+  return p.minds.length === basePlan.minds.length;
+})());
+// Never adds duplicate minds.
+ok("mind already in plan ⇒ not duplicated", (function() {
+  const plan = { minds: ["estimator", "finance"], complexity: "complex", confidence: 0.9, intents: {}, routing_raw: null };
+  const rec = { semantic: true, results: [{ note: "invoice billing AR margin profit payment" }] };
+  const p = A.applyMemoryContext(plan, rec);
+  return p.minds.filter((m) => m === "finance").length === 1;
+})());
+// Null plan / missing minds field ⇒ safe return.
+ok("null plan ⇒ returns null (safe)", A.applyMemoryContext(null, { results: [] }) === null);
+ok("plan without minds ⇒ returns plan as-is", (function() {
+  const bad = { complexity: "complex" };
+  return A.applyMemoryContext(bad, { results: [{ note: "invoice" }] }) === bad;
+})());
+
+// ---- Queen upgrade exports are present ----
+console.log("\n-- export sanity --");
+ok("ACTION_CMD_PATTERNS exported + non-empty", Array.isArray(A.ACTION_CMD_PATTERNS) && A.ACTION_CMD_PATTERNS.length > 0);
+ok("MEMORY_MIND_MAP exported + non-empty", Array.isArray(A.MEMORY_MIND_MAP) && A.MEMORY_MIND_MAP.length > 0);
+ok("isActionCommand is a function", typeof A.isActionCommand === "function");
+ok("applyMemoryContext is a function", typeof A.applyMemoryContext === "function");
 
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

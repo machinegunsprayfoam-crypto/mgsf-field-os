@@ -33,5 +33,10 @@ ok("safeEqual false on length mismatch", G.safeEqual("abc", "abcd") === false);
 // ---- denied() shape ----
 ok("denied() ⇒ 401-style body, no secret echoed", (() => { const d = G.denied(); return d.ok === false && d.error === "unauthorized" && !/s3cret/.test(JSON.stringify(d)); })());
 
+// ---- sensitive route coverage ----
+const fs = require("fs");
+const sensitive = ["brain-context", "command-center", "hubspot", "hubspot-sync", "sync", "business-audit", "daily-brief", "follow-up", "invoice-remind", "inventory-reorder", "roof-maintenance", "projects", "predictive-cost", "photo"];
+ok("sensitive data routes use shared access guard", sensitive.every((name) => /require\(["']\.\/guard["']\)/.test(fs.readFileSync(path.join(__dirname, "..", "api", name + ".js"), "utf8"))));
+
 console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

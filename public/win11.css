@@ -1,0 +1,787 @@
+/* =============================================================================
+   WIN11.CSS — Windows 11 Fluent Design polish layer for Klyfton AI
+   Loaded last; purely additive overrides. All JS hooks, themes, and layout
+   skeleton remain untouched. Remove this <link> to revert to the base look.
+   ============================================================================= */
+
+/* ── 1. Design tokens ─────────────────────────────────────────────────────── */
+:root {
+  /* Fluent-style elevation / shadow scale */
+  --f-el1: 0 1px 2px rgba(0,0,0,.28), 0 0 1px rgba(0,0,0,.14);
+  --f-el2: 0 2px 8px rgba(0,0,0,.32), 0 0 2px rgba(0,0,0,.18);
+  --f-el3: 0 8px 28px rgba(0,0,0,.48), 0 2px 8px rgba(0,0,0,.24);
+  --f-el4: 0 20px 60px rgba(0,0,0,.56), 0 4px 14px rgba(0,0,0,.32);
+
+  /* Corner radii aligned with Win11 */
+  --f-r4:  4px;
+  --f-r8:  8px;
+  --f-r12: 12px;
+  --f-r16: 16px;
+  --f-r20: 20px;
+  --f-rpill: 9999px;
+
+  /* Motion curves — Win11 uses snap-back spring feel */
+  --f-ease:     cubic-bezier(.25,.46,.45,.94);
+  --f-ease-out: cubic-bezier(.0,0,.2,1);
+  --f-spring:   cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ── 2. Typography refinements ────────────────────────────────────────────── */
+html, body {
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── 3. Top bar — Win11 title-bar feel ────────────────────────────────────── */
+#topbar {
+  height: 56px !important;
+  background: rgba(13, 17, 26, 0.82) !important;
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.08) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04), var(--f-el2) !important;
+  gap: 8px !important;
+}
+
+/* Logo — cleaner, tighter */
+.logo-text {
+  font-size: 16px !important;
+  letter-spacing: 3px !important;
+  font-weight: 800 !important;
+}
+.logo-badge {
+  font-size: 8px !important;
+  letter-spacing: 1.5px !important;
+  border-radius: var(--f-rpill) !important;
+}
+
+/* Top-bar buttons — Win11 rounded-square style */
+.top-btn {
+  border-radius: var(--f-r8) !important;
+  padding: 6px 11px !important;
+  font-size: 12px !important;
+  letter-spacing: .4px !important;
+  gap: 5px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: background .15s var(--f-ease), transform .12s var(--f-spring), box-shadow .15s var(--f-ease) !important;
+}
+.top-btn i { font-size: 15px; line-height: 1; }
+.top-btn:hover {
+  background: rgba(255,255,255,0.08) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--f-el1) !important;
+}
+.top-btn:active { transform: translateY(0) scale(.97) !important; }
+.top-btn.active {
+  background: rgba(var(--accentRGB,.1), 0.14) !important;
+  border-color: rgba(var(--accentRGB), .3) !important;
+  color: var(--or) !important;
+}
+
+/* Layout segment pills — Win11 segmented control */
+#layoutSeg {
+  border-radius: var(--f-r8) !important;
+  padding: 3px !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  gap: 0 !important;
+}
+#layoutSeg button {
+  border-radius: var(--f-r4) !important;
+  padding: 5px 10px !important;
+  font-size: 13px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: background .14s var(--f-ease), color .14s var(--f-ease) !important;
+}
+#layoutSeg button i { font-size: 14px; line-height: 1; }
+#layoutSeg button.on {
+  background: rgba(249,115,22,0.20) !important;
+  color: var(--or) !important;
+  box-shadow: var(--f-el1) !important;
+}
+
+/* ── 4. Sidebar — Win11 NavigationView rail ───────────────────────────────── */
+#sidebar {
+  background: rgba(10, 13, 20, 0.88) !important;
+  backdrop-filter: blur(32px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(160%) !important;
+  border-right: 1px solid rgba(255,255,255,0.07) !important;
+  box-shadow: 1px 0 0 rgba(255,255,255,0.03) !important;
+  padding: 8px 6px 100px !important;
+  gap: 2px 6px !important;
+}
+
+/* Nav items — Win11-style rounded rectangle with smooth spring press */
+.nav-item {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: var(--f-r12) !important;
+  border: 1px solid transparent !important;
+  gap: 3px !important;
+  transition:
+    background .15s var(--f-ease),
+    border-color .15s var(--f-ease),
+    box-shadow .15s var(--f-ease),
+    transform .14s var(--f-spring) !important;
+  position: relative !important;
+}
+.nav-item:hover {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  transform: scale(1.04) !important;
+  box-shadow: var(--f-el1) !important;
+}
+.nav-item:active {
+  transform: scale(0.96) !important;
+  background: rgba(255,255,255,0.04) !important;
+}
+
+/* Active state — Win11 accent fill with left-edge pill indicator */
+.nav-item.active {
+  background: linear-gradient(145deg, rgba(249,115,22,0.20), rgba(249,115,22,0.08)) !important;
+  border-color: rgba(249,115,22,0.30) !important;
+  box-shadow: 0 4px 16px rgba(249,115,22,0.12), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  transform: none !important;
+}
+/* Left-edge accent pill (the Win11 selection indicator) */
+.nav-item.active::before {
+  content: "" !important;
+  position: absolute !important;
+  left: -3px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 3px !important;
+  height: 22px !important;
+  border-radius: 0 var(--f-r4) var(--f-r4) 0 !important;
+  background: var(--or) !important;
+  box-shadow: 0 0 8px rgba(249,115,22,0.6) !important;
+}
+
+/* Nav icons — Tabler icon sizing + color */
+.nav-icon {
+  font-size: 0 !important;  /* kill emoji fallback size */
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.nav-icon i {
+  font-size: 20px !important;
+  color: var(--t2) !important;
+  transition: color .15s var(--f-ease), transform .14s var(--f-spring) !important;
+  line-height: 1 !important;
+  display: block !important;
+}
+.nav-item:hover .nav-icon i {
+  color: var(--tx) !important;
+  transform: scale(1.06) !important;
+}
+.nav-item.active .nav-icon i {
+  color: var(--or) !important;
+}
+
+/* Nav label */
+.nav-label {
+  font-size: 7.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .5px !important;
+  color: var(--t3) !important;
+  text-transform: uppercase !important;
+  transition: color .15s var(--f-ease) !important;
+}
+.nav-item:hover .nav-label { color: var(--t2) !important; }
+.nav-item.active .nav-label { color: var(--or) !important; }
+
+/* Dividers */
+.nav-divider {
+  margin: 3px 8px !important;
+  background: rgba(255,255,255,0.07) !important;
+}
+
+/* ── 5. Cards — Fluent elevated surface ───────────────────────────────────── */
+.card, .admin-section, .jsa-card {
+  border-radius: var(--f-r16) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0) 100%),
+    var(--s1) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: var(--f-el2) !important;
+  overflow: hidden !important;
+  transition:
+    border-color .2s var(--f-ease),
+    box-shadow .2s var(--f-ease),
+    transform .18s var(--f-spring) !important;
+}
+.card:hover, .admin-section:hover, .jsa-card:hover {
+  border-color: rgba(249,115,22,0.28) !important;
+  box-shadow: var(--f-el3), 0 0 28px rgba(249,115,22,0.07) !important;
+  transform: translateY(-2px) !important;
+}
+/* Shimmer top edge */
+.card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0; left: 0; right: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.14) 40%, rgba(249,115,22,0.4) 60%, transparent 100%) !important;
+  opacity: .6 !important;
+}
+
+/* Card title — cleaner */
+.card-title {
+  font-size: 10.5px !important;
+  letter-spacing: 1.2px !important;
+  color: var(--t2) !important;
+  font-weight: 700 !important;
+  margin-bottom: 12px !important;
+}
+.card-title::before {
+  width: 3px !important;
+  height: 12px !important;
+  border-radius: var(--f-r4) !important;
+  background: linear-gradient(180deg, var(--or), rgba(249,115,22,0.5)) !important;
+}
+
+/* ── 6. Metric cards ──────────────────────────────────────────────────────── */
+.metric-card {
+  border-radius: var(--f-r16) !important;
+  padding: 18px 16px !important;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 60%),
+    var(--s1) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: var(--f-el2) !important;
+  transition:
+    transform .18s var(--f-spring),
+    box-shadow .2s var(--f-ease),
+    border-color .2s var(--f-ease) !important;
+}
+.metric-card:hover {
+  transform: translateY(-4px) scale(1.01) !important;
+  border-color: rgba(249,115,22,0.35) !important;
+  box-shadow: var(--f-el3), 0 0 32px rgba(249,115,22,0.10) !important;
+}
+.metric-val {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  letter-spacing: -.5px !important;
+  background: linear-gradient(160deg, var(--tx) 20%, var(--or) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.metric-lbl {
+  font-size: 9.5px !important;
+  letter-spacing: 1.2px !important;
+  color: var(--t2) !important;
+  margin-top: 5px !important;
+}
+.metric-spark {
+  height: 2px !important;
+  opacity: .55 !important;
+  border-radius: 0 0 var(--f-r4) var(--f-r4) !important;
+}
+
+/* ── 7. Buttons — Fluent filled + outline ─────────────────────────────────── */
+.btn {
+  border-radius: var(--f-r8) !important;
+  font-weight: 650 !important;
+  letter-spacing: .2px !important;
+  transition:
+    background .15s var(--f-ease),
+    box-shadow .15s var(--f-ease),
+    transform .12s var(--f-spring),
+    border-color .15s var(--f-ease) !important;
+}
+.btn:active { transform: scale(0.97) !important; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #ff9750, var(--or)) !important;
+  color: #160a02 !important;
+  box-shadow: 0 4px 14px rgba(249,115,22,.28), inset 0 1px 0 rgba(255,255,255,.30) !important;
+}
+.btn-primary:hover {
+  box-shadow: 0 6px 22px rgba(249,115,22,.44), inset 0 1px 0 rgba(255,255,255,.38) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-ghost {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  color: var(--tx) !important;
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(249,115,22,0.45) !important;
+  color: var(--or) !important;
+}
+
+/* ── 8. Inputs — Win11 field style ───────────────────────────────────────── */
+.inp, .admin-inp, #chatInput,
+input[type="email"], input[type="password"], input[type="text"],
+input[type="number"], textarea, select {
+  border-radius: var(--f-r8) !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  transition:
+    border-color .16s var(--f-ease),
+    background .16s var(--f-ease),
+    box-shadow .16s var(--f-ease) !important;
+}
+.inp:focus, .admin-inp:focus, #chatInput:focus,
+input[type="email"]:focus, input[type="password"]:focus,
+input[type="text"]:focus, input[type="number"]:focus,
+textarea:focus, select:focus {
+  border-color: var(--or) !important;
+  background: rgba(255,255,255,0.06) !important;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.18) !important;
+}
+/* Bottom-line accent (Win11 text field style) */
+.inp, .admin-inp { border-bottom-color: rgba(255,255,255,0.18) !important; }
+.inp:focus, .admin-inp:focus { border-bottom-color: var(--or) !important; }
+
+/* ── 9. PIN overlay ───────────────────────────────────────────────────────── */
+.pin-key {
+  border-radius: var(--f-r12) !important;
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  transition: background .12s var(--f-ease), transform .12s var(--f-spring) !important;
+}
+.pin-key:hover {
+  background: rgba(249,115,22,0.14) !important;
+  border-color: rgba(249,115,22,0.4) !important;
+  transform: scale(1.04) !important;
+}
+.pin-key:active { transform: scale(0.94) !important; }
+.pin-enter {
+  background: rgba(34,197,94,0.12) !important;
+  border-color: rgba(34,197,94,0.35) !important;
+}
+.pin-dot {
+  border-radius: 50% !important;
+  border: 2px solid rgba(255,255,255,0.18) !important;
+  transition: all .2s var(--f-spring) !important;
+}
+.pin-dot.filled {
+  background: var(--or) !important;
+  border-color: var(--or) !important;
+  box-shadow: 0 0 12px rgba(249,115,22,0.5) !important;
+  transform: scale(1.1) !important;
+}
+
+/* ── 10. Chat panel ───────────────────────────────────────────────────────── */
+#chatPanel {
+  background: rgba(10,13,20,0.90) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  border-left: 1px solid rgba(255,255,255,0.07) !important;
+}
+.msg {
+  border-radius: var(--f-r16) !important;
+  box-shadow: var(--f-el1) !important;
+  line-height: 1.6 !important;
+}
+.msg.user {
+  background: linear-gradient(160deg, rgba(249,115,22,0.18), rgba(249,115,22,0.08)) !important;
+  border: 1px solid rgba(249,115,22,0.25) !important;
+  border-radius: var(--f-r16) var(--f-r16) var(--f-r4) var(--f-r16) !important;
+}
+.msg.ai {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: var(--f-r16) var(--f-r16) var(--f-r16) var(--f-r4) !important;
+}
+.chat-chip {
+  border-radius: var(--f-rpill) !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  transition: all .14s var(--f-ease) !important;
+}
+.chat-chip:hover {
+  background: rgba(249,115,22,0.10) !important;
+  border-color: rgba(249,115,22,0.3) !important;
+  transform: translateY(-1px) !important;
+}
+.chat-send {
+  border-radius: var(--f-r8) !important;
+  background: linear-gradient(180deg, #ff9750, var(--or)) !important;
+  box-shadow: 0 3px 12px rgba(249,115,22,0.28) !important;
+  transition: box-shadow .14s var(--f-ease), transform .12s var(--f-spring) !important;
+}
+.chat-send:hover {
+  box-shadow: 0 5px 18px rgba(249,115,22,0.42) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── 11. Modal ────────────────────────────────────────────────────────────── */
+.modal {
+  border-radius: var(--f-r20) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow: var(--f-el4) !important;
+  background: var(--s2) !important;
+  backdrop-filter: blur(20px) !important;
+}
+.modal-overlay {
+  backdrop-filter: blur(6px) !important;
+  background: rgba(0,0,0,0.62) !important;
+}
+
+/* ── 12. Tables ───────────────────────────────────────────────────────────── */
+.tbl th {
+  font-size: 10px !important;
+  letter-spacing: 1px !important;
+  color: var(--t2) !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  padding: 10px 12px !important;
+}
+.tbl td { padding: 10px 12px !important; }
+.tbl tr:hover td { background: rgba(255,255,255,0.03) !important; }
+
+/* ── 13. Notification toast ───────────────────────────────────────────────── */
+#notif {
+  border-radius: var(--f-r12) !important;
+  background: rgba(18,22,34,0.96) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow: var(--f-el3) !important;
+  backdrop-filter: blur(20px) !important;
+  font-size: 13px !important;
+  padding: 11px 22px !important;
+}
+#notif.success { border-color: rgba(34,197,94,0.4) !important; }
+#notif.error   { border-color: rgba(200,16,46,0.4) !important; }
+
+/* ── 14. Scrollbars — Win11 thin overlay ──────────────────────────────────── */
+::-webkit-scrollbar { width: 6px !important; height: 6px !important; }
+::-webkit-scrollbar-track { background: transparent !important; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12) !important;
+  border-radius: var(--f-rpill) !important;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(249,115,22,0.5) !important; }
+
+/* ── 15. Job / pipe cards ─────────────────────────────────────────────────── */
+.job-card, .pipe-card {
+  border-radius: var(--f-r12) !important;
+  background: rgba(255,255,255,0.025) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  transition:
+    border-color .18s var(--f-ease),
+    box-shadow .18s var(--f-ease),
+    transform .16s var(--f-spring) !important;
+}
+.job-card:hover, .pipe-card:hover {
+  border-color: rgba(249,115,22,0.30) !important;
+  box-shadow: var(--f-el2), 0 0 20px rgba(249,115,22,0.07) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* ── 16. Skill cards ──────────────────────────────────────────────────────── */
+.skill-card {
+  border-radius: var(--f-r16) !important;
+  background: rgba(255,255,255,0.025) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  transition: border-color .18s var(--f-ease), box-shadow .18s var(--f-ease), transform .16s var(--f-spring) !important;
+}
+.skill-card:hover {
+  border-color: rgba(0,212,255,0.30) !important;
+  box-shadow: 0 0 20px rgba(0,212,255,0.08) !important;
+  transform: translateY(-2px) !important;
+}
+.skill-card.connected { border-color: rgba(34,197,94,0.30) !important; }
+
+/* ── 17. Badges — pill style ──────────────────────────────────────────────── */
+.badge {
+  border-radius: var(--f-rpill) !important;
+  font-weight: 700 !important;
+  font-size: 10px !important;
+  padding: 3px 10px !important;
+}
+
+/* ── 18. Boot screen ──────────────────────────────────────────────────────── */
+.boot-logo {
+  font-size: 46px !important;
+  letter-spacing: 10px !important;
+}
+.boot-sub { letter-spacing: 5px !important; }
+
+/* ── 19. Klyfton avatar ───────────────────────────────────────────────────── */
+.klyfton-avatar {
+  border-radius: var(--f-r12) !important;
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.3), var(--f-el1) !important;
+}
+
+/* ── 20. Reduced-motion safety ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: .001ms !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* =============================================================================
+   DE-ARCADE PASS — removes everything that reads "1980s Tron arcade machine":
+   perspective grid floor, CRT scanlines, neon text glows, pulsing animations,
+   bloom on every surface. Keeps the dark theme but makes it clean + modern.
+   ============================================================================= */
+
+/* ── A. Kill the Tron FX layers entirely ─────────────────────────────────── */
+#tronFloor  { display: none !important; }
+#tronScan   { display: none !important; }
+/* Hide the JS-driven animated canvas background (CSS gradient beneath it is kept) */
+#bgCanvas   { opacity: 0 !important; pointer-events: none !important; }
+/* Kill the sweeping ambient scan bar at the bottom */
+#ambientBar { display: none !important; }
+
+/* ── B. Kill neon text-shadows everywhere ─────────────────────────────────── */
+.logo-text, .boot-logo,
+.card-title, .admin-section-title,
+.metric-val, h2, h3 {
+  text-shadow: none !important;
+  filter: none !important;
+}
+/* Boot logo — replace pulsing neon with a calm fade-in, no glow */
+.boot-logo {
+  animation: none !important;
+  font-size: 44px !important;
+  letter-spacing: 10px !important;
+  color: var(--or) !important;
+}
+/* Card title should be gray, not neon cyan */
+.card-title {
+  color: var(--t2) !important;
+}
+/* Admin section title — muted orange, no bloom */
+.admin-section-title {
+  color: var(--or) !important;
+  opacity: .85 !important;
+}
+
+/* ── C. Replace neon box-shadows on cards with clean elevation ────────────── */
+.card, .metric-card, .admin-section, .jsa-card, .log-row, .tc-card {
+  box-shadow: var(--f-el2) !important;
+}
+.card:hover, .admin-section:hover, .jsa-card:hover {
+  box-shadow: var(--f-el3) !important;
+}
+.metric-card:hover {
+  box-shadow: var(--f-el3) !important;
+}
+
+/* ── D. Remove neon inset glow from active nav item ──────────────────────── */
+.nav-item.active {
+  box-shadow: 0 2px 12px rgba(249,115,22,.10), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+/* Icon drop-shadow on active was a neon filter — kill it */
+.nav-item.active .nav-icon,
+.nav-item.active .nav-icon i {
+  filter: none !important;
+}
+/* The left-edge pill stays but loses the outer glow */
+.nav-item.active::before {
+  box-shadow: none !important;
+}
+
+/* ── E. Replace neon button shadows with depth-only shadows ──────────────── */
+.btn-primary {
+  box-shadow: 0 4px 14px rgba(249,115,22,.24), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(249,115,22,.38), inset 0 1px 0 rgba(255,255,255,.36) !important;
+}
+.btn-cyan {
+  box-shadow: none !important;
+}
+.btn-cyan:hover {
+  box-shadow: 0 3px 12px rgba(0,212,255,.14) !important;
+}
+
+/* ── F. Input focus ring — subtle orange, not neon cyan ──────────────────── */
+.inp:focus, .admin-inp:focus,
+input[type="email"]:focus, input[type="password"]:focus,
+input[type="text"]:focus, input[type="number"]:focus,
+textarea:focus, select:focus {
+  border-color: var(--or) !important;
+  box-shadow: 0 0 0 3px rgba(249,115,22,.16) !important;
+}
+
+/* ── G. Top bar — remove neon bottom border glow ─────────────────────────── */
+#topbar {
+  box-shadow: 0 1px 0 rgba(255,255,255,.05), var(--f-el2) !important;
+}
+
+/* ── H. Logo in topbar — clean gradient, no bloom ───────────────────────── */
+.logo-text {
+  background: linear-gradient(135deg, var(--or) 30%, #ffb877 70%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* =============================================================================
+   EXPANDABLE SIDEBAR — Win11-style nav rail.
+   Collapsed (default): 60px icon-only.
+   Expanded (pinned or hovered on desktop): 224px icon + label side-by-side.
+   The expanded state overlays content (no layout shift); a subtle scrim
+   appears behind it on mobile so the user knows to tap away.
+   ============================================================================= */
+
+/* ── I. Collapsed rail — default state ───────────────────────────────────── */
+#sidebar {
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 60px !important;
+  padding: 56px 5px 100px !important;   /* top pad leaves room for the toggle btn */
+  gap: 2px !important;
+  /* turn off wrapping — we want a single vertical column */
+  flex-flow: column nowrap !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  align-content: stretch !important;
+  overflow: hidden !important;
+  transition: width .24s var(--f-ease), box-shadow .24s var(--f-ease) !important;
+  /* sidebar floats OVER content when expanded */
+  position: absolute !important;
+  left: 0 !important;
+  top: 56px !important;   /* below topbar */
+  bottom: 0 !important;
+  z-index: 40 !important;
+}
+/* Content area gains left margin equal to the collapsed rail width */
+#main {
+  position: relative !important;
+  padding-left: 60px !important;
+}
+/* Dividers stretch full width */
+.nav-divider {
+  flex-basis: auto !important;
+  width: auto !important;
+  margin: 2px 5px !important;
+}
+/* Nav items fill the column, icon + label row by default */
+.nav-item {
+  width: auto !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  padding: 0 0 0 14px !important;
+  gap: 0 !important;
+  border-radius: var(--f-r8) !important;
+  overflow: hidden !important;
+}
+.nav-item:hover { padding-left: 14px !important; }
+.nav-icon {
+  width: 30px !important;
+  min-width: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+.nav-icon i { font-size: 19px !important; }
+/* Labels hidden when sidebar is narrow */
+.nav-label {
+  opacity: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: .3px !important;
+  text-transform: none !important;
+  margin-left: 10px !important;
+  transition: opacity .18s var(--f-ease) !important;
+  pointer-events: none !important;
+}
+
+/* ── J. Expanded state ────────────────────────────────────────────────────── */
+#sidebar.nav-expanded {
+  width: 224px !important;
+  max-width: 224px !important;
+  box-shadow: 4px 0 32px rgba(0,0,0,.55), 1px 0 0 rgba(255,255,255,.04) !important;
+}
+#sidebar.nav-expanded .nav-label {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+#sidebar.nav-expanded .nav-item.active::before {
+  height: 18px !important;
+}
+/* Phone layout stays narrow — no hover expand */
+body.lay-phone #sidebar {
+  top: 52px !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+body.lay-phone #main { padding-left: 56px !important; }
+body.lay-phone #sidebar.nav-expanded {
+  width: 56px !important;
+  max-width: 56px !important;
+}
+
+/* ── K. Sidebar toggle button ─────────────────────────────────────────────── */
+#navToggle {
+  position: absolute !important;
+  top: 8px !important;
+  left: 8px !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: var(--f-r8) !important;
+  background: none !important;
+  border: 1px solid transparent !important;
+  color: var(--t2) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  transition: background .14s var(--f-ease), border-color .14s var(--f-ease), color .14s var(--f-ease) !important;
+  z-index: 5 !important;
+  flex-shrink: 0 !important;
+}
+#navToggle:hover {
+  background: rgba(255,255,255,.07) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  color: var(--tx) !important;
+}
+#navToggle.pinned {
+  background: rgba(249,115,22,.12) !important;
+  border-color: rgba(249,115,22,.25) !important;
+  color: var(--or) !important;
+}
+
+/* ── L. Mobile scrim (shown behind expanded sidebar) ─────────────────────── */
+#navScrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0,0,0,.38);
+  backdrop-filter: blur(2px);
+  animation: scrimIn .2s var(--f-ease) both;
+}
+@keyframes scrimIn { from { opacity: 0 } to { opacity: 1 } }
+#navScrim.show { display: block; }
+
+/* ── M. Hide legacy drag-resize handle; neutralise old layout overrides ───── */
+#navResize { display: none !important; }
+body.lay-tablet #sidebar {
+  width: 60px !important; min-width: 60px !important; max-width: 60px !important;
+}
+body.lay-tablet #main { padding-left: 60px !important; }
+body.lay-tablet #sidebar.nav-expanded { width: 224px !important; max-width: 224px !important; }
+/* Desktop keeps the same rail — explicit width resets override app.css !important rules */
+body.lay-desktop #sidebar {
+  width: 60px !important; min-width: 60px !important; max-width: 60px !important;
+}
+body.lay-desktop #main { padding-left: 60px !important; }
+body.lay-desktop #sidebar.nav-expanded { width: 224px !important; max-width: 224px !important; }

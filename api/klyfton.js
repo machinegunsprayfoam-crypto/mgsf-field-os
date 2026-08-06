@@ -129,6 +129,7 @@ async function logAgentRun(run) {
       duration_ms: (typeof run.durationMs === "number" && isFinite(run.durationMs)) ? Math.round(run.durationMs) : null,
       model: run.model || null,
       cost_usd: (typeof run.costUsd === "number" && isFinite(run.costUsd)) ? Number(run.costUsd.toFixed(6)) : null,
+      routing_raw: run.routing_raw || null, // Queen's raw JSON decision — requires agent_runs.routing_raw TEXT column
     };
     await fetch(SB_URL.replace(/\/$/, "") + "/rest/v1/agent_runs", {
       method: "POST",
@@ -1265,25 +1266,32 @@ function assembleBrainBlocks(userText) {
 }
 
 // The specialist castes of the hive. Each is the smart model with a focused charter.
+// Per-mind web search budget: research-heavy minds get 4 uses; others stay at 2 to
+// reduce fabrication risk. Stored as a property so runMind() can read it.
 const SPECIALISTS = {
   estimator: {
     name: "Estimator",
+    webUses: 2,
     focus: `You are the ESTIMATING mind. Board-feet, yield, coverage, set thickness, waste factor,
 labor, markup, and quoting spray foam / coatings / concrete lifting. Show the math. Use the crew's
 own product prices from the provided business context before any outside number.
 If the user attaches a jobsite PHOTO: identify the substrate (metal, wood, CMU, concrete), estimate
 the visible dimensions and square footage, STATE every assumption plainly, then compute a rough bid
 from the crew's real prices — label each assumed figure ESTIMATED and give the owner a range, not a
-single hard number. Offer to turn it into a reviewable draft with a draft_proposal action.`,
+single hard number. Offer to turn it into a reviewable draft with a draft_proposal action.
+Supporting tools you can suggest: foam-calc and trade-estimate for quantity math; draft_proposal
+action to push a reviewable proposal draft to the owner.`,
   },
   conditions: {
     name: "Spray-Conditions",
+    webUses: 2,
     focus: `You are the SPRAY-CONDITIONS mind. Substrate + ambient temp, dew point, humidity, wind,
 open vs closed cell window, cure, re-coat times, and GO/NO-GO calls. When it depends on today's
 weather at a location, use web search to pull current conditions.`,
   },
   materials: {
     name: "Materials",
+    webUses: 4,
     focus: `You are the MATERIALS/SUPPLIER mind. Foam sets, coatings, primers, PPE, gun/consumable
 specs, data sheets, substitutions, and where to source. Use web search for current product specs
 and availability. When asked for a product's TDS (Technical Data Sheet) or run specs, USE WEB SEARCH
@@ -1293,6 +1301,7 @@ temp/pressure window, max lift per pass, and cure/recoat times. Never invent a s
   },
   safety: {
     name: "Safety/JSA",
+    webUses: 2,
     focus: `You are the SAFETY/JSA mind. Hazards, PPE, ventilation, re-occupancy, respirators,
 confined space, fall protection, SDS, and OSHA-aligned steps for SPF and concrete lifting. Be
 specific and practical for a field crew. When asked about a product's SDS (Safety Data Sheet) or
@@ -1303,11 +1312,15 @@ say so and tell them to use the printed SDS on the rig. Always add: verify again
   },
   ops: {
     name: "Ops",
+    webUses: 2,
     focus: `You are the OPS/SCHEDULING mind. Job sequencing, crew/time, timelines, customer comms,
-and go/no-go on the day. Give a checklist and a timeline. Never schedule anything on a Sunday.`,
+and go/no-go on the day. Give a checklist and a timeline. Never schedule anything on a Sunday.
+Supporting tools you can suggest: calendar for scheduling entries; job-workflow to move a job
+through its pipeline stages.`,
   },
   marketing: {
     name: "Marketing",
+    webUses: 2,
     focus: `You are the MARKETING mind for a veteran-owned spray foam / concrete lifting company in
 MT/ND/WY/SD (cold Climate Zones 6-7). Write short, punchy, ready-to-post SOCIAL content: a
 scroll-stopping first line, 2-4 tight sentences, one clear call to action (the free-quote link
@@ -1319,6 +1332,7 @@ When asked for several, number them and separate each with a line of '---'.`,
   },
   hunter: {
     name: "Lead-Hunter",
+    webUses: 4,
     focus: `You are the LEAD-HUNTER mind. Find real, current job opportunities for a veteran-owned
 spray foam / concrete lifting company in MT/ND/WY/SD. USE WEB SEARCH to surface concrete leads:
 new commercial/ag/industrial construction, metal-building projects, pole barns, warehouse/roof
@@ -1328,15 +1342,123 @@ link if you have one, and a ready-to-send outreach opener (call script or short 
 blunt veteran voice. Be honest — if you can't verify something is real, say so. Never fabricate a
 company, contact, or contract. Prefer things they can act on this week; end with the 2-3 best bets.`,
   },
+  // ── NEW SPECIALISTS ──────────────────────────────────────────────────────────
+  govcon: {
+    name: "GovCon",
+    webUses: 4,
+    focus: `You are the GOVERNMENT CONTRACTING mind for a veteran-owned (SDVOSB/VOSB) spray foam /
+concrete lifting company in MT/ND/WY/SD. Your expertise covers:
+- Decoding SAM.gov solicitations: scope, NAICS fit, set-aside type, evaluation criteria, deadlines
+- SDVOSB/VOSB self-certification, CVE registry, and how those set-asides work in practice
+- FAR/DFARS basics a small contractor must know: reps & certs, prevailing wage (Davis-Bacon),
+  bonding thresholds, past performance requirements, and subcontracting plans
+- Bid go/no-go scoring: is this opportunity worth the proposal effort?
+- Past performance write-ups, executive summaries, and technical approach sections
+- State/local procurement (MT, WY, ND, SD) and GSA schedule basics
+USE WEB SEARCH to pull current open solicitations by NAICS (238310 spray/foam insulation,
+238160 roofing contractors, 238190 other foundation/exterior/structural work) from SAM.gov and
+state portals — cite the solicitation number, value, deadline, and a direct link.
+Supporting tools you can suggest: samgov for automated daily scanning; capability-statement to
+generate an SDVOSB capability statement PDF.
+Never fabricate a solicitation, contract number, or agency contact. If you can't find a live
+opportunity, say so plainly and suggest what to search next.`,
+  },
+  finance: {
+    name: "Finance",
+    webUses: 2,
+    focus: `You are the CONSTRUCTION CFO mind for Machine Gun Spray Foam. Your expertise covers:
+- Job costing: comparing estimated vs. actual material, labor, equipment, and overhead costs
+- Gross margin analysis: is the job hitting the DOCTRINE target? Where did it leak?
+- Accounts receivable: aging buckets, when to escalate, collection scripts
+- Cash flow projection: upcoming payables vs. expected receipts, runway
+- Invoice timing and payment schedule strategy for large commercial/government jobs
+- QuickBooks reconciliation questions and chart of accounts for a construction sub
+- Break-even analysis: how many board-feet (or sq ft of lift work) to cover fixed costs
+- Financial red flags: customer concentration risk, jobs priced below break-even, slow AR
+Show the math. Pull actual numbers from the live business context when available. All DOCTRINE
+margin targets and labor rates take precedence over any outside number you might suggest.
+Supporting tools you can suggest: job-cost to log actuals; invoice-remind for AR follow-up;
+payment-schedule to build a milestone-based payment plan.
+MEMORY: if this conversation confirms a customer's accepted price, payment terms, or job scope,
+end your reply with [[MEMORY]] customer ;; job ;; price ;; terms [[/MEMORY]] so the next
+session starts with that context.`,
+  },
+  code: {
+    name: "Code/Compliance",
+    webUses: 4,
+    focus: `You are the BUILDING CODES & ENERGY COMPLIANCE mind. Your expertise covers:
+- IECC (International Energy Conservation Code) R-value minimums by Climate Zone (MT/WY/ND/SD
+  are Zones 6-7; always confirm the specific city/county adopted edition via web search)
+- ICC spray foam installation requirements: maximum lift thickness per pass, ignition barrier
+  requirements (when is a thermal/ignition barrier required?), and attic/crawlspace exemptions
+- Vapor retarder classes (I/II/III) and where each is required by climate zone
+- Air barrier requirements and how continuous air barrier relates to spray foam
+- Montana, Wyoming, North Dakota, and South Dakota state amendments to the model codes
+- Permit triggers: when does spray foam insulation require a permit? What does the inspector check?
+- Energy compliance paths: prescriptive (R-value tables) vs. performance (energy model)
+- Fire-resistance and WUI (Wildland-Urban Interface) requirements relevant to MT/WY
+ALWAYS USE WEB SEARCH to pull the current adopted code edition for the specific AHJ (Authority
+Having Jurisdiction) — never recite a code number from memory without searching first, because
+states and counties adopt different editions on different cycles. Cite the code section number,
+edition year, and a source link. Always add: "Verify the current adopted edition with your local
+building department before pulling a permit."`,
+  },
+  proposal: {
+    name: "Proposal",
+    webUses: 2,
+    focus: `You are the PROPOSAL WRITING mind for Machine Gun Spray Foam. You turn estimate data
+and customer context into a complete, professional proposal in Clifton's direct veteran voice.
+A full proposal includes:
+1. Executive Summary — who MGSF is (veteran-owned, MT/WY/ND/SD coverage), why spray foam /
+   concrete lifting is the right solution for this specific customer's problem
+2. Scope of Work — exact services, areas, thickness, product specs, exclusions
+3. Material Specifications — product names, R-values, yields, certifications (pull from context)
+4. Project Timeline — mobilization date, duration, milestones (defer to the ops mind for the
+   detailed schedule)
+5. Warranty — workmanship warranty period + manufacturer product warranty
+6. Payment Schedule — typical: 50% mobilization deposit, 50% on completion (adjust for large jobs)
+7. Terms & Acceptance — standard sub/prime contractor terms, cancellation, change orders
+8. Signature block for customer acceptance
+Write clearly and confidently. Use the provided estimate numbers exactly — never change a price.
+If a number is missing, insert [TBD — confirm with estimator] rather than guessing.
+Supporting tools you can suggest: proposal-pdf to render and download the finished proposal as PDF.
+MEMORY: after drafting, end with [[MEMORY]] customer name ;; job address ;; scope summary ;;
+accepted price or price range ;; proposal status [[/MEMORY]] so the next session has full context.`,
+  },
+  customer: {
+    name: "Customer-Comms",
+    webUses: 2,
+    focus: `You are the CUSTOMER COMMUNICATIONS mind for Machine Gun Spray Foam. You write
+ready-to-send scripts, emails, and texts in Clifton's direct, no-fluff veteran voice. Your
+expertise covers:
+- Objection handling: "too expensive", "getting other quotes", "not sure I need it", "my builder
+  said regular batts are fine" — give a specific, honest rebuttal grounded in real performance data
+- Follow-up timing: what to say at 24h, 72h, 1 week, 2 weeks after sending a quote
+- Re-engagement: how to revive a lead that went cold 30–90 days ago without sounding desperate
+- Referral asks: timing, wording, and the right moment to ask a happy customer for a referral
+- Review requests: how to ask for a Google / Facebook review naturally after job close
+- Pre-job communication: confirming the appointment, what the customer needs to do to prepare
+- Change-order conversations: how to present a scope change without losing the customer's trust
+Always write for MGSF's market: homeowners and commercial/ag building owners in MT/WY/ND/SD.
+Keep texts under 160 characters. Keep emails under 150 words unless the customer asks for more.
+MGSF phone: 406-939-8301. Free-quote link: app.machinegunsprayfoam.info/lead.`,
+  },
+  // ── END NEW SPECIALISTS ──────────────────────────────────────────────────────
   general: {
     name: "Klyfton",
+    webUses: 2,
     focus: `You are the general field mind — spray foam, coatings, concrete lifting, estimating,
 the business, and anything the crew or owner asks. Look things up when the answer depends on
 current info.`,
   },
 };
 
-const WEB_TOOL = { type: "web_search_20260209", name: "web_search", max_uses: 2 };
+// Base web-search tool descriptor. max_uses is overridden per-mind via webTool(mindKey).
+const WEB_TOOL_BASE = { type: "web_search_20260209", name: "web_search" };
+function webTool(mindKey) {
+  const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
+  return { ...WEB_TOOL_BASE, max_uses: spec.webUses || 2 };
+}
 
 // ---- FIELD-OS DATA TOOLBELT (v2.0 hallway: the brain's sense of touch, in-app) ----
 // The same 9 READ-ONLY tools the MCP server exposes (api/mcp.js) are handed to the worker
@@ -1636,45 +1758,82 @@ function routerToolHint() {
 async function route(key, userText, history, meter) {
   const sys = `You are the router for a field-assistant hive. Decide which specialist minds should
 answer, and whether the job is simple (one mind) or complex (several).
-Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, general.
-Use "marketing" for social posts / content / captions / ads. Use "hunter" for finding new leads,
-jobs, opportunities, or gov solicitations.
-Return ONLY JSON, no prose: {"minds":["..."],"complexity":"simple"|"complex"}.
-Rules: 1-3 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
+Mind keys: estimator, conditions, materials, safety, ops, marketing, hunter, govcon, finance, code, proposal, customer, general.
+Routing rules:
+- "estimator"  → pricing, board-feet, yield, coverage, quoting, job costs, photo bids
+- "conditions" → spray temp, dew point, humidity, wind, GO/NO-GO, cure times
+- "materials"  → product specs, TDS, suppliers, substitutions, foam set availability
+- "safety"     → PPE, SDS, JSA, OSHA, ventilation, re-occupancy, confined space
+- "ops"        → scheduling, crew sequencing, timeline, job go/no-go on the day
+- "marketing"  → social posts, content, captions, ads, hashtags
+- "hunter"     → finding new leads, commercial/ag/industrial opportunities, cold outreach
+- "govcon"     → SAM.gov solicitations, federal bids, SDVOSB/VOSB, FAR/DFARS, government proposals
+- "finance"    → cash flow, invoicing, QuickBooks, AR aging, margins, break-even, job costing actuals
+- "code"       → building codes, R-value minimums, IECC, permits, ignition barriers, vapor retarder reqs
+- "proposal"   → writing or drafting a full customer proposal, scope of work, payment schedule
+- "customer"   → follow-up scripts, objection handling, re-engagement, referral asks, review requests
+- "general"    → anything else or unclear
+Return ONLY JSON, no prose:
+{"minds":["..."],"complexity":"simple"|"complex","confidence":0.85,"intents":{"mind_key":"one-line focus ≤15 words"}}.
+Fields:
+- confidence: 0.0–1.0 how sure you are. Use <0.4 when the question is ambiguous or spans many topics.
+- intents: optional per-mind one-liner (≤15 words) steering what angle that mind should take; omit a
+  mind from intents when the question is clear enough that no extra steering is needed.
+Rules: 1-4 minds. Use "complex" for decisions ("should I / which"), multi-topic asks (e.g. estimate
 AND safety AND schedule), or comparisons. Use "simple" + one mind for a single direct question.
-If unsure, {"minds":["general"],"complexity":"simple"}.` + routerToolHint();
+If unsure, {"minds":["general"],"complexity":"simple","confidence":0.3,"intents":{}}.` + routerToolHint();
   const recent = (history || [])
-    .slice(-4)
+    .slice(-8)
     .map((m) => (m.role === "user" ? "U: " : "A: ") + String(m.content).slice(0, 200))
     .join("\n");
   try {
     const data = await callClaude(key, {
       model: ROUTER_MODEL,
-      max_tokens: 300,
+      max_tokens: 400,
       system: sys,
       messages: [{ role: "user", content: (recent ? recent + "\n\n" : "") + "U: " + userText }],
     }, meter);
     const j = textFrom(data.content).match(/\{[\s\S]*\}/);
     const parsed = j ? JSON.parse(j[0]) : null;
+    const routing_raw = j ? j[0] : null;
     let minds = (parsed && Array.isArray(parsed.minds) ? parsed.minds : [])
       .filter((k) => SPECIALISTS[k])
-      .slice(0, 3); // hive cap: at most 3 minds — bounds worker fan-out (latency/timeout control)
+      .slice(0, 4); // hive cap: at most 4 minds — bounds worker fan-out (latency/timeout control)
     if (!minds.length) minds = ["general"];
-    const complexity = parsed && parsed.complexity === "complex" ? "complex" : "simple";
-    return { minds: complexity === "simple" ? [minds[0]] : minds, complexity };
+    const complexity = (parsed && parsed.complexity === "complex") ? "complex" : "simple";
+    // confidence: 0.0–1.0 how sure the Queen is; defaults to 1 if absent (same behavior as before).
+    const confidence = (parsed && typeof parsed.confidence === "number")
+      ? Math.max(0, Math.min(1, parsed.confidence)) : 1.0;
+    // intents: per-mind one-liner hint; empty object when absent.
+    const intents = (parsed && parsed.intents && typeof parsed.intents === "object" && !Array.isArray(parsed.intents))
+      ? parsed.intents : {};
+    // Low-confidence fallback: when the Queen isn't sure (<0.4), add "general" as a safety net
+    // and promote to complex so the synthesizer can merge the two opinions.
+    if (confidence < 0.4 && !minds.includes("general")) {
+      minds = minds.concat(["general"]).slice(0, 4);
+    }
+    // Final complexity: complex whenever >1 mind runs (including low-conf fallback).
+    const effectiveComplexity = (minds.length > 1) ? "complex" : "simple";
+    return { minds, complexity: effectiveComplexity, confidence, intents, routing_raw };
   } catch {
-    return { minds: ["general"], complexity: "simple" };
+    return { minds: ["general"], complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
   }
 }
 
 // Run one specialist mind on the question.
-async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
+// hint: optional per-mind one-liner from the Queen steering what angle to answer;
+//       prepended to the user content so each specialist focuses on its slice of a complex ask.
+//       Brain-block selection (assembleBrainBlocks) still uses the original userText so topic
+//       detection isn't distorted by the hint prefix.
+async function runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint) {
   const spec = SPECIALISTS[mindKey] || SPECIALISTS.general;
   const system = `${assembleBrainBlocks(userText)}\n\n${spec.focus}${ctx}${TOOLBELT_NOTE}`;
   const messages = (history || [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({ role: m.role, content: String(m.content) }));
-  messages.push({ role: "user", content: buildUserContent(userText, attachments) });
+  const focusedText = (hint && typeof hint === "string" && hint.trim())
+    ? `[FOCUS: ${hint.trim()}]\n${userText}` : userText;
+  messages.push({ role: "user", content: buildUserContent(focusedText, attachments) });
   const data = await callClaudeTools(key, {
     model: modelOverride || WORKER_MODEL, // ATS: cheapest model when running on battery
     // Workers feed the synthesizer, so they don't need a huge budget — keep them tight
@@ -1685,8 +1844,8 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
     max_tokens: 4000,
     system,
     thinking: { type: "adaptive" },
-    // Web search + the field-os data toolbelt (READ-ONLY) + CRM lookup.
-    tools: [WEB_TOOL].concat(FIELD_TOOL_DEFS),
+    // Web search (per-mind) + the field-os data toolbelt (READ-ONLY) + CRM lookup.
+    tools: [webTool(mindKey)].concat(FIELD_TOOL_DEFS),
     messages,
   }, meter);
   return { mind: spec.name, text: textFrom(data.content), model: data.model || modelOverride || WORKER_MODEL };
@@ -1697,13 +1856,13 @@ async function runMind(key, mindKey, userText, history, ctx, attachments, meter,
 // Capped at a single extra call so we never blow the function's time / cost budget. The
 // synthesizer+critic still catches fabrication and doctrine-gate failures downstream; this layer
 // only recovers flaky/empty runs so one hiccup doesn't silently drop a mind from the hive.
-async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride) {
+async function runMindResilient(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint) {
   try {
-    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride);
+    const first = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint);
     if (first && first.text && first.text.trim()) return first;
   } catch (e) { /* fall through to one retry */ }
   try {
-    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride);
+    const retry = await runMind(key, mindKey, userText, history, ctx, attachments, meter, modelOverride, hint);
     return (retry && retry.text && retry.text.trim()) ? retry : null;
   } catch (e) { return null; }
 }
@@ -1717,6 +1876,59 @@ function isTrivial(text, attachments) {
   if (t.length <= 12) return true;
   if (t.length < 40 && /^(hi|hey|hello|yo|sup|thanks|thank you|thx|ty|ok|okay|k|cool|nice|great|good morning|good afternoon|good evening|good job|well done|test|testing|ping|you there|u there)\b/i.test(t)) return true;
   return false;
+}
+
+// Pure-command bypass: common field commands (update_job, add_lead, schedule, invoice) clearly
+// resolve to a single mind without needing the Haiku router round-trip. Saves ~0.5s and one
+// API call per command. Returns a ready plan (same shape as route()) or null when not matched.
+// Short messages only (≤180 chars) — long queries are questions, not commands.
+const ACTION_CMD_PATTERNS = [
+  { re: /\b(update|mark|change|set|close|cancel|complete)\b.{0,60}\bjob\b/i,       minds: ["ops"] },
+  { re: /\bjob\b.{0,60}\b(completed?|cancelled?|in progress|scheduled|done)\b/i,   minds: ["ops"] },
+  { re: /\b(add|new|create|log)\b.{0,30}\b(lead|customer|contact)\b/i,             minds: ["general"] },
+  { re: /\b(schedule|book|reschedule|move)\b.{0,60}\b(job|appointment|visit)\b/i,  minds: ["ops"] },
+  { re: /\b(create|send|generate|make)\b.{0,30}\binvoice\b/i,                      minds: ["finance"] },
+  { re: /\b(log|record|save)\b.{0,40}\b(note|material|cost|expense)\b/i,           minds: ["ops"] },
+];
+function isActionCommand(text, attachments) {
+  if (Array.isArray(attachments) && attachments.length) return null; // never bypass a photo message
+  const t = (text || "").trim();
+  if (!t || t.length > 180) return null;
+  for (const p of ACTION_CMD_PATTERNS) {
+    if (p.re.test(t)) {
+      return { minds: p.minds, complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
+    }
+  }
+  return null;
+}
+
+// Memory-warm routing enrichment (pure, testable): if semantic recall results mention a topic
+// that the Queen didn't already pick, add that mind to the plan (up to cap=4). Only applies
+// to complex queries — avoids ballooning simple direct questions into multi-mind runs.
+// Never removes minds; never downgrades complexity. Runs after routing so the hive benefits
+// from in-session memory without delaying the concurrent Haiku router call.
+const MEMORY_MIND_MAP = [
+  { re: /\b(invoice|billing|AR|receivable|margin|profit|cash flow|payment)\b/i, mind: "finance" },
+  { re: /\b(estimate|quote|bid|board.?feet|foam price|coverage|proposal)\b/i,   mind: "estimator" },
+  { re: /\b(schedule|appointment|crew|timeline|deadline)\b/i,                    mind: "ops" },
+  { re: /\b(SAM\.?gov|federal|SDVOSB|solicitation|government contract)\b/i,     mind: "govcon" },
+  { re: /\b(marketing|social|post|ad campaign|hashtag|content)\b/i,             mind: "marketing" },
+  { re: /\b(safety|PPE|JSA|OSHA|respirator|re-?occupancy)\b/i,                  mind: "safety" },
+];
+function applyMemoryContext(plan, recall) {
+  if (!plan || !Array.isArray(plan.minds)) return plan;
+  if (plan.complexity !== "complex") return plan; // keep simple queries simple
+  if (!recall || !Array.isArray(recall.results) || !recall.results.length) return plan;
+  const memText = recall.results.map((r) => (r && r.note) ? r.note : "").join(" ");
+  const added = [];
+  for (const m of MEMORY_MIND_MAP) {
+    if (!plan.minds.includes(m.mind) && !added.includes(m.mind) && m.re.test(memText)) {
+      added.push(m.mind);
+    }
+  }
+  if (!added.length) return plan;
+  const newMinds = plan.minds.concat(added).slice(0, 4); // respect hive cap
+  return { ...plan, minds: newMinds };
 }
 
 // --- Streaming (SSE) plumbing: cut the dead-air on long hive answers ---
@@ -1882,9 +2094,15 @@ module.exports = async (req, res) => {
   // grounding context nor the ATS state, so overlap its Haiku call under the grounding wall instead
   // of running it afterward (saves ~1-2s off every non-trivial turn). route() self-catches to a
   // safe {general,simple} default, so this promise never rejects — safe to leave in flight.
+  // isActionCommand short-circuits known field commands (update_job, add_lead…) to a ready plan
+  // with no API call, saving the Haiku round-trip for obvious single-mind commands.
+  const _trivialPlan = { minds: ["general"], complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
+  const _actionPlan = isActionCommand(userText, attachments);
   const routeP = isTrivial(userText, attachments)
-    ? Promise.resolve({ minds: ["general"], complexity: "simple" })
-    : route(key, routeText, history, meter);
+    ? Promise.resolve(_trivialPlan)
+    : _actionPlan
+      ? Promise.resolve(_actionPlan)
+      : route(key, routeText, history, meter);
 
   // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
   // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
@@ -1896,6 +2114,7 @@ module.exports = async (req, res) => {
   let memList = Array.isArray(body.memory) ? body.memory.slice() : [];
   let liveCtx = "";
   let wikiCtx = "";
+  let semanticRec = null; // hoisted so applyMemoryContext() can use it after routing resolves
   if (userText && !isTrivial(userText, attachments)) {
     const cap = (p, ms) => Promise.race([
       Promise.resolve(p).catch(() => null),
@@ -1908,6 +2127,7 @@ module.exports = async (req, res) => {
       wantsLive ? cap(brainContext.gather({}), 2600) : Promise.resolve(null),
       cap(wiki.retrieve(userText, 3), 2500),
     ]);
+    semanticRec = rec; // saved for memory-warm routing enrichment below
     // Semantic memory: relevant recalls first, de-duped ahead of client-sent memory.
     if (rec && rec.semantic && Array.isArray(rec.results) && rec.results.length) {
       const hits = rec.results.map((x) => x && x.note).filter(Boolean);
@@ -1961,7 +2181,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
   // Agent-run telemetry accumulator: filled in at each terminal point below, then written
   // once in the finally. Defaults to 'error' so an exception path is logged as a failure.
   const startedAt = Date.now();
-  const run = { mode: null, minds: [], status: "error", model: null };
+  const run = { mode: null, minds: [], status: "error", model: null, routing_raw: null };
 
   // The finally records this request's spend to KV (even with no budget set — so the
   // running monthly total is always watchable), on both the success and error paths.
@@ -1972,10 +2192,12 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     try {
       let plan = await routeP; // routing already in flight (started concurrently with grounding)
       plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
+      run.routing_raw = plan.routing_raw || null; // capture Queen's raw decision for telemetry
+      plan = applyMemoryContext(plan, semanticRec); // memory-warm: add context-relevant minds
 
       // Simple job → one mind (uses web search, so run non-streamed) → send the finished answer.
       if (plan.complexity === "simple" || plan.minds.length <= 1) {
-        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
+        const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[plan.minds[0]]);
         const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
         await persistSemanticMemory(remember);
         run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
@@ -1986,7 +2208,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
       // Complex job → run the swarm (non-streamed), then stream the synthesizer.
       const workers = await Promise.all(
-        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel))
+        plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[m]))
       );
       const answers = workers.filter((w) => w && w.text);
       if (!answers.length) {
@@ -2054,10 +2276,12 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
     // 1) Queen recruits the minds — routing already in flight (started concurrently with grounding).
     let plan = await routeP;
     plan = ats.applyToPlan(plan, atsState); // ATS: on battery, coast on a single mind (drop the hive)
+    run.routing_raw = plan.routing_raw || null; // capture Queen's raw decision for telemetry
+    plan = applyMemoryContext(plan, semanticRec); // memory-warm: add context-relevant minds
 
     // 2) Simple job → one mind answers directly (fast + cheap).
     if (plan.complexity === "simple" || plan.minds.length <= 1) {
-      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel);
+      const only = await runMindResilient(key, plan.minds[0], userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[plan.minds[0]]);
       const { text, remember } = splitMemory(only.text || "I didn't get a usable answer — try rephrasing.");
       await persistSemanticMemory(remember);
       run.mode = "single"; run.minds = [only.mind]; run.model = only.model; run.status = "ok";
@@ -2075,7 +2299,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
     // 3) Complex job → recruit the swarm in parallel.
     const workers = await Promise.all(
-      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel))
+      plan.minds.map((m) => runMindResilient(key, m, userText, history, ctx, attachments, meter, atsModel, plan.intents && plan.intents[m]))
     );
     const answers = workers.filter((w) => w && w.text);
     if (!answers.length) {
@@ -2148,3 +2372,7 @@ module.exports.toolBagBlock = toolBagBlock;
 module.exports.routerToolHint = routerToolHint;
 module.exports.shouldSkipSynth = shouldSkipSynth;
 module.exports.bestAnswer = bestAnswer;
+module.exports.isActionCommand = isActionCommand;
+module.exports.applyMemoryContext = applyMemoryContext;
+module.exports.ACTION_CMD_PATTERNS = ACTION_CMD_PATTERNS;
+module.exports.MEMORY_MIND_MAP = MEMORY_MIND_MAP;
