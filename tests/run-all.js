@@ -20,6 +20,7 @@ const SUITES = [
   ["spf-takeoff", "multi-area SPF takeoff engine: BF=SF×inches, R-target→lift, condition/scarf waste, price@GM×state"],
   ["yield-variance", "bid→actual feedback loop: yield BF/set, productivity BF/hr, margin actual-vs-bid, overrun flags — never fabricates unlogged actuals"],
   ["true-profit", "fully-loaded job profit: job-cost + equipment wear/insurance/opportunity → profit-per-day + GO/THIN/NO-GO, lists what was/wasn't counted"],
+  ["job-risk", "'Should We Take It?' pre-accept score: distance/weather/access/substrate/margin/past-variance/crew → TAKE/RAISE PRICE/WALK, assessed-only denominator"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
   ["lead-score", "deterministic lead prioritization"],
