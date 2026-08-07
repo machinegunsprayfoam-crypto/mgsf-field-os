@@ -23,15 +23,22 @@ const BATTERY_CAPACITY = parseInt(process.env.BATTERY_CAPACITY || "100000", 10) 
 
 // The real minds the Queen recruits (from klyfton.js SPECIALISTS) — so the grid shows what actually
 // exists. Live per-agent stats get merged in from the leaderboard view. No invented agents.
+// The 12-face council (the "dodecahedron") + the Klyfton core. Keys MUST match the SPECIALISTS
+// `name` fields in api/klyfton.js so live per-agent leaderboard stats merge onto the right card.
 const ROSTER = [
   { key: "Estimator", label: "Estimator", does: "Bids, board-feet, margin checks" },
-  { key: "Spray-Conditions", label: "Spray Conditions", does: "Dew point / substrate go-no-go" },
-  { key: "Materials", label: "Materials", does: "Foam systems, yields, sets" },
-  { key: "Safety/JSA", label: "Safety / JSA", does: "PPE, hazards, job safety" },
-  { key: "Ops", label: "Ops", does: "Scheduling, crew, logistics" },
-  { key: "Marketing", label: "Marketing", does: "Content, SEO, lead-gen" },
-  { key: "Lead-Hunter", label: "Lead Hunter", does: "GovCon / SAM / pipeline" },
-  { key: "Klyfton", label: "Klyfton (General)", does: "Synthesis + anything else" },
+  { key: "Building-Science", label: "Building Science", does: "Spray window, envelope, foam TDS" },
+  { key: "Concrete-Lifting", label: "Concrete Lifting", does: "Polyjacking, void fill, slabs" },
+  { key: "Roofing-Coatings", label: "Roofing & Coatings", does: "SPF roofs, elastomeric coatings" },
+  { key: "Safety-OSHA", label: "Safety / OSHA", does: "PPE, SDS, JSA, hazards" },
+  { key: "Code-Permits", label: "Code & Permits", does: "IECC, R-value, permits, barriers" },
+  { key: "Finance-JobCost", label: "Finance / Job-Cost", does: "Margins, AR, cash flow, actuals" },
+  { key: "Scheduling-Dispatch", label: "Scheduling / Dispatch", does: "Crew, rig, timeline, drive time" },
+  { key: "GovCon", label: "GovCon", does: "SAM.gov, SDVOSB, federal bids" },
+  { key: "Sales-Comms", label: "Sales & Comms", does: "Marketing, leads, proposals, follow-up" },
+  { key: "Insurance-Bonding", label: "Insurance & Bonding", does: "GL, CPL, COI, surety bonds" },
+  { key: "Project-Manager", label: "Project Manager", does: "Job end-to-end, change orders, closeout" },
+  { key: "Klyfton", label: "Klyfton (Core)", does: "Synthesis + anything else" },
 ];
 
 async function sbGet(pathAndQuery) {

@@ -64,17 +64,17 @@ ok("plumbing query ⇒ TRADES EXPERT + cites IPC", plumb.includes("TRADES EXPERT
 // ---- isActionCommand: pure-command bypass (skips Queen API call for clear field commands) ----
 console.log("\n-- isActionCommand --");
 // Should match → returns a ready plan (no null)
-ok("'update job 42 to Completed' ⇒ ops plan", (function() {
+ok("'update job 42 to Completed' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("update job 42 to Completed");
-  return p && p.minds[0] === "ops" && p.complexity === "simple" && p.confidence === 1.0;
+  return p && p.minds[0] === "scheduling" && p.complexity === "simple" && p.confidence === 1.0;
 })());
-ok("'mark job as done' ⇒ ops plan", (function() {
+ok("'mark job as done' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("mark job as done");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
-ok("'close job for TK Barn' ⇒ ops plan", (function() {
+ok("'close job for TK Barn' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("close job for TK Barn");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
 ok("'add lead for John Smith' ⇒ general plan", (function() {
   const p = A.isActionCommand("add lead for John Smith");
@@ -84,17 +84,17 @@ ok("'new lead: ABC Farms 406-555-1234' ⇒ general plan", (function() {
   const p = A.isActionCommand("new lead: ABC Farms 406-555-1234");
   return p && p.minds[0] === "general";
 })());
-ok("'schedule job for Monday at 8am' ⇒ ops plan", (function() {
+ok("'schedule job for Monday at 8am' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("schedule job for Monday at 8am");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
 ok("'create invoice for Shadehill LLC' ⇒ finance plan", (function() {
   const p = A.isActionCommand("create invoice for Shadehill LLC");
   return p && p.minds[0] === "finance";
 })());
-ok("'job completed for Deere dealership' ⇒ ops plan", (function() {
+ok("'job completed for Deere dealership' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("job completed for Deere dealership");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
 // Should NOT match → returns null (questions are not commands)
 ok("long question ⇒ null (not a command)", A.isActionCommand("what is the best foam to use for a metal building roof in Zone 7?") === null);
@@ -124,10 +124,10 @@ ok("recall with govcon note ⇒ adds govcon to complex plan", (function() {
   const p = A.applyMemoryContext(basePlan, rec);
   return p.minds.includes("govcon");
 })());
-ok("recall with ops/schedule note ⇒ adds ops to complex plan", (function() {
+ok("recall with scheduling note ⇒ adds scheduling to complex plan", (function() {
   const rec = { semantic: true, results: [{ note: "crew schedule for Langford job, appointment on Tuesday" }] };
   const p = A.applyMemoryContext(basePlan, rec);
-  return p.minds.includes("ops");
+  return p.minds.includes("scheduling");
 })());
 // Never exceeds hive cap (4).
 ok("never exceeds cap=4 even with many memory hits", (function() {
