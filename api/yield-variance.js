@@ -12,7 +12,33 @@
 //        material,labor,costPerSet,costPerBF,laborRate,conditions,notes} } -> variances + verdict
 // GET  -> shape.
 
+let DOCTRINE = null; try { DOCTRINE = require("./doctrine"); } catch (e) { DOCTRINE = null; }
 function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : (d === undefined ? null : d); }
+
+// Measured-yield learning loop (DETECTION ONLY): compare a job's real measured yield (BF ÷ sets) to
+// the locked doctrine yield for that cell. "Measured field yield governs" (PRICING_RULES v2) — but a
+// doctrine change is the owner's call, so this only FLAGS a divergence for review, never rewrites it.
+function reviewAgainstDoctrine(cell, realYield, tolPct) {
+  const t = String(cell || "").toLowerCase();
+  const key = t.indexOf("roof") === 0 ? "roofing" : t.indexOf("open") === 0 ? "open" : "closed";
+  const doctrineYield = DOCTRINE && DOCTRINE.YIELD_BF ? DOCTRINE.YIELD_BF[key] : null;
+  if (realYield == null || !doctrineYield) {
+    return { cell: key, doctrineYield: doctrineYield || null, realYield: realYield != null ? realYield : null,
+      deltaPct: null, verdict: "insufficient", reviewDoctrine: false,
+      note: "Need a measured real yield (BF ÷ sets) and a locked doctrine yield for this cell." };
+  }
+  const tol = num(tolPct, 8);
+  const deltaPct = Math.round(((realYield - doctrineYield) / doctrineYield) * 1000) / 10;
+  const matches = Math.abs(deltaPct) <= tol;
+  return {
+    cell: key, doctrineYield, realYield, deltaPct, tolPct: tol,
+    verdict: matches ? "matches" : (realYield < doctrineYield ? "review_doctrine_low" : "review_doctrine_high"),
+    reviewDoctrine: !matches,
+    note: matches
+      ? `Measured ${realYield} BF/set is within ${tol}% of doctrine ${doctrineYield} — no change.`
+      : `Measured ${realYield} BF/set is ${deltaPct}% ${deltaPct < 0 ? "below" : "above"} doctrine ${doctrineYield}. Measured field yield governs — REVIEW the doctrine yield (owner decision; never auto-updated).`,
+  };
+}
 function r1(n) { return Math.round((Number(n) || 0) * 10) / 10; }
 function r2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 // Signed delta + percent-of-bid, only when both sides are known; else nulls (never invents).
@@ -102,6 +128,8 @@ function variance(body) {
     ok: true, label: "ACTUALS",
     variances,
     efficiency: { realYield, bidYield, realProductivity, bidProductivity, actualBFDerived: actBFDerived },
+    // Measured-yield → doctrine review (only when a cell/kind is provided so we know which yield to compare).
+    doctrineReview: (body.cell || bid.cell || act.cell) ? reviewAgainstDoctrine(body.cell || bid.cell || act.cell, realYield, (body.thresholds || {}).yieldPct) : null,
     margin: { bidPct: marginBidPct, actualPct: marginActualPct, deltaPts: marginDeltaPts, sell: sell != null ? r2(sell) : null },
     actualCost: actCost != null ? r2(actCost) : null,
     bidCost: bidCost != null ? r2(bidCost) : null,
@@ -127,3 +155,4 @@ module.exports = async (req, res) => {
 };
 
 module.exports.variance = variance;
+module.exports.reviewAgainstDoctrine = reviewAgainstDoctrine;

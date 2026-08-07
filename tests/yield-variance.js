@@ -97,5 +97,23 @@ const ACT = { boardFeet: 13200, sets: 4, laborHours: 20, material: 13096, labor:
   ok("empty body: no throw, ok:true", threw === false && e.ok === true);
 })();
 
+// ---- measured-yield learning loop: compare real yield to doctrine, flag for review (never rewrites) ----
+(() => {
+  const low = yv.reviewAgainstDoctrine("closed", 3800);   // vs doctrine 4200 = -9.5% (> 8% tol)
+  ok("closed 3800 vs 4200 ⇒ review_doctrine_low", low.verdict === "review_doctrine_low" && low.reviewDoctrine === true && low.deltaPct === -9.5);
+  ok("review note says measured governs + owner decision", /measured field yield governs/i.test(low.note) && /owner/i.test(low.note));
+  const ok1 = yv.reviewAgainstDoctrine("roofing", 3700);  // vs 3750 = -1.3% (within tol)
+  ok("roofing 3700 vs 3750 ⇒ matches (no change)", ok1.verdict === "matches" && ok1.reviewDoctrine === false);
+  ok("roofing cell resolves to the roofing doctrine yield 3750", ok1.doctrineYield === 3750);
+  const hi = yv.reviewAgainstDoctrine("closed", 4700);    // +11.9% high
+  ok("closed 4700 ⇒ review_doctrine_high", hi.verdict === "review_doctrine_high" && hi.deltaPct === 11.9);
+  ok("no measured yield ⇒ insufficient, never invents a delta", yv.reviewAgainstDoctrine("closed", null).verdict === "insufficient");
+  ok("custom tolerance honored", yv.reviewAgainstDoctrine("closed", 3800, 12).verdict === "matches"); // -9.5% within 12%
+  // wired into variance() when a cell is given
+  const v = yv.variance({ cell: "roofing", bid: { boardFeet: 15000, sets: 4 }, actual: { boardFeet: 15000, sets: 5 } });
+  ok("variance() attaches doctrineReview when cell provided", v.doctrineReview && v.doctrineReview.cell === "roofing" && v.doctrineReview.realYield === 3000);
+  ok("no cell ⇒ no doctrineReview (opt-in)", yv.variance({ bid: {}, actual: {} }).doctrineReview === null);
+})();
+
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
