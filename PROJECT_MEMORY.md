@@ -47,6 +47,23 @@ _Last updated: 2026-08-07 (pm)._
     Point + Cost Efficiency clusters; ALIAS words added (cert/certification/credential/registration/
     warranty/applicator/training; season/reschedule/mobilization/coating/coat). Gate **110 suites / 2679**
     (+6 routing/assembly assertions in `tests/brain-graph-retrieve.js` + `tests/klyfton.js`).
+- **★ INFRANODUS RE-SCAN + PROOF pass (branch, staged).** InfraNodus connector came back online; ran a
+  FRESH graph on the live brain (all blocks incl. the two above; representative down-sample of the 97k-char
+  brain). **Result: the two prior gaps CLOSED** — Business Licensing went from isolated island → the largest,
+  best-connected cluster ("Job Compliance", ~28%/24%); Cost✕Dew-Point no longer ranks. The re-scan surfaced
+  3 new weak bridges that all converge on ONE hole: **MGSF's measurement/proof capability (BPI, blower door,
+  QC) is a silo not wired to what it's WORTH or who REQUIRES it.** Closed with one grounded block:
+  - **`PROOF_ECONOMICS`** — (1) the audit/test as revenue two ways (standalone diagnostic OR paid diagnostic
+    that converts, credit-to-job close; ACH50/CAZ = the proof that justifies a premium); (2) gov/commercial
+    specs that MANDATE air-barrier/leakage testing + commissioning (IECC C402.5, ABAA, USACE-type whole-building
+    ~0.25 CFM/ft²@75Pa — "verify the solicitation spec") which a BPI-certified SDVOSB with its own blower door
+    can self-deliver = a moat; (3) the money cost of no-proof/bad install (yield loss, callbacks, re-mobilization,
+    warranty, failed inspection) → QC as cost-avoidance. Reasoning only; prices defer to DOCTRINE + the BPI
+    audit-pricing doc; standards carry a verify pointer; no invented audit prices.
+  - Added to `BRAIN_BLOCKS`/`BRAIN_ORDER` (after `SEASON_ECONOMICS`); routed in `brain-graph-retrieve.js` to
+    3 clusters (Pressure Testing + Cost Efficiency + Business Licensing) with ALIAS words (audit/commissioning/
+    verification/proof/testing/callback/rework/abaa). Gate **110 suites / 2683** (+4). Live InfraNodus graph
+    `klyfton-brain-2026-08` still exists for the next re-scan.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._

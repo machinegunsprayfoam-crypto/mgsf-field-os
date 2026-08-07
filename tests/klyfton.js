@@ -66,6 +66,8 @@ const credQ = A.assembleBrainBlocks("what license and certification do I need to
 ok("credential query ⇒ brain carries CREDENTIAL → SERVICE MAP", /CREDENTIAL . SERVICE MAP/.test(credQ) || /CREDENTIAL/.test(credQ));
 const seasonQ = A.assembleBrainBlocks("how should the weather and coating window change my roof bid price");
 ok("weather/season query ⇒ brain carries SEASON ECONOMICS", /SEASON ECONOMICS/.test(seasonQ));
+const proofQ = A.assembleBrainBlocks("how do I price a blower door audit and turn the test into a sold job");
+ok("audit/proof query ⇒ brain carries PROOF ECONOMICS", /PROOF ECONOMICS/.test(proofQ));
 
 // ---- isActionCommand: pure-command bypass (skips Queen API call for clear field commands) ----
 console.log("\n-- isActionCommand --");

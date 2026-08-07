@@ -20,13 +20,13 @@ const GRAPH = require("./brain-graph-data.js");
 // vocabulary and keep tests/brain-graph-retrieve.js green (it asserts routing behavior, not names).
 const CLUSTER_BLOCKS = {
   "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY"],   // foam/spray/doctrine/spec/ahj/verify
-  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1)
-  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + season/weather cost bridge (gap #2)
+  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass)
+  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass)
   "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
   "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES"],     // concrete/lifting/void/soil/seawall
   "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE"], // code/irc/scope/trade/calculator/safety
   "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE"], // barrier/air/vapor/moisture/mold
-  "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE"],                 // blower door/proof/ACH50 (BPI)
+  "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE", "PROOF_ECONOMICS"], // blower door/proof/ACH50 (BPI) + turning proof into money / gov-mandated testing (proof pass)
   "Dew Point":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "SEASON_ECONOMICS"], // substrate/dew/wind/temp/lift (spray window) + the cost of the window (gap #2)
 };
 // Identity + hard rules that must always be present regardless of the question.
@@ -81,6 +81,9 @@ const ALIAS = {
   moisture: ["moisture", "barrier"], vapor: ["vapor", "barrier"], mold: ["mold", "moisture"], air: ["air", "barrier"], sealing: ["air", "barrier"],
   // BPI / blower door → Pressure Testing
   blower: ["blower", "door"], ach50: ["blower", "proof"], bpi: ["blower", "proof"], leakage: ["blower", "air"],
+  // Proof economics → Pressure Testing + Cost + Business Licensing (all carry PROOF_ECONOMICS): what a test is worth, gov-mandated testing, cost of a bad install (proof pass)
+  audit: ["blower", "cost"], commissioning: ["blower", "federal"], verification: ["blower", "proof"], proof: ["blower", "proof"],
+  testing: ["blower", "proof"], callback: ["cost", "blower"], rework: ["cost", "blower"], abaa: ["blower", "federal"],
   // HVAC → Cost Efficiency (hvac node) + Performance Metrics (load)
   hvac: ["hvac", "load"], furnace: ["hvac", "load"], ductwork: ["hvac", "load"], mechanical: ["hvac", "load"], manualj: ["hvac", "load"],
   // CRM / assistant
