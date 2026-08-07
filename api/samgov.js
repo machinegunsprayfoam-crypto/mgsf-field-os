@@ -222,3 +222,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ configured: true, ok: false, error: String((e && e.message) || e).slice(0, 200) });
   }
 };
+
+// Pure exports for the test gate (no network): the raw-SAM→clean mapper and the opp→lead mapper.
+module.exports.normalize = normalize;
+module.exports.oppToLead = oppToLead;
