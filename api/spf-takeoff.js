@@ -16,9 +16,10 @@
 //        miles, prep, crew:{installers,helpers} } -> full takeoff + (when state+segment given) price
 // GET  -> defaults/knobs.
 
-// ---- LOCKED doctrine constants (mgsf-core) ----
-const COST_PER_BF = { open: 0.122, closed: 0.982, roofing: 0.680 }; // $/BF
-const R_PER_INCH  = { open: 3.6, closed: 6.5, roofing: 6.0 };       // roofing R is informational (depth-driven)
+// ---- LOCKED doctrine constants (read from the single source, api/doctrine.js = mgsf-core v2) ----
+const DOCTRINE = require("./doctrine");
+const COST_PER_BF = DOCTRINE.COST_PER_BF;                            // $/BF
+const R_PER_INCH  = DOCTRINE.R_PER_INCH;                             // roofing R UNCONFIRMED (doctrine flag)
 const RATE = { installer: 80, helper: 48 };                          // $/hr
 const STATE_MULT = { MT: 1.00, ND: 1.05, SD: 1.00, WY: 1.12 };
 const GM_TARGET = { residential: 0.55, commercial: 0.50, industrial: 0.48, government: 0.45 };
@@ -188,3 +189,5 @@ module.exports.computeArea = computeArea;
 module.exports.mobilization = mobilization;
 module.exports.practicalInches = practicalInches;
 module.exports.conditionWaste = conditionWaste;
+module.exports.R_PER_INCH = R_PER_INCH;
+module.exports.COST_PER_BF = COST_PER_BF;
