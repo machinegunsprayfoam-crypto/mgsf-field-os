@@ -962,6 +962,27 @@ const CREDENTIAL_MAP = `CREDENTIAL → SERVICE MAP (a credential is not paperwor
 - BONDED WORK (most public + some large private) ← surety bonding (bid / performance / payment bond). A
   bond requirement is a gate on the job class; bonding capacity is finite, so treat it as a resource to
   aim at the highest-value work. Never quote a bond amount/rate — that comes from the surety.
+SERVICE → COMPLIANCE TRIGGER (the inverse map: read the SERVICE + the JOB TYPE, then name what compliance
+attaches BEFORE you price — this is where a service line meets the rulebook; verify every trigger with the AHJ/state):
+- CONCRETE LIFTING / VOID FILL / SOIL STABILIZATION on a PUBLIC road, municipal slab, or DOT/gov site →
+  prevailing wage (Davis-Bacon on federal $; MT "Little Davis-Bacon" on MT state/local public works) +
+  state contractor registration + likely a bond. The same lift on a private driveway triggers none of that —
+  the JOB TYPE, not the service, sets the rulebook.
+- SPF ROOFING / INSULATION on a COMMERCIAL or FEDERAL building → often an air-barrier / whole-building
+  air-leakage test or commissioning deliverable (IECC C402.5 / spec / USACE-type — see PROOF_ECONOMICS),
+  the foam's ICC-ES (ESR/ER) code report for the inspector, Davis-Bacon if federally funded, and thermal/
+  ignition-barrier compliance (IRC R316) where exposed. Bigger building = more paperwork attaches.
+- ANY FOAM in OCCUPIED / LIVING SPACE → thermal or ignition barrier is a CODE gate (IRC R316; ½" gypsum or
+  an approved coating like DC315) — price it in or it's a change order. Don't bid it off.
+- ANY OUT-OF-STATE JOB (ND/SD/WY) → that state's contractor registration first (SD adds a contractor's
+  excise tax on realty work; ND requires WSI workers-comp before ND work). Treat unverified out-of-state
+  standing as a bid blocker, not a footnote.
+- INSULATION REMOVAL of contaminated/old material → disposal + possible EPA/handling rules (NAICS 562998);
+  scope the haul-off and tipping cost, don't fold it into "misc."
+- SOIL STABILIZATION / SEAWALL / structural geotech on infrastructure → often an engineered/stamped design
+  (licensed PE) + prevailing wage on public work. Name the PE sign-off as part of the scope.
+The move: for every bid, run "service × job type → triggers" BEFORE pricing, so a compliance cost never
+surfaces after you've quoted. Rules change — verify each trigger with the state/AHJ; never fabricate a rate.
 Guardrails hold: requirements change by state and year — always say "verify current requirement with the
 board/AHJ/surety"; never fabricate a license number, bond amount, fee, or coverage limit; numbers defer to DOCTRINE.`;
 

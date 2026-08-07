@@ -277,6 +277,13 @@ const BANK = [
     avoid: ["ignore prevailing wage", "no extra labor cost"],
     ref: "CREDENTIAL_MAP: public/gov-funded work is a prevailing-wage gate (Davis-Bacon / MT Little Davis-Bacon) — pay certified prevailing wage + file certified payroll; price it into the bid",
   },
+  {
+    id: "cred-trigger-public", module: "credentials",
+    q: "We're bidding a concrete-lifting job on a city street. Same lift, but public. What changes before you price it?",
+    include: [["prevailing wage", "davis-bacon", "davis bacon", "certified payroll"], ["registration", "license", "bond", "state"], ["job type", "public", "because it's public", "municipal", "gov"]],
+    avoid: ["nothing changes", "price it the same as a driveway"],
+    ref: "CREDENTIAL_MAP service→compliance trigger: the JOB TYPE (public) sets the rulebook — a public concrete lift can trigger prevailing wage + state registration + a bond; a private driveway triggers none",
+  },
   // ---- season economics (grades the SEASON_ECONOMICS brain block: the spray/coat window is a cost driver) ----
   {
     id: "season-coat", module: "season",

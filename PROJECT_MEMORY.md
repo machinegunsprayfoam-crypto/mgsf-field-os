@@ -72,6 +72,21 @@ _Last updated: 2026-08-07 (pm)._
   right answer passes and a banned/wrong one fails. Bank now **38 scenarios / 11 modules**; gate **110 suites
   / 2690** (+7). Makes the gap-fills MEASURABLE — the nightly runEval (needs a model key) now scores whether
   the new knowledge shows up in live answers, per module.
+- **★ INFRANODUS RE-SCAN #3 + service→compliance bridge (branch, staged).** Connector back; re-scanned the
+  live brain (now incl. all 3 bridge blocks). **PROOF pass confirmed closed** — "Energy Audit" (blower/BPI/
+  proof/leakage) is now the #1, most-connected cluster (25%/26%), adjacent to Cost Management. **Signal is
+  now lower** (2 of 3 new gaps point at a noisy grab-bag cluster) = diminishing returns as the brain gets
+  well-connected; the big structural holes are closed. The one CLEAN gap: **services (foam/roof/lifting/void/
+  soil) didn't bridge to compliance (state/prevailing-wage/federal)** — the brain knew both but not "this
+  service on this job type triggers this obligation." Closed ECONOMICALLY by folding a **SERVICE → COMPLIANCE
+  TRIGGER** section INTO the existing `CREDENTIAL_MAP` (NOT a 4th block — brain is ~100k chars and each block
+  taxes every hive call): public concrete lift → prevailing wage + registration + bond (private driveway →
+  none); commercial/federal roofing → air-barrier test + ESR + Davis-Bacon; occupied-space foam → thermal/
+  ignition barrier; out-of-state → that state's registration (SD excise / ND WSI); removal → disposal/EPA;
+  geotech/seawall → PE stamp. Reasoning only, "verify each trigger." Added ALIAS (public/municipal/dot/trigger)
+  + 1 curriculum scenario (`cred-trigger-public`). Gate **110 suites / 2692** (+2). **RECOMMENDATION: the
+  InfraNodus gap-mining loop has hit diminishing returns — stop here unless a specific new corpus (new Drive
+  docs, real job data) is added; further blocks add token cost for thinner gains.**
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
