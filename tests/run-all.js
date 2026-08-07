@@ -25,6 +25,7 @@ const SUITES = [
   ["scorecards", "crew/rig scorecards: per-crew+rig yield/productivity/margin aggregation, adherence ranking, winter-vs-summer split, pattern insights — no fabricated metrics"],
   ["orchestrator", "verify-and-correct loop (plan/run/critique/retry)"],
   ["provider", "vendor-neutral AI hub (Claude/ChatGPT/Grok/local)"],
+  ["consensus", "consensus mode: fan a question to N providers → jaccard agreement, medoid majority, outliers; redacts secrets before broadcast; inert <2 providers"],
   ["lead-score", "deterministic lead prioritization"],
   ["hubspot-score", "call-list scoring integration"],
   ["health", "Mechanic self-check (subsystem status)"],
