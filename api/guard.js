@@ -1,18 +1,17 @@
 // Klyfton access guard — the ONE standard CREW_CODE gate every sensitive endpoint can share, so
 // access control stops being ad-hoc. DORMANT-SAFE by design: when CREW_CODE is unset it allows
 // everything (never locks anyone out — same phase-0 policy as auth.js / health.js). Once the owner
-// sets CREW_CODE, a request must present it via the `x-crew-code` header, `?code=`, or body.code.
+// sets CREW_CODE, a request must present it via the `x-crew-code` header or body.code. Query parameters are intentionally excluded so credentials are not placed in URLs or request logs.
 // Pure, no secrets echoed, constant-time compare. Usage in a handler:
 //   const guard = require("./guard"); if (!guard.ok(req)) { res.status(401).json(guard.denied()); return; }
 
 function present(req) {
   try {
     const h = req && req.headers ? (req.headers["x-crew-code"] || req.headers["x-crew"] || "") : "";
-    const q = req && req.query ? (req.query.code || req.query.crew || "") : "";
     let b = req && req.body;
     if (typeof b === "string") { try { b = JSON.parse(b); } catch { b = {}; } }
     const bc = b && (b.code || b.crew) ? (b.code || b.crew) : "";
-    return String(h || q || bc || "");
+    return String(h || bc || "");
   } catch (e) { return ""; }
 }
 
@@ -33,7 +32,7 @@ function ok(req, env) {
 }
 
 function denied() {
-  return { ok: false, error: "unauthorized", note: "CREW_CODE is set — send it via the x-crew-code header (or ?code=)." };
+  return { ok: false, error: "unauthorized", note: "CREW_CODE is set — send it via the x-crew-code header or request body." };
 }
 
 module.exports = { ok, denied, present, safeEqual };
