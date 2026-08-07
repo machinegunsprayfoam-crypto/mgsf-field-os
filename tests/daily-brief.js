@@ -79,6 +79,35 @@ ok("missing arrays default safely", B.compose({ jobs: null, leads: undefined }).
   ok("no findings ⇒ no 'Needs attention' section (backward-compatible)", !/Needs attention/.test(B.compose(data).text) && B.compose(data).stats.findings === 0);
 })();
 
+// ---- CALL LIST (audit fix #1: leads die at the handoff — brief must hand over who to call) ----
+(() => {
+  const NOW = Date.parse("2026-08-07T00:00:00Z"); // fixed clock ⇒ deterministic
+  const leads = [
+    { name: "Alvin Newelham", phone: "406-480-6331", service: "duct-chase spray foam", status: "New", date: "2026-08-05" }, // uncontacted 2d
+    { name: "Old VM", number: "555-1111", note: "left voicemail", status: "New", date: "2026-07-01" },                        // uncontacted ~37d (older ⇒ ranks first)
+    { name: "Cold Contacted", phone: "555-2222", service: "attic foam", status: "Quoted", lastContact: "2026-07-20", value: 9000 }, // contacted but 18d cold
+    { name: "Fresh Contacted", phone: "555-3333", status: "Quoted", lastContact: "2026-08-06" },  // contacted yesterday ⇒ NOT on list
+    { name: "Dead One", phone: "555-4444", status: "Lost" },                                       // dead ⇒ excluded
+    { name: "No Phone New", status: "New", date: "2026-08-04", service: "crawl space" },            // uncontacted, no phone
+  ];
+  const list = B.callList(leads, NOW);
+  ok("call list excludes recently-contacted + dead leads", !list.some((c) => /Fresh Contacted|Dead One/.test(c.name)), JSON.stringify(list.map((c) => c.name)));
+  ok("call list includes uncontacted (incl brand-new) + cold-contacted", list.length === 4, "n=" + list.length);
+  ok("uncontacted rank FIRST, oldest-waiting first (Old VM before Newelham)", list[0].name === "Old VM" && list.findIndex((c) => c.name === "Alvin Newelham") < list.findIndex((c) => c.name === "Cold Contacted"));
+  const newe = list.find((c) => c.name === "Alvin Newelham");
+  ok("item carries name + phone + one-line ask + days waited", newe.phone === "406-480-6331" && newe.ask === "duct-chase spray foam" && newe.waited === 2 && newe.uncontacted === true);
+  ok("cold-contacted lead flagged not-uncontacted with days-since-contact", (() => { const c = list.find((x) => x.name === "Cold Contacted"); return c && c.uncontacted === false && c.waited === 18; })());
+  ok("missing phone renders as null (never fabricated)", list.find((c) => c.name === "No Phone New").phone === null);
+  ok("ask falls back to 'follow up' when nothing on the record", B.callList([{ name: "X", status: "New", date: "2026-08-01" }], NOW)[0].ask === "follow up");
+  ok("limit arg caps the list", B.callList(leads, NOW, 2).length === 2);
+  ok("dead/empty ⇒ empty list, no throw", B.callList([{ status: "Lost" }], NOW).length === 0 && B.callList(null, NOW).length === 0);
+  // wired into compose(): a callable far-past lead surfaces a 'Call today' section + stats.calls
+  const withCalls = B.compose({ leads: [{ name: "ColdLead", phone: "555-9", service: "roof coat", status: "New", lastContact: "2020-01-01", value: 4000 }] });
+  ok("compose surfaces a 'Call today' section when a lead needs contact", /Call today \(1\):/.test(withCalls.text) && /ColdLead · 555-9 · roof coat/.test(withCalls.text));
+  ok("compose reports stats.calls", withCalls.stats.calls === 1);
+  ok("no callable leads ⇒ no 'Call today' section (backward-compatible)", !/Call today/.test(B.compose({ leads: [{ name: "Recent", status: "Quoted", lastContact: "2035-01-01" }] }).text));
+})();
+
 // ---- isolated threshold check ----
 ok("invoice owed exactly > 0.5 is included", B.compose({ invoices: [{ amt: 100, dep: 99 }] }).stats.invoices === 1);
 ok("invoice fully paid by deposit (0 owed) excluded", B.compose({ invoices: [{ amt: 100, dep: 100 }] }).stats.invoices === 0);
