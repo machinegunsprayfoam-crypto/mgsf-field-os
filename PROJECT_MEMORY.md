@@ -103,6 +103,28 @@ _Last updated: 2026-08-07 (pm)._
     34% floor) — but it's a quality↔cost tradeoff (tighter scope risks dropping a relevant block). Recommend
     Clifton approve a test of 4 before flipping. Bigger lever if cost matters: trim/retrieval-route part of the
     15k `BUSINESS` core block. Both are owner calls, not autonomous changes.
+- **★ DRIVE DEEP-SEARCH → real self-audit found + acted on (branch, staged).** Clifton pointed me at Drive.
+  Found Klyfton's OWN weekly brain-audit `MGSF_Brain_Audit_2026-08-07` (first audit run against LIVE field-os
+  data). It named 3 structural disconnects grounded in the real pipeline (far more actionable than the prose-
+  graph gaps):
+  1. **LEADS DIE AT THE HANDOFF** (thrice-confirmed) — capture works (9 leads in) but nothing hands them off
+     to a call/response. Fix: the daily brief must emit a ready-to-act CALL LIST, not a lead count.
+  2. **THE FUNNEL HAS NO MIDDLE** — 0 estimate / 0 job / 0 cost records ⇒ quoted-vs-actual margin is
+     structurally unmeasurable. Fix: the lead→estimate→job rail (log every quote as an estimate on send).
+  3. **ANALYSIS NEVER REACHES THE CUSTOMER** — reports never become an outbound touch. Fix: analysis output
+     must end in a drafted message.
+  - **DONE (disconnect #1 interim fix):** `api/daily-brief.js` now emits a **CALL LIST** — `callList()` pure
+    helper + wired into `compose()`: leads needing a callback (uncontacted-first, clock starts at CAPTURE, then
+    cold 7d+), each with name · phone · one-line ask · days waited; capped at 5, `stats.calls` added. Read-only
+    (brief pushes YOU, never a customer). 12 new tests; gate **110 / 2707**.
+  - **⏰ TIME-CRITICAL (owner action — surfaced to Clifton):** (a) lead **Alvin Newelham**, Sidney MT, duct-
+    chase spray foam, voicemail 8/5, **406-480-6331**, still "New" — needs a callback. (b) **HICS Gates SDVOSB
+    set-aside, Malmstrom AFB, DUE 08-12** — flagged best-fit set-aside. Other gov: 2× WAPA repeater roofs due
+    08-21, BLM Missoula reno 09-04, crane support 08-28.
+  - **NEXT BUILDS (disconnects #2/#3, not yet built):** lead→estimate→job rail (biggest — unlocks margin
+    measurement); analysis-ends-in-a-draft. Both are real features for a future pass.
+  - New Drive folder `LNSResourceManager` (8/6) is EMPTY (checked). `Ultimate_SprayFoam_Equipment_Costs_v2.xlsx`
+    (8/6) is the equipment-cost sheet already flagged owner-only pricing-reconcile.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._

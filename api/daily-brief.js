@@ -44,6 +44,39 @@ const money = (n) => "$" + Math.round(num(n)).toLocaleString("en-US");
 const daysSince = (d) => { const t = Date.parse(String(d || "").slice(0, 10)); return Number.isFinite(t) ? Math.floor((Date.now() - t) / 86400000) : null; };
 const isDead = (s) => /won|lost|unqualif|closed|dead|complete|cancel/i.test(String(s || ""));
 
+// CALL LIST — the weekly brain-audit's #1 fix ("leads die at the handoff"). The brief must not just
+// COUNT leads; it must hand the owner a ready-to-act list: who to call, the number, and a one-line ask,
+// ranked by urgency. The clock starts at CAPTURE — a brand-new lead with no callback yet is already on
+// the list (that's the whole point). READ-ONLY: this composes a heads-up for YOU; it sends nothing to a
+// customer. Never fabricates — every field comes from the lead record; unknowns render honestly.
+function callList(leads, asOfMs, limit) {
+  const now = Number.isFinite(asOfMs) ? asOfMs : Date.now();
+  const dayMs = 86400000;
+  const dsOf = (d) => { const t = Date.parse(String(d || "").slice(0, 10)); return Number.isFinite(t) ? Math.floor((now - t) / dayMs) : null; };
+  const live = (leads || []).filter((l) => l && !isDead(l.status));
+  const items = [];
+  for (const l of live) {
+    const lc = l.lastContact ? Date.parse(String(l.lastContact).slice(0, 10)) : NaN;
+    const contacted = Number.isFinite(lc);                       // has a lastContact date on record (past or future)
+    const sinceContact = contacted ? Math.floor((now - lc) / dayMs) : null; // negative if the date is in the future
+    const uncontacted = !contacted;                             // only "no contact on record at all" is uncontacted
+    const cold = sinceContact != null && sinceContact >= 7;
+    if (!(uncontacted || cold)) continue;                        // contacted within 7d ⇒ not on the call list
+    const phone = String(l.phone || l.number || l.tel || l.mobile || "").trim();
+    const ask = (String(l.service || l.ask || l.note || l.notes || "").replace(/\s+/g, " ").trim().slice(0, 60)) || "follow up";
+    const waited = uncontacted ? dsOf(l.date || l.created || l.captured) : sinceContact;
+    items.push({
+      name: String(l.name || l.customer || "Lead").trim() || "Lead",
+      phone: phone || null, ask,
+      waited: waited == null ? null : waited,
+      uncontacted, value: num(l.value),
+    });
+  }
+  // rank: never-contacted first (clock started at capture), then longest-waiting, then biggest value
+  items.sort((a, b) => (Number(b.uncontacted) - Number(a.uncontacted)) || ((b.waited || 0) - (a.waited || 0)) || (b.value - a.value));
+  return typeof limit === "number" ? items.slice(0, limit) : items;
+}
+
 function compose(data) {
   const jobs = (data.jobs || []).filter((j) => j && !/paid|cancel|complete/i.test(j.status || ""));
   const leads = (data.leads || []).filter((l) => l && !isDead(l.status));
@@ -75,6 +108,19 @@ function compose(data) {
   if (cold.length) lines.push(`Cold leads: ${cold.length} quiet 7d+${coldVal ? ` — ${money(coldVal)} at risk` : ""}`);
   lines.push(`Pipeline: ${money(pipe)} (${leads.length} leads + ${jobs.length} jobs)`);
 
+  // CALL LIST — who to call TODAY (uncontacted-first), so a captured lead never dies at the handoff.
+  const callsAll = callList(leads, now.getTime());
+  const calls = callsAll.slice(0, 5);
+  if (calls.length) {
+    lines.push("");
+    lines.push(`Call today (${callsAll.length}):`);
+    calls.forEach((c) => {
+      const ph = c.phone || "no # on file";
+      const age = c.waited == null ? "" : (c.uncontacted ? ` — ${c.waited}d in, NO CALLBACK YET` : ` — quiet ${c.waited}d`);
+      lines.push(`- ${c.name} · ${ph} · ${c.ask}${age}`);
+    });
+  }
+
   // Top audit findings (injected by the handler from business-audit's pure audit()). Only the
   // red/amber ones, top 3 — so the brief surfaces "what needs action" without opening OPS.
   const findings = Array.isArray(data.findings) ? data.findings : [];
@@ -87,7 +133,7 @@ function compose(data) {
 
   return {
     text: lines.join("\n"),
-    stats: { today: today.length, week, overdue, ar, arLate, invoices: inv.length, cold: cold.length, coldVal, pipeline: pipe, findings: hot.length },
+    stats: { today: today.length, week, overdue, ar, arLate, invoices: inv.length, cold: cold.length, coldVal, pipeline: pipe, findings: hot.length, calls: callsAll.length },
   };
 }
 
@@ -120,3 +166,4 @@ module.exports = async (req, res) => {
 };
 
 module.exports.compose = compose;
+module.exports.callList = callList;
