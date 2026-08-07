@@ -71,6 +71,23 @@ ok("planFor('est+money') ⇒ Priced-to-Margin team", pl && pl.name === "Priced-t
 ok("planFor accepts unsorted keys", (C.planFor("money+est") || {}).name === "Priced-to-Margin Bid");
 ok("planFor(unknown) ⇒ null", C.planFor("zzz+qqq") === null);
 
+// ---- PARITY GUARD: the visual (public/cube-map.html) featured list stays in lockstep with FEATURED.
+// I hand-mirror the featured plays into the cube-map's own COMBOS array; a future combos.js change
+// that forgets the visual would silently show a stale/○wrong team on the cube. Lock the two together.
+(function () {
+  const fs = require("fs");
+  let html = null;
+  try { html = fs.readFileSync(path.join(__dirname, "..", "public", "cube-map.html"), "utf8"); } catch (x) { html = null; }
+  if (html == null) { ok("cube-map.html present for parity guard", false, "not found"); return; }
+  const m = html.match(/const\s+COMBOS\s*=\s*\[([\s\S]*?)\];/);
+  ok("cube-map.html has a COMBOS array", !!m);
+  if (!m) return;
+  const visualKeys = (m[1].match(/\{\s*key:\s*"([a-z_]+)"/g) || []).map((s) => s.match(/"([a-z_]+)"/)[1]).sort();
+  const featuredKeys = C.FEATURED.map((f) => f.key).sort();
+  ok("cube-map featured keys === combos.FEATURED keys (no drift)",
+    visualKeys.join(",") === featuredKeys.join(","), "visual=[" + visualKeys.join(",") + "] featured=[" + featuredKeys.join(",") + "]");
+})();
+
 // ---- DRIFT GUARD: combos.DIVISIONS members stay in lockstep with klyfton SPECIALISTS ----
 (function () {
   let K = null; try { K = require(path.join(__dirname, "..", "api", "klyfton.js")); } catch (x) { K = null; }
