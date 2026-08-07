@@ -14,13 +14,13 @@ console.log("R-value / code-min engine (IECC Zone 6/7 assembly check)\n");
 
 // ---- installed R ----
 const cc = A.installedR({ type: "closed", thickness: 3 });
-ok("closed-cell R = thickness × 7.1 (NCFI default)", near(cc.foamR, 21.3) && cc.total === 21.3);
+ok("closed-cell R = thickness × 7.0 (doctrine default)", near(cc.foamR, 21.0) && cc.total === 21.0);
 ok("R/inch default labeled ESTIMATE + verify TDS", /ESTIMATE/.test(cc.rPerInchSource) && /TDS/.test(cc.rPerInchSource));
 const oc = A.installedR({ type: "open", thickness: 5 });
-ok("open-cell R = thickness × 3.7", near(oc.foamR, 18.5));
+ok("open-cell R = thickness × 3.8", near(oc.foamR, 19.0));
 ok("owner rPerInch overrides + flagged", (() => { const r = A.installedR({ type: "closed", thickness: 2, rPerInch: 6.5 }); return r.foamR === 13 && r.rPerInchSource === "owner-entered"; })());
 const fb = A.installedR({ type: "closed", thickness: 2, battR: 13 });
-ok("flash-and-batt adds batt R", fb.foamR === 14.2 && fb.total === 27.2);
+ok("flash-and-batt adds batt R", fb.foamR === 14.0 && fb.total === 27.0);
 
 // ---- code table (IECC 2021 Zone 6/7) ----
 ok("Zone 6 ceiling min R-60", A.codeMin(6, "ceiling").min === 60);
@@ -32,11 +32,11 @@ ok("unknown assembly ⇒ null", A.codeMin(6, "spaceship") === null);
 ok("zone defaults to 6 when bad", A.codeMin(99, "wall").zone === "6");
 
 // ---- check: meets / short + add-thickness ----
-const meet = A.check({ assembly: "wall", zone: 6, type: "closed", thickness: 3 }); // 21.3 ≥ 20
-ok("wall R-21.3 meets Zone 6 R-20", meet.meets === true && /Meets/.test(meet.note));
-const short = A.check({ assembly: "ceiling", zone: 6, type: "open", thickness: 5 }); // 18.5 < 60
-ok("ceiling short of R-60 flagged", short.meets === false && short.shortfallR === round(60 - 18.5));
-ok("add-thickness math = shortfall / R-per-inch", near(short.addThicknessIn, (60 - 18.5) / 3.7, 0.02));
+const meet = A.check({ assembly: "wall", zone: 6, type: "closed", thickness: 3 }); // 21.0 ≥ 20
+ok("wall R-21 meets Zone 6 R-20", meet.meets === true && /Meets/.test(meet.note));
+const short = A.check({ assembly: "ceiling", zone: 6, type: "open", thickness: 5 }); // 19.0 < 60
+ok("ceiling short of R-60 flagged", short.meets === false && short.shortfallR === round(60 - 19.0));
+ok("add-thickness math = shortfall / R-per-inch", near(short.addThicknessIn, (60 - 19.0) / 3.8, 0.02));
 ok("no thickness ⇒ meets:null + prompt", A.check({ assembly: "wall" }).meets === null);
 ok("unknown assembly ⇒ error, lists assemblies", (() => { const r = A.check({ assembly: "xyz", thickness: 3 }); return r.ok === false && Array.isArray(r.assemblies); })());
 function round(n) { return Math.round(n * 10) / 10; }

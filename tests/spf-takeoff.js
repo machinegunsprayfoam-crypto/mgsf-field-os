@@ -17,9 +17,9 @@ console.log("SPF takeoff engine invariants\n");
 (() => {
   const o = t.takeoff({ areas: [{ name: "Shop ceiling", sqft: 2400, cell: "closed", targetR: 30 }] });
   const a = o.areas[0];
-  ok("R-30 closed → 5\" practical lift (30÷6.5=4.62, round up to 0.5\")", a.inches === 5);
-  ok("delivered R ≈ 32.5", a.deliveredR === 32.5);
-  ok("BF = 2400 × 5 = 12000 (NOT ÷12 = 1000)", a.boardFeet === 12000, a.boardFeet);
+  ok("R-30 closed → 4.5\" practical lift (30÷7.0=4.29, round up to 0.5\")", a.inches === 4.5, a.inches);
+  ok("delivered R ≈ 31.5", a.deliveredR === 31.5, a.deliveredR);
+  ok("BF = 2400 × 4.5 = 10800 (NOT ÷12)", a.boardFeet === 10800, a.boardFeet);
   ok("basis reported as targetR", a.basis === "targetR");
   ok("formula string states the rule", /SF × inches|square feet × inches/i.test(o.formula) && /never ÷12|÷12/i.test(o.formula));
 })();
@@ -56,8 +56,8 @@ console.log("SPF takeoff engine invariants\n");
   ok("3 areas returned", o.areas.length === 3);
   ok("attic BF = 1500×10 = 15000", o.areas[0].boardFeet === 15000);
   ok("rim BF = 200×3 = 600", o.areas[1].boardFeet === 600);
-  ok("walls R-21 closed → 3.5\" (21÷6.5=3.23 up to 0.5)", o.areas[2].inches === 3.5, o.areas[2].inches);
-  ok("totals.boardFeet sums each area", o.totals.boardFeet === (15000 + 600 + 1800 * 3.5), o.totals.boardFeet);
+  ok("walls R-21 closed → 3.0\" (21÷7.0=3.0 exact)", o.areas[2].inches === 3.0, o.areas[2].inches);
+  ok("totals.boardFeet sums each area", o.totals.boardFeet === (15000 + 600 + 1800 * 3.0), o.totals.boardFeet);
   ok("totals carry material + labor hours", o.totals.material > 0 && o.totals.laborHours > 0);
 })();
 

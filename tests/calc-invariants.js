@@ -45,6 +45,11 @@ console.log("Brain self-check — calculator invariants\n");
   const gal2 = c2.gallonsExact != null ? c2.gallonsExact : (c2.gallons != null ? c2.gallons : c2.gallonsToOrder);
   ok("coating: linear in area (2× area ⇒ ~2× gallons)", near(gal2, gal * 2, gal * 0.05), gal + "->" + gal2);
   noBadNums("coating", c);
+  // DOCTRINE: no dry-mil spec ⇒ refuse to price (COATINGS_COVERAGE_CARD) — even when coverage is given.
+  const noMil = A("coating-calc.js").calc({ area: 3000, solidsPct: 90, coats: 1 });
+  ok("coating: no dryMils ⇒ refused (no_mil_spec)", noMil.ok === false && noMil.error === "no_mil_spec", JSON.stringify(noMil).slice(0, 60));
+  const covOnly = A("coating-calc.js").calc({ area: 3000, coverageSqftPerGal: 72, coats: 1 });
+  ok("coating: coverage without a mil spec still refused", covOnly.ok === false && covOnly.error === "no_mil_spec");
 })();
 
 // ---- job-cost: cost buildup identity + margin identity ----

@@ -19,8 +19,9 @@ function num(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d;
 function clean(s, max) { return String(s == null ? "" : s).trim().slice(0, max || 40); }
 function round(n, p) { const f = Math.pow(10, p == null ? 1 : p); return Math.round(num(n, 0) * f) / f; }
 
-// Typical R/inch — LABELED defaults, overridable, verify the product TDS.
-const R_PER_INCH = { closed: 7.1, open: 3.7 }; // closed = NCFI 11-035 AgriThane (doctrine); open ~3.5–3.8
+// R/inch — LOCKED doctrine (api/doctrine.js = mgsf-core v2), overridable per call; verify the TDS.
+const DOCTRINE = require("./doctrine");
+const R_PER_INCH = { closed: DOCTRINE.R_PER_INCH.closed, open: DOCTRINE.R_PER_INCH.open }; // 7.0 / 3.8 (8/5)
 const R_RANGE = { closed: [5.8, 7.4], open: [3.4, 3.9] };
 
 // IECC 2021 prescriptive minimums (Table R402.1.3), Climate Zones 6 & 7. `min` is the cavity-equivalent
