@@ -114,8 +114,13 @@ ok("action plan intents is empty object", (function() {
 console.log("\n-- applyMemoryContext --");
 const basePlan = { minds: ["estimator"], complexity: "complex", confidence: 0.9, intents: {}, routing_raw: null };
 // Adds a memory-relevant mind not already in plan.
-ok("recall with finance note ⇒ adds finance to complex plan", (function() {
+ok("recall with AR note ⇒ adds ar_collections to complex plan", (function() {
   const rec = { semantic: true, results: [{ note: "invoice for Shadehill $4,200 still unpaid, AR aging 45 days" }] };
+  const p = A.applyMemoryContext(basePlan, rec);
+  return p.minds.includes("ar_collections") && p.minds.includes("estimator");
+})());
+ok("recall with margin note ⇒ adds finance to complex plan", (function() {
+  const rec = { semantic: true, results: [{ note: "margin leak on the Deere job, job cost ran over budget" }] };
   const p = A.applyMemoryContext(basePlan, rec);
   return p.minds.includes("finance") && p.minds.includes("estimator");
 })());
