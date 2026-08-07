@@ -55,6 +55,18 @@ async function main() {
   ok("honest 'texting isn't switched on' passes", C.grade("Texting isn't set up yet — turn on Twilio in Vercel and I can send it.", dark).pass);
   ok("'text sent' when SMS is dark FAILS", C.grade("Text sent!", dark).pass === false);
 
+  // ---- new gap-bridge scenarios (CREDENTIAL_MAP / SEASON_ECONOMICS / PROOF_ECONOMICS) grade correctly ----
+  const cpl = C.BANK.find((i) => i.id === "cred-cpl");
+  ok("good CPL answer passes", C.grade("Buyers demand Contractor's Pollution Liability (CPL) for foam because it's a chemical/isocyanate application — carrying it clears jobs a competitor without it can't.", cpl).pass);
+  ok("'general liability is enough for foam' FAILS the CPL item", C.grade("General liability is enough for foam, no special insurance needed.", cpl).pass === false);
+  const scoat = C.BANK.find((i) => i.id === "season-coat");
+  ok("good coat-in-same-season answer passes", C.grade("No — don't foam a roof you can't coat the same season. Uncoated SPF degrades in UV, so we wait for spring or don't take it; coating window is the gate.", scoat).pass);
+  ok("'spray it anyway' FAILS the season-coat item", C.grade("Just spray it anyway now and we'll coat it next year.", scoat).pass === false);
+  const pgov = C.BANK.find((i) => i.id === "proof-gov");
+  ok("good gov-testing-edge answer passes", C.grade("That's an edge for us — as a BPI-certified shop with our own blower door we self-deliver the required test; verify the exact solicitation spec.", pgov).pass);
+  ok("'we can't do that testing' FAILS the proof-gov item", C.grade("That's a problem — we can't do that testing.", pgov).pass === false);
+  ok("credentials + season + proof modules are all present", ["credentials", "season", "proof"].every((m) => C.BANK.some((i) => i.module === m)));
+
   // ---- runEval wiring ----
   const noFn = await C.runEval();
   ok("runEval with no answer fn ⇒ ok:false, explains it needs a model", noFn.ok === false && noFn.error === "no_answer_fn");

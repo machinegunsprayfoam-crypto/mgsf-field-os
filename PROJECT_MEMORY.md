@@ -64,6 +64,14 @@ _Last updated: 2026-08-07 (pm)._
     3 clusters (Pressure Testing + Cost Efficiency + Business Licensing) with ALIAS words (audit/commissioning/
     verification/proof/testing/callback/rework/abaa). Gate **110 suites / 2683** (+4). Live InfraNodus graph
     `klyfton-brain-2026-08` still exists for the next re-scan.
+- **★ CURRICULUM coverage for the 3 gap blocks (branch, staged).** The gap blocks were retrieval-tested but
+  nothing verified Klyfton *reasons* with them. Added **7 graded scenarios** to `api/curriculum.js` (the eval
+  bank) across 3 new modules — `credentials` (BPI→audit, CPL-for-foam, prevailing-wage gate), `season`
+  (coat-in-same-season, off-season weather-independent backfill), `proof` (gov-mandated testing = edge,
+  audit-as-conversion). Every answer key traces to the block text (no fabrication); include/avoid groups so a
+  right answer passes and a banned/wrong one fails. Bank now **38 scenarios / 11 modules**; gate **110 suites
+  / 2690** (+7). Makes the gap-fills MEASURABLE — the nightly runEval (needs a model key) now scores whether
+  the new knowledge shows up in live answers, per module.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
