@@ -5,6 +5,30 @@ already known. If something here conflicts with a vague memory, **this file wins
 current: when you finish a unit of work or make a decision, update the relevant section here in
 the same commit. Doctrine numbers (`mgsf-core.skill`) still win over everything.
 
+_Last updated: 2026-08-07 (pm)._
+
+## ⚡ LATEST — 2026-08-07 pm (LIVE ON MAIN)
+- **★ Council/cube shipped to production (PR #93).** 6-division cube, 34 specialists, 26-piece combo
+  algebra (`api/combos.js`, 14 featured teams + `GET /api/combos`), 5 new arms, `calendar`/
+  `labor-burden`/`break-even` tools (last two tap-to-use in Command Center → Owner Tools), cube-map.
+- **★ DRIVE AUDIT (8/5–8/6) reconciled (PR #94).** New locked doctrine found: **PRICING_RULES v2
+  supersedes v1**; `URGENT_roofing_rate` doc is **VOID** (2,600 roofing figure retracted → measured
+  **3,750**); Estimating **Workbook V2 → V3**. Actions taken:
+  - **`api/doctrine.js` = single source of truth** for locked numbers (mirrors mgsf-core v2). R-values
+    reconciled to **closed 7.0 / open 3.8 / roofing 6.3** (were 6.5 in spf-takeoff, 7.1 in rvalue-calc —
+    now both READ from doctrine; drift-guarded by `tests/doctrine.js`). Clifton approved "match doctrine."
+  - **coating-calc requires a dry-mil spec** — refuses `no_mil_spec` rather than price with no mil behind it.
+  - **yield-variance.reviewAgainstDoctrine()** flags measured-vs-doctrine yield drift (>8%) for review
+    (detection only; never rewrites a locked number).
+  - **Consensus UI** card in Owner Tools.
+  - Gate **110 suites / 2673**. 
+- **OWNER DECISIONS STILL OPEN (flagged, NOT changed — pricing is owner-only):** roofing product
+  **NCFI 10-011 (R6.3, 25psi) vs 10-016 (R6.7, 58psi walkable)** — sets R + walkability; **set invoice
+  prices** (implied are back-calculated); **concrete-lifting $10/lb sell rate** flagged ~45% light vs
+  $12/SF market; **thermal-barrier (DC315) coating has no price** (bid lists it as an exclusion → price it).
+  Manual Drive step waiting: rename+move Workbook V2 into 16_ARCHIVE (connector can't move/rename).
+_Earlier 8/07 detail below._
+
 _Last updated: 2026-08-07._
 
 ## 1. What this is / repos
