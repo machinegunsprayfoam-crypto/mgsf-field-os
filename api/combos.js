@@ -49,6 +49,9 @@ const FEATURED = [
   { key: "federal_package", name: "Federal Bid Package", divisions: ["gov", "money", "risk"], members: ["govcon", "finance", "insurance"],
     play: "A bondable, priced, compliant federal bid package — the whole thing, one pass.",
     re: /\b(federal|sam\.?gov|govcon|sdvosb|solicitation)\b[\s\S]{0,50}\b(bond|bonding|insurance|proposal|price|pricing)\b/i },
+  { key: "win_rate", name: "Win-Rate Play", divisions: ["est", "money", "growth"], members: ["estimator", "finance", "proposal"],
+    play: "Priced-right proposals that actually close — the estimate, the margin, and the pitch tuned together.",
+    re: /\b(win\s?rate|close\s?rate|hit\s?rate|closing\s+more|why\s+are\s+we\s+losing)\b[\s\S]{0,50}\b(bid|quote|proposal|margin|price|job)\b/i },
   { key: "priced_margin", name: "Priced-to-Margin Bid", divisions: ["est", "money"], members: ["estimator", "finance"],
     play: "Every bid checked against the doctrine margin target before it goes out.",
     re: /\b(bid|quote|estimate|price)\b[\s\S]{0,40}\b(margin|profit|markup|make money)\b|\b(margin|profit|markup)\b[\s\S]{0,40}\b(bid|quote|estimate)\b/i },
@@ -73,6 +76,15 @@ const FEATURED = [
   { key: "true_profit", name: "True Job Profit", divisions: ["field", "money"], members: ["finance", "quality"],
     play: "Planned vs. actual — the real profit on the job after the field logs the actuals.",
     re: /\b(true|actual|real|final)\b[\s\S]{0,20}\b(profit|job\s*cost|cost)\b|\bbid\s+vs\.?\s+actual\b/i },
+  { key: "true_takeoff", name: "True Takeoff", divisions: ["est", "field"], members: ["takeoff_spf", "building"],
+    play: "A measured takeoff that already accounts for the spray window — quantities you can actually hit on site.",
+    re: /\b(takeoff|board.?feet|measure|square\s?footage|how much foam)\b[\s\S]{0,50}\b(spray window|conditions|weather|dew.?point|too cold|substrate)\b/i },
+  { key: "book_capacity", name: "Book to Capacity", divisions: ["field", "growth"], members: ["appointment", "scheduling"],
+    play: "Sell only what the crew and rig can actually deliver — book the work against real capacity.",
+    re: /\b(book|schedule|take on|fit in|squeeze in|can we handle|do we have)\b[\s\S]{0,50}\b(capacity|crew|rig|slammed|booked|deliver|handle|another job)\b/i },
+  { key: "teaming_outreach", name: "Teaming Outreach", divisions: ["gov", "growth"], members: ["teaming", "lead_hunter"],
+    play: "Find primes and teaming partners for bigger federal/commercial work, and open the conversation.",
+    re: /\b(teaming|team up|prime|subcontract|joint venture|jv|partner)\b[\s\S]{0,50}\b(federal|gov|find|reach out|opportunit|prime|bigger)\b/i },
 ];
 
 const BYK = {}; DIVISIONS.forEach((d) => { BYK[d.key] = d; });

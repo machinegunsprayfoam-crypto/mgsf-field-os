@@ -221,6 +221,10 @@
     {key:"safe_legal",name:"Safe & Legal Install",divs:["field","risk"],members:["safety","code"],play:"An install plan that's OSHA-clean and code-legal from the start."},
     {key:"deposit_close",name:"Deposit-to-Close",divs:["growth","money"],members:["customer_comms","cashflow"],play:"Close the sale with a deposit and a payment plan that keeps cash positive."},
     {key:"true_profit",name:"True Job Profit",divs:["field","money"],members:["finance","quality"],play:"Planned vs. actual — the real profit on the job after the field logs the actuals."},
+    {key:"win_rate",name:"Win-Rate Play",divs:["est","money","growth"],members:["estimator","finance","proposal"],play:"Priced-right proposals that actually close — the estimate, the margin, and the pitch tuned together."},
+    {key:"true_takeoff",name:"True Takeoff",divs:["est","field"],members:["takeoff_spf","building"],play:"A measured takeoff that already accounts for the spray window — quantities you can actually hit on site."},
+    {key:"book_capacity",name:"Book to Capacity",divs:["field","growth"],members:["appointment","scheduling"],play:"Sell only what the crew and rig can actually deliver — book the work against real capacity."},
+    {key:"teaming_outreach",name:"Teaming Outreach",divs:["gov","growth"],members:["teaming","lead_hunter"],play:"Find primes and teaming partners for bigger federal/commercial work, and open the conversation."},
   ];
   const CORE={call:"CORE",ico:"👑",name:"The Queen & Synthesizer",tag:"route · recruit · synthesize · critique",
     body:"The core, inside the cube. The Queen routes each question, recruits the right specialists — or a whole overlap team — to work in parallel, then the synthesizer fuses their answers and the critic checks for fabrication and doctrine breaks before you see it."};
@@ -232,6 +236,9 @@
     {a:"field",b:"money",tension:"Do the work ↔ account for the work"},
     {a:"risk",b:"growth",tension:"Compliance & caution ↔ sales & expansion"},
   ];
+  const OPP={}; AXES.forEach(({a,b})=>{OPP[a]=b;OPP[b]=a;});
+  // a 2-division play across OPPOSITE faces is an "axis" play (the tension), not an edge piece.
+  function pieceKind(divs){ return divs.length===3?"corner":(divs.length===2&&OPP[divs[0]]===divs[1]?"axis":"edge"); }
   // Auto-generate the capability for ANY overlap that has no featured play — so every one of the
   // cube's 26 pieces resolves to something (mirrors api/combos.js). Suggested team = lead of each division.
   function generatedCombo(divs){
@@ -407,7 +414,7 @@
   function selectCombo(c){ sel={type:"combo",combo:c};
     setIco(null,null,c.divs);
     const feat=(c.featured!==false); const sk=[...c.divs].sort().join("+");
-    document.getElementById("dKick").textContent=(c.divs.length===3?"CORNER":"EDGE")+" OVERLAP · "+(feat?"":"SUGGESTED · ")+c.divs.map(d=>DIVS[d].name.split(" ")[0]).join(" × ");
+    document.getElementById("dKick").textContent=pieceKind(c.divs).toUpperCase()+" OVERLAP · "+(feat?"":"SUGGESTED · ")+c.divs.map(d=>DIVS[d].name.split(" ")[0]).join(" × ");
     document.getElementById("dKick").style.color=feat?PAL.accent:PAL.dim;
     document.getElementById("dName").textContent=c.name;
     document.getElementById("dIdx").textContent=(feat?"TEAM · 1 turn":"SUGGESTED");
@@ -446,7 +453,7 @@
     `<button class="dchip" data-d="${d}" type="button"><span class="sw" style="background:${DIVS[d].color}"></span>${DIVS[d].name}</button>`).join("");
   document.getElementById("comboCount").textContent="("+COMBOS.length+")";
   document.getElementById("comboList").innerHTML = COMBOS.map(c=>
-    `<button class="cx" data-c="${c.key}" type="button"><span class="dots">${c.divs.map(d=>`<i style="background:${DIVS[d].color}"></i>`).join("")}</span><b>${c.name}</b><span class="op">${c.divs.length===3?"corner":"edge"}</span></button>`).join("");
+    `<button class="cx" data-c="${c.key}" type="button"><span class="dots">${c.divs.map(d=>`<i style="background:${DIVS[d].color}"></i>`).join("")}</span><b>${c.name}</b><span class="op">${pieceKind(c.divs)}</span></button>`).join("");
   document.getElementById("axisList").innerHTML = AXES.map(ax=>
     `<div class="cx" style="cursor:default"><span class="dots"><i style="background:${DIVS[ax.a].color}"></i><i style="background:${DIVS[ax.b].color}"></i></span><span style="flex:1">${ax.tension}</span></div>`).join("");
   const asideEl=document.querySelector("aside");

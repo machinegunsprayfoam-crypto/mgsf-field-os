@@ -18,7 +18,16 @@ ok("12 edges", e.edges.length === 12, e.edges.length);
 ok("8 corners", e.corners.length === 8, e.corners.length);
 ok("26 pieces total", e.counts.total === 26, e.counts.total);
 ok("all() returns 26", C.all().length === 26);
-ok("10 featured plays", e.counts.featured === 10, e.counts.featured);
+ok("14 featured plays", e.counts.featured === 14, e.counts.featured);
+ok("every featured corner is a valid one-per-axis corner (mutually adjacent)", C.FEATURED.filter((f) => f.divisions.length === 3).every((f) =>
+  C.adjacent(f.divisions[0], f.divisions[1]) && C.adjacent(f.divisions[0], f.divisions[2]) && C.adjacent(f.divisions[1], f.divisions[2])));
+// A 2-division featured is normally an EDGE (adjacent faces). The one deliberate exception is an
+// AXIS play that spans opposite faces (the tension itself) — allow only the documented ones so a
+// NEW accidental opposite pairing still gets caught.
+const AXIS_PLAYS = ["true_profit"]; // field↔money = "do the work ↔ count the money"
+const badEdges = C.FEATURED.filter((f) => f.divisions.length === 2 && !C.adjacent(f.divisions[0], f.divisions[1]) && AXIS_PLAYS.indexOf(f.key) < 0);
+ok("no featured edge is an accidental opposite pair (only documented axis plays)", badEdges.length === 0, badEdges.map((f) => f.key).join(","));
+ok("every featured division is a real, distinct key", C.FEATURED.every((f) => new Set(f.divisions).size === f.divisions.length && f.divisions.every((d) => C.DIVISIONS.some((x) => x.key === d))));
 
 // ---- axes / adjacency ----
 ok("3 axes (opposite-face pairs)", C.AXES.length === 3);
@@ -36,12 +45,12 @@ ok("no edge is an opposite pair", C.edges().every(([a, b]) => C.adjacent(a, b)))
 const gng = C.capabilityFor(["est", "money", "risk"]);
 ok("featured corner (Go/No-Go) overrides generation", gng.featured === true && gng.name === "Go/No-Go Bid" && gng.kind === "corner");
 ok("featured carries its tuned team", gng.members.join(",") === "estimator,finance,code");
-// est+gov is an opposite pair → never an edge piece, but capabilityFor still answers for any set
-const genEdge = C.capabilityFor(["field", "growth"]);
+// gov+risk is an adjacent edge with no featured play → still auto-generated (a "suggested" team)
+const genEdge = C.capabilityFor(["gov", "risk"]);
 ok("un-featured overlap ⇒ auto-generated suggestion (not featured)", genEdge.featured === false && genEdge.members.length === 2);
 ok("generated team = the lead of each division", (function () {
   const leadOf = {}; C.DIVISIONS.forEach((d) => { leadOf[d.key] = d.lead; });
-  return genEdge.members.includes(leadOf.field) && genEdge.members.includes(leadOf.growth);
+  return genEdge.members.includes(leadOf.gov) && genEdge.members.includes(leadOf.risk);
 })());
 const face = C.capabilityFor(["money"]);
 ok("a face capability lists the whole division + names its lead", face.kind === "face" && face.members.length >= 3 && face.lead === "finance");
@@ -51,6 +60,10 @@ ok("no combination is ever undefined", C.all().every((c) => c && c.name && Array
 ok("matchText fires a featured play", (C.matchText("should we bid on the Deere barn?") || {}).key === "go_no_go");
 ok("matchText ignores a plain single-topic ask", C.matchText("what's the R-value of closed cell foam?") === null);
 ok("matchText caps on very long input", C.matchText("bid ".repeat(80)) === null);
+ok("new play: win-rate fires", (C.matchText("how do we improve our proposal win rate and margin?") || {}).key === "win_rate");
+ok("new play: book-to-capacity fires", (C.matchText("can we take on another job this week with the crew we have?") || {}).key === "book_capacity");
+ok("new play: teaming outreach fires", (C.matchText("find a prime to team up with on a federal solicitation") || {}).key === "teaming_outreach");
+ok("promoting a suggestion didn't break a plain single-topic ask", C.matchText("what's the spray window today?") === null);
 
 // ---- convene any piece by key ----
 const pl = C.planFor("est+money");
