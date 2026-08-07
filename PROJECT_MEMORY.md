@@ -27,6 +27,26 @@ _Last updated: 2026-08-07 (pm)._
   prices** (implied are back-calculated); **concrete-lifting $10/lb sell rate** flagged ~45% light vs
   $12/SF market; **thermal-barrier (DC315) coating has no price** (bid lists it as an exclusion → price it).
   Manual Drive step waiting: rename+move Workbook V2 into 16_ARCHIVE (connector can't move/rename).
+- **★ INFRANODUS GAP FILL (branch `claude/klyfton-ai-problems-ynhx9f`, staged).** Ran InfraNodus's
+  content-gap methodology on the app's own brain graph (`api/brain-graph-data.js`; live connector was
+  offline — no fabrication, used the real saved graph). Two structural holes found + closed as GROUNDED
+  brain blocks (reasoning only, every number still defers to DOCTRINE/TDS):
+  - **Gap #1 — Business Licensing was a structural island** (credentials known, but ~no edges to the
+    service clusters). New **`CREDENTIAL_MAP`** block bridges credential → the service it unlocks / job
+    class it gates: BPI→blower-door/energy-audit, applicator training→manufacturer-warranty foam, state
+    registration→right-to-bid-per-state, SDVOSB+SAM→federal set-asides, prevailing-wage→public works,
+    OSHA/resp→the spray work, GL+CPL+WC→commercial/GC jobs, surety→bonded work. "Verify with the
+    board/AHJ/surety" throughout; no invented license #, bond amount, or fee.
+  - **Gap #2 — Cost Efficiency ✕ Dew Point barely bridged** (pricing didn't connect to the weather).
+    New **`SEASON_ECONOMICS`** block = the cost of the spray/coat window: coat-in-same-season roof gate,
+    product cold-weather minimums (relative order; temps from the TDS), reschedule/mobilization cost,
+    short-season capacity compression (Sunday always NO-GO), weather-risk buffer, and the move (sell
+    weather-independent crawl/attic/injection off-season, reserve warm-dry days for exterior/roof).
+  - Both added to `BRAIN_BLOCKS`/`BRAIN_ORDER` (after `GAP_BRIDGES`) and routed in
+    `api/brain-graph-retrieve.js`: `CREDENTIAL_MAP`→Business Licensing cluster; `SEASON_ECONOMICS`→Dew
+    Point + Cost Efficiency clusters; ALIAS words added (cert/certification/credential/registration/
+    warranty/applicator/training; season/reschedule/mobilization/coating/coat). Gate **110 suites / 2679**
+    (+6 routing/assembly assertions in `tests/brain-graph-retrieve.js` + `tests/klyfton.js`).
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._

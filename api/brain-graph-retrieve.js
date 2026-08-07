@@ -20,14 +20,14 @@ const GRAPH = require("./brain-graph-data.js");
 // vocabulary and keep tests/brain-graph-retrieve.js green (it asserts routing behavior, not names).
 const CLUSTER_BLOCKS = {
   "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY"],   // foam/spray/doctrine/spec/ahj/verify
-  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT"],              // license/insurance/sam/contractor — credentials + gov
-  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM"],// cost/margin/roi/job/lead + the deal-closing action flow (proposal/invoice/draft)
+  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1)
+  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + season/weather cost bridge (gap #2)
   "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
   "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES"],     // concrete/lifting/void/soil/seawall
   "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE"], // code/irc/scope/trade/calculator/safety
   "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE"], // barrier/air/vapor/moisture/mold
   "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE"],                 // blower door/proof/ACH50 (BPI)
-  "Dew Point":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS"],      // substrate/dew/wind/temp/lift (spray window)
+  "Dew Point":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "SEASON_ECONOMICS"], // substrate/dew/wind/temp/lift (spray window) + the cost of the window (gap #2)
 };
 // Identity + hard rules that must always be present regardless of the question.
 const ALWAYS = ["base_voice", "DOCTRINE", "COMPETITIVE_EDGE"];
@@ -54,12 +54,18 @@ const ALIAS = {
   insurance: ["insurance", "license", "federal"], coi: ["insurance", "license"], bond: ["insurance", "federal"], bonding: ["insurance", "federal"],
   surety: ["insurance", "federal"], pollution: ["insurance", "license"], umbrella: ["insurance", "license"], liability: ["insurance", "business"],
   workers: ["insurance", "business"], comp: ["insurance", "business"], license: ["license", "business"], licensed: ["license", "trade"],
+  // Certifications / credentials → Business Licensing (carries CREDENTIAL_MAP — which credential unlocks which service, gap #1)
+  cert: ["license", "business"], certified: ["license", "business"], certification: ["license", "business"], credential: ["license", "business"],
+  registration: ["license", "business"], register: ["license", "business"], warranty: ["license", "business"], applicator: ["license", "business"], training: ["license", "business"],
   // Cost / margin → Cost Efficiency (DOCTRINE + ACCOUNTING_FINANCE + ROI_GUIDE)
   margin: ["cost", "roi"], profit: ["cost", "roi"], markup: ["cost"], gm: ["cost"], price: ["cost", "estimate"], pricing: ["cost"], quote: ["cost", "estimate"],
   payback: ["roi", "cost"], savings: ["roi", "cost"], bill: ["roi", "cost"],
   // Spray window / weather → Dew Point (+ Foam Verification)
   substrate: ["substrate", "spray"], dewpoint: ["dew", "substrate"], condensation: ["dew", "moisture"], humidity: ["dew", "moisture"],
   temperature: ["temp", "substrate"], weather: ["substrate", "wind"], cold: ["substrate", "temp"], hot: ["substrate", "temp"], window: ["substrate"],
+  // Season / weather economics → Dew Point + Cost Efficiency (both carry SEASON_ECONOMICS — the cost of the spray/coat window, gap #2)
+  season: ["substrate", "cost"], seasonal: ["substrate", "cost"], reschedule: ["substrate", "cost"], mobilization: ["substrate", "cost"],
+  coating: ["substrate", "cost"], coat: ["substrate", "cost"],
   // Outward actions → Cost Efficiency (carries ACTIONS + PLATFORM): proposal/invoice/draft/approval flow
   proposal: ["cost", "estimate"], invoice: ["cost", "estimate"], draft: ["cost", "lead"], approval: ["cost"], action: ["cost"],
   email: ["lead", "cost"], sms: ["lead", "cost"], schedule: ["lead"], followup: ["lead"], reminder: ["lead"], review: ["lead"],
