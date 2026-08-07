@@ -16,6 +16,25 @@ _Last updated: 2026-08-07._
 ## 2. Current build state
 **★ DEPLOYED TO MAIN 2026-07-27 (Clifton's go):** field-os branch fast-forward-merged to main + live on Vercel (prod deploy READY, commit ad06190). LIVE now: 3D brain-graph boot screen, GraphRAG block-selection in the brain (both builders, safe full-brain fallback), live-data grounding (brainContext, pipeline-gated), warranty-cert button, + all prior staged subsystems (Command Center, ATS, axle, gearbox, memory, act.js[inert until ALERTS_WEBHOOK_URL], crons now on their Mon-Sat schedule). HUBSPOT_TOKEN + KV set in Vercel. Smoke test `/api/brain-context` = {configured:true, source:kv, 12 open leads / 11 cold}. **Hardening flag:** read endpoints (`/api/brain-context`, `/api/command-center`) return aggregate pipeline data UNAUTHENTICATED (noindex, but public) — existing app posture; consider gating behind CREW_CODE.
 **Klyfton backend (field-os) — shipped to branch, not merged:**
+- **★ THE CUBE — 6-DIVISION COUNCIL, 12→34 SPECIALISTS (2026-08-07, Clifton-approved, supersedes the
+  dodecahedron below):** Clifton asked for "way more arms/helpers/specialists" and a 4-row Rubik's
+  cube. Restructured the flat roster into a hierarchical **6-division "cube"** (room to grow to 96
+  slots) in `api/klyfton.js`: each specialist now carries {name, division, webUses, tag, focus} and a
+  `DIVISIONS` array defines the 6 faces — **Estimating & Takeoff · Field & Production · Sales & Growth
+  · Finance & Admin · Compliance & Risk · GovCon & Strategy**. Roster grew **12 → 34** real
+  specialists (old merged "sales" split back into marketing/lead-hunter/proposal/customer-comms/
+  reviews/appointment; new coverage: SPF/lift/roof takeoff, photo-bid, value-eng, equipment-rig,
+  quality, ar-collections, cashflow, payroll, bookkeeping, contracts-liens, licensing, warranty,
+  capability, teaming, owner-strategy). `route()` builds its menu dynamically from DIVISIONS via
+  `specialistMenu()` (no drift); hive cap stays 4. `MEMORY_MIND_MAP` re-pointed to new keys;
+  `command-center.js` ROSTER now lists all 34 + core tagged by division. **Arms grew too**
+  (`api/act.js` +5): send_proposal, request_review, send_payment_link, collections_notice, post_social
+  (all approval-gated, inert until ALERTS_WEBHOOK_URL). **Visual:** `public/cube-map.html` — interactive
+  4×4×4 cube (6 division-colored faces × 16 cells = 96 slots, 34 filled + open capacity, click a cell →
+  dossier, live-activity glow from /api/command-center, demo fallback). Linked from Command Center →
+  Agents; SW cache v74→v75. Published as a private Claude artifact. Gate **104/2538 green.** Honest
+  note: this is a COVERAGE + structure upgrade (broader roster, cleaner hierarchical routing, more
+  outward actions), not a per-answer horsepower change (same 4-mind cap, same models).
 - **★ THE DODECAHEDRON — 12-FACE COUNCIL (2026-08-07, Clifton-approved):** restructured the hive's
   `SPECIALISTS` (api/klyfton.js) from the old ad-hoc set into a clean, non-overlapping **12-face**
   roster (+ Klyfton general core = the 13th): 1 Estimator · 2 Building-Science (folds old

@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Klyfton AI — 6-Division Cube · Brain-Map</title>
+<meta name="description" content="Interactive 4x4x4 Rubik's-cube brain-map of Klyfton AI's 6-division, 34-specialist council. Drag to rotate, tap a cell for that specialist. Lights up by live activity when telemetry is on.">
+<meta name="theme-color" content="#0a0e13">
+</head>
+<body>
+<style>
+  :root{
+    --ground:#0a0e13; --ground2:#0e141b; --panel:rgba(17,24,32,.72); --panelSolid:#111820;
+    --line:rgba(140,170,190,.16); --ink:#e7eef5; --dim:#8fa0b0; --steelLo:#28313a;
+    --accent:#ffb020; --live:#35e0c8;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --shadow:0 18px 50px rgba(0,0,0,.55);
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --ground:#e9ebef; --ground2:#f5f6f8; --panel:rgba(255,255,255,.82); --panelSolid:#fff;
+      --line:rgba(20,32,44,.14); --ink:#0f151b; --dim:#586572; --steelLo:#c9d2da;
+      --accent:#b96c05; --live:#0c9581; --shadow:0 16px 40px rgba(20,30,45,.16); }
+  }
+  :root[data-theme="dark"]{ --ground:#0a0e13; --ground2:#0e141b; --panel:rgba(17,24,32,.72); --panelSolid:#111820;
+    --line:rgba(140,170,190,.16); --ink:#e7eef5; --dim:#8fa0b0; --steelLo:#28313a; --accent:#ffb020; --live:#35e0c8; --shadow:0 18px 50px rgba(0,0,0,.55); }
+  :root[data-theme="light"]{ --ground:#e9ebef; --ground2:#f5f6f8; --panel:rgba(255,255,255,.82); --panelSolid:#fff;
+    --line:rgba(20,32,44,.14); --ink:#0f151b; --dim:#586572; --steelLo:#c9d2da; --accent:#b96c05; --live:#0c9581; --shadow:0 16px 40px rgba(20,30,45,.16); }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{ margin:0; color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased; overflow:hidden;
+    background: radial-gradient(1200px 800px at 50% -10%, color-mix(in srgb,var(--accent) 8%, transparent), transparent 60%),
+      radial-gradient(900px 700px at 80% 120%, color-mix(in srgb,var(--live) 8%, transparent), transparent 55%),
+      linear-gradient(180deg,var(--ground2),var(--ground)); }
+  .wrap{position:fixed; inset:0; display:grid; grid-template-rows:auto 1fr}
+  header{display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, color-mix(in srgb,var(--panelSolid) 55%, transparent), transparent); backdrop-filter:blur(6px)}
+  .brand{display:flex; align-items:baseline; gap:12px; min-width:0}
+  .brand .kl{font-weight:800; letter-spacing:.14em; font-size:15px; text-transform:uppercase}
+  .brand .kl b{color:var(--accent)}
+  .brand .sub{font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.05em; white-space:nowrap}
+  .spacer{flex:1 1 auto}
+  .chip{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:5px 10px; border:1px solid var(--line);
+    border-radius:999px; color:var(--dim); display:inline-flex; align-items:center; gap:7px; white-space:nowrap}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+  .chip.live{color:var(--live); border-color:color-mix(in srgb,var(--live) 45%, var(--line))}
+  .chip.live .dot{background:var(--live); animation:beat 1.6s ease-in-out infinite}
+  .chip.demo{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 40%, var(--line))}
+  .chip.demo .dot{background:var(--accent)}
+  @keyframes beat{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 70%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+  .btn{font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; padding:6px 11px;
+    border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--ink)}
+  .btn:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line)); color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .stage{position:relative; min-height:0; display:grid; grid-template-columns:1fr minmax(310px,380px)}
+  @media (max-width:860px){ .stage{grid-template-columns:1fr; grid-template-rows:1fr auto} }
+  .canvasHost{position:relative; min-width:0; min-height:0}
+  canvas{display:block; width:100%; height:100%; touch-action:none; cursor:grab}
+  canvas:active{cursor:grabbing}
+  .hint{position:absolute; left:50%; bottom:14px; transform:translateX(-50%); font-family:var(--mono); font-size:10.5px; letter-spacing:.06em;
+    color:var(--dim); background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 12px; backdrop-filter:blur(6px); pointer-events:none; white-space:nowrap}
+
+  aside{border-left:1px solid var(--line); background:var(--panel); backdrop-filter:blur(10px); padding:20px; overflow:auto; display:flex; flex-direction:column; gap:15px}
+  @media (max-width:860px){ aside{border-left:none; border-top:1px solid var(--line); max-height:48vh} }
+  .doss-head{display:flex; align-items:flex-start; gap:13px}
+  .doss-ico{width:46px;height:46px;flex:none;display:grid;place-items:center;font-size:24px;border-radius:12px; box-shadow:var(--shadow)}
+  .doss-div{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; opacity:.9}
+  .doss-name{font-size:19px; font-weight:800; line-height:1.15; text-wrap:balance; margin-top:2px}
+  .doss-idx{font-family:var(--mono); font-size:11px; color:var(--dim); margin-left:auto; white-space:nowrap}
+  .doss-body{font-size:13.5px; line-height:1.55; color:color-mix(in srgb,var(--ink) 88%, var(--dim))}
+  .meta{display:flex; flex-direction:column; gap:8px}
+  .meta .row{display:flex; gap:10px; align-items:baseline}
+  .meta .k{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); width:74px; flex:none}
+  .meta .v{font-size:12.5px; color:var(--ink)}
+  .tools{display:flex; flex-wrap:wrap; gap:6px}
+  .tool{font-family:var(--mono); font-size:10.5px; padding:3px 8px; border-radius:6px; border:1px solid var(--line); color:var(--dim)}
+  .gauge{height:6px;border-radius:99px;background:var(--steelLo);overflow:hidden}
+  .gauge > i{display:block;height:100%;border-radius:99px}
+
+  .legend{display:flex; flex-wrap:wrap; gap:6px}
+  .lg{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; letter-spacing:.02em; color:var(--dim); border:1px solid var(--line); border-radius:6px; padding:3px 7px}
+  .lg .sw{width:9px;height:9px;border-radius:2px}
+  .roster{margin-top:auto; padding-top:12px; border-top:1px solid var(--line)}
+  .roster h3{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin:0 0 8px}
+  .divblock{margin-bottom:9px}
+  .divblock > .dh{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 4px; display:flex; align-items:center; gap:6px}
+  .divblock > .dh .sw{width:8px;height:8px;border-radius:2px}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:4px}
+  .cell{display:flex; align-items:center; gap:7px; text-align:left; cursor:pointer; font-family:var(--mono); font-size:10px; color:var(--dim);
+    padding:5px 6px; border-radius:6px; border:1px solid transparent; background:transparent; width:100%}
+  .cell:hover{border-color:var(--line); color:var(--ink)}
+  .cell:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .cell.sel{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb,var(--accent) 9%,transparent)}
+  .cell b{font-weight:600}
+  @media (prefers-reduced-motion:reduce){ .chip.live .dot{animation:none} }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="kl">KLYFTON <b>AI</b></span>
+      <span class="sub">6-DIVISION COUNCIL · 4×4×4 CUBE BRAIN-MAP</span>
+    </div>
+    <span class="spacer"></span>
+    <span class="chip" id="status"><span class="dot"></span><span id="statusTxt">SCANNING…</span></span>
+    <button class="btn" id="orbit" aria-pressed="true">◐ Orbit</button>
+    <button class="btn" id="theme">◑ Theme</button>
+  </header>
+
+  <div class="stage">
+    <div class="canvasHost">
+      <canvas id="c" aria-label="Rotating 4x4x4 cube. Each of the six faces is a division; each filled cell is one specialist; empty cells are open capacity. Use the roster list to select a specialist."></canvas>
+      <div class="hint">DRAG TO ROTATE · CLICK A FILLED CELL FOR ITS DOSSIER · EMPTY CELLS = OPEN SLOTS</div>
+    </div>
+
+    <aside>
+      <div class="doss-head">
+        <div class="doss-ico" id="dIco" style="background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))">👑</div>
+        <div style="min-width:0">
+          <div class="doss-div" id="dDiv" style="color:var(--accent)">CORE</div>
+          <div class="doss-name" id="dName">The Queen &amp; Synthesizer</div>
+        </div>
+        <div class="doss-idx" id="dIdx">CORE</div>
+      </div>
+      <div class="doss-body" id="dBody"></div>
+      <div class="meta">
+        <div class="row"><span class="k">Charter</span><span class="v" id="dTag"></span></div>
+        <div class="row"><span class="k">Web budget</span><span class="v" id="dWeb"></span></div>
+        <div class="row" id="rActivity"><span class="k">Activity</span><span class="v" id="dAct" style="flex:1"></span></div>
+      </div>
+      <div class="tools" id="dTools"></div>
+
+      <div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="roster">
+        <h3>The Council · <span id="fillCount"></span></h3>
+        <div id="rosterBlocks"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  // ── Division colors + specialists (mirrors api/klyfton.js DIVISIONS/SPECIALISTS) ──
+  const DIVS = [
+    { key:"est",   name:"Estimating & Takeoff", color:"#ffb020" },
+    { key:"field", name:"Field & Production",    color:"#35e0c8" },
+    { key:"growth",name:"Sales & Growth",        color:"#ff7a2f" },
+    { key:"money", name:"Finance & Admin",       color:"#4ccf70" },
+    { key:"risk",  name:"Compliance & Risk",     color:"#ff5a52" },
+    { key:"gov",   name:"GovCon & Strategy",     color:"#9b8cff" },
+  ];
+  // key, division, callsign (cell label), icon, web budget, charter tag, body, tools
+  const S = [
+    ["estimator","est","ESTIMATE","📐",2,"bids, board-feet, margin, photo bids","Board-feet, yield, coverage, set thickness, waste, labor and markup — foam, coatings and lifting. Prices off the crew's own rates first; reads a photo into a labeled ESTIMATE range, never a fake hard number.",["foam-calc","trade-estimate","draft_proposal"]],
+    ["takeoff_spf","est","SPF-TO","🧮",2,"detailed multi-area SPF board-foot takeoff","BF = SF × inches (never ÷12), per area, open vs closed cell, waste + rig buffer, then sets from real yield. Shows every step. Never fabricates a yield — confirm against the TDS.",["foam-calc"]],
+    ["takeoff_lift","est","LIFT-TO","📏",2,"concrete-lift quantities, void volume","Slab area × avg void depth → cubic feet → lbs of polyurethane from the product's density. Honest about compaction and non-uniform voids; a range, verified at the ports.",["foam-calc"]],
+    ["takeoff_roof","est","ROOF-TO","📊",4,"roofing/coating takeoff — squares, gallons, mils","Roof area (slope + waste) → squares, then coating gallons from coverage at the spec'd dry-mil, plus primer/granules/SPF sets. Two coats counted. Cites the current TDS.",["web-search"]],
+    ["photo_bid","est","PHOTO","📸",2,"read a jobsite photo into a labeled rough bid","From a photo: substrate, construction, visible dimensions — every assumption stated. A rough quantity + bid RANGE, each assumed figure ESTIMATED, ending with what a human must confirm on site.",[]],
+    ["value_eng","est","VALUE","⚖️",2,"hit a budget — assembly trade-offs","Over budget? Alternate assemblies (flash-and-batt vs full closed-cell), code-min vs optimum thickness, phasing — each with its R-value and dollar trade-off. Never below code.",[]],
+
+    ["building","field","BLD-SCI","🔬",4,"spray window, envelope, foam TDS","The spray window (temp/dew point/humidity/wind, GO-NO-GO, cure) and cold-climate envelope science — air/vapor placement, condensation risk — plus the current foam TDS with a citation.",["web-search","weather"]],
+    ["concrete","field","LIFTING","🧱",2,"polyjacking, slab/void fill, settled slabs","Polyurethane slab lifting, void fill, soil stabilization. Lift-vs-replace, the process, why it beats mudjacking, density by load — and honest triage: if it reads structural, get an engineer.",["foam-calc"]],
+    ["roofing","field","ROOF","🛡️",4,"SPF roofs, elastomeric coatings, coating TDS","SPF roofing over metal/BUR/TPO/EPDM/concrete and silicone/acrylic/polyurea/elastomeric coatings — mils, coverage, cure, cool-roof. Never leaves SPF roof exposed. Cites the coating TDS.",["web-search"]],
+    ["safety","field","SAFETY","⚠️",2,"PPE, SDS, JSA, OSHA, confined space","Hazards, PPE, ventilation, re-occupancy, respirators, confined space, fall protection, OSHA steps. Pulls the manufacturer SDS (hazards / first aid / exposure limits, A & B side) — verify on-rig.",["web-search"]],
+    ["equipment","field","RIG","🔧",4,"proportioner, gun, transfer pump, pressures","The spray rig: proportioner temp + A/B pressure balance, off-ratio/crossover diagnosis, gun and pump maintenance, cold-morning startup. Step-by-step. Cites the OEM manual — never guesses a number.",["web-search"]],
+    ["quality","field","QC","✔️",2,"thickness/coverage checks, pull tests, punch","Verify the work: depth/thickness checks, adhesion/pull tests where spec'd, defect spotting (voids, off-ratio, blowholes), coverage vs. estimate, and a closeout punch list with pass/fail criteria.",[]],
+    ["scheduling","field","DISPATCH","🗓️",2,"crew/rig dispatch, timeline, drive time","Job sequencing, crew and rig assignment, drive time across MT/ND/SD/WY, day-of go/no-go, a clean calendar. Pulls the spray window before committing a date. Never books a Sunday.",["calendar","job-workflow"]],
+
+    ["marketing","growth","MKTG","📣",2,"social posts, content, captions, hashtags","Short, punchy, ready-to-post social — scroll-stopping first line, tight sentences, one CTA, 6-10 hashtags. Cold-climate energy, metal buildings, ag, lifting, veteran-owned. No guaranteed-savings claims.",["web-search"]],
+    ["lead_hunter","growth","HUNTER","🎯",4,"find commercial/ag/industrial opportunities","Searches real, current jobs in MT/ND/WY/SD — new construction, metal buildings, pole barns, warehouses — with a source link and a ready outreach opener. Honest when it can't verify; never fabricates.",["web-search"]],
+    ["proposal","growth","PROPOSAL","📄",2,"full customer proposal, scope, payment schedule","Estimate + context → a complete proposal (exec summary, scope, material specs, timeline, warranty, payment schedule, terms, signature). Uses the estimate numbers exactly; missing → [TBD].",["proposal-pdf"]],
+    ["customer_comms","growth","COMMS","💬",2,"objections, follow-up timing, cold re-engagement","Ready-to-send scripts, emails, texts: objection handling grounded in real performance, follow-up cadence, reviving cold leads, change-order talks. Texts <160 chars, emails <150 words.",[]],
+    ["reviews","growth","REVIEWS","⭐",2,"review requests + referral asks after close","How and when to ask for a Google/Facebook review and a referral without being pushy — the actual message. Uses the real review link or marks it OWNER INPUT REQUIRED.",[]],
+    ["appointment","growth","BOOK","📅",2,"qualify a lead and book the estimate","Turns a lead into a booked estimate: a short qualifying script, handling 'just checking prices', plus confirmation + reminder messages. Never a Sunday; never over-promises a price.",[]],
+
+    ["finance","money","CFO","💵",2,"job costing, margin, break-even, red flags","The construction CFO: estimated-vs-actual job costing, gross-margin leak analysis vs. the doctrine target, break-even, and financial red flags. Doctrine margin targets beat any outside number.",["job-cost"]],
+    ["ar_collections","money","AR","💳",2,"AR aging, escalation, collection scripts","Aging buckets, when to escalate, and the exact message per stage — nudge → firm → final → lien warning. Paid-focused, never threatening. Never invents an amount or date.",["invoice-remind"]],
+    ["cashflow","money","CASH","🌊",2,"cash-flow forecast, runway, milestones","Payables vs. expected receipts, runway in weeks, and deposit/milestone structures that keep the crew cash-positive through a job — especially on slow-pay commercial/gov work.",["payment-schedule"]],
+    ["payroll","money","PAYROLL","🧾",2,"payroll, labor burden, comp-class basics","Fully-loaded labor cost (wage + burden) so jobs cost on true labor; overtime and prevailing-wage basics; comp class-code concepts. Exact rates are OWNER INPUT REQUIRED.",[]],
+    ["bookkeeping","money","BOOKS","📚",2,"QuickBooks, chart of accounts, reconciliation","Chart of accounts for job-costing (COGS by phase vs overhead), QBO reconciliation, categorizing rig/material/fuel, sales-tax on materials vs installed work. Clean records; confirm tax specifics.",[]],
+
+    ["code","risk","CODE","📋",4,"IECC R-value, permits, barriers, vapor retarder","IECC R-value minimums (Zones 6-7), ignition/thermal barrier triggers, vapor-retarder classes, air barrier, state amendments, permit triggers. Always searches the AHJ's adopted edition — cites it.",["web-search"]],
+    ["insurance","risk","INSURE","📜",4,"GL, pollution/CPL, workers comp, COI, bonds","Coverage a SPF/lifting sub needs — GL, the pollution/CPL angle SPF triggers, workers' comp, auto, equipment floater; reading COI requests; surety bid/performance/payment bonds. Limits confirmed with the broker.",["web-search"]],
+    ["contracts","risk","CONTRACT","✍️",4,"contracts, change orders, lien rights/deadlines","Plain-English read of contract terms, change-order and retainage language, pay-when-paid traps, and mechanic's-lien basics (notices + strict state deadlines — cited). Not legal advice.",["web-search"]],
+    ["licensing","risk","LICENSE","🎫",4,"state contractor licensing/registration","What it takes to work legally in MT/ND/SD/WY — registration, out-of-state bond/tax, city specifics, renewals. Searches the current state requirement and cites the agency. Not legal advice.",["web-search"]],
+    ["warranty","risk","WARRANTY","🔖",2,"workmanship + manufacturer warranty, claims","Structures MGSF's workmanship warranty (term, coverage, exclusions, transfer) and how it stacks with the manufacturer/roof-system warranty. Never promises a term MGSF hasn't set.",[]],
+
+    ["govcon","gov","GOVCON","🎖️",4,"SAM.gov, SDVOSB/VOSB, FAR/DFARS","Decodes SAM.gov solicitations, set-asides, FAR/DFARS basics, bid go/no-go, and proposal sections. Searches live opportunities by NAICS 238310/238160/238190 — cites number, value, deadline, link.",["samgov","capability-statement"]],
+    ["capability","gov","CAP-STMT","🗂️",2,"capability statements, past performance","Builds the SDVOSB one-pager buyers ask for — core competencies, differentiators, verified identity (legal name/UEI/NAICS), past performance. Unverified facts are OWNER INPUT REQUIRED.",["capability-statement"]],
+    ["teaming","gov","TEAMING","🤝",4,"teaming, subcontracting, JV, prime search","Winning bigger work by teaming: finding primes seeking foam/roofing subs, teaming-agreement and subcontract basics, SBA Mentor-Protégé and JV, and how set-aside eligibility flows through a team.",["web-search"]],
+    ["pm","gov","PM","🧭",2,"run a job end-to-end, change orders, closeout","Owns a job awarded → closed-out and pulls the other minds together: submittals, daily logs, inspections, change orders, punch list, closeout. Runs a go/no-go readiness check before mobilizing.",["job-workflow"]],
+    ["strategy","gov","STRATEGY","♟️",4,"growth, expansion, pricing strategy, big calls","Clifton's blunt board advisor: new service lines, a second rig, new territory, positioning, business-level pricing. TL;DR + top numbers, 2-3 options with cost/time/risk, then names the pick.",["web-search"]],
+  ];
+  const BYKEY = {}; S.forEach(a => BYKEY[a[0]] = { key:a[0], div:a[1], call:a[2], ico:a[3], web:a[4], tag:a[5], body:a[6], tools:a[7] });
+  const MEMBERS = {}; DIVS.forEach(d => MEMBERS[d.key] = S.filter(a => a[1] === d.key).map(a => a[0]));
+  const COLOR = {}; DIVS.forEach(d => COLOR[d.key] = d.color);
+  const DIVNAME = {}; DIVS.forEach(d => DIVNAME[d.key] = d.name);
+  const CORE = { key:"__core", div:"core", call:"CORE", ico:"👑", web:0,
+    tag:"route · recruit · synthesize · critique",
+    body:"The core, inside the cube. The Queen routes each question, recruits up to four specialists to work in parallel, then the synthesizer fuses their answers and the critic checks for fabrication and doctrine breaks before you see it.",
+    tools:["router","synthesizer","critic"] };
+
+  // ── cube geometry: 6 faces, each a 4×4 grid of cells ──
+  const N = 4, GAP = 0.10;
+  function add(a,b){return [a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
+  function scale(a,s){return [a[0]*s,a[1]*s,a[2]*s];}
+  function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+  function normv(v){const m=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/m,v[1]/m,v[2]/m];}
+  function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+  // face defs: corner C + full-edge vectors U,V (outward normal = normalize(cross(U,V)))
+  const FDEF = [
+    { corner:[-1,-1, 1], U:[2,0,0], V:[0,2,0] }, // +Z front
+    { corner:[ 1,-1,-1], U:[0,2,0], V:[0,0,2] }, // +X right
+    { corner:[-1, 1,-1], U:[0,0,2], V:[2,0,0] }, // +Y top
+    { corner:[-1,-1,-1], U:[0,0,2], V:[0,2,0] }, // -X left
+    { corner:[-1,-1,-1], U:[2,0,0], V:[0,0,2] }, // -Y bottom
+    { corner:[-1,-1,-1], U:[0,2,0], V:[2,0,0] }, // -Z back
+  ];
+  // Which division sits on each face — ordered so the default 3 visible faces (front/right/top)
+  // are contrasting colors: +Z est(amber) · +X field(cyan) · +Y money(green).
+  const FACE_DIV = [DIVS[0], DIVS[1], DIVS[3], DIVS[2], DIVS[4], DIVS[5]];
+  const FACES = FDEF.map((fd, fi) => {
+    const dobj = FACE_DIV[fi], div = dobj.key, mem = MEMBERS[div];
+    const n = normv(cross(fd.U, fd.V));
+    const cells = [];
+    for (let r=0;r<N;r++) for (let col=0;col<N;col++){
+      const idx = r*N+col;
+      const a0=col/N, b0=r/N, st=1/N, gi=GAP*st;
+      const P=(uf,vf)=>add(add(fd.corner, scale(fd.U,uf)), scale(fd.V,vf));
+      const corners=[P(a0+gi,b0+gi), P(a0+st-gi,b0+gi), P(a0+st-gi,b0+st-gi), P(a0+gi,b0+st-gi)];
+      const center=P(a0+st/2, b0+st/2);
+      cells.push({ corners, center, key: idx < mem.length ? mem[idx] : null });
+    }
+    return { div, color: dobj.color, n, cells };
+  });
+  const FILLED = S.length, TOTAL = FACES.length*N*N;
+
+  // ── canvas + palette ──
+  const cvs=document.getElementById("c"), ctx=cvs.getContext("2d");
+  let W=0,H=0,DPR=1,cx=0,cy=0,fscale=1;
+  function resize(){ const r=cvs.parentElement.getBoundingClientRect(); DPR=Math.min(2,window.devicePixelRatio||1);
+    W=r.width;H=r.height;cvs.width=Math.max(1,W*DPR);cvs.height=Math.max(1,H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0);
+    cx=W/2;cy=H/2;fscale=Math.min(W,H)*0.62; }
+  window.addEventListener("resize",resize);
+  let PAL={};
+  function readPalette(){ const s=getComputedStyle(document.documentElement),g=k=>s.getPropertyValue(k).trim();
+    PAL={ink:g("--ink"),dim:g("--dim"),steelLo:g("--steelLo"),accent:g("--accent"),live:g("--live"),line:g("--line")}; }
+  function getStyle(v){return getComputedStyle(document.documentElement).getPropertyValue(v)||"system-ui";}
+  function toRGB(str){str=(str||"").trim(); if(str[0]==="#"){let h=str.slice(1); if(h.length===3)h=h.split("").map(c=>c+c).join("");
+    return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+    const m=str.match(/rgba?\(([^)]+)\)/); if(m){const p=m[1].split(",").map(Number);return[p[0],p[1],p[2]];} return null;}
+  function hexA(hex,a){const c=toRGB(hex);return c?`rgba(${c[0]},${c[1]},${c[2]},${a})`:hex;}
+  function mix(h1,h2,t){const a=toRGB(h1),b=toRGB(h2);if(!a||!b)return h1||h2;
+    return`rgb(${Math.round(a[0]+(b[0]-a[0])*t)},${Math.round(a[1]+(b[1]-a[1])*t)},${Math.round(a[2]+(b[2]-a[2])*t)})`;}
+
+  // ── state ──
+  let yaw=-0.62, pitch=-0.5, autospin=true, reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;
+  let tYaw=null,tPitch=null, selected=null, heat={}, live=false, demoTimer=null;
+  let dragging=false,moved=false,lastX=0,lastY=0,downX=0,downY=0, hit=[];
+  const LIGHT=normv([0.4,0.6,0.8]);
+  function rot(p){ let[x,y,z]=p; const cp=Math.cos(pitch),sp=Math.sin(pitch);
+    let y1=y*cp-z*sp,z1=y*sp+z*cp; const cyw=Math.cos(yaw),syw=Math.sin(yaw);
+    return[x*cyw+z1*syw, y1, -x*syw+z1*cyw]; }
+  const D=6.4;
+  function project(p){const k=fscale/(D-p[2]);return[cx+p[0]*k,cy-p[1]*k,p[2]];}
+  function pip(px,py,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))c=!c;}return c;}
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // inner core glow (the Queen inside the cube)
+    const pulse=reduced?0.5:(0.5+0.5*Math.sin(performance.now()/900));
+    const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,fscale*0.9);
+    const glow=(selected&&selected.key==="__core")?PAL.accent:(live?PAL.live:PAL.accent);
+    gr.addColorStop(0,hexA(glow,0.16+0.12*pulse)); gr.addColorStop(0.6,hexA(glow,0.04)); gr.addColorStop(1,"transparent");
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(cx,cy,fscale*0.9,0,7); ctx.fill();
+
+    hit=[];
+    for(const face of FACES){
+      const rn=rot(face.n);
+      if(rn[2]<=0.02) continue;                 // back-face cull → shows at most 3 faces (a real cube)
+      const shade=Math.max(0.2,dot(normv(rn),LIGHT));
+      for(const cell of face.cells){
+        const pts=cell.corners.map(p=>project(rot(p)));
+        const filled=!!cell.key;
+        let fill;
+        if(filled){
+          const h=heat[BYKEY[cell.key] ? BYKEY[cell.key].name : ""]||0;
+          fill=mix(mix("#0c1117", face.color, 0.30+0.55*shade), PAL.live, Math.min(0.55,h*0.7));
+        } else {
+          fill=hexA(mix("#0c1117", face.color, 0.10*shade), 0.35);   // open slot — faint
+        }
+        ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath();
+        ctx.fillStyle=fill; ctx.fill();
+        const sel=selected&&filled&&cell.key===selected.key;
+        ctx.lineJoin="round"; ctx.lineWidth=sel?2.6:1;
+        ctx.strokeStyle= sel?PAL.accent : hexA(filled?face.color:PAL.ink, filled?0.55:0.12);
+        if(sel){ctx.shadowColor=PAL.accent;ctx.shadowBlur=16;}
+        ctx.stroke(); ctx.shadowBlur=0;
+
+        if(filled){
+          const ctr=project(rot(cell.center));
+          const R=fscale/(D-rot(cell.center)[2]);
+          const iSz=Math.max(11,R*0.052);
+          ctx.globalAlpha=Math.min(1,rn[2]*1.3+0.15);
+          ctx.textAlign="center"; ctx.textBaseline="middle";
+          ctx.font=iSz+"px "+getStyle("--sans");
+          ctx.fillText(BYKEY[cell.key].ico, ctr[0], ctr[1]-iSz*0.05);
+          if(R>150){ ctx.font="700 "+(iSz*0.36)+"px "+getStyle("--mono");
+            ctx.fillStyle= sel?PAL.accent:hexA(PAL.ink,0.9);
+            ctx.fillText(BYKEY[cell.key].call, ctr[0], ctr[1]+iSz*0.62); }
+          ctx.globalAlpha=1;
+          hit.push({key:cell.key, poly:pts.map(p=>[p[0],p[1]])});
+        }
+      }
+    }
+  }
+
+  function tick(){
+    if(tYaw!==null){ yaw+=(tYaw-yaw)*0.12; pitch+=(tPitch-pitch)*0.12;
+      if(Math.abs(tYaw-yaw)<0.002&&Math.abs(tPitch-pitch)<0.002){yaw=tYaw;pitch=tPitch;tYaw=tPitch=null;} }
+    else if(autospin&&!dragging&&!reduced){ yaw+=0.0028; }
+    draw(); requestAnimationFrame(tick);
+  }
+
+  function nameOf(key){ return key==="__core"?"The Queen & Synthesizer":({
+    estimator:"Estimator",takeoff_spf:"SPF-Takeoff",takeoff_lift:"Lift-Takeoff",takeoff_roof:"Roof-Takeoff",photo_bid:"Photo-Bid",value_eng:"Value-Engineer",
+    building:"Building-Science",concrete:"Concrete-Lifting",roofing:"Roofing-Coatings",safety:"Safety-OSHA",equipment:"Equipment-Rig",quality:"Quality-Control",scheduling:"Scheduling-Dispatch",
+    marketing:"Marketing",lead_hunter:"Lead-Hunter",proposal:"Proposal-Writer",customer_comms:"Customer-Comms",reviews:"Reviews-Referrals",appointment:"Appointment-Setter",
+    finance:"Finance-JobCost",ar_collections:"AR-Collections",cashflow:"Cash-Flow",payroll:"Payroll-Labor",bookkeeping:"Bookkeeping-QBO",
+    code:"Code-Permits",insurance:"Insurance-Bonding",contracts:"Contracts-Liens",licensing:"Licensing-Registration",warranty:"Warranty",
+    govcon:"GovCon",capability:"Capability-Statement",teaming:"Teaming-Subs",pm:"Project-Manager",strategy:"Owner-Strategy"
+  })[key]; }
+
+  function focusKey(key){
+    if(key==="__core"){ tYaw=null; tPitch=null; return; }
+    const face=FACES.find(f=>f.cells.some(c=>c.key===key)); if(!face) return;
+    const n=face.n; tPitch=Math.atan2(n[1],n[2]); tYaw=Math.atan2(-n[0],Math.hypot(n[1],n[2]));
+  }
+  function select(key, focus){
+    const m = key==="__core" ? CORE : BYKEY[key];
+    selected = key==="__core" ? {key:"__core"} : {key};
+    const col = key==="__core" ? PAL.accent : COLOR[m.div];
+    const ico=document.getElementById("dIco");
+    ico.textContent=m.ico; ico.style.background="color-mix(in srgb,"+col+" 16%,transparent)"; ico.style.borderColor=col;
+    const dv=document.getElementById("dDiv"); dv.textContent = key==="__core" ? "CORE" : DIVNAME[m.div]; dv.style.color=col;
+    document.getElementById("dName").textContent=nameOf(key);
+    document.getElementById("dIdx").textContent = key==="__core" ? "CORE" : ("★ "+DIVNAME[m.div].split(" ")[0]);
+    document.getElementById("dBody").textContent=m.body;
+    document.getElementById("dTag").textContent=m.tag;
+    document.getElementById("dWeb").textContent=m.web?(m.web+" searches / turn"):"—";
+    document.getElementById("dTools").innerHTML=(m.tools||[]).map(t=>`<span class="tool">${t}</span>`).join("");
+    const rAct=document.getElementById("rActivity"),dAct=document.getElementById("dAct");
+    if(key!=="__core"&&live){ rAct.style.display=""; const h=heat[nameOf(key)]||0;
+      dAct.innerHTML=`<div class="gauge"><i style="width:${Math.round(h*100)}%;background:${col}"></i></div>`; }
+    else if(key!=="__core"){ rAct.style.display=""; dAct.textContent= live?"idle":"telemetry offline"; }
+    else rAct.style.display="none";
+    document.querySelectorAll(".cell").forEach(c=>c.classList.toggle("sel", c.dataset.k===key));
+    if(focus) focusKey(key);
+  }
+
+  // legend + roster
+  const legend=document.getElementById("legend");
+  legend.innerHTML = DIVS.map(d=>`<span class="lg"><span class="sw" style="background:${d.color}"></span>${d.name}</span>`).join("")
+    + `<span class="lg"><span class="sw" style="background:var(--dim);opacity:.4"></span>open slot</span>`;
+  document.getElementById("fillCount").textContent = FILLED+" of "+TOTAL+" slots filled";
+  const blocks=document.getElementById("rosterBlocks");
+  blocks.innerHTML = DIVS.map(d=>{
+    const chips = MEMBERS[d.key].map(k=>`<button class="cell" type="button" data-k="${k}"><span>${BYKEY[k].ico}</span><b>${BYKEY[k].call}</b></button>`).join("");
+    return `<div class="divblock"><div class="dh"><span class="sw" style="background:${d.color}"></span>${d.name}</div><div class="grid">${chips}</div></div>`;
+  }).join("") + `<div class="divblock"><div class="grid"><button class="cell" type="button" data-k="__core"><span>👑</span><b>CORE — QUEEN</b></button></div></div>`;
+  const asideEl=document.querySelector("aside");
+  blocks.querySelectorAll(".cell").forEach(b=>b.addEventListener("click",()=>{ autospin=false; setOrbit(); select(b.dataset.k,true);
+    // keep the just-updated dossier in view (the button's focus would otherwise scroll it off)
+    requestAnimationFrame(()=>asideEl.scrollTo({top:0,behavior:"smooth"})); }));
+
+  // pointer
+  cvs.addEventListener("pointerdown",e=>{dragging=true;moved=false;lastX=downX=e.clientX;lastY=downY=e.clientY;cvs.setPointerCapture(e.pointerId);tYaw=tPitch=null;});
+  cvs.addEventListener("pointermove",e=>{ if(!dragging)return; const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+    if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)>5)moved=true;
+    yaw+=dx*0.008; pitch=Math.max(-1.45,Math.min(1.45,pitch+dy*0.008)); });
+  cvs.addEventListener("pointerup",e=>{ dragging=false; if(moved)return;
+    const r=cvs.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
+    const found=hit.find(h=>pip(px,py,h.poly));
+    if(found){ autospin=false; setOrbit(); select(found.key,false); } else select("__core",false); });
+
+  const orbitBtn=document.getElementById("orbit");
+  function setOrbit(){ orbitBtn.setAttribute("aria-pressed",String(autospin)); orbitBtn.style.color=autospin?"var(--accent)":""; }
+  orbitBtn.addEventListener("click",()=>{ autospin=!autospin; if(autospin)tYaw=tPitch=null; setOrbit(); });
+  document.getElementById("theme").addEventListener("click",()=>{
+    const cur=document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+    document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark"); readPalette(); });
+  matchMedia("(prefers-color-scheme:dark)").addEventListener?.("change",readPalette);
+
+  // live activity
+  function setStatus(kind,txt){const s=document.getElementById("status");s.className="chip "+kind;document.getElementById("statusTxt").textContent=txt;}
+  function demoPulse(){ if(demoTimer)return; if(reduced){ S.forEach((a,i)=>heat[nameOf(a[0])]=0.12); return; }
+    const names=S.map(a=>nameOf(a[0]));
+    demoTimer=setInterval(()=>{ if(live)return; const t=performance.now()/1000;
+      names.forEach((nm,i)=>{ heat[nm]=0.08+0.5*Math.pow(Math.max(0,Math.sin(t*0.5 - i*0.29)),6); }); },60); }
+  async function pollLive(){
+    try{
+      const r=await fetch("/api/command-center",{headers:{accept:"application/json"}}); if(!r.ok) throw 0;
+      const d=await r.json(); const roster=(d&&d.roster)||[]; const byName={}; roster.forEach(a=>byName[a.key]=a.runs||0);
+      const names=S.map(a=>nameOf(a[0])); const runs=names.map(nm=>byName[nm]||0); const max=Math.max(1,...runs);
+      if(runs.some(x=>x>0)){ if(demoTimer){clearInterval(demoTimer);demoTimer=null;} heat={}; names.forEach((nm,i)=>heat[nm]=runs[i]/max);
+        live=true; setStatus("live","LIVE · "+runs.reduce((a,b)=>a+b,0)+" RUNS/7D"); }
+      else { live=false; demoPulse(); setStatus("demo","STANDBY · NO TELEMETRY"); }
+    }catch(e){ live=false; demoPulse(); setStatus("demo","DEMO · SIMULATED PULSE"); }
+    if(selected&&selected.key) select(selected.key,false);
+  }
+
+  resize(); readPalette(); select("__core",false); requestAnimationFrame(tick); pollLive();
+})();
+</script>
+
+</body>
+</html>
