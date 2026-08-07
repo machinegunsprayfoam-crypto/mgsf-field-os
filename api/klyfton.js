@@ -995,6 +995,43 @@ const SEASON_ECONOMICS = `SEASON ECONOMICS (connect the spray/coat WINDOW to the
   bid on a real coating window. Season is a scheduling constraint AND a pricing input — reason about both together.
 Guardrails hold: exact temps/cure times come from the TDS; buffers/rates come from DOCTRINE; never guarantee a schedule or a saving; never claim mold elimination.`;
 
+// PROOF_ECONOMICS — InfraNodus gap pass #2 (2026-08-07, run on the live brain after CREDENTIAL_MAP +
+// SEASON_ECONOMICS). Those two closed the credential-island and weather-cost holes; the re-scan then
+// showed three new weak bridges that all converge on ONE thing: MGSF's measurement/proof capability
+// (BPI, blower door, QC) is a silo not wired to what it's WORTH or who REQUIRES it —
+// (1) testing↔cost (what's an audit worth / how a test converts a job), (2) gov-compliance↔testing
+// (specs that MANDATE air-barrier/leakage testing), (3) cost↔install-quality (the money cost of a bad
+// install). This block bridges all three. Reasoning only — every price/rate defers to DOCTRINE + the
+// BPI audit-pricing doc; standards are cited with a "verify the spec/AHJ" pointer, never invented.
+const PROOF_ECONOMICS = `PROOF ECONOMICS (turn measurement into money — the blower door / BPI / QC capability is a REVENUE and MOAT asset, not just a field step; connect proof to price, to who requires it, and to the cost of skipping it):
+1) THE AUDIT/TEST IS WORTH MONEY TWO WAYS (bridge: testing <-> cost). A blower-door/BPI audit is either
+   (a) STANDALONE revenue — a paid diagnostic (price per the BPI audit-pricing doc / DOCTRINE, never a
+   made-up number), or (b) a PAID DIAGNOSTIC THAT CONVERTS — the ACH50/CAZ result is the hard proof that
+   sells the foam/air-sealing scope, and a "credit the audit fee toward the job" offer closes it. Reason
+   about which mode fits the lead, and always tie the number back to the estimator/DOCTRINE. The measured
+   before/after (ACH50, infrared, CO) is also the deliverable that justifies a PREMIUM over a caulk-gun
+   competitor — proof is why the higher bid is the honest bid.
+2) SOME JOBS REQUIRE THE PROOF — AND WE CAN SELF-DELIVER IT (bridge: gov/commercial compliance <-> testing).
+   Many commercial and FEDERAL specs MANDATE whole-building air-barrier / air-leakage testing and/or
+   commissioning as a deliverable — e.g., IECC C402.5 (commercial air-barrier + testing option), ABAA
+   air-barrier program specs, and USACE-type whole-building air-leakage testing (commonly ~0.25 CFM/ft²
+   @ 75 Pa on federal work — VERIFY the exact solicitation spec; editions/thresholds change). Because MGSF
+   is BPI-certified with its own blower door, it can perform the foam AND furnish the required test/proof
+   in-house — a real edge on any bid that demands verification, and a reason a GC or contracting officer
+   picks us. When reading a solicitation or a commercial spec, LOOK for an air-barrier/leakage/commissioning
+   requirement and flag it as both a compliance gate AND a selling point we already own.
+3) THE COST OF NO PROOF / BAD INSTALL (bridge: cost <-> install quality). Skipping QC is not free — it shows
+   up as MONEY later: yield loss from cold substrate / off-ratio / wrong temps (measurable in the bid→actual
+   yield-variance engine), callbacks and re-mobilization over the 4-state radius, warranty claims, and a
+   failed inspection that holds up the GC's schedule (the liability a builder fears most). The QC discipline
+   (substrate + ambient temp, dew-point spread, 1:1 ratio, lift thickness, adhesion/core samples, ACH50
+   verify) is cheap insurance against all of it — frame QC as cost avoidance, and a documented QC/test file
+   as the thing that wins repeat commercial/GC work. A defect caught on the rig is pennies; the same defect
+   caught by the inspector is a callback plus a reputation hit.
+Guardrails hold: audit/test prices and margins defer to DOCTRINE + the BPI audit-pricing doc — never invent one;
+cite the testing standard but say "verify the current spec/edition with the AHJ or the solicitation"; never
+guarantee savings; never claim mold elimination; proof supports the bid, it never becomes an auto-sent promise.`;
+
 // COMPETITIVE_EDGE — the best operating principles distilled from the AI-agent field (Mindra, Lindy,
 // Cassidy, Relay, Beam, Relevance, LangGraph, AutoGen, Copilot Studio, Avoca/Hatch/Handoff/Jobber,
 // n8n) folded into how Klyfton WORKS. These are internal operating rules + a strategy-question stance;
@@ -1308,12 +1345,12 @@ const BRAIN_BLOCKS = {
   BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
   STEM_FOUNDATIONS, HVAC_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
-  COMPETITIVE_EDGE, PLATFORM, ACTIONS, EXPERT_LIBRARY,
+  PROOF_ECONOMICS, COMPETITIVE_EDGE, PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);

@@ -51,6 +51,11 @@ ok("insurance/bond query ⇒ CREDENTIAL_MAP", A.retrieve("do I need pollution in
 ok("weather/season query ⇒ SEASON_ECONOMICS", A.retrieve("how does the weather and spray window affect my roof price this season").blocks.includes("SEASON_ECONOMICS"));
 ok("coating-window query ⇒ SEASON_ECONOMICS", A.retrieve("can I foam this roof if I cannot coat it until spring").blocks.includes("SEASON_ECONOMICS"));
 
+// ---- proof pass: turning measurement into money (audit worth / gov-mandated testing / cost of a bad install) ----
+ok("audit-pricing query ⇒ PROOF_ECONOMICS", A.retrieve("what is a blower door audit worth and how do I price it").blocks.includes("PROOF_ECONOMICS"));
+ok("gov-testing-spec query ⇒ PROOF_ECONOMICS", A.retrieve("does this federal spec require air barrier leakage testing or commissioning").blocks.includes("PROOF_ECONOMICS"));
+ok("callback-cost query ⇒ PROOF_ECONOMICS", A.retrieve("what does a callback or rework cost me on a bad install").blocks.includes("PROOF_ECONOMICS"));
+
 // ---- no concept match ⇒ safe non-empty default (never empty, never fabricated) ----
 const none = A.retrieve("zzzz qqqq wwww");
 ok("no-match query still returns identity blocks (non-empty)", none.blocks.length > 0 && A.ALWAYS.every((b) => none.blocks.includes(b)));
