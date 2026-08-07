@@ -27,11 +27,16 @@ function calc(body) {
   const costPerGal = num(body.costPerGal, null);
   let coverage = num(body.coverageSqftPerGal, null);              // from TDS, optional
 
-  // Derive coverage from solids + dry mils if not given directly.
-  if (coverage == null) {
-    if (dryMils > 0) coverage = SQFT_PER_GAL_MIL * (solidsPct / 100) / dryMils;
-    else return { ok: false, error: "need_dryMils_or_coverage" };
+  // DOCTRINE (COATINGS_COVERAGE_CARD, 2026-08-05): a coating cannot be quoted without a dry-mil (DFT)
+  // spec — a dollar price with no mil behind it has no quantity behind it (the same defect as the
+  // 12× board-foot bug). Require the DFT even when a rated coverage is supplied, so every coating line
+  // carries the thickness its warranty/spec is written at.
+  if (!(dryMils > 0)) {
+    return { ok: false, error: "no_mil_spec",
+      note: "A coating can't be priced without a dry-mil (DFT) spec — name the thickness the warranty/spec requires, then it prices. Typical DFT: silicone 20-40, acrylic 18-20, polyurea 80. (COATINGS_COVERAGE_CARD)" };
   }
+  // Use the product's rated coverage if given (from the TDS); otherwise derive it from solids + DFT.
+  if (coverage == null) coverage = SQFT_PER_GAL_MIL * (solidsPct / 100) / dryMils;
   if (!(coverage > 0)) return { ok: false, error: "bad_coverage" };
 
   const totalArea = area * coats;
