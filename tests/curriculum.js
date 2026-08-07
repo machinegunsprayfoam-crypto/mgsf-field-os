@@ -66,6 +66,9 @@ async function main() {
   ok("good gov-testing-edge answer passes", C.grade("That's an edge for us — as a BPI-certified shop with our own blower door we self-deliver the required test; verify the exact solicitation spec.", pgov).pass);
   ok("'we can't do that testing' FAILS the proof-gov item", C.grade("That's a problem — we can't do that testing.", pgov).pass === false);
   ok("credentials + season + proof modules are all present", ["credentials", "season", "proof"].every((m) => C.BANK.some((i) => i.module === m)));
+  const ctrig = C.BANK.find((i) => i.id === "cred-trigger-public");
+  ok("good service→compliance-trigger answer passes", C.grade("Because it's public, the job type changes the rulebook — a public concrete lift can trigger prevailing wage / certified payroll plus state registration and maybe a bond, unlike a private driveway.", ctrig).pass);
+  ok("'nothing changes, price it the same' FAILS the trigger item", C.grade("Nothing changes — price it the same as a driveway.", ctrig).pass === false);
 
   // ---- runEval wiring ----
   const noFn = await C.runEval();

@@ -48,6 +48,7 @@ const ALIAS = {
   sdvosb: ["federal", "license", "sam"], vosb: ["federal", "license"], samgov: ["federal", "sam"], sam: ["federal", "sam"],
   bid: ["federal", "business"], contract: ["federal", "business"], grant: ["federal", "business"], veteran: ["federal", "business"],
   prevailing: ["federal", "license"], davis: ["federal", "license"], apprentice: ["federal", "license"], apprenticeship: ["federal", "license"],
+  public: ["federal", "license"], municipal: ["federal", "license"], dot: ["federal", "license"], trigger: ["license", "federal"],
   workforce: ["federal", "business"], wotc: ["federal", "business"], payroll: ["federal", "business"], emacs: ["federal", "license"], procurement: ["federal", "business"],
   cage: ["federal", "sam"], uei: ["federal", "sam"], naics: ["federal", "license"], setaside: ["federal", "business"],
   // Insurance / bonding / credentials → Business Licensing (BUSINESS holds GL/WC/pollution/umbrella/auto + bonding)
