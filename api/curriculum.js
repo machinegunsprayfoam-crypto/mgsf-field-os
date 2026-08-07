@@ -255,6 +255,58 @@ const BANK = [
     avoid: ["here are the results", "the data shows", "i found", "the numbers are"],
     ref: "tools.js: a dark tool returns nothing — say it needs switching on; never fabricate its output",
   },
+  // ---- credentials → service map (grades the CREDENTIAL_MAP brain block: which credential unlocks which work) ----
+  {
+    id: "cred-bpi", module: "credentials",
+    q: "What lets us SELL a certified blower-door energy audit as a premium line, not just air-seal?",
+    include: [["bpi"], ["blower", "energy audit", "ach50"], ["cert", "certified", "credential"]],
+    avoid: ["no cert needed", "anyone can sell it"],
+    ref: "CREDENTIAL_MAP: BPI certification unlocks the certified blower-door / energy-audit premium line",
+  },
+  {
+    id: "cred-cpl", module: "credentials",
+    q: "Which insurance do commercial buyers specifically demand for FOAM work, and why?",
+    include: [["pollution", "cpl"], ["foam", "isocyanate", "chemical"], ["demand", "require", "required", "clears jobs", "buyers"]],
+    avoid: ["no special insurance", "general liability is enough for foam"],
+    ref: "CREDENTIAL_MAP: Contractor's Pollution Liability (CPL) is what buyers demand for foam (a chemical application) — carrying it clears jobs a competitor without it can't",
+  },
+  {
+    id: "cred-prevailing", module: "credentials",
+    q: "The job is government-funded public works. What compliance gate has to be priced in before you bid?",
+    include: [["prevailing wage", "davis-bacon", "davis bacon"], ["certified payroll", "wh-347", "payroll"], ["price", "priced", "into the bid", "flag"]],
+    avoid: ["ignore prevailing wage", "no extra labor cost"],
+    ref: "CREDENTIAL_MAP: public/gov-funded work is a prevailing-wage gate (Davis-Bacon / MT Little Davis-Bacon) — pay certified prevailing wage + file certified payroll; price it into the bid",
+  },
+  // ---- season economics (grades the SEASON_ECONOMICS brain block: the spray/coat window is a cost driver) ----
+  {
+    id: "season-coat", module: "season",
+    q: "Late fall. Customer wants an SPF roof but we can't coat it before the coating window closes. What's the call?",
+    include: [["coat", "coating"], ["same season", "same-season", "don't foam", "do not foam", "don't take", "wait", "spring"], ["uv", "degrade", "liability"]],
+    avoid: ["foam it now coat it next year", "spray it anyway"],
+    ref: "SEASON_ECONOMICS hard rule: don't foam a roof you can't coat in the same season — uncoated SPF degrades in UV; coat-in-same-season is a scheduling gate on every roof bid",
+  },
+  {
+    id: "season-backfill", module: "season",
+    q: "Deep winter, too cold to spray exteriors. How do we keep cash flowing?",
+    include: [["crawl", "attic", "interior", "injection", "lifting", "void"], ["weather-independent", "weather independent", "indoor", "inside", "off-season", "off season"], ["cash", "revenue", "keep", "backfill", "book"]],
+    avoid: ["shut down until spring", "nothing we can do in winter"],
+    ref: "SEASON_ECONOMICS: sell weather-independent work (crawl/attic/injection/lifting) off-season to keep cash flowing; reserve scarce warm-dry days for exterior/roof",
+  },
+  // ---- proof economics (grades the PROOF_ECONOMICS brain block: turn measurement into money) ----
+  {
+    id: "proof-gov", module: "proof",
+    q: "A federal spec calls for whole-building air-leakage testing on the project. Problem or edge for us?",
+    include: [["edge", "advantage", "moat", "win", "selling point"], ["bpi", "blower door", "blower-door", "self-deliver", "in-house", "our own"], ["verify", "solicitation", "check the spec"]],
+    avoid: ["we can't do that testing", "have to subcontract it out because we can't"],
+    ref: "PROOF_ECONOMICS: mandated air-barrier/leakage testing is an EDGE — a BPI-certified SDVOSB with its own blower door self-delivers the required proof; verify the solicitation spec",
+  },
+  {
+    id: "proof-audit", module: "proof",
+    q: "A homeowner won't pay for a standalone blower-door audit. How do you position it?",
+    include: [["credit", "toward the job", "convert", "converts", "diagnostic"], ["proof", "ach50", "before", "results", "test"], ["premium", "justifies", "sells the", "close"]],
+    avoid: ["do it for free", "audits are pointless", "skip the test"],
+    ref: "PROOF_ECONOMICS: run the audit as a paid diagnostic that converts — credit the fee toward the job; the ACH50/before-after proof sells the scope and justifies the premium",
+  },
 ];
 
 // Synonym groups: pass if ANY listed variant appears. Deterministic substring match, case-insensitive.
