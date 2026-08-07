@@ -67,6 +67,23 @@ _Last updated: 2026-08-07._
   klyfton SPECIALISTS grouping) registered in SUITES. cube-map.html now fills EVERY overlap (featured
   or "suggested"), shows the 3 axes/tensions and each division's lead. SW cache v76→v77. Artifact
   updated (same URL). Gate **105 suites / 2577 checks green.**
+- **★ OVERNIGHT (2026-08-07, unattended, Clifton "build everything without me — bedtime"):** 3 bounded,
+  verified, staged passes (never merged to main):
+  (1) **`api/calendar.js`** — the Scheduling/Dispatch mind's missing "calendar" tool, now real: pure,
+  keyless .ics (iCalendar) generator (all-day or timed, RFC5545 escaping/folding, deterministic
+  DTSTAMP), with a **hard Sunday refusal** (family-time doctrine, no override). Registered in the tool
+  catalog (ops, keyless→live). `tests/calendar.js` (22).
+  (2) **Combos 10→14 featured** — promoted the strongest suggested overlaps to tuned one-turn teams:
+  Win-Rate Play (corner est×money×growth), True Takeoff (est×field), Book to Capacity (field×growth),
+  Teaming Outreach (gov×growth). New test invariant: featured corners must be valid one-per-axis, and
+  no featured "edge" may be an accidental opposite-face pair (only the documented axis play True Job
+  Profit spans opposite faces). cube-map mirrors all 14 + labels opposite pairs "axis". SW v77→v78.
+  (3) **`tests/samgov.js` (15)** — locked the previously-untested GovCon lead pipeline: exported +
+  pinned the pure `normalize()` (raw SAM notice → clean shape, primary-POC preference, id fallback,
+  safe-on-missing) and `oppToLead()` (→ Government lead card, notes join, value 0 never fabricated).
+  Gate after overnight: **107 suites / 2621 checks green.** NOTE: the cube ARTIFACT republish hit a
+  transient claude.ai 403 during these passes — the in-app `public/cube-map.html` is current; the
+  artifact will refresh on the next successful publish (owner or next session).
 - **★ THE DODECAHEDRON — 12-FACE COUNCIL (2026-08-07, Clifton-approved):** restructured the hive's
   `SPECIALISTS` (api/klyfton.js) from the old ad-hoc set into a clean, non-overlapping **12-face**
   roster (+ Klyfton general core = the 13th): 1 Estimator · 2 Building-Science (folds old
