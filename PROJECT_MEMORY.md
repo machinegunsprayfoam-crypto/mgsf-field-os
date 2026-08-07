@@ -51,6 +51,22 @@ _Last updated: 2026-08-07._
   piece → its division; a 2-/3-color overlap → its combo (or "open overlap — room to build"); side
   panel lists all 10 overlap plays + the 6 divisions. SW cache v75→v76. Artifact updated (same URL).
   Gate **104/2548 green.**
+- **★ CUBE CAPABILITY ALGEBRA — every combination enumerated (2026-08-07, Clifton: "an algorithm for
+  every combination of the cube and its capabilities"):** new **`api/combos.js`** — the pure algebra of
+  the cube. Maps the 6 divisions to 6 faces on 3 opposite-face AXES and enumerates **all 26 pieces**
+  (6 faces + 12 edges + 8 corners), giving EVERY combination a capability: featured plays (the 10,
+  with tuned triggers) override; every other overlap gets an **auto-generated "suggested"** team (the
+  lead of each division) so nothing is ever undefined. Exports enumerate()/all()/capabilityFor()/
+  edges()/corners()/adjacent()/matchText()/planFor()/setKey(); `GET /api/combos` returns the whole cube
+  + axes. New structure: **division LEADS** (each division's center piece / captain) and the **3 AXES
+  as business tensions** (opposite faces never overlap: est↔gov = commercial vs government work,
+  field↔money = do-the-work vs count-it, risk↔growth = caution vs growth). klyfton.js now consumes
+  combos.FEATURED (single source; inline COMBOS removed), matchCombo delegates to combos.matchText,
+  and a new **`convenePlan(key)`** + `body.convene` fast-path lets the app/cube run any chosen overlap
+  team directly. `tests/combos.js` (28 checks incl. a DRIFT GUARD that combos' division rosters ==
+  klyfton SPECIALISTS grouping) registered in SUITES. cube-map.html now fills EVERY overlap (featured
+  or "suggested"), shows the 3 axes/tensions and each division's lead. SW cache v76→v77. Artifact
+  updated (same URL). Gate **105 suites / 2577 checks green.**
 - **★ THE DODECAHEDRON — 12-FACE COUNCIL (2026-08-07, Clifton-approved):** restructured the hive's
   `SPECIALISTS` (api/klyfton.js) from the old ad-hoc set into a clean, non-overlapping **12-face**
   roster (+ Klyfton general core = the 13th): 1 Estimator · 2 Building-Science (folds old

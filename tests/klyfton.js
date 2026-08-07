@@ -195,7 +195,8 @@ ok("'make me a proposal' ⇒ Quote → Proposal team", (function() {
   const p = A.matchCombo("make me a proposal for the Smith barn");
   return p && p.minds.includes("estimator") && p.minds.includes("proposal");
 })());
-ok("every combo fires a real ≥2-mind team", A.COMBOS.every((c) => c.minds.length >= 2 && c.minds.every((k) => true)));
+ok("every featured combo fires a real ≥2-mind team", A.COMBOS.every((c) => Array.isArray(c.members) && c.members.length >= 2));
+ok("convenePlan runs a chosen overlap by key", (function() { const p = A.convenePlan("est+money"); return p && p.minds.length >= 2 && p.combo; })());
 ok("plain single-topic ask ⇒ no combo (doesn't hijack routing)", A.matchCombo("what's the R-value of closed cell foam?") === null);
 ok("simple bid ask (one topic) ⇒ no combo", A.matchCombo("give me a bid for 2000 sq ft of open cell") === null);
 ok("greeting ⇒ no combo", A.matchCombo("hey what's up") === null);

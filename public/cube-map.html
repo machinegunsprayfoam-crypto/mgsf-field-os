@@ -148,6 +148,11 @@
       <div class="sect">
         <h3>Overlap plays · cross-functional teams <span id="comboCount" style="opacity:.6"></span></h3>
         <div class="combos" id="comboList"></div>
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--dim);margin-top:6px;line-height:1.5">Every other 2- or 3-color piece is a <b>suggested</b> team — click any overlap on the cube. 26 pieces total: 6 faces + 12 edges + 8 corners.</div>
+      </div>
+      <div class="sect">
+        <h3>Axes · the 3 tensions <span style="opacity:.6">(opposite faces)</span></h3>
+        <div class="combos" id="axisList"></div>
       </div>
     </aside>
   </div>
@@ -220,6 +225,21 @@
   const CORE={call:"CORE",ico:"👑",name:"The Queen & Synthesizer",tag:"route · recruit · synthesize · critique",
     body:"The core, inside the cube. The Queen routes each question, recruits the right specialists — or a whole overlap team — to work in parallel, then the synthesizer fuses their answers and the critic checks for fabrication and doctrine breaks before you see it."};
   const comboBySet={}; COMBOS.forEach(c=>comboBySet[[...c.divs].sort().join("+")]=c);
+  // division leads (the cube's CENTER pieces / captains) + the 3 axes (opposite-face tensions)
+  const LEAD={est:"estimator",field:"building",growth:"lead_hunter",money:"finance",risk:"code",gov:"govcon"};
+  const AXES=[
+    {a:"est",b:"gov",tension:"Win commercial work ↔ win government work"},
+    {a:"field",b:"money",tension:"Do the work ↔ account for the work"},
+    {a:"risk",b:"growth",tension:"Compliance & caution ↔ sales & expansion"},
+  ];
+  // Auto-generate the capability for ANY overlap that has no featured play — so every one of the
+  // cube's 26 pieces resolves to something (mirrors api/combos.js). Suggested team = lead of each division.
+  function generatedCombo(divs){
+    return { key:[...divs].sort().join("+"), name:divs.map(d=>DIVS[d].name.split(" ")[0]).join(" × "),
+      divs:[...divs], members:divs.map(d=>LEAD[d]), featured:false,
+      play:"Where "+divs.map(d=>DIVS[d].name).join(" meets ")+" — convene "+divs.map(d=>LEAD[d]).join(" + ")+" to cover every angle in one turn. (Suggested — promote it to a tuned play once you run it.)" };
+  }
+  function comboForDivs(divs){ return comboBySet[[...divs].sort().join("+")] || generatedCombo(divs); }
 
   // ── cube geometry: 4×4×4, real cubies. Opposite face pairs chosen so the combo divisions
   //    actually meet at edges/corners: est⟷gov, field⟷money, risk⟷growth.
@@ -381,21 +401,22 @@
     document.getElementById("dIdx").textContent=MEM[d].length+" specialists";
     document.getElementById("dBody").textContent="One face of the cube. Its specialists work this division; the edge & corner pieces along its borders are where it teams up with the divisions next to it.";
     document.getElementById("dTeam").innerHTML=MEM[d].map(memberChip).join("");
-    document.getElementById("dMeta").innerHTML=""; document.getElementById("dTools").innerHTML="";
+    document.getElementById("dMeta").innerHTML=`<div class="row"><span class="k">Lead</span><span class="v">${BY[LEAD[d]].call.replace(/-/g," ")} <span style="color:var(--dim)">(center piece)</span></span></div>`;
+    document.getElementById("dTools").innerHTML="";
     focusNormal(FACE.find(f=>f.div===d).n); syncSelUI(); }
   function selectCombo(c){ sel={type:"combo",combo:c};
     setIco(null,null,c.divs);
-    document.getElementById("dKick").textContent=(c.divs.length===3?"CORNER":"EDGE")+" OVERLAP · "+c.divs.map(d=>DIVS[d].name.split(" ")[0]).join(" × ");
-    document.getElementById("dKick").style.color=PAL.accent;
+    const feat=(c.featured!==false); const sk=[...c.divs].sort().join("+");
+    document.getElementById("dKick").textContent=(c.divs.length===3?"CORNER":"EDGE")+" OVERLAP · "+(feat?"":"SUGGESTED · ")+c.divs.map(d=>DIVS[d].name.split(" ")[0]).join(" × ");
+    document.getElementById("dKick").style.color=feat?PAL.accent:PAL.dim;
     document.getElementById("dName").textContent=c.name;
-    document.getElementById("dIdx").textContent="TEAM · 1 turn";
+    document.getElementById("dIdx").textContent=(feat?"TEAM · 1 turn":"SUGGESTED");
     document.getElementById("dBody").textContent=c.play;
     document.getElementById("dTeam").innerHTML=c.members.map(memberChip).join("");
     document.getElementById("dMeta").innerHTML=`<div class="row"><span class="k">Bridges</span><span class="v">${c.divs.map(d=>DIVS[d].name).join(" + ")}</span></div><div class="row"><span class="k">Fires</span><span class="v">${c.members.length} specialists together, in one turn</span></div>`;
     document.getElementById("dTools").innerHTML="";
-    const exists=comboBySet[[...c.divs].sort().join("+")] && CFACES.some(cf=>cf.setKey===[...c.divs].sort().join("+"));
-    if(exists){ const cf=CFACES.find(cf=>cf.setKey===[...c.divs].sort().join("+")); focusNormal(cf.n); }
-    else { tYaw=null;tPitch=null; }
+    const cf=CFACES.find(cf=>cf.setKey===sk);
+    if(cf){ focusNormal(cf.n); } else { tYaw=null;tPitch=null; }
     syncSelUI(); }
   function selectCore(){ sel={type:"core"};
     setIco(CORE.ico,PAL.accent);
@@ -413,20 +434,8 @@
   }
   function pieceEntity(pieceDivs){
     if(pieceDivs.length===1) return ()=>selectDivision(pieceDivs[0]);
-    const c=comboBySet[[...pieceDivs].sort().join("+")];
-    if(c) return ()=>selectCombo(c);
-    return ()=>{ // open overlap — room to build
-      sel={type:"open"};
-      setIco(null,null,pieceDivs);
-      document.getElementById("dKick").textContent=(pieceDivs.length===3?"CORNER":"EDGE")+" OVERLAP · OPEN";
-      document.getElementById("dKick").style.color=PAL.dim;
-      document.getElementById("dName").textContent="Open overlap";
-      document.getElementById("dIdx").textContent="room to build";
-      document.getElementById("dBody").textContent="Where "+pieceDivs.map(d=>DIVS[d].name).join(" and ")+" meet. No cross-functional team is wired here yet — this is room to build a new play on the overlap.";
-      document.getElementById("dTeam").innerHTML=""; document.getElementById("dMeta").innerHTML=""; document.getElementById("dTools").innerHTML="";
-      document.querySelectorAll(".dchip,.cx").forEach(el=>el.classList.remove("sel"));
-      document.querySelector("aside").scrollTo({top:0,behavior:"smooth"});
-    };
+    // every 2/3-color overlap resolves to a capability — featured play or an auto-generated suggestion
+    return ()=>selectCombo(comboForDivs(pieceDivs));
   }
 
   // ── panels ──
@@ -438,6 +447,8 @@
   document.getElementById("comboCount").textContent="("+COMBOS.length+")";
   document.getElementById("comboList").innerHTML = COMBOS.map(c=>
     `<button class="cx" data-c="${c.key}" type="button"><span class="dots">${c.divs.map(d=>`<i style="background:${DIVS[d].color}"></i>`).join("")}</span><b>${c.name}</b><span class="op">${c.divs.length===3?"corner":"edge"}</span></button>`).join("");
+  document.getElementById("axisList").innerHTML = AXES.map(ax=>
+    `<div class="cx" style="cursor:default"><span class="dots"><i style="background:${DIVS[ax.a].color}"></i><i style="background:${DIVS[ax.b].color}"></i></span><span style="flex:1">${ax.tension}</span></div>`).join("");
   const asideEl=document.querySelector("aside");
   document.getElementById("divRow").querySelectorAll(".dchip").forEach(b=>b.addEventListener("click",()=>{autospin=false;setOrbit();selectDivision(b.dataset.d);}));
   document.getElementById("comboList").querySelectorAll(".cx").forEach(b=>b.addEventListener("click",()=>{autospin=false;setOrbit();selectCombo(COMBOS.find(c=>c.key===b.dataset.c));}));
