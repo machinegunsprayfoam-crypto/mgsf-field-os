@@ -176,6 +176,32 @@ ok("plan without minds ⇒ returns plan as-is", (function() {
   return A.applyMemoryContext(bad, { results: [{ note: "invoice" }] }) === bad;
 })());
 
+// ---- matchCombo: cross-functional overlap teams (the cube's edge/corner pieces) ----
+console.log("\n-- matchCombo --");
+ok("'should we bid on this?' ⇒ Go/No-Go team (estimator+finance+code)", (function() {
+  const p = A.matchCombo("Should we bid on the Deere dealership job?");
+  return p && p.combo === "Go/No-Go Bid" && p.complexity === "complex" &&
+    ["estimator", "finance", "code"].every((k) => p.minds.includes(k));
+})());
+ok("'margin on this bid' ⇒ Priced-to-Margin (2-mind team)", (function() {
+  const p = A.matchCombo("what's the margin on this bid?");
+  return p && p.combo === "Priced-to-Margin Bid" && p.minds.includes("estimator") && p.minds.includes("finance");
+})());
+ok("'price this federal job' ⇒ GovCon Pricing team", (function() {
+  const p = A.matchCombo("help me price this federal job");
+  return p && p.minds.includes("govcon") && p.minds.includes("finance");
+})());
+ok("'make me a proposal' ⇒ Quote → Proposal team", (function() {
+  const p = A.matchCombo("make me a proposal for the Smith barn");
+  return p && p.minds.includes("estimator") && p.minds.includes("proposal");
+})());
+ok("every combo fires a real ≥2-mind team", A.COMBOS.every((c) => c.minds.length >= 2 && c.minds.every((k) => true)));
+ok("plain single-topic ask ⇒ no combo (doesn't hijack routing)", A.matchCombo("what's the R-value of closed cell foam?") === null);
+ok("simple bid ask (one topic) ⇒ no combo", A.matchCombo("give me a bid for 2000 sq ft of open cell") === null);
+ok("greeting ⇒ no combo", A.matchCombo("hey what's up") === null);
+ok("photo message ⇒ no combo (defer to Queen)", A.matchCombo("should we bid", [{ kind: "image", data: "x" }]) === null);
+ok("COMBOS + matchCombo exported", Array.isArray(A.COMBOS) && A.COMBOS.length >= 8 && typeof A.matchCombo === "function");
+
 // ---- Queen upgrade exports are present ----
 console.log("\n-- export sanity --");
 ok("ACTION_CMD_PATTERNS exported + non-empty", Array.isArray(A.ACTION_CMD_PATTERNS) && A.ACTION_CMD_PATTERNS.length > 0);

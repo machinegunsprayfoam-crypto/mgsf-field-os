@@ -35,6 +35,22 @@ _Last updated: 2026-08-07._
   Agents; SW cache v74→v75. Published as a private Claude artifact. Gate **104/2538 green.** Honest
   note: this is a COVERAGE + structure upgrade (broader roster, cleaner hierarchical routing, more
   outward actions), not a per-answer horsepower change (same 4-mind cap, same models).
+- **★ OVERLAP COMBOS + true-cubie cube-map (2026-08-07, Clifton's "2-color blocks" insight):** Clifton
+  pointed out the whole reason he picked the cube — the pieces that carry 2 colors (edges) and 3 colors
+  (corners) are where divisions OVERLAP = cross-functional work; "build on those blocks" for "faster
+  results per turn." Made it real: **`COMBOS`** in `api/klyfton.js` — 10 pre-wired cross-functional
+  TEAMS (8 edge = 2 divisions, 2 corner = 3): go-no-go bid, federal bid package, priced-to-margin,
+  code-compliant bid, quote→proposal, govcon pricing, bonded & insured job, safe & legal install,
+  deposit-to-close, true job profit. **`matchCombo(text)`** is a fast-path (like isActionCommand): a
+  clearly cross-functional ask fires the right 2-3 specialists together in ONE turn, skipping the Haiku
+  router (faster + complete). Each combo needs TWO topic signals so it never hijacks a plain single-mind
+  ask. Wired into both routing paths after isActionCommand; exported + tested (tests/klyfton.js 48→59).
+  **Visual rewrite:** `public/cube-map.html` now renders REAL cubies (4×4×4 = 8 corners/3-color +
+  24 edges/2-color + 24 face-centers/1-color); opposite faces chosen (est⟷gov, field⟷money,
+  risk⟷growth) so every defined combo's divisions actually meet at an edge/corner. Click a 1-color
+  piece → its division; a 2-/3-color overlap → its combo (or "open overlap — room to build"); side
+  panel lists all 10 overlap plays + the 6 divisions. SW cache v75→v76. Artifact updated (same URL).
+  Gate **104/2548 green.**
 - **★ THE DODECAHEDRON — 12-FACE COUNCIL (2026-08-07, Clifton-approved):** restructured the hive's
   `SPECIALISTS` (api/klyfton.js) from the old ad-hoc set into a clean, non-overlapping **12-face**
   roster (+ Klyfton general core = the 13th): 1 Estimator · 2 Building-Science (folds old

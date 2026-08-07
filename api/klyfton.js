@@ -2121,6 +2121,50 @@ function applyMemoryContext(plan, recall) {
   return { ...plan, minds: newMinds };
 }
 
+// ── COMBOS — the cube's OVERLAP pieces (edges = 2 divisions, corners = 3). A combo is a pre-wired
+// cross-functional TEAM: when an ask clearly spans divisions, fire the right 2-3 specialists together
+// in ONE turn instead of paying for a router round-trip — faster, and the answer is complete because
+// the overlapping angles are covered from the start. Each combo requires TWO topic signals so it only
+// fires on genuinely cross-functional asks (never hijacks a plain single-mind question). `divs` are
+// the cube faces it bridges (for the brain-map); `minds` are the specialist keys the team runs.
+// Order matters — corners (3-way) before their edges so the most complete team wins a tie.
+const COMBOS = [
+  { key: "go_no_go", name: "Go/No-Go Bid", divs: ["est", "money", "risk"], minds: ["estimator", "finance", "code"],
+    re: /\b(should\s+(we|i)\s+bid|go[\s/-]?no[\s/-]?go|worth\s+(bidding|the\s+bid)|take\s+(this|the)\s+job)\b/i },
+  { key: "federal_package", name: "Federal Bid Package", divs: ["gov", "money", "risk"], minds: ["govcon", "finance", "insurance"],
+    re: /\b(federal|sam\.?gov|govcon|sdvosb|solicitation)\b[\s\S]{0,50}\b(bond|bonding|insurance|proposal|price|pricing)\b/i },
+  { key: "priced_margin", name: "Priced-to-Margin Bid", divs: ["est", "money"], minds: ["estimator", "finance"],
+    re: /\b(bid|quote|estimate|price)\b[\s\S]{0,40}\b(margin|profit|markup|make money)\b|\b(margin|profit|markup)\b[\s\S]{0,40}\b(bid|quote|estimate)\b/i },
+  { key: "code_bid", name: "Code-Compliant Bid", divs: ["est", "risk"], minds: ["estimator", "code"],
+    re: /\b(bid|quote|estimate|spec)\b[\s\S]{0,40}\b(code|r-?value|permit|compliance)\b|\b(code|r-?value|permit)\b[\s\S]{0,40}\b(bid|quote|estimate)\b/i },
+  { key: "quote_proposal", name: "Quote → Proposal", divs: ["est", "growth"], minds: ["estimator", "proposal"],
+    re: /\b(turn|make|write|build|draft|generate)\b[\s\S]{0,30}\bproposal\b/i },
+  { key: "govcon_price", name: "GovCon Pricing", divs: ["gov", "money"], minds: ["govcon", "finance"],
+    re: /\b(price|cost|bid)\b[\s\S]{0,40}\b(federal|government|sam\.?gov|govcon)\b/i },
+  { key: "bonded_job", name: "Bonded & Insured Job", divs: ["money", "risk"], minds: ["insurance", "finance"],
+    re: /\b(bond|bonding|insurance|coi)\b[\s\S]{0,40}\b(job|bid|cost|require|need)\b/i },
+  { key: "true_profit", name: "True Job Profit", divs: ["field", "money"], minds: ["finance", "quality"],
+    re: /\b(true|actual|real|final)\b[\s\S]{0,20}\b(profit|job\s*cost|cost)\b|\bbid\s+vs\.?\s+actual\b/i },
+  { key: "safe_legal", name: "Safe & Legal Install", divs: ["field", "risk"], minds: ["safety", "code"],
+    re: /\b(install|spray|application|job)\b[\s\S]{0,50}\b(osha|safe|safety)\b[\s\S]{0,50}\b(code|permit)\b/i },
+  { key: "deposit_close", name: "Deposit-to-Close", divs: ["growth", "money"], minds: ["customer_comms", "cashflow"],
+    re: /\b(payment\s*plan|deposit|financing|milestone)\b[\s\S]{0,40}\b(close|customer|proposal|collect)\b/i },
+];
+// Fast-path: match a cross-functional ask to a pre-wired team (returns a ready plan, no router call).
+// Same shape as route()/isActionCommand output, plus `combo` (the play's name). null when nothing fits.
+function matchCombo(text, attachments) {
+  if (Array.isArray(attachments) && attachments.length) return null; // photos always go to the Queen
+  const t = (text || "").trim();
+  if (!t || t.length > 240) return null; // long asks are nuanced — let the Queen route them
+  for (const c of COMBOS) {
+    if (!c.re.test(t)) continue;
+    const minds = c.minds.filter((k) => SPECIALISTS[k]).slice(0, 4);
+    if (minds.length < 2) continue; // a combo is a TEAM — never fire a 1-mind "team"
+    return { minds, complexity: "complex", confidence: 1.0, intents: {}, routing_raw: null, combo: c.name };
+  }
+  return null;
+}
+
 // --- Streaming (SSE) plumbing: cut the dead-air on long hive answers ---
 function sseInit(res) {
   res.statusCode = 200;
@@ -2288,11 +2332,16 @@ module.exports = async (req, res) => {
   // with no API call, saving the Haiku round-trip for obvious single-mind commands.
   const _trivialPlan = { minds: ["general"], complexity: "simple", confidence: 1.0, intents: {}, routing_raw: null };
   const _actionPlan = isActionCommand(userText, attachments);
+  // matchCombo fires a pre-wired cross-functional TEAM (a cube "overlap" piece) in one turn, skipping
+  // the Haiku router for clearly multi-division asks (should-we-bid, price-a-federal-job…) — faster.
+  const _comboPlan = (!_actionPlan && !isTrivial(userText, attachments)) ? matchCombo(userText, attachments) : null;
   const routeP = isTrivial(userText, attachments)
     ? Promise.resolve(_trivialPlan)
     : _actionPlan
       ? Promise.resolve(_actionPlan)
-      : route(key, routeText, history, meter);
+      : _comboPlan
+        ? Promise.resolve(_comboPlan)
+        : route(key, routeText, history, meter);
 
   // Grounding lookups — semantic memory recall + live pipeline data (KV+HubSpot) + wiki SOPs — are
   // INDEPENDENT best-effort context sources. Run them CONCURRENTLY and hard-cap each, so one slow
@@ -2566,3 +2615,5 @@ module.exports.isActionCommand = isActionCommand;
 module.exports.applyMemoryContext = applyMemoryContext;
 module.exports.ACTION_CMD_PATTERNS = ACTION_CMD_PATTERNS;
 module.exports.MEMORY_MIND_MAP = MEMORY_MIND_MAP;
+module.exports.COMBOS = COMBOS;
+module.exports.matchCombo = matchCombo;
