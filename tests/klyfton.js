@@ -69,6 +69,16 @@ ok("weather/season query ⇒ brain carries SEASON ECONOMICS", /SEASON ECONOMICS/
 const proofQ = A.assembleBrainBlocks("how do I price a blower door audit and turn the test into a sold job");
 ok("audit/proof query ⇒ brain carries PROOF ECONOMICS", /PROOF ECONOMICS/.test(proofQ));
 
+// ---- brain cost + safety guardrail: retrieval must scope, and must NEVER drop identity/doctrine/gates ----
+// (catches the regression where GraphRAG silently breaks — either returning the FULL brain on every call,
+//  which blows up token cost, or dropping a CORE block, which would strip identity/doctrine/guardrails.)
+const fullBrain = A.assembleBrainBlocks("");
+const scopedBrain = A.assembleBrainBlocks("what closed-cell R-value for a Zone 7 attic");
+ok("a scoped query assembles LESS than the full brain (retrieval actually scopes)", scopedBrain.length < fullBrain.length, scopedBrain.length + " < " + fullBrain.length);
+const CORE_MARKERS = ["You serve Machine Gun Spray Foam", "MGSF LOCKED DOCTRINE", "COMPLIANCE & GATES"];
+ok("CORE (identity + doctrine + gates) is NEVER dropped by retrieval", CORE_MARKERS.every((m) => scopedBrain.includes(m)), CORE_MARKERS.filter((m) => !scopedBrain.includes(m)).join(","));
+ok("trivial input ⇒ full brain (safe fallback, never an empty/partial prompt)", A.assembleBrainBlocks("hi").length === fullBrain.length);
+
 // ---- isActionCommand: pure-command bypass (skips Queen API call for clear field commands) ----
 console.log("\n-- isActionCommand --");
 // Should match → returns a ready plan (no null)

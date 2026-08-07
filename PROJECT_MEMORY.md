@@ -87,6 +87,22 @@ _Last updated: 2026-08-07 (pm)._
   + 1 curriculum scenario (`cred-trigger-public`). Gate **110 suites / 2692** (+2). **RECOMMENDATION: the
   InfraNodus gap-mining loop has hit diminishing returns — stop here unless a specific new corpus (new Drive
   docs, real job data) is added; further blocks add token cost for thinner gains.**
+- **★ BRAIN COST AUDIT + guardrail (branch, staged).** Measured what the growing brain actually costs per
+  hive call. Findings: **full brain = ~102k chars**; **CORE (always sent) = 35k = 34%** (`BUSINESS` alone
+  15k, then FEDERAL/TRADES_EXPERT/FOAM_SPECS); **retrieval-only pool = 66k (66%)**. BUT scoped queries pull
+  **74–98%** of full — the retriever OVER-selects because `assembleBrainBlocks` uses `topClusters:6` out of
+  only ~9 clusters, and each cluster maps to several overlapping blocks, so 6 clusters ≈ most blocks. So the
+  3 new bridge blocks were correctly NON-core (load only when relevant), but overall per-call cost is still
+  high because CORE is heavy + retrieval is loose.
+  - **DONE (safe):** locked a cost/safety guardrail in `tests/klyfton.js` — a scoped query must assemble LESS
+    than the full brain (retrieval must actually scope), CORE identity+doctrine+gates must NEVER be dropped,
+    and trivial input must fall back to the full brain. Catches the regression where GraphRAG silently returns
+    full-on-every-call (cost blowup) or drops a CORE block (strips identity/doctrine). Gate **110 / 2695** (+3).
+  - **OWNER DECISION (flagged, NOT changed — brain is tuned/Claude-locked):** dropping `topClusters` 6→3-4 in
+    `assembleBrainBlocks` (api/klyfton.js ~line 1257) would cut typical per-call tokens materially (toward the
+    34% floor) — but it's a quality↔cost tradeoff (tighter scope risks dropping a relevant block). Recommend
+    Clifton approve a test of 4 before flipping. Bigger lever if cost matters: trim/retrieval-route part of the
+    15k `BUSINESS` core block. Both are owner calls, not autonomous changes.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
