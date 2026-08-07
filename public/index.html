@@ -769,6 +769,15 @@
             </div>
             <div id="breakEvenOut" style="margin-top:8px;font-size:13px;line-height:1.6"></div>
           </div>
+          <div class="jsa-card">
+            <div style="font-weight:700">🤝 Consensus — ask several AIs at once</div>
+            <div style="font-size:11px;color:var(--t2);margin:2px 0 6px">Fans one question out to every configured AI provider and shows each answer plus how much they agree (majority ★, outliers flagged). Secrets are stripped before anything leaves. Needs ≥2 provider keys set in Vercel.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input class="admin-inp" id="consQ" placeholder="Ask a question…" style="flex:1;min-width:220px">
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderConsensus()">Ask all</button>
+            </div>
+            <div id="consOut" style="margin-top:8px;font-size:13px;line-height:1.55"></div>
+          </div>
         </div>
         <div style="margin-top:16px"><button onclick="renderCommand()" style="background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700">↻ Refresh</button></div>
       </div>
@@ -3218,8 +3227,24 @@ async function renderBreakEven(){
 }
 window.renderBizAudit = renderBizAudit;
 window.renderPredictCost = renderPredictCost;
+// Consensus — fan one question to every configured AI provider (api/consensus.js). Inert <2 keys.
+async function renderConsensus(){
+  const out=document.getElementById('consOut'); if(!out) return;
+  const q=((document.getElementById('consQ')||{}).value||'').trim();
+  if(!q){ out.innerHTML='<span style="color:var(--yw)">Enter a question.</span>'; return; }
+  out.innerHTML='<span style="color:var(--t2)">Asking every configured AI…</span>';
+  const d=await _sysPost('/api/consensus',{question:q});
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.configured===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||'Consensus needs ≥2 AI provider keys set in Vercel.')+'</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.reason||d.error||'No answer.')+'</span>'; return; }
+  const a=d.analysis||{}; const ans=(d.answers||[]).filter(x=>x&&x.ok&&x.text);
+  const head='<div style="margin-bottom:6px"><b>'+(a.agreementPct!=null?_cE(a.agreementPct)+'% agreement':'')+'</b> <span style="color:var(--t2)">'+_cE(a.verdict||'')+'</span>'+(d.maskedSensitive?' <span style="color:var(--yw);font-size:10px">· secrets masked</span>':'')+'</div>';
+  const body=ans.map(x=>'<div style="border-left:3px solid var(--cy);padding:2px 0 2px 8px;margin-bottom:6px"><b>'+_cE(x.provider)+((a.majority&&a.majority.provider===x.provider)?' ★':'')+((a.outliers&&a.outliers.indexOf(x.provider)>=0)?' <span style="color:var(--yw);font-size:10px">outlier</span>':'')+'</b><br><span style="color:var(--t2)">'+_cE(x.text)+'</span></div>').join('');
+  out.innerHTML=head+(body||'<span style="color:var(--t2)">No provider returned an answer.</span>');
+}
 window.renderLaborBurden = renderLaborBurden;
 window.renderBreakEven = renderBreakEven;
+window.renderConsensus = renderConsensus;
 // Guided workflow — the whole pipeline's "what's next" from the app's own leads+jobs (api/projects).
 // Overdue first (red), then the next step per open record, with a jump-to-tab button. Draft-only.
 async function renderWorkflow(){
