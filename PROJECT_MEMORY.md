@@ -5,7 +5,7 @@ already known. If something here conflicts with a vague memory, **this file wins
 current: when you finish a unit of work or make a decision, update the relevant section here in
 the same commit. Doctrine numbers (`mgsf-core.skill`) still win over everything.
 
-_Last updated: 2026-08-06._
+_Last updated: 2026-08-07._
 
 ## 1. What this is / repos
 - **mgsf-field-os** — Klyfton AI (the app): `api/klyfton.js` = Queen router → worker minds → synthesizer/critic hive; `public/index.html` = single-file app; Supabase brain; **Vercel PRO**, auto-deploys **from `main`**.
@@ -16,6 +16,25 @@ _Last updated: 2026-08-06._
 ## 2. Current build state
 **★ DEPLOYED TO MAIN 2026-07-27 (Clifton's go):** field-os branch fast-forward-merged to main + live on Vercel (prod deploy READY, commit ad06190). LIVE now: 3D brain-graph boot screen, GraphRAG block-selection in the brain (both builders, safe full-brain fallback), live-data grounding (brainContext, pipeline-gated), warranty-cert button, + all prior staged subsystems (Command Center, ATS, axle, gearbox, memory, act.js[inert until ALERTS_WEBHOOK_URL], crons now on their Mon-Sat schedule). HUBSPOT_TOKEN + KV set in Vercel. Smoke test `/api/brain-context` = {configured:true, source:kv, 12 open leads / 11 cold}. **Hardening flag:** read endpoints (`/api/brain-context`, `/api/command-center`) return aggregate pipeline data UNAUTHENTICATED (noindex, but public) — existing app posture; consider gating behind CREW_CODE.
 **Klyfton backend (field-os) — shipped to branch, not merged:**
+- **★ THE DODECAHEDRON — 12-FACE COUNCIL (2026-08-07, Clifton-approved):** restructured the hive's
+  `SPECIALISTS` (api/klyfton.js) from the old ad-hoc set into a clean, non-overlapping **12-face**
+  roster (+ Klyfton general core = the 13th): 1 Estimator · 2 Building-Science (folds old
+  spray-conditions + foam TDS) · 3 Concrete-Lifting (new) · 4 Roofing-Coatings (new; owns coating
+  TDS) · 5 Safety-OSHA (keeps SDS) · 6 Code-Permits · 7 Finance-JobCost · 8 Scheduling-Dispatch
+  (was "ops") · 9 GovCon · 10 Sales-Comms (merges old marketing+lead-hunter+proposal+customer into
+  one 4-lane revenue voice) · 11 Insurance-Bonding (new) · 12 Project-Manager (new). No loss of the
+  old Materials mind's TDS/SDS reach (foam TDS→building, coating TDS→roofing, SDS→safety). Router
+  prompt (mind keys + routing rules), `ACTION_CMD_PATTERNS` (ops→scheduling), `MEMORY_MIND_MAP`
+  (ops→scheduling, marketing→sales), and `api/command-center.js` ROSTER all updated to match (ROSTER
+  keys === SPECIALISTS `name`s so live leaderboard stats merge). tests/klyfton.js updated. Gate
+  **104/2531 green.**
+- **★ 3D DODECAHEDRON BRAIN-MAP (2026-08-07):** `public/brain-map.html` — interactive canvas render of
+  the council; 12 pentagon faces = the 12 minds, center = Queen/synth. Real geometry (20 verts, 12
+  faces from the edge graph, back-face culled), drag-rotate, click-to-focus dossier, tactical
+  command-console HUD (dark hero + light field theme). Lights faces by LIVE `/api/command-center`
+  activity, demo-pulse fallback off-grid (honest LIVE/STANDBY/DEMO chip, never fabricates run counts).
+  Linked from Command Center → Agents; added to SW offline cache (klyfton-v73→v74). Also published as
+  a private Claude artifact for Clifton to open immediately.
 - **✅ ALERT NERVE — telepathy phase 1 (STAGED DARK 2026-08-04, Clifton-approved):** `api/alerts.js` —
   deterministic, read-only rules over the SAME KV collections MCP reads; no LLM; only writes its own
   `alert:*` keys. RULES (pure, injected clock, America/Denver days): GOV_DEADLINE (Government + New +
