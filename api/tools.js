@@ -89,6 +89,7 @@ const LOCAL_TOOLS = [
   { id: "reviews",          category: "comms",     kind: "compute", does: "draft the post-job 'how'd we do?' review request", module: "api/reviews.js" },
   { id: "photo-estimate",   category: "estimator", kind: "compute", does: "draft an estimate from a field photo + a few measurements", module: "api/photo-estimate.js" },
   { id: "weather",          category: "ops",       kind: "compute", does: "spray-window go/no-go conditions for a job address", module: "api/weather.js" },
+  { id: "calendar",         category: "ops",       kind: "compute", does: "generate a standards-valid .ics calendar entry for a job/appointment (all-day or timed) — refuses a Sunday per the family-time doctrine; never books on its own (outward push goes through the arms)", module: "api/calendar.js" },
 ];
 
 // Real modules that DO need a key/config to work — each with an honest gate. `gate` is one of:
