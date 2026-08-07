@@ -62,6 +62,38 @@ const ARMS = {
     fields: ["supplier", "items", "job"],
     preview: (a) => `Order from ${clean(a.supplier, 60) || "?"} for ${clean(a.job, 40) || "stock"}`,
   },
+  // ── Division-facing arms (map to the new specialists) ──────────────────────────
+  // Sales & Growth → Proposal-Writer: deliver a finished proposal to a customer.
+  send_proposal: {
+    event: "arm_send_proposal",
+    fields: ["customer", "to"],
+    preview: (a) => `Send proposal to ${clean(a.customer, 60) || "?"} <${clean(a.to, 80) || "?"}>` +
+      (a.amount != null && String(a.amount).trim() !== "" ? ` — $${Math.max(0, parseFloat(a.amount) || 0)}` : ""),
+  },
+  // Sales & Growth → Reviews-Referrals: ask a customer for a review after job close.
+  request_review: {
+    event: "arm_request_review",
+    fields: ["customer", "to"],
+    preview: (a) => `Request review from ${clean(a.customer, 60) || "?"} <${clean(a.to, 80) || "?"}>`,
+  },
+  // Finance & Admin → Cash-Flow: send a deposit/payment link.
+  send_payment_link: {
+    event: "arm_send_payment_link",
+    fields: ["customer", "to", "amount"],
+    preview: (a) => `Send payment link to ${clean(a.customer, 60) || "?"} — $${Math.max(0, parseFloat(a.amount) || 0)}`,
+  },
+  // Finance & Admin → AR-Collections: a staged AR reminder (nudge/reminder/final/lien-warning).
+  collections_notice: {
+    event: "arm_collections_notice",
+    fields: ["customer", "to", "amount", "stage"],
+    preview: (a) => `Collections ${clean(a.stage, 24) || "notice"} → ${clean(a.customer, 50) || "?"} — $${Math.max(0, parseFloat(a.amount) || 0)}`,
+  },
+  // Sales & Growth → Marketing: publish a social post (fans out via the owner's flow).
+  post_social: {
+    event: "arm_post_social",
+    fields: ["platform", "body"],
+    preview: (a) => `Post to ${clean(a.platform, 24) || "?"}: "${clean(a.body, 90)}"`,
+  },
   // THE UNIVERSAL BUS — one arm to reach any of Zapier's 9,000+ apps through the SAME owner
   // webhook. A single "Catch Hook" zap on the owner's side fans out by app+op (Google Sheets,
   // Calendar, Slack, QuickBooks, Meta, …). This is how Klyfton reaches a tool it has no dedicated
