@@ -61,6 +61,12 @@ ok("electrical query ⇒ brain carries TRADES EXPERT + cites NEC", tr.includes("
 const plumb = A.assembleBrainBlocks("drain and vent sizing plus water heater T&P");
 ok("plumbing query ⇒ TRADES EXPERT + cites IPC", plumb.includes("TRADES EXPERT") && /IPC/.test(plumb));
 
+// ---- gap-bridge blocks (InfraNodus gaps #1/#2): credential→service map + season→money bridge ----
+const credQ = A.assembleBrainBlocks("what license and certification do I need to legally bid this job");
+ok("credential query ⇒ brain carries CREDENTIAL → SERVICE MAP", /CREDENTIAL . SERVICE MAP/.test(credQ) || /CREDENTIAL/.test(credQ));
+const seasonQ = A.assembleBrainBlocks("how should the weather and coating window change my roof bid price");
+ok("weather/season query ⇒ brain carries SEASON ECONOMICS", /SEASON ECONOMICS/.test(seasonQ));
+
 // ---- isActionCommand: pure-command bypass (skips Queen API call for clear field commands) ----
 console.log("\n-- isActionCommand --");
 // Should match → returns a ready plan (no null)

@@ -928,6 +928,73 @@ const GAP_BRIDGES = `GAP BRIDGES (close the silos — one company, not two; conn
    here and you seal moisture IN. This is also the safety story that reads as competence to the buyer.
 Guardrails hold: numbers defer to DOCTRINE; never guarantee savings; never claim mold elimination; verify code with the AHJ.`;
 
+// CREDENTIAL_MAP — InfraNodus gap #1. The "Business Licensing" concept cluster was a structural island
+// in the brain graph: rich on credentials (license, insurance, SAM, SDVOSB, prevailing wage) but with
+// almost no edges to the SERVICE clusters. So Klyfton knew the credentials and knew the services, but
+// didn't reason about WHICH credential unlocks WHICH service or gates WHICH job class. This block is that
+// bridge. It maps credential → the service/job it enables. Reasoning only — every specific requirement
+// changes by state/year, so it points to "verify with the board/AHJ" and NEVER invents a license number,
+// bond amount, or fee. Cross-references FEDERAL (SDVOSB/SAM/DOT detail) and BUSINESS (insurance detail).
+const CREDENTIAL_MAP = `CREDENTIAL → SERVICE MAP (a credential is not paperwork — each one UNLOCKS a service line or GATES a job class; reason "to bid THIS you need THAT," and "we hold THIS, so we can sell THAT"):
+- BLOWER-DOOR / ENERGY-AUDIT WORK ← BPI certification. The pro cert behind the before/after ACH50 proof
+  loop, whole-home performance work, and any utility-rebate or energy-audit deliverable (NAICS 541690).
+  No BPI = you can still air-seal, but you can't SELL the certified test/report as the premium line.
+- MANUFACTURER-WARRANTY FOAM ← applicator training (e.g. ProFoam / SPFA PCP). Many foam manufacturers
+  require a trained/certified applicator to issue their material warranty. The training is what lets you
+  offer a warranty-backed job — the differentiator on bigger/commercial bids. Verify each maker's rule.
+- LEGAL RIGHT TO BID/PERFORM IN A STATE ← state contractor registration/license. This differs by state
+  across MGSF's MT/ND/SD/WY footprint and CHANGES — verify the current requirement with that state's
+  board BEFORE bidding out of state, don't assume Montana's rule travels. Treat an unverified out-of-state
+  license status as a bid blocker to resolve, not a detail. (Montana specifics live in BUSINESS/FEDERAL.)
+- FEDERAL SET-ASIDE / SOLE-SOURCE WORK ← SDVOSB certification + an ACTIVE SAM.gov registration. This is
+  the gate on the whole GovCon lane; full detail (VetCert, UEI, CAGE status, NAICS) is in the FEDERAL block.
+- PUBLIC-WORKS / GOVERNMENT-FUNDED JOBS ← prevailing-wage compliance (federal Davis-Bacon / Montana "Little
+  Davis-Bacon"). Not a card you hold — a job-class GATE: on covered work you must pay certified prevailing
+  wage AND file certified payroll. Price the higher labor and the payroll admin INTO those bids or the
+  margin evaporates. Flag any government/publicly-funded job for a prevailing-wage check before pricing.
+- THE ACTUAL SPRAY WORK (crew) ← OSHA / respiratory-protection + SPF chemical-safety discipline. Isocyanate
+  exposure means PPE, ventilation/supplied-air, and trained crew are the gate on legally/safely spraying —
+  the safety story that also reads as competence to the buyer (ties to TRADES_EXPERT + the crawl QC rules).
+- COMMERCIAL / GC / OWNER-REQUIRED JOBS ← insurance stack. General Liability (COI) is baseline almost
+  anywhere; Contractor's Pollution Liability (CPL) is the one buyers specifically demand for FOAM because
+  it's a chemical application — carry it and you clear jobs a foam competitor without it can't. Workers'
+  comp once you have employees; commercial auto for the rig. (Coverage detail lives in BUSINESS.)
+- BONDED WORK (most public + some large private) ← surety bonding (bid / performance / payment bond). A
+  bond requirement is a gate on the job class; bonding capacity is finite, so treat it as a resource to
+  aim at the highest-value work. Never quote a bond amount/rate — that comes from the surety.
+Guardrails hold: requirements change by state and year — always say "verify current requirement with the
+board/AHJ/surety"; never fabricate a license number, bond amount, fee, or coverage limit; numbers defer to DOCTRINE.`;
+
+// SEASON_ECONOMICS — InfraNodus gap #2. The "Cost Efficiency" and "Dew Point" clusters both existed but
+// barely bridged: pricing reasoned about material/labor/margin, and the spray-window reasoned about
+// substrate/temp/dew, but the brain didn't connect the WEATHER to the MONEY. In a short northern season a
+// scrubbed day is a real cost and the good-weather weeks are the scarce resource. This block is that
+// bridge — the cost of the spray/coat window. Reasoning only; every temperature/buffer/rate defers to the
+// TDS + DOCTRINE (never invented here).
+const SEASON_ECONOMICS = `SEASON ECONOMICS (connect the spray/coat WINDOW to the MONEY — in MT/ND/SD/WY the weather is a cost driver, not a footnote):
+- THE HARD ROOF RULE: DO NOT FOAM A ROOF YOU CANNOT COAT IN THE SAME SEASON. Uncured/uncoated SPF degrades
+  in UV — foaming late-season with no coating window left is a liability, not revenue. Coat-in-same-season
+  is a SCHEDULING GATE on every roof bid: if the coating window closes first, don't take the foam.
+- PRODUCT COLD-WEATHER MINIMUMS (relative ordering; pull the exact temp/cure from each product's TDS, never
+  guess): polyurea coatings run the coldest / closest to year-round; acrylic roof coatings need warmer
+  temps and a longer dry+cure window (the tightest seasonal constraint); roofing foam itself needs a warm,
+  dry substrate. So the COATING window — not the foam — usually sets how late you can sell an exterior roof.
+- THE SUBSTRATE/DEW GATE COSTS MONEY: never spray or coat when the substrate is at/below dew point or when
+  rain/dew will hit an uncured coat (see the Dew Point / spray-window reasoning). Cold substrate also drops
+  foam YIELD per set — a direct material cost, measurable in the bid→actual variance engine, not just a QC note.
+- WHERE THE COST HIDES: (1) RESCHEDULE COST — a weather-scrubbed day still burns crew show-up, mobilization,
+  and a booked slot you often can't refill same-week. (2) MOBILIZATION WASTE over a wide 4-state radius —
+  drive time to a job that then scrubs is pure loss; batch same-region exterior work to limit it. (3) CAPACITY
+  COMPRESSION — a short season (and Sunday always NO-GO, so ~6 usable days/week) makes good-weather weeks the
+  SCARCE resource: exterior/roof jobs should be priced and SEQUENCED to protect those weeks, with interior /
+  crawl / attic / concrete-injection work (weather-independent) as the shoulder-season and winter backfill.
+  (4) WEATHER-RISK BUFFER — exterior/roof bids should carry a contingency for lost days; size it from
+  DOCTRINE/history, never a made-up %.
+- THE MOVE: sell weather-independent work (crawl, attic, injection/lifting) to keep cash flowing off-season;
+  reserve the scarce warm-dry days for the exterior/roof jobs that can ONLY happen then; and gate every roof
+  bid on a real coating window. Season is a scheduling constraint AND a pricing input — reason about both together.
+Guardrails hold: exact temps/cure times come from the TDS; buffers/rates come from DOCTRINE; never guarantee a schedule or a saving; never claim mold elimination.`;
+
 // COMPETITIVE_EDGE — the best operating principles distilled from the AI-agent field (Mindra, Lindy,
 // Cassidy, Relay, Beam, Relevance, LangGraph, AutoGen, Copilot Studio, Avoca/Hatch/Handoff/Jobber,
 // n8n) folded into how Klyfton WORKS. These are internal operating rules + a strategy-question stance;
@@ -1240,13 +1307,13 @@ ONE GATE: these two families are a single gate — a technical or job decision o
 const BRAIN_BLOCKS = {
   BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
   STEM_FOUNDATIONS, HVAC_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
-  SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, COMPETITIVE_EDGE,
-  PLATFORM, ACTIONS, EXPERT_LIBRARY,
+  SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
+  COMPETITIVE_EDGE, PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);

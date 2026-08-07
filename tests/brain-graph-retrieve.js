@@ -43,6 +43,14 @@ ok("framing query ⇒ TRADES_EXPERT", A.retrieve("floor joist span and header si
 ok("masonry query ⇒ TRADES_EXPERT", A.retrieve("brick veneer flashing and weep holes").blocks.includes("TRADES_EXPERT"));
 ok("excavation query ⇒ TRADES_EXPERT (safety cluster)", A.retrieve("trench shoring safety for a sewer dig").blocks.includes("TRADES_EXPERT"));
 
+// ---- gap #1: credential/cert queries pull the CREDENTIAL_MAP (credential → service bridge) ----
+ok("credential query ⇒ CREDENTIAL_MAP", A.retrieve("what license and certification do I need to bid this job").blocks.includes("CREDENTIAL_MAP"));
+ok("insurance/bond query ⇒ CREDENTIAL_MAP", A.retrieve("do I need pollution insurance and a surety bond").blocks.includes("CREDENTIAL_MAP"));
+
+// ---- gap #2: season/weather-cost queries pull SEASON_ECONOMICS (spray-window → money bridge) ----
+ok("weather/season query ⇒ SEASON_ECONOMICS", A.retrieve("how does the weather and spray window affect my roof price this season").blocks.includes("SEASON_ECONOMICS"));
+ok("coating-window query ⇒ SEASON_ECONOMICS", A.retrieve("can I foam this roof if I cannot coat it until spring").blocks.includes("SEASON_ECONOMICS"));
+
 // ---- no concept match ⇒ safe non-empty default (never empty, never fabricated) ----
 const none = A.retrieve("zzzz qqqq wwww");
 ok("no-match query still returns identity blocks (non-empty)", none.blocks.length > 0 && A.ALWAYS.every((b) => none.blocks.includes(b)));
