@@ -90,6 +90,7 @@ const LOCAL_TOOLS = [
   { id: "photo-estimate",   category: "estimator", kind: "compute", does: "draft an estimate from a field photo + a few measurements", module: "api/photo-estimate.js" },
   { id: "weather",          category: "ops",       kind: "compute", does: "spray-window go/no-go conditions for a job address", module: "api/weather.js" },
   { id: "calendar",         category: "ops",       kind: "compute", does: "generate a standards-valid .ics calendar entry for a job/appointment (all-day or timed) — refuses a Sunday per the family-time doctrine; never books on its own (outward push goes through the arms)", module: "api/calendar.js" },
+  { id: "labor-burden",     category: "finance",   kind: "compute", does: "base hourly WAGE → fully-loaded hourly cost (payroll/job-cost): only statutory employer FICA (7.65%) is baked in; workers' comp (state/class-specific), FUTA/SUTA, and benefits are owner-entered (never invented); flags the result UNDERSTATED if comp/benefits are omitted. Feeds job-cost's laborRate; not tax advice", module: "api/labor-burden.js" },
 ];
 
 // Real modules that DO need a key/config to work — each with an honest gate. `gate` is one of:
