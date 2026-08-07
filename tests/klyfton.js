@@ -64,17 +64,17 @@ ok("plumbing query ⇒ TRADES EXPERT + cites IPC", plumb.includes("TRADES EXPERT
 // ---- isActionCommand: pure-command bypass (skips Queen API call for clear field commands) ----
 console.log("\n-- isActionCommand --");
 // Should match → returns a ready plan (no null)
-ok("'update job 42 to Completed' ⇒ ops plan", (function() {
+ok("'update job 42 to Completed' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("update job 42 to Completed");
-  return p && p.minds[0] === "ops" && p.complexity === "simple" && p.confidence === 1.0;
+  return p && p.minds[0] === "scheduling" && p.complexity === "simple" && p.confidence === 1.0;
 })());
-ok("'mark job as done' ⇒ ops plan", (function() {
+ok("'mark job as done' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("mark job as done");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
-ok("'close job for TK Barn' ⇒ ops plan", (function() {
+ok("'close job for TK Barn' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("close job for TK Barn");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
 ok("'add lead for John Smith' ⇒ general plan", (function() {
   const p = A.isActionCommand("add lead for John Smith");
@@ -84,17 +84,17 @@ ok("'new lead: ABC Farms 406-555-1234' ⇒ general plan", (function() {
   const p = A.isActionCommand("new lead: ABC Farms 406-555-1234");
   return p && p.minds[0] === "general";
 })());
-ok("'schedule job for Monday at 8am' ⇒ ops plan", (function() {
+ok("'schedule job for Monday at 8am' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("schedule job for Monday at 8am");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
 ok("'create invoice for Shadehill LLC' ⇒ finance plan", (function() {
   const p = A.isActionCommand("create invoice for Shadehill LLC");
   return p && p.minds[0] === "finance";
 })());
-ok("'job completed for Deere dealership' ⇒ ops plan", (function() {
+ok("'job completed for Deere dealership' ⇒ scheduling plan", (function() {
   const p = A.isActionCommand("job completed for Deere dealership");
-  return p && p.minds[0] === "ops";
+  return p && p.minds[0] === "scheduling";
 })());
 // Should NOT match → returns null (questions are not commands)
 ok("long question ⇒ null (not a command)", A.isActionCommand("what is the best foam to use for a metal building roof in Zone 7?") === null);
@@ -114,8 +114,13 @@ ok("action plan intents is empty object", (function() {
 console.log("\n-- applyMemoryContext --");
 const basePlan = { minds: ["estimator"], complexity: "complex", confidence: 0.9, intents: {}, routing_raw: null };
 // Adds a memory-relevant mind not already in plan.
-ok("recall with finance note ⇒ adds finance to complex plan", (function() {
+ok("recall with AR note ⇒ adds ar_collections to complex plan", (function() {
   const rec = { semantic: true, results: [{ note: "invoice for Shadehill $4,200 still unpaid, AR aging 45 days" }] };
+  const p = A.applyMemoryContext(basePlan, rec);
+  return p.minds.includes("ar_collections") && p.minds.includes("estimator");
+})());
+ok("recall with margin note ⇒ adds finance to complex plan", (function() {
+  const rec = { semantic: true, results: [{ note: "margin leak on the Deere job, job cost ran over budget" }] };
   const p = A.applyMemoryContext(basePlan, rec);
   return p.minds.includes("finance") && p.minds.includes("estimator");
 })());
@@ -124,10 +129,10 @@ ok("recall with govcon note ⇒ adds govcon to complex plan", (function() {
   const p = A.applyMemoryContext(basePlan, rec);
   return p.minds.includes("govcon");
 })());
-ok("recall with ops/schedule note ⇒ adds ops to complex plan", (function() {
+ok("recall with scheduling note ⇒ adds scheduling to complex plan", (function() {
   const rec = { semantic: true, results: [{ note: "crew schedule for Langford job, appointment on Tuesday" }] };
   const p = A.applyMemoryContext(basePlan, rec);
-  return p.minds.includes("ops");
+  return p.minds.includes("scheduling");
 })());
 // Never exceeds hive cap (4).
 ok("never exceeds cap=4 even with many memory hits", (function() {
@@ -170,6 +175,33 @@ ok("plan without minds ⇒ returns plan as-is", (function() {
   const bad = { complexity: "complex" };
   return A.applyMemoryContext(bad, { results: [{ note: "invoice" }] }) === bad;
 })());
+
+// ---- matchCombo: cross-functional overlap teams (the cube's edge/corner pieces) ----
+console.log("\n-- matchCombo --");
+ok("'should we bid on this?' ⇒ Go/No-Go team (estimator+finance+code)", (function() {
+  const p = A.matchCombo("Should we bid on the Deere dealership job?");
+  return p && p.combo === "Go/No-Go Bid" && p.complexity === "complex" &&
+    ["estimator", "finance", "code"].every((k) => p.minds.includes(k));
+})());
+ok("'margin on this bid' ⇒ Priced-to-Margin (2-mind team)", (function() {
+  const p = A.matchCombo("what's the margin on this bid?");
+  return p && p.combo === "Priced-to-Margin Bid" && p.minds.includes("estimator") && p.minds.includes("finance");
+})());
+ok("'price this federal job' ⇒ GovCon Pricing team", (function() {
+  const p = A.matchCombo("help me price this federal job");
+  return p && p.minds.includes("govcon") && p.minds.includes("finance");
+})());
+ok("'make me a proposal' ⇒ Quote → Proposal team", (function() {
+  const p = A.matchCombo("make me a proposal for the Smith barn");
+  return p && p.minds.includes("estimator") && p.minds.includes("proposal");
+})());
+ok("every featured combo fires a real ≥2-mind team", A.COMBOS.every((c) => Array.isArray(c.members) && c.members.length >= 2));
+ok("convenePlan runs a chosen overlap by key", (function() { const p = A.convenePlan("est+money"); return p && p.minds.length >= 2 && p.combo; })());
+ok("plain single-topic ask ⇒ no combo (doesn't hijack routing)", A.matchCombo("what's the R-value of closed cell foam?") === null);
+ok("simple bid ask (one topic) ⇒ no combo", A.matchCombo("give me a bid for 2000 sq ft of open cell") === null);
+ok("greeting ⇒ no combo", A.matchCombo("hey what's up") === null);
+ok("photo message ⇒ no combo (defer to Queen)", A.matchCombo("should we bid", [{ kind: "image", data: "x" }]) === null);
+ok("COMBOS + matchCombo exported", Array.isArray(A.COMBOS) && A.COMBOS.length >= 8 && typeof A.matchCombo === "function");
 
 // ---- Queen upgrade exports are present ----
 console.log("\n-- export sanity --");

@@ -713,7 +713,8 @@
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Battery · long-term memory</h3>
         <div id="ccBattery"></div>
         <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">A <b>very-large-capacity pack</b> — the persistent memory (pgvector) the machine runs on. Every approval you make is <b style="color:#22c55e">regen</b> that recharges it, so it does more from memory and burns less fuel re-deriving what it already knows.</div>
-        <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Agents</h3>
+        <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Agents
+          <a href="cube-map.html" target="_blank" rel="noopener" style="float:right;font-size:11px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--or);text-decoration:none;border:1px solid rgba(249,115,22,.35);border-radius:6px;padding:3px 9px">🧊 Council cube-map ↗</a></h3>
         <div id="ccGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Top Agents · 30 days</h3>
         <div id="ccBoard" style="font-size:13px;line-height:1.9"></div>
@@ -742,6 +743,31 @@
               <button class="btn btn-ghost" style="font-size:12px" onclick="renderWorkflow()">Refresh</button></div>
             <div style="font-size:11px;color:var(--t2);margin-top:2px">Your whole pipeline, one glance: what's overdue and the next step on each open lead/job (lead → bid → scheduled → in&nbsp;progress → invoice → paid). Nothing sends automatically.</div>
             <div id="workflowOut" style="margin-top:8px;font-size:13px;line-height:1.55"></div>
+          </div>
+          <div class="jsa-card">
+            <div style="font-weight:700">💵 Labor burden — true hourly cost</div>
+            <div style="font-size:11px;color:var(--t2);margin:2px 0 6px">Turns a base wage into the fully-loaded cost of an hour (the number that belongs in a job cost). Only employer FICA (7.65%) is built in — workers' comp and benefits are your figures. Not tax advice.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input class="admin-inp" id="lbWage" inputmode="decimal" placeholder="Base wage $/hr" style="width:120px">
+              <input class="admin-inp" id="lbComp" inputmode="decimal" placeholder="Workers' comp %" style="width:130px">
+              <input class="admin-inp" id="lbBen" inputmode="decimal" placeholder="Benefits %" style="width:110px">
+              <input class="admin-inp" id="lbHours" inputmode="decimal" placeholder="Hours (opt)" style="width:100px">
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderLaborBurden()">Load</button>
+            </div>
+            <div id="laborBurdenOut" style="margin-top:8px;font-size:13px;line-height:1.6"></div>
+          </div>
+          <div class="jsa-card">
+            <div style="font-weight:700">⚖️ Break-even — cover the overhead</div>
+            <div style="font-size:11px;color:var(--t2);margin:2px 0 6px">How many jobs (or BF, or squares) it takes to cover fixed costs, and how many past that to hit a profit target. Per-job profit is the job-cost tools; this is the "keep the lights on" number. All figures are yours.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input class="admin-inp" id="beFixed" inputmode="decimal" placeholder="Fixed costs $" style="width:120px">
+              <input class="admin-inp" id="bePrice" inputmode="decimal" placeholder="Price / unit" style="width:110px">
+              <input class="admin-inp" id="beVar" inputmode="decimal" placeholder="Cost / unit" style="width:110px">
+              <input class="admin-inp" id="beTarget" inputmode="decimal" placeholder="Profit goal (opt)" style="width:130px">
+              <input class="admin-inp" id="beUnit" placeholder="Unit (job/BF)" style="width:110px">
+              <button class="btn btn-ghost" style="font-size:12px" onclick="renderBreakEven()">Run</button>
+            </div>
+            <div id="breakEvenOut" style="margin-top:8px;font-size:13px;line-height:1.6"></div>
           </div>
         </div>
         <div style="margin-top:16px"><button onclick="renderCommand()" style="background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700">↻ Refresh</button></div>
@@ -3153,8 +3179,47 @@ async function renderPredictCost(){
   if(d.ok===false){ out.innerHTML='<span style="color:var(--t2)">'+_cE(d.note||('Not enough history yet ('+(d.samples||0)+'/'+(d.needed||3)+' completed jobs with size + logged cost).'))+'</span>'; return; }
   out.textContent=d.formatted||JSON.stringify(d.prediction);
 }
+// Labor burden — base wage → fully-loaded hourly cost (api/labor-burden.js). Keyless calc.
+async function renderLaborBurden(){
+  const out=document.getElementById('laborBurdenOut'); if(!out) return;
+  const wage=parseFloat((document.getElementById('lbWage')||{}).value||'');
+  if(!(wage>0)){ out.innerHTML='<span style="color:var(--yw)">Enter a base wage.</span>'; return; }
+  const body={baseWage:wage,
+    compPct:parseFloat((document.getElementById('lbComp')||{}).value||'')||0,
+    benefitsPct:parseFloat((document.getElementById('lbBen')||{}).value||'')||0,
+    hours:parseFloat((document.getElementById('lbHours')||{}).value||'')||1};
+  out.innerHTML='<span style="color:var(--t2)">Loading…</span>';
+  const d=await _sysPost('/api/labor-burden',body);
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check inputs.')+'</span>'; return; }
+  const flag=(d.flags&&d.flags.length)?'<div style="color:var(--yw);font-size:11px;margin-top:4px">⚠ '+_cE(d.flags[0])+'</div>':'';
+  out.innerHTML='<b>$'+_cE(d.loadedHourly)+'/hr</b> loaded <span style="color:var(--t2)">(base $'+_cE(d.baseWage)+' + '+_cE(d.burdenPct)+'% burden)</span>'+
+    (d.hours>1?'<br><span style="color:var(--t2)">'+_cE(d.hours)+' hrs = $'+_cE(d.loadedCost)+'</span>':'')+
+    '<div style="font-size:11px;color:var(--cy);margin-top:4px">→ use $'+_cE(d.loadedHourly)+' as the labor rate in a job cost</div>'+flag;
+}
+// Break-even — units to cover fixed costs (api/break-even.js). Keyless calc.
+async function renderBreakEven(){
+  const out=document.getElementById('breakEvenOut'); if(!out) return;
+  const fixed=parseFloat((document.getElementById('beFixed')||{}).value||'');
+  const price=parseFloat((document.getElementById('bePrice')||{}).value||'');
+  if(!(fixed>0)||!(price>0)){ out.innerHTML='<span style="color:var(--yw)">Enter fixed costs and a price per unit.</span>'; return; }
+  const body={fixedCosts:fixed,pricePerUnit:price,
+    variableCostPerUnit:parseFloat((document.getElementById('beVar')||{}).value||'')||0,
+    targetProfit:parseFloat((document.getElementById('beTarget')||{}).value||'')||0,
+    unit:((document.getElementById('beUnit')||{}).value||'').trim()||'job'};
+  out.innerHTML='<span style="color:var(--t2)">Running…</span>';
+  const d=await _sysPost('/api/break-even',body);
+  if(!d||d.__err){ out.innerHTML='<span style="color:var(--yw)">Unavailable ('+_cE((d&&d.__err)||'error')+').</span>'; return; }
+  if(d.ok===false){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.note||d.error||'Check inputs.')+'</span>'; return; }
+  if(!d.breakEven){ out.innerHTML='<span style="color:var(--yw)">'+_cE(d.note)+'</span>'; return; }
+  const u=_cE(d.unit);
+  out.innerHTML='<b>'+_cE(d.breakEven.units)+' '+u+'(s)</b> to break even <span style="color:var(--t2)">($'+_cE(d.breakEven.revenue)+' revenue · $'+_cE(d.contributionMargin)+'/'+u+' margin)</span>'+
+    (d.forTargetProfit?'<br><span style="color:var(--gr)">'+_cE(d.forTargetProfit.units)+' '+u+'(s) to clear $'+_cE(d.forTargetProfit.targetProfit)+' profit</span>':'');
+}
 window.renderBizAudit = renderBizAudit;
 window.renderPredictCost = renderPredictCost;
+window.renderLaborBurden = renderLaborBurden;
+window.renderBreakEven = renderBreakEven;
 // Guided workflow — the whole pipeline's "what's next" from the app's own leads+jobs (api/projects).
 // Overdue first (red), then the next step per open record, with a jump-to-tab button. Draft-only.
 async function renderWorkflow(){

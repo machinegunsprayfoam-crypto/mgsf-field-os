@@ -5,7 +5,7 @@ already known. If something here conflicts with a vague memory, **this file wins
 current: when you finish a unit of work or make a decision, update the relevant section here in
 the same commit. Doctrine numbers (`mgsf-core.skill`) still win over everything.
 
-_Last updated: 2026-08-06._
+_Last updated: 2026-08-07._
 
 ## 1. What this is / repos
 - **mgsf-field-os** — Klyfton AI (the app): `api/klyfton.js` = Queen router → worker minds → synthesizer/critic hive; `public/index.html` = single-file app; Supabase brain; **Vercel PRO**, auto-deploys **from `main`**.
@@ -16,6 +16,93 @@ _Last updated: 2026-08-06._
 ## 2. Current build state
 **★ DEPLOYED TO MAIN 2026-07-27 (Clifton's go):** field-os branch fast-forward-merged to main + live on Vercel (prod deploy READY, commit ad06190). LIVE now: 3D brain-graph boot screen, GraphRAG block-selection in the brain (both builders, safe full-brain fallback), live-data grounding (brainContext, pipeline-gated), warranty-cert button, + all prior staged subsystems (Command Center, ATS, axle, gearbox, memory, act.js[inert until ALERTS_WEBHOOK_URL], crons now on their Mon-Sat schedule). HUBSPOT_TOKEN + KV set in Vercel. Smoke test `/api/brain-context` = {configured:true, source:kv, 12 open leads / 11 cold}. **Hardening flag:** read endpoints (`/api/brain-context`, `/api/command-center`) return aggregate pipeline data UNAUTHENTICATED (noindex, but public) — existing app posture; consider gating behind CREW_CODE.
 **Klyfton backend (field-os) — shipped to branch, not merged:**
+- **★ THE CUBE — 6-DIVISION COUNCIL, 12→34 SPECIALISTS (2026-08-07, Clifton-approved, supersedes the
+  dodecahedron below):** Clifton asked for "way more arms/helpers/specialists" and a 4-row Rubik's
+  cube. Restructured the flat roster into a hierarchical **6-division "cube"** (room to grow to 96
+  slots) in `api/klyfton.js`: each specialist now carries {name, division, webUses, tag, focus} and a
+  `DIVISIONS` array defines the 6 faces — **Estimating & Takeoff · Field & Production · Sales & Growth
+  · Finance & Admin · Compliance & Risk · GovCon & Strategy**. Roster grew **12 → 34** real
+  specialists (old merged "sales" split back into marketing/lead-hunter/proposal/customer-comms/
+  reviews/appointment; new coverage: SPF/lift/roof takeoff, photo-bid, value-eng, equipment-rig,
+  quality, ar-collections, cashflow, payroll, bookkeeping, contracts-liens, licensing, warranty,
+  capability, teaming, owner-strategy). `route()` builds its menu dynamically from DIVISIONS via
+  `specialistMenu()` (no drift); hive cap stays 4. `MEMORY_MIND_MAP` re-pointed to new keys;
+  `command-center.js` ROSTER now lists all 34 + core tagged by division. **Arms grew too**
+  (`api/act.js` +5): send_proposal, request_review, send_payment_link, collections_notice, post_social
+  (all approval-gated, inert until ALERTS_WEBHOOK_URL). **Visual:** `public/cube-map.html` — interactive
+  4×4×4 cube (6 division-colored faces × 16 cells = 96 slots, 34 filled + open capacity, click a cell →
+  dossier, live-activity glow from /api/command-center, demo fallback). Linked from Command Center →
+  Agents; SW cache v74→v75. Published as a private Claude artifact. Gate **104/2538 green.** Honest
+  note: this is a COVERAGE + structure upgrade (broader roster, cleaner hierarchical routing, more
+  outward actions), not a per-answer horsepower change (same 4-mind cap, same models).
+- **★ OVERLAP COMBOS + true-cubie cube-map (2026-08-07, Clifton's "2-color blocks" insight):** Clifton
+  pointed out the whole reason he picked the cube — the pieces that carry 2 colors (edges) and 3 colors
+  (corners) are where divisions OVERLAP = cross-functional work; "build on those blocks" for "faster
+  results per turn." Made it real: **`COMBOS`** in `api/klyfton.js` — 10 pre-wired cross-functional
+  TEAMS (8 edge = 2 divisions, 2 corner = 3): go-no-go bid, federal bid package, priced-to-margin,
+  code-compliant bid, quote→proposal, govcon pricing, bonded & insured job, safe & legal install,
+  deposit-to-close, true job profit. **`matchCombo(text)`** is a fast-path (like isActionCommand): a
+  clearly cross-functional ask fires the right 2-3 specialists together in ONE turn, skipping the Haiku
+  router (faster + complete). Each combo needs TWO topic signals so it never hijacks a plain single-mind
+  ask. Wired into both routing paths after isActionCommand; exported + tested (tests/klyfton.js 48→59).
+  **Visual rewrite:** `public/cube-map.html` now renders REAL cubies (4×4×4 = 8 corners/3-color +
+  24 edges/2-color + 24 face-centers/1-color); opposite faces chosen (est⟷gov, field⟷money,
+  risk⟷growth) so every defined combo's divisions actually meet at an edge/corner. Click a 1-color
+  piece → its division; a 2-/3-color overlap → its combo (or "open overlap — room to build"); side
+  panel lists all 10 overlap plays + the 6 divisions. SW cache v75→v76. Artifact updated (same URL).
+  Gate **104/2548 green.**
+- **★ CUBE CAPABILITY ALGEBRA — every combination enumerated (2026-08-07, Clifton: "an algorithm for
+  every combination of the cube and its capabilities"):** new **`api/combos.js`** — the pure algebra of
+  the cube. Maps the 6 divisions to 6 faces on 3 opposite-face AXES and enumerates **all 26 pieces**
+  (6 faces + 12 edges + 8 corners), giving EVERY combination a capability: featured plays (the 10,
+  with tuned triggers) override; every other overlap gets an **auto-generated "suggested"** team (the
+  lead of each division) so nothing is ever undefined. Exports enumerate()/all()/capabilityFor()/
+  edges()/corners()/adjacent()/matchText()/planFor()/setKey(); `GET /api/combos` returns the whole cube
+  + axes. New structure: **division LEADS** (each division's center piece / captain) and the **3 AXES
+  as business tensions** (opposite faces never overlap: est↔gov = commercial vs government work,
+  field↔money = do-the-work vs count-it, risk↔growth = caution vs growth). klyfton.js now consumes
+  combos.FEATURED (single source; inline COMBOS removed), matchCombo delegates to combos.matchText,
+  and a new **`convenePlan(key)`** + `body.convene` fast-path lets the app/cube run any chosen overlap
+  team directly. `tests/combos.js` (28 checks incl. a DRIFT GUARD that combos' division rosters ==
+  klyfton SPECIALISTS grouping) registered in SUITES. cube-map.html now fills EVERY overlap (featured
+  or "suggested"), shows the 3 axes/tensions and each division's lead. SW cache v76→v77. Artifact
+  updated (same URL). Gate **105 suites / 2577 checks green.**
+- **★ OVERNIGHT (2026-08-07, unattended, Clifton "build everything without me — bedtime"):** 3 bounded,
+  verified, staged passes (never merged to main):
+  (1) **`api/calendar.js`** — the Scheduling/Dispatch mind's missing "calendar" tool, now real: pure,
+  keyless .ics (iCalendar) generator (all-day or timed, RFC5545 escaping/folding, deterministic
+  DTSTAMP), with a **hard Sunday refusal** (family-time doctrine, no override). Registered in the tool
+  catalog (ops, keyless→live). `tests/calendar.js` (22).
+  (2) **Combos 10→14 featured** — promoted the strongest suggested overlaps to tuned one-turn teams:
+  Win-Rate Play (corner est×money×growth), True Takeoff (est×field), Book to Capacity (field×growth),
+  Teaming Outreach (gov×growth). New test invariant: featured corners must be valid one-per-axis, and
+  no featured "edge" may be an accidental opposite-face pair (only the documented axis play True Job
+  Profit spans opposite faces). cube-map mirrors all 14 + labels opposite pairs "axis". SW v77→v78.
+  (3) **`tests/samgov.js` (15)** — locked the previously-untested GovCon lead pipeline: exported +
+  pinned the pure `normalize()` (raw SAM notice → clean shape, primary-POC preference, id fallback,
+  safe-on-missing) and `oppToLead()` (→ Government lead card, notes join, value 0 never fabricated).
+  Gate after overnight: **107 suites / 2621 checks green.** NOTE: the cube ARTIFACT republish hit a
+  transient claude.ai 403 during these passes — the in-app `public/cube-map.html` is current; the
+  artifact will refresh on the next successful publish (owner or next session).
+- **★ THE DODECAHEDRON — 12-FACE COUNCIL (2026-08-07, Clifton-approved):** restructured the hive's
+  `SPECIALISTS` (api/klyfton.js) from the old ad-hoc set into a clean, non-overlapping **12-face**
+  roster (+ Klyfton general core = the 13th): 1 Estimator · 2 Building-Science (folds old
+  spray-conditions + foam TDS) · 3 Concrete-Lifting (new) · 4 Roofing-Coatings (new; owns coating
+  TDS) · 5 Safety-OSHA (keeps SDS) · 6 Code-Permits · 7 Finance-JobCost · 8 Scheduling-Dispatch
+  (was "ops") · 9 GovCon · 10 Sales-Comms (merges old marketing+lead-hunter+proposal+customer into
+  one 4-lane revenue voice) · 11 Insurance-Bonding (new) · 12 Project-Manager (new). No loss of the
+  old Materials mind's TDS/SDS reach (foam TDS→building, coating TDS→roofing, SDS→safety). Router
+  prompt (mind keys + routing rules), `ACTION_CMD_PATTERNS` (ops→scheduling), `MEMORY_MIND_MAP`
+  (ops→scheduling, marketing→sales), and `api/command-center.js` ROSTER all updated to match (ROSTER
+  keys === SPECIALISTS `name`s so live leaderboard stats merge). tests/klyfton.js updated. Gate
+  **104/2531 green.**
+- **★ 3D DODECAHEDRON BRAIN-MAP (2026-08-07):** `public/brain-map.html` — interactive canvas render of
+  the council; 12 pentagon faces = the 12 minds, center = Queen/synth. Real geometry (20 verts, 12
+  faces from the edge graph, back-face culled), drag-rotate, click-to-focus dossier, tactical
+  command-console HUD (dark hero + light field theme). Lights faces by LIVE `/api/command-center`
+  activity, demo-pulse fallback off-grid (honest LIVE/STANDBY/DEMO chip, never fabricates run counts).
+  Linked from Command Center → Agents; added to SW offline cache (klyfton-v73→v74). Also published as
+  a private Claude artifact for Clifton to open immediately.
 - **✅ ALERT NERVE — telepathy phase 1 (STAGED DARK 2026-08-04, Clifton-approved):** `api/alerts.js` —
   deterministic, read-only rules over the SAME KV collections MCP reads; no LLM; only writes its own
   `alert:*` keys. RULES (pure, injected clock, America/Denver days): GOV_DEADLINE (Government + New +

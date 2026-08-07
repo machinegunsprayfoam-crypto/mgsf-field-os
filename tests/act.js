@@ -42,6 +42,14 @@ async function main() {
   const inc = await A.execute({ type: "zap", app: "Slack" }, { approved: true });
   ok("approved but incomplete zap ⇒ incomplete, not dispatched", inc.ok === false && inc.status === "incomplete" && inc.missing.includes("op"));
 
+  // ---- division-facing arms (proposal / review / payment / collections / social) ----
+  ok("new division arms registered", ["send_proposal", "request_review", "send_payment_link", "collections_notice", "post_social"].every((k) => A.ARMS[k]));
+  ok("send_proposal preview names customer + amount", /Send proposal to Acme .* \$4200/.test(A.classify({ type: "send_proposal", customer: "Acme Farms", to: "a@b.com", amount: 4200 }).preview));
+  ok("send_payment_link requires an amount", (() => { const c = A.classify({ type: "send_payment_link", customer: "Acme", to: "a@b.com" }); return c.ok && c.missing.includes("amount"); })());
+  ok("collections_notice preview labels the stage", /Collections final → /.test(A.classify({ type: "collections_notice", customer: "Acme", to: "a@b.com", amount: 900, stage: "final" }).preview));
+  ok("request_review needs approval (outward, default deny)", (await A.execute({ type: "request_review", customer: "Acme", to: "a@b.com" }, {})).status === "needs_approval");
+  ok("post_social approved but no webhook ⇒ blocked (inert until wired)", (await A.execute({ type: "post_social", platform: "Facebook", body: "New foam job done!" }, { approved: true })).status === "blocked");
+
   console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 }

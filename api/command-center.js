@@ -23,15 +23,51 @@ const BATTERY_CAPACITY = parseInt(process.env.BATTERY_CAPACITY || "100000", 10) 
 
 // The real minds the Queen recruits (from klyfton.js SPECIALISTS) — so the grid shows what actually
 // exists. Live per-agent stats get merged in from the leaderboard view. No invented agents.
+// The 6-division council (the "cube") + the Klyfton core. `key` MUST match the SPECIALISTS `name`
+// fields in api/klyfton.js so live per-agent leaderboard stats merge onto the right card. `div` is
+// the division (cube face) the specialist sits on.
 const ROSTER = [
-  { key: "Estimator", label: "Estimator", does: "Bids, board-feet, margin checks" },
-  { key: "Spray-Conditions", label: "Spray Conditions", does: "Dew point / substrate go-no-go" },
-  { key: "Materials", label: "Materials", does: "Foam systems, yields, sets" },
-  { key: "Safety/JSA", label: "Safety / JSA", does: "PPE, hazards, job safety" },
-  { key: "Ops", label: "Ops", does: "Scheduling, crew, logistics" },
-  { key: "Marketing", label: "Marketing", does: "Content, SEO, lead-gen" },
-  { key: "Lead-Hunter", label: "Lead Hunter", does: "GovCon / SAM / pipeline" },
-  { key: "Klyfton", label: "Klyfton (General)", does: "Synthesis + anything else" },
+  // Estimating & Takeoff
+  { key: "Estimator", div: "Estimating & Takeoff", label: "Estimator", does: "Bids, board-feet, margin checks" },
+  { key: "SPF-Takeoff", div: "Estimating & Takeoff", label: "SPF Takeoff", does: "Multi-area board-foot takeoff" },
+  { key: "Lift-Takeoff", div: "Estimating & Takeoff", label: "Lift Takeoff", does: "Void volume, foam for lifting" },
+  { key: "Roof-Takeoff", div: "Estimating & Takeoff", label: "Roof Takeoff", does: "Squares, gallons, mils" },
+  { key: "Photo-Bid", div: "Estimating & Takeoff", label: "Photo Bid", does: "Photo → labeled rough bid" },
+  { key: "Value-Engineer", div: "Estimating & Takeoff", label: "Value Engineer", does: "Hit a budget, trade-offs" },
+  // Field & Production
+  { key: "Building-Science", div: "Field & Production", label: "Building Science", does: "Spray window, envelope, foam TDS" },
+  { key: "Concrete-Lifting", div: "Field & Production", label: "Concrete Lifting", does: "Polyjacking, void fill, slabs" },
+  { key: "Roofing-Coatings", div: "Field & Production", label: "Roofing & Coatings", does: "SPF roofs, elastomeric coatings" },
+  { key: "Safety-OSHA", div: "Field & Production", label: "Safety / OSHA", does: "PPE, SDS, JSA, hazards" },
+  { key: "Equipment-Rig", div: "Field & Production", label: "Equipment / Rig", does: "Proportioner, gun, pressures" },
+  { key: "Quality-Control", div: "Field & Production", label: "Quality Control", does: "Thickness, pull tests, punch" },
+  { key: "Scheduling-Dispatch", div: "Field & Production", label: "Scheduling / Dispatch", does: "Crew, rig, timeline, drive time" },
+  // Sales & Growth
+  { key: "Marketing", div: "Sales & Growth", label: "Marketing", does: "Social, content, hashtags" },
+  { key: "Lead-Hunter", div: "Sales & Growth", label: "Lead Hunter", does: "Find jobs, cold outreach" },
+  { key: "Proposal-Writer", div: "Sales & Growth", label: "Proposal Writer", does: "Full proposals, scope, terms" },
+  { key: "Customer-Comms", div: "Sales & Growth", label: "Customer Comms", does: "Objections, follow-up, texts" },
+  { key: "Reviews-Referrals", div: "Sales & Growth", label: "Reviews & Referrals", does: "Review + referral asks" },
+  { key: "Appointment-Setter", div: "Sales & Growth", label: "Appointment Setter", does: "Qualify + book the estimate" },
+  // Finance & Admin
+  { key: "Finance-JobCost", div: "Finance & Admin", label: "Finance / Job-Cost", does: "Margins, break-even, red flags" },
+  { key: "AR-Collections", div: "Finance & Admin", label: "AR / Collections", does: "Aging, escalation, scripts" },
+  { key: "Cash-Flow", div: "Finance & Admin", label: "Cash Flow", does: "Runway, payables vs receipts" },
+  { key: "Payroll-Labor", div: "Finance & Admin", label: "Payroll / Labor", does: "Burden, comp class basics" },
+  { key: "Bookkeeping-QBO", div: "Finance & Admin", label: "Bookkeeping / QBO", does: "Chart of accounts, reconcile" },
+  // Compliance & Risk
+  { key: "Code-Permits", div: "Compliance & Risk", label: "Code & Permits", does: "IECC, R-value, permits, barriers" },
+  { key: "Insurance-Bonding", div: "Compliance & Risk", label: "Insurance & Bonding", does: "GL, CPL, COI, surety bonds" },
+  { key: "Contracts-Liens", div: "Compliance & Risk", label: "Contracts & Liens", does: "T&Cs, change orders, lien rights" },
+  { key: "Licensing-Registration", div: "Compliance & Risk", label: "Licensing", does: "State contractor registration" },
+  { key: "Warranty", div: "Compliance & Risk", label: "Warranty", does: "Workmanship + product warranty" },
+  // GovCon & Strategy
+  { key: "GovCon", div: "GovCon & Strategy", label: "GovCon", does: "SAM.gov, SDVOSB, federal bids" },
+  { key: "Capability-Statement", div: "GovCon & Strategy", label: "Capability Statement", does: "SDVOSB one-pager, past perf" },
+  { key: "Teaming-Subs", div: "GovCon & Strategy", label: "Teaming & Subs", does: "Teaming, subcontracting, JV" },
+  { key: "Project-Manager", div: "GovCon & Strategy", label: "Project Manager", does: "Job end-to-end, change orders" },
+  { key: "Owner-Strategy", div: "GovCon & Strategy", label: "Owner Strategy", does: "Growth, expansion, big calls" },
+  { key: "Klyfton", div: "Core", label: "Klyfton (Core)", does: "Synthesis + anything else" },
 ];
 
 async function sbGet(pathAndQuery) {
