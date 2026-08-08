@@ -153,6 +153,23 @@ function audit(data, opts) {
     if (noExp.length) add("Compliance", "amber", `${noExp.length} cert(s) missing an expiry date`, lbl(noExp), { noExpiry: noExp.length }, "Add the expiry date so renewals get tracked automatically.");
   }
 
+  // ---- FUNNEL MIDDLE (rail health — self-audit disconnect #2): do estimates convert to MEASURABLE jobs? ----
+  // Uses the pure pipeline rail. Grounded in the real collections; degrades to silent on any error.
+  try {
+    const fh = require("./pipeline").funnelHealth({ leads, jobs, estimates });
+    if (estimates.length > 0 && fh.jobsFromEstimate === 0) {
+      add("Funnel", "amber", `${estimates.length} estimate(s) but 0 converted to a job`,
+        "Estimates are being written but none are recorded as jobs — the funnel has no middle, so quoted-vs-actual margin can't be measured.",
+        { estimates: estimates.length, jobsFromEstimate: 0 },
+        "On a Won bid, convert the estimate to a job (pipeline rail carries the bid) so margin becomes measurable.");
+    } else if (fh.jobs > 0 && fh.jobsCarryingBid === 0) {
+      add("Funnel", "amber", `${fh.jobs} job(s) carry no bid`,
+        "Jobs exist but none carry the estimate's bid, so actual-vs-quoted margin can't be computed on them.",
+        { jobs: fh.jobs, carryingBid: 0 },
+        "Create jobs from estimates via the pipeline rail so each job carries its bid forward.");
+    }
+  } catch (e) {}
+
   // ---- rank + summarize ----
   F.sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity]);
   const summary = { red: F.filter((f) => f.severity === "red").length, amber: F.filter((f) => f.severity === "amber").length, green: F.filter((f) => f.severity === "green").length };

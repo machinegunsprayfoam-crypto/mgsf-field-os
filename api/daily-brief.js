@@ -124,7 +124,9 @@ function compose(data) {
   // Top audit findings (injected by the handler from business-audit's pure audit()). Only the
   // red/amber ones, top 3 — so the brief surfaces "what needs action" without opening OPS.
   const findings = Array.isArray(data.findings) ? data.findings : [];
-  const hot = findings.filter((f) => f && /high|medium/i.test(String(f.severity || ""))).slice(0, 3);
+  // Accept BOTH severity vocabularies: business-audit emits red/amber/green; other producers use
+  // high/medium/low. Without red|amber here, real business-audit findings silently never reach the brief.
+  const hot = findings.filter((f) => f && /high|red|medium|amber/i.test(String(f.severity || ""))).slice(0, 3);
   if (hot.length) {
     lines.push("");
     lines.push("Needs attention:");
