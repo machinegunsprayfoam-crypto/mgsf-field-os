@@ -75,9 +75,27 @@ console.log("Job actuals (rig-side session log) invariants\n");
   ok("pure exports present", typeof ja.normalize === "function" && typeof ja.chainOfCustody === "function" && typeof ja.sprayEfficiency === "function" && typeof ja.varianceInput === "function");
 })();
 
+// ---- measured-yield → doctrine review ("measured field yield governs"; detection only) ----
+(() => {
+  // single-cell closed, 12600 BF / 3 sets = 4200 = doctrine → matches
+  const onTarget = ja.doctrineYieldReview(ja.normalize({ jobId: "Y-1", boardFeet: 12600, setsUsed: [{ cell: "closed", sets: 3 }] }).record);
+  ok("closed 4200 BF/set = doctrine ⇒ matches (no change)", onTarget.verdict === "matches" && onTarget.reviewDoctrine === false && onTarget.realYield === 4200);
+  // 11400 / 3 = 3800 vs 4200 = -9.5% (> 8% tol) → flag low
+  const low = ja.doctrineYieldReview(ja.normalize({ jobId: "Y-2", boardFeet: 11400, setsUsed: [{ cell: "closed", sets: 3 }] }).record);
+  ok("closed 3800 BF/set ⇒ review_doctrine_low, flagged for owner (never auto-rewrites)", low.verdict === "review_doctrine_low" && low.reviewDoctrine === true && /owner/i.test(low.note));
+  // roofing single-cell 7500 / 2 = 3750 = doctrine → matches
+  const roof = ja.doctrineYieldReview(ja.normalize({ jobId: "Y-3", boardFeet: 7500, setsUsed: [{ cell: "roofing", sets: 2 }] }).record);
+  ok("roofing 3750 BF/set = doctrine ⇒ matches", roof.verdict === "matches" && roof.doctrineYield === 3750);
+  // mixed cells ⇒ insufficient (can't attribute BF to one cell)
+  const mixed = ja.doctrineYieldReview(ja.normalize({ jobId: "Y-4", boardFeet: 20000, setsUsed: [{ cell: "closed", sets: 3 }, { cell: "roofing", sets: 2 }] }).record);
+  ok("mixed-cell session ⇒ insufficient (no fabricated per-cell yield)", mixed.verdict === "insufficient" && /single-cell/i.test(mixed.note));
+  // wired into the normalize handler output shape
+  ok("normalize attaches doctrineYieldReview only on ok records", typeof ja.doctrineYieldReview === "function");
+})();
+
 // ---- empty/garbage safe ----
 (() => {
-  let threw = false; try { ja.normalize(null); ja.chainOfCustody(null); ja.varianceInput(null); ja.sprayEfficiency(null); } catch { threw = true; }
+  let threw = false; try { ja.normalize(null); ja.chainOfCustody(null); ja.varianceInput(null); ja.sprayEfficiency(null); ja.doctrineYieldReview(null); } catch { threw = true; }
   ok("null inputs never throw", threw === false);
 })();
 

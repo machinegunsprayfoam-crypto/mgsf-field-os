@@ -89,6 +89,28 @@ function chainOfCustody(rec) {
     note: missing.length ? ("For a fully defensible package, add: " + missing.join(", ") + ".") : "Complete — lots, conditions, photos, and sign-off on record." };
 }
 
+// Measured-yield → doctrine review ("measured field yield governs" — PRICING_RULES v2). When the crew's
+// real yield (BF ÷ sets) for a SINGLE-cell session diverges from the locked doctrine yield beyond
+// tolerance, flag it for the owner. DETECTION ONLY — never rewrites a locked number (owner's call).
+// Reuses api/yield-variance.js reviewAgainstDoctrine so there's one source of the compare logic.
+let _YV = null; try { _YV = require("./yield-variance"); } catch (e) { _YV = null; }
+function doctrineYieldReview(rec) {
+  rec = rec || {};
+  const cells = (rec.setsUsed || []).filter((s) => s && s.sets > 0);
+  const distinct = Array.from(new Set(cells.map((s) => s.cell)));
+  const totalSets = cells.reduce((a, s) => a + (s.sets || 0), 0);
+  if (!_YV || !_YV.reviewAgainstDoctrine || distinct.length !== 1 || !totalSets || rec.boardFeet == null) {
+    return {
+      verdict: "insufficient", reviewDoctrine: false,
+      note: distinct.length > 1
+        ? "Mixed-cell session — log a single-cell job (or per-cell board-feet) to review measured yield vs doctrine."
+        : "Need one cell's board-feet ÷ sets to review measured yield vs doctrine.",
+    };
+  }
+  const realYield = r1(rec.boardFeet / totalSets);
+  return _YV.reviewAgainstDoctrine(distinct[0], realYield);
+}
+
 // Shape actuals for the bid→actual variance engine (api/yield-variance.js).
 function varianceInput(rec) {
   rec = rec || {};
@@ -146,7 +168,7 @@ module.exports = async (req, res) => {
     if (action === "save") { res.status(200).json(await save(body.log || body, { approved: body.approved === true })); return; }
     if (action === "list") { res.status(200).json(await list(body.jobId)); return; }
     const n = normalize(body.log || body);
-    if (n.ok) { n.chainOfCustody = chainOfCustody(n.record); n.varianceInput = varianceInput(n.record); }
+    if (n.ok) { n.chainOfCustody = chainOfCustody(n.record); n.varianceInput = varianceInput(n.record); n.doctrineYieldReview = doctrineYieldReview(n.record); }
     res.status(200).json(n);
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
 };
@@ -155,3 +177,4 @@ module.exports.normalize = normalize;
 module.exports.sprayEfficiency = sprayEfficiency;
 module.exports.chainOfCustody = chainOfCustody;
 module.exports.varianceInput = varianceInput;
+module.exports.doctrineYieldReview = doctrineYieldReview;
