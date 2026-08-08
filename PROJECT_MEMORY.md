@@ -171,6 +171,18 @@ _Last updated: 2026-08-07 (pm)._
     is live: **estimate saved (carries bid) → Won → job (carries bid) → actuals logged → yield-variance
     compares actual vs bid.** Disconnect #2 is closed in the app. SW cache v81→v82. Gate **111 / 2754** (+6).
     Remaining to actually SEE margin in prod: crew uses it + `CREW_CODE`/KV live (owner-side).
+- **★ RAIL FIXES from the field-os-reviewer agent (branch, staged).** Ran the new `field-os-reviewer`
+  subagent over the whole rail (money path) — verdict FIX-FIRST, and it caught real bugs the gate missed:
+  1. **BLOCKER** — `_jobFromWonLead` deduped on CUSTOMER NAME, so a repeat customer winning a SECOND estimate
+     got NO job, silently (the ordinary book-of-business case). **Fixed**: dedupe on `estimateId` only.
+     Added a repeat-customer REGRESSION test that would have caught it.
+  2. **SHOULD-FIX** — rail jobs lacked `jobNum`/`name` → UI rendered "MGSF-???" / "undefined" everywhere.
+     **Fixed**: `_jobFromWonLead` now sets `jobNum:nextJobNum()` + `name`; mirrored `name`(+opts.jobNum) in
+     `api/pipeline.js jobFromEstimate`.
+  3. **NIT** — auto-job stamped today's date (Sunday risk + win-date≠work-date). **Fixed**: `date:''` (needs
+     scheduling) + a separate `wonDate` stamp.
+  Nits left (documented, low): name-string linkage (pre-existing convention), $0-bid exclusion, fixed-amber
+  funnel severity. Gate **111 / 2759**. SW cache v82→v83. The reviewer agent earned its keep on its first run.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._

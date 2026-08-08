@@ -7139,12 +7139,17 @@ function _jobFromWonLead(l){
     const withBid=ests.filter(e=>e.bid && Number(e.bid.sell)>0);
     const est=(withBid.length?withBid:ests).slice().sort((a,b)=>(Number(b.id)||0)-(Number(a.id)||0))[0];
     if(!est) return null;
-    const already=(appState.jobs||[]).some(j=>j && (String(j.estimateId)===String(est.id) || (j.fromEstimate && String(j.customer||'').trim().toLowerCase()===key)));
+    // Idempotent on the ESTIMATE, not the customer name: a repeat customer who wins a SECOND, different
+    // estimate must still get a second job (this is the ordinary book-of-business case). Only skip when
+    // THIS estimate was already converted.
+    const already=(appState.jobs||[]).some(j=>j && est.id!=null && String(j.estimateId)===String(est.id));
     if(already) return null;
     const bid=(est.bid && Number(est.bid.sell)>0)?est.bid:null;
-    const job={ id:Date.now(), customer:l.name, service:est.service||l.service||(bid&&bid.cell)||'', state:est.state||l.state||'',
+    const svc=est.service||l.service||(bid&&bid.cell)||'';
+    const job={ id:Date.now(), jobNum:(typeof nextJobNum==='function'?nextJobNum():''),
+      name:(svc?svc+' — ':'')+(l.name||'Job'), customer:l.name, service:svc, state:est.state||l.state||'',
       status:'Scheduled', value:Math.round(Number((bid&&bid.sell)!=null?bid.sell:(est.value!=null?est.value:l.value))||0),
-      date:new Date().toISOString().split('T')[0], estimateId:est.id, fromEstimate:true, source:'Estimate→Won' };
+      date:'', wonDate:new Date().toISOString().split('T')[0], estimateId:est.id, fromEstimate:true, source:'Estimate→Won' };
     if(bid) job.bid=bid;
     appState.jobs=appState.jobs||[]; appState.jobs.push(job); save('jobs');
     try{ if(window.renderJobs) renderJobs(); }catch(e){}
