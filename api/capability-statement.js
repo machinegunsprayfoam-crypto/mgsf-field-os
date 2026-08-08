@@ -5,7 +5,9 @@
 // independently verified (past performance, bonding, insurance limits) prints as an explicit
 // "OWNER INPUT REQUIRED" marker — never fabricated. Pass real values in the POST body to fill them.
 //
-// POST { pastPerformance:[..], differentiators:[..], cage, bonding, contactName, base64 }
+// POST { pastPerformance:[..], differentiators:[..], cage, bonding, contactName, usdot, base64 }
+//   usdot: a REAL registered USDOT # only — prints a private-carrier line; omitted ⇒ silent (never
+//   an "active USDOT/MC" overclaim; there is no MC-authority field by design).
 //   base64:true -> JSON { ok, filename, base64 };  else raw application/pdf.
 // GET -> the shape.
 
@@ -46,6 +48,12 @@ function build(body) {
   const diff = (Array.isArray(body.differentiators) && body.differentiators.length ? body.differentiators.map((d) => clean(d, 160)) : DIFF);
   const past = (Array.isArray(body.pastPerformance) && body.pastPerformance.length ? body.pastPerformance.map((p) => clean(p, 200)) : [MARK + " — list 2-3 completed jobs (customer, scope, value, date)"]);
   const bonding = clean(body.bonding, 120) || (MARK + " — bonding capacity (ask Stockman: target $500K single / $1M aggregate)");
+  // Carrier authority — VERIFIED ONLY, and structurally un-overclaimable. MGSF hauls its OWN
+  // equipment (a PRIVATE carrier), so no for-hire MC operating authority is required or claimed —
+  // there is deliberately no code path that prints an MC-authority claim. A USDOT # (interstate CMV
+  // ≥10,001 lb) prints ONLY when the owner passes a real, registered number; until then the
+  // statement stays SILENT on carrier authority. It must never assert "active USDOT/MC" it lacks.
+  const usdot = clean(body.usdot, 40);
 
   const elements = [
     { type: "heading", text: ENTITY.legalName, size: 18 },
@@ -74,6 +82,8 @@ function build(body) {
     ...past.map((p) => ({ type: "text", text: "•  " + p, size: 10 })),
     { type: "gap", h: 4 },
     { type: "kv", k: "Bonding", v: bonding },
+    // Only shown when a real, registered USDOT # is supplied — never fabricated, never "active MC".
+    ...(usdot ? [{ type: "kv", k: "Carrier", v: "USDOT " + usdot + " — private carrier (own equipment); no for-hire MC authority required" }] : []),
     { type: "gap", h: 10 },
     { type: "text", text: ENTITY.legalName + "  ·  " + ENTITY.phone + "  ·  " + ENTITY.website + "  ·  Veteran-Owned", size: 9 },
   ];
@@ -83,7 +93,7 @@ function build(body) {
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ ok: true, configured: true, verifiedOnly: true,
-      shape: { cage: "", contactName: "", differentiators: [], pastPerformance: [], bonding: "", base64: false } });
+      shape: { cage: "", contactName: "", differentiators: [], pastPerformance: [], bonding: "", usdot: "", base64: false } });
     return;
   }
   if (req.method !== "POST") { res.status(405).json({ error: "method_not_allowed" }); return; }

@@ -241,6 +241,17 @@ _Last updated: 2026-08-07 (pm)._
   - **NEXT (follow-on, optional):** have the `agents.js` doers actually POST station+handoff to workhub KV
     on each run (currently `stationFrom` is derived + returned, not yet persisted); bridge gearbox events →
     intranet posts. Both are inert until Vercel KV is attached.
+- **★ CAPABILITY STATEMENT — USDOT/MC overclaim closed (list #21, PR #116).** The federal-readiness
+  checklist flagged that a cap statement overclaims "active USDOT/MC" while USDOT is NOT registered —
+  a misrepresentation risk on a federal doc. Root cause: the overclaim is in the **legacy Drive corporate
+  doc** (checklist item `cap`), NOT the app generator, which was already verified-only. Fix: (1) hardened
+  `api/capability-statement.js` so it's *structurally* un-overclaimable — a USDOT # prints ONLY when the
+  owner passes a real registered number (new optional `usdot` body field), with accurate framing "private
+  carrier (own equipment); no for-hire MC authority required"; there is deliberately NO MC-authority code
+  path, and default output stays silent on carrier authority. (2) Fixed the `cap` + `usdot` checklist notes
+  in `index.html`: they now say the app-generated statement is clean, name the Drive doc as the thing to
+  scrub/replace, and state the correct rule (haul own rig interstate ≥10,001 lb = private carrier → USDOT
+  required, for-hire MC NOT needed; free at fmcsa.dot.gov). +4 tests; `sw.js` v86→v87; gate **112 / 2806**.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
