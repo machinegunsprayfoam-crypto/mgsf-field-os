@@ -129,7 +129,22 @@ function audit(data, opts) {
       const sev = gm >= opts.targetGm ? "green" : gm >= opts.targetGm * 0.85 ? "amber" : "red";
       add("Margin", sev, `Blended GM ${Math.round(gm * 1000) / 10}% vs ${Math.round(opts.targetGm * 1000) / 10}% target`, "Actual gross margin on jobs that carry cost + revenue.", { gmPct: Math.round(gm * 1000) / 10, targetPct: Math.round(opts.targetGm * 1000) / 10, jobs: priced.length }, sev === "green" ? "On target." : "Under target — check material yield + labor hours vs bid (job-costing).");
     } else {
-      add("Margin", "amber", "Margin not auditable yet", "No jobs carry both cost and revenue.", { priced: 0 }, "Log actual cost + revenue per job (job-cost) to unlock the margin audit.");
+      // No ACTUALS yet — but if the pipeline rail captured bids, grade QUOTED margin (labeled, not actual):
+      // (bid.sell − bid.cost) / bid.sell blended across bid-carrying estimates + jobs. Uses only real quoted
+      // numbers; never fabricates. Actual margin (above) always wins once cost+revenue are logged.
+      const bidRecs = estimates.concat(jobs).filter((r) => r && r.bid && Number.isFinite(parseFloat(r.bid.sell)) && parseFloat(r.bid.sell) > 0 && Number.isFinite(parseFloat(r.bid.cost)));
+      const qSell = bidRecs.reduce((s, r) => s + num(r.bid.sell), 0);
+      const qCost = bidRecs.reduce((s, r) => s + num(r.bid.cost), 0);
+      if (bidRecs.length && qSell > 0) {
+        const qgm = (qSell - qCost) / qSell;
+        const sev = qgm >= opts.targetGm ? "green" : qgm >= opts.targetGm * 0.85 ? "amber" : "red";
+        add("Margin", sev, `Quoted GM ${Math.round(qgm * 1000) / 10}% vs ${Math.round(opts.targetGm * 1000) / 10}% target (bids, not actuals)`,
+          "Blended gross margin on the bids you've quoted — actuals aren't logged yet, so this is what you're PRICING at, not what you're netting.",
+          { quotedGmPct: Math.round(qgm * 1000) / 10, targetPct: Math.round(opts.targetGm * 1000) / 10, bids: bidRecs.length },
+          sev === "green" ? "Quoting on target — log job actuals to confirm you hit it in the field." : "Quoting UNDER target — you're bidding light; raise price or trim scope, then confirm with actuals.");
+      } else {
+        add("Margin", "amber", "Margin not auditable yet", "No jobs carry cost + revenue, and no bids carry a cost/sell breakdown.", { priced: 0 }, "Save estimates through the estimator (captures the bid) or log actual cost + revenue per job to unlock the margin audit.");
+      }
     }
   } else {
     add("Margin", "green", "Margin audit off (no target supplied)", "Supply your doctrine GM target to grade margin — this tool never invents one.", null, "Pass targetGm (from mgsf-core doctrine) to enable.");

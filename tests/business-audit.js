@@ -79,6 +79,23 @@ const margin = A.audit({
 ok("margin graded vs supplied target (40% < 45% ⇒ not green)", /Blended GM 40%/.test(find(margin, "Margin").title) && find(margin, "Margin").severity !== "green");
 ok("no fabricated GM target anywhere when none supplied", find(good, "Margin").metric === null);
 
+// ---- quoted margin from the rail's bids (no actuals yet) — labeled, uses only real quoted numbers ----
+(() => {
+  // bid-carrying estimates, no priced jobs: (30000-13832 + 41000-18000)/(30000+41000) = 39168/71000 ≈ 55.2%
+  const q = A.audit({
+    estimates: [{ status: "sent", bid: { sell: 30000, cost: 13832 } }, { status: "sent", bid: { sell: 41000, cost: 18000 } }],
+  }, { asOfMs: ASOF, targetGm: 0.50 });
+  const m = find(q, "Margin");
+  ok("no actuals but bids present ⇒ QUOTED margin graded (labeled 'bids, not actuals')", /Quoted GM/.test(m.title) && /bids, not actuals/.test(m.title) && m.metric.bids === 2);
+  ok("quoted GM ~55% ≥ 50% target ⇒ green + confirm-with-actuals action", m.severity === "green" && /log job actuals/i.test(m.action));
+  // under target ⇒ flags bidding light
+  const low = find(A.audit({ estimates: [{ status: "sent", bid: { sell: 10000, cost: 7000 } }] }, { asOfMs: ASOF, targetGm: 0.50 }), "Margin");
+  ok("quoted GM 30% < 50% target ⇒ not green, flags bidding light", low.severity !== "green" && /bidding light/i.test(low.action));
+  // no actuals AND no bids ⇒ honest 'not auditable'
+  const none = find(A.audit({ jobs: [{ status: "scheduled" }] }, { asOfMs: ASOF, targetGm: 0.50 }), "Margin");
+  ok("no actuals + no bids ⇒ honest 'not auditable yet'", /not auditable yet/.test(none.title));
+})();
+
 // ---- COMPLIANCE: cert/license expiry (data-driven, days-UNTIL) ----
 const certFind = (r) => r.findings.find((f) => f.area === "Compliance");
 ok("all certs far in the future ⇒ green", certFind(A.audit({ certs: [{ name: "Fall Protection", expires: "2027-03-14" }, { name: "Forklift", expires: "2028-03-14" }] }, { asOfMs: ASOF })).severity === "green");
