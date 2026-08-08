@@ -79,6 +79,17 @@ ok("missing arrays default safely", B.compose({ jobs: null, leads: undefined }).
   ok("no findings ⇒ no 'Needs attention' section (backward-compatible)", !/Needs attention/.test(B.compose(data).text) && B.compose(data).stats.findings === 0);
 })();
 
+// ---- severity vocab: business-audit emits red/amber — those MUST surface in the brief (not silently dropped) ----
+(() => {
+  const withRA = B.compose(Object.assign({}, data, { findings: [
+    { severity: "red", title: "3 certs EXPIRED", action: "Renew now" },
+    { severity: "amber", title: "2 estimate(s) but 0 converted to a job", action: "Convert on Won" },
+    { severity: "green", title: "Pipeline healthy", action: "keep going" },
+  ] }));
+  ok("red + amber (business-audit vocab) findings surface in the brief", /3 certs EXPIRED → Renew now/.test(withRA.text) && /0 converted to a job/.test(withRA.text));
+  ok("green finding excluded (only red/amber shown)", !/Pipeline healthy/.test(withRA.text) && withRA.stats.findings === 2);
+})();
+
 // ---- CALL LIST (audit fix #1: leads die at the handoff — brief must hand over who to call) ----
 (() => {
   const NOW = Date.parse("2026-08-07T00:00:00Z"); // fixed clock ⇒ deterministic

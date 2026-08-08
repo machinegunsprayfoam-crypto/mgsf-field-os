@@ -49,6 +49,15 @@ const warm = A.audit({
   invoices: [{ paid: false, amt: 1000, dep: 0, due: "2026-07-28" }],        // 4d overdue amber
 }, { asOfMs: ASOF });
 ok("lead quiet 7-30d ⇒ amber", find(warm, "Leads").severity === "amber");
+
+// ---- funnel middle (rail health): estimates exist but none converted to a job ⇒ amber Funnel finding ----
+(() => {
+  const noMiddle = A.audit({ estimates: [{ status: "sent", total: 9000 }, { status: "sent", total: 4000 }], jobs: [], leads: [] }, { asOfMs: ASOF });
+  const f = noMiddle.findings.find((x) => x.area === "Funnel");
+  ok("estimates but 0 jobs ⇒ Funnel amber finding with convert action", f && f.severity === "amber" && /0 converted/.test(f.title) && /convert the estimate/.test(f.action));
+  const converted = A.audit({ estimates: [{ status: "sent", id: 1, total: 9000, bid: { cost: 5000 } }], jobs: [{ estimateId: 1, bid: { cost: 5000 }, status: "Scheduled" }], leads: [] }, { asOfMs: ASOF });
+  ok("estimate converted to a bid-carrying job ⇒ NO Funnel finding", !converted.findings.some((x) => x.area === "Funnel"));
+})();
 ok("invoice 1-30d overdue ⇒ amber", find(warm, "Cash / AR").severity === "amber");
 
 // ---- close rate (needs ≥5 decided) ----

@@ -140,6 +140,15 @@ _Last updated: 2026-08-07 (pm)._
     call `estimate` so the bid is captured on save; (b) add a "convert to job" path on Won; (c) surface
     `funnelHealth()` as a `business-audit` finding → flows into the daily brief's "Needs attention". Backbone
     first (this PR), wiring next — the contract is now concrete + tested.
+- **★ RAIL WIRED into audit + brief + a latent-bug fix (branch, staged).** Made the pipeline backbone a
+  LIVE consumer: `business-audit.audit()` now calls `pipeline.funnelHealth()` and emits a **Funnel** finding
+  when estimates aren't converting to bid-carrying jobs ("N estimate(s) but 0 converted to a job" →
+  convert-on-Won action). **Also fixed a latent wiring bug**: the daily brief filtered findings by
+  `high|medium` severity, but `business-audit` emits `red|amber|green` — so **real audit findings had been
+  silently dropped from the brief's "Needs attention" (it was always empty)**. Broadened the filter to accept
+  both vocabularies; verified end-to-end (audit funnel/certs/AR findings now surface in the composed brief).
+  4 new tests; gate **111 suites / 2743**. Remaining rail wiring (frontend estimator breakdown → save;
+  convert-to-job button) is the follow-on.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
