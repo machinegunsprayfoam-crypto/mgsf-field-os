@@ -171,5 +171,22 @@ if (cj && jf) {
   ok("re-convert ⇒ no dup + an explicit 'no convertible estimate' alert (never silent)", ctx6.appState.jobs.length === 1 && notes.some((n) => /alert:.*No convertible estimate/.test(n)));
 }
 
+// ---- dashboard funnel counts (list #3): mirrors api/pipeline funnelHealth, surfaces the middle gap ----
+const fcFn = grab("funnelCounts");
+ok("funnelCounts present in index.html", !!fcFn);
+ok("renderPipelineHealth shows a Funnel line", /🛤️ Funnel:/.test(html));
+if (fcFn) {
+  const ctx7 = {}; vm.createContext(ctx7); vm.runInContext(fcFn, ctx7);
+  const healthy = ctx7.funnelCounts(
+    [{ name: "A" }, { name: "B" }],
+    [{ customer: "A", id: 1, bid: { sell: 30000 } }],
+    [{ customer: "A", estimateId: 1, fromEstimate: true, bid: { sell: 30000 } }]
+  );
+  ok("counts leads/estimates/jobs-from-estimate + quoted $", healthy.leads === 2 && healthy.estimates === 1 && healthy.jobsFromEstimate === 1 && healthy.estValue === 30000 && healthy.gap === null);
+  const gap = ctx7.funnelCounts([{ name: "A" }], [{ customer: "A", total: 12000 }], []);
+  ok("estimates but 0 converted ⇒ gap flagged (funnel middle)", gap.gap === "estimates-not-converting" && gap.estValue === 12000);
+  ok("empty ⇒ zeros, no gap, never throws", ctx7.funnelCounts().leads === 0 && ctx7.funnelCounts().gap === null);
+}
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
