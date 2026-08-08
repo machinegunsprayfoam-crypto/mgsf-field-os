@@ -229,8 +229,18 @@ _Last updated: 2026-08-07 (pm)._
   Pure/deterministic core (time passed in, no Date.now), gated KV persistence (keys `mgsf:workstations` /
   `mgsf:intranet`, dormant+honest without KV), INTERNAL only — outward still routes through the arms gate.
   Roster pulled from `agents.js`. 20 tests; registered in tools.js (pm) + SUITES; gate **112 / 2798**.
-  - **NEXT (wiring, follow-on):** have the `agents.js` doers post a station update + handoff on each run; a
-    Command Center "Work Hub" strip showing the board; optionally bridge gearbox events → intranet posts.
+- **★ WORK HUB — wired + visible (branch).** Two pieces on top of `api/workhub.js`:
+  (1) `api/agents.js` now derives a workstation from any plan — pure `stationFrom(agentId, plan, stampISO)`
+  → `{agent, status, task, updatedAt}` (idle when 0 steps, blocked when 0 ready, else working with a
+  "N ready / M steps · K blocked on a dark tool" task line). It's attached to every `/api/agents` response
+  as `out.station` (best-effort) and exported; +4 tests (gate **112 / 2802**).
+  (2) Command Center now shows a **"Work Hub · agent desks + intranet"** strip: `renderWorkHub()` POSTs
+  `{action:'hub'}` to `/api/workhub`, renders the desk grid (status dot + task + updated-at), open handoffs,
+  and the recent intranet feed — dormant-honest (says "Attach Vercel KV…" when `configured:false`, "Enter the
+  crew code…" when gated). Wired into `renderCommand()`; `sw.js` v85→v86.
+  - **NEXT (follow-on, optional):** have the `agents.js` doers actually POST station+handoff to workhub KV
+    on each run (currently `stationFrom` is derived + returned, not yet persisted); bridge gearbox events →
+    intranet posts. Both are inert until Vercel KV is attached.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._

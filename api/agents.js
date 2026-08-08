@@ -244,6 +244,19 @@ async function history(agentId, limit) {
   } catch (e) { return { configured: true, ok: false, results: [], error: String(e).slice(0, 120) }; }
 }
 
+// Derive this agent's WORK HUB workstation state from its plan, so the hub reflects what each doer is
+// on. Pure (time passed in). Shape matches api/workhub.js station() patch: {agent,status,task,updatedAt}.
+function stationFrom(agentId, plan, stampISO) {
+  plan = plan || {};
+  const count = Number(plan.count) || 0;
+  const ready = Number(plan.ready) || 0;
+  const status = count === 0 ? "idle" : (ready === 0 ? "blocked" : "working");
+  const task = count === 0
+    ? (plan.goal ? ("Idle — " + String(plan.goal).slice(0, 120)) : "Idle — nothing queued")
+    : (ready + " ready / " + count + " step" + (count === 1 ? "" : "s") + (ready < count ? (" · " + (count - ready) + " blocked on a dark tool") : ""));
+  return { agent: String(agentId || plan.agent || "").toLowerCase().replace(/\s+/g, "-"), status, task, updatedAt: stampISO || null };
+}
+
 module.exports = async (req, res) => {
   if (req.method === "GET") {
     res.status(200).json({ service: "klyfton-agents",
@@ -264,7 +277,10 @@ module.exports = async (req, res) => {
           { approved: body.approved === true, actor: body.actor, history: hist.results, cooldownDays: body.cooldownDays })
       : await run(body.agent, body.jobs, nowMs, process.env,
           { approved: body.approved === true, actor: body.actor, history: hist.results, cooldownDays: body.cooldownDays });
-    if (out.ok) { try { await logRun(body.agent, out.results, nowMs); } catch (e) {} } // record for next time
+    if (out.ok) {
+      try { await logRun(body.agent, out.results, nowMs); } catch (e) {} // record for next time
+      try { out.station = stationFrom(out.agent || body.agent, out, new Date().toISOString()); } catch (e) {} // Work Hub state
+    }
     res.status(200).json(out);
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
 };
@@ -272,6 +288,7 @@ module.exports = async (req, res) => {
 module.exports.AGENTS = AGENTS;
 module.exports.plan = plan;
 module.exports.run = run;
+module.exports.stationFrom = stationFrom;
 module.exports.primaryTool = primaryTool;
 module.exports.buildAction = buildAction;
 module.exports.shouldSkip = shouldSkip;

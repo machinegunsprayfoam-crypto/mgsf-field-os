@@ -716,6 +716,9 @@
         <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Agents
           <a href="cube-map.html" target="_blank" rel="noopener" style="float:right;font-size:11px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--or);text-decoration:none;border:1px solid rgba(249,115,22,.35);border-radius:6px;padding:3px 9px">🧊 Council cube-map ↗</a></h3>
         <div id="ccGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
+        <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Work Hub · agent desks + intranet</h3>
+        <div id="ccWorkHub" style="font-size:12px;line-height:1.6"></div>
+        <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">The <b>operating layer</b> above the drivetrain: each agent's private <b>workstation</b> (what it's on, idle/working/blocked), the open <b>handoffs</b> between agents, and the recent <b>intranet</b> feed. Internal only — outward actions still pass the arms approval gate.</div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Top Agents · 30 days</h3>
         <div id="ccBoard" style="font-size:13px;line-height:1.9"></div>
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Drivetrain · recent gear-turns</h3>
@@ -13495,6 +13498,45 @@ window.renderCommand = async function(){
     set('ccKpis','<div class="metric-card"><div class="metric-val">—</div><div class="metric-lbl">offline</div></div>');
     set('ccNote','Command Center endpoint unavailable.');
   }
+  try{ renderWorkHub(); }catch(e){}
+};
+
+// Work Hub — the agent operating layer (api/workhub.js). Shows each agent's workstation
+// (idle/working/blocked + current task), the open handoffs, and the recent intranet feed.
+// Dormant-honest: if Vercel KV isn't attached the endpoint returns {configured:false} and we
+// say so plainly rather than fabricate desks. Gated behind the crew code like every data call.
+window.renderWorkHub = async function(){
+  var host = document.getElementById('ccWorkHub'); if(!host) return;
+  var e = function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  host.innerHTML = '<span style="opacity:.6">Loading desks…</span>';
+  var d = await _sysPost('/api/workhub',{action:'hub'});
+  if(!d || d.__err){ host.innerHTML = '<span style="opacity:.6">Work Hub endpoint unavailable.</span>'; return; }
+  if(d.__gated){ host.innerHTML = '<span style="opacity:.6">Enter the crew code to view the Work Hub.</span>'; return; }
+  if(d.configured===false){ host.innerHTML = '<span style="opacity:.6">'+e(d.note||'Attach Vercel KV to enable the Work Hub (per-agent workstations + intranet).')+'</span>'; return; }
+  var stcol = function(s){ return s==='blocked'?'#ffcf6b':(s==='working'?'#4ad9c4':(s==='done'?'#22c55e':'#9aa4b0')); };
+  var stdot = function(s){ return '<span style="color:'+stcol(s)+'">●</span> '; };
+  var c = d.counts||{};
+  var head = '<div style="opacity:.7;margin-bottom:8px">'+(c.agents||0)+' desks · <b style="color:#4ad9c4">'+(c.working||0)+' working</b> · <b style="color:#ffcf6b">'+(c.blocked||0)+' blocked</b> · '+(c.openHandoffs||0)+' open handoff'+((c.openHandoffs===1)?'':'s')+'</div>';
+  var desks = (d.stations||[]).map(function(s){
+    var when = s.updatedAt ? String(s.updatedAt).replace('T',' ').slice(5,16) : '';
+    return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(249,115,22,.18);border-radius:8px;padding:10px 12px">'
+      +'<div style="font-weight:800;color:var(--or)">'+stdot(s.status)+e(s.label||s.agent)+'</div>'
+      +'<div style="font-size:12px;margin-top:3px">'+(s.task?e(s.task):'<span style="opacity:.55">Idle — nothing queued</span>')+'</div>'
+      +(when?'<div style="opacity:.45;font-size:11px;margin-top:3px">updated '+e(when)+'</div>':'')
+      +'</div>';
+  }).join('');
+  var deskGrid = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">'+(desks||'<span style="opacity:.6">No desks yet.</span>')+'</div>';
+  var handoffs = (d.openHandoffs||[]).length
+    ? '<div style="margin-top:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--or);margin-bottom:4px">Open handoffs</div>'
+      + d.openHandoffs.map(function(m){ var t=m.at?String(m.at).replace('T',' ').slice(5,16):''; return '<div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px">'+(t?'<span style="opacity:.5">'+e(t)+'</span> ':'')+'<b style="color:var(--or)">'+e(m.from)+'</b> → <b style="color:var(--or)">'+e(m.to)+'</b>'+(m.job?' <span style="opacity:.65">['+e(m.job)+']</span>':'')+' — '+e(m.body||'')+'</div>'; }).join('')
+      + '</div>'
+    : '';
+  var feed = (d.feed||[]).length
+    ? '<div style="margin-top:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--or);margin-bottom:4px">Intranet · recent</div>'
+      + d.feed.slice(0,10).map(function(m){ var t=m.at?String(m.at).replace('T',' ').slice(5,16):''; return '<div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px">'+(t?'<span style="opacity:.5">'+e(t)+'</span> ':'')+'<span style="opacity:.7">'+e(m.from)+'→'+e(m.to)+'</span> <span style="opacity:.55">'+e(m.kind)+'</span> '+e(m.body||'')+'</div>'; }).join('')
+      + '</div>'
+    : '';
+  host.innerHTML = head + deskGrid + handoffs + feed;
 };
 
 // Powertrain gauge cluster — the odometer (needle swings red on reverse, green on forward),
