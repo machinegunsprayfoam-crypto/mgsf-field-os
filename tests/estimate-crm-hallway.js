@@ -88,5 +88,35 @@ if (up && mk) {
   ok("manual CREATE LEAD reuses upsert (no dup) + switches to CRM", A.leads.length === before && ctx.module === "crm");
 }
 
+// ---- saveEstimate attaches the captured BID BREAKDOWN (pipeline rail — makes a won job measurable) ----
+const se = grab("saveEstimate");
+ok("saveEstimate present in index.html", !!se);
+ok("estimator stashes window._lastEstimateBid at render (BF/sets/hours/material/labor/cost/sell)", /_lastEstimateBid\s*=\s*\{[\s\S]*boardFeet[\s\S]*sets[\s\S]*laborHours[\s\S]*material[\s\S]*labor[\s\S]*cost[\s\S]*sell/.test(html));
+if (se && up) {
+  const fields2 = { eState: "MT", eMarket: "residential", eNotes: "" };
+  const ctx2 = {
+    appState: { estimates: [], leads: [] }, saved: 0,
+    document: { getElementById: (id) => (fields2[id] !== undefined ? { value: fields2[id] } : null) },
+    save: () => { ctx2.saved++; }, notify: () => {}, playSound: () => {},
+    window: { _lastEstimateBid: { boardFeet: 12000, sets: 3, laborHours: 16, material: 11784, labor: 2048, cost: 13832, sell: 30000, cell: "closed" } },
+    Date,
+  };
+  vm.createContext(ctx2);
+  vm.runInContext(up + "\n" + se, ctx2);
+  ctx2.saveEstimate(30000, "TK Barn", 0.539);
+  const est = ctx2.appState.estimates[0];
+  ok("saved estimate carries the bid breakdown", est && est.bid && est.bid.boardFeet === 12000 && est.bid.cost === 13832 && est.bid.sell === 30000);
+  ok("estimate still records value + gm (backward-compatible)", est.value === 30000 && est.gm === 0.539);
+  // no stash ⇒ no bid attached, and saving still works (never blocks the save)
+  const ctx3 = {
+    appState: { estimates: [], leads: [] }, saved: 0,
+    document: { getElementById: (id) => (fields2[id] !== undefined ? { value: fields2[id] } : null) },
+    save: () => {}, notify: () => {}, playSound: () => {}, window: {}, Date,
+  };
+  vm.createContext(ctx3); vm.runInContext(up + "\n" + se, ctx3);
+  ctx3.saveEstimate(5000, "No Bid Cust", 0.5);
+  ok("no stashed bid ⇒ estimate saves fine with no bid field (never blocks)", ctx3.appState.estimates[0] && ctx3.appState.estimates[0].bid === undefined);
+}
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
