@@ -164,10 +164,13 @@ _Last updated: 2026-08-07 (pm)._
   `est.bid`. So a saved estimate now carries the full bid, not just value+gm — the data a WON job needs to be
   compared to actuals (yield-variance). Additive + backward-compatible (no stash ⇒ no bid, save never
   blocks); proven in the vm-sandbox frontend test. SW cache v80→v81. Gate **111 / 2748** (+5).
-  - **REMAINING rail piece (next):** convert-to-job on Won — a CRM Won-transition that calls
-    `pipeline.jobFromEstimate(est)` and writes a `jobs` record carrying `est.bid`, so the job board + job-cost
-    have the bid. Contract already exists + tested; this is the last wiring step to make margin fully
-    self-measuring in production.
+  - **RAIL NOW CLOSED END-TO-END (Won → job, branch, staged).** `updateLeadStatus()` Won-transition now
+    calls new `_jobFromWonLead(l)` (frontend mirror of `pipeline.jobFromEstimate`): finds the customer's
+    winning estimate, creates a `Scheduled` job that CARRIES `est.bid` + links `estimateId`, idempotent (one
+    job per estimate), fully guarded (no estimate ⇒ no job; never blocks the status change). So the full loop
+    is live: **estimate saved (carries bid) → Won → job (carries bid) → actuals logged → yield-variance
+    compares actual vs bid.** Disconnect #2 is closed in the app. SW cache v81→v82. Gate **111 / 2754** (+6).
+    Remaining to actually SEE margin in prod: crew uses it + `CREW_CODE`/KV live (owner-side).
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._

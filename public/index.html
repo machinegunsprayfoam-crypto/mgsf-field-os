@@ -7126,6 +7126,32 @@ function updateLead(id){
   playSound('success');
 }
 
+// Pipeline rail — on a lead going WON, spin up a JOB that CARRIES the winning estimate's bid, so the job
+// board has it and job actuals can later be measured against the quote (yield-variance). Mirrors
+// api/pipeline.js jobFromEstimate. Idempotent (one job per estimate — never duplicates) and fully guarded:
+// it never blocks the status change and never fabricates (no matching estimate ⇒ no job).
+function _jobFromWonLead(l){
+  try{
+    if(!l) return null;
+    const key=String(l.name||'').trim().toLowerCase(); if(!key) return null;
+    const ests=(appState.estimates||[]).filter(e=>e && String(e.customer||'').trim().toLowerCase()===key);
+    if(!ests.length) return null;
+    const withBid=ests.filter(e=>e.bid && Number(e.bid.sell)>0);
+    const est=(withBid.length?withBid:ests).slice().sort((a,b)=>(Number(b.id)||0)-(Number(a.id)||0))[0];
+    if(!est) return null;
+    const already=(appState.jobs||[]).some(j=>j && (String(j.estimateId)===String(est.id) || (j.fromEstimate && String(j.customer||'').trim().toLowerCase()===key)));
+    if(already) return null;
+    const bid=(est.bid && Number(est.bid.sell)>0)?est.bid:null;
+    const job={ id:Date.now(), customer:l.name, service:est.service||l.service||(bid&&bid.cell)||'', state:est.state||l.state||'',
+      status:'Scheduled', value:Math.round(Number((bid&&bid.sell)!=null?bid.sell:(est.value!=null?est.value:l.value))||0),
+      date:new Date().toISOString().split('T')[0], estimateId:est.id, fromEstimate:true, source:'Estimate→Won' };
+    if(bid) job.bid=bid;
+    appState.jobs=appState.jobs||[]; appState.jobs.push(job); save('jobs');
+    try{ if(window.renderJobs) renderJobs(); }catch(e){}
+    return job;
+  }catch(e){ return null; }
+}
+
 function updateLeadStatus(id){
   const l = appState.leads.find(x=>x.id===id);
   if(!l) return;
@@ -7134,7 +7160,11 @@ function updateLeadStatus(id){
   const _prevStatus = l.status;
   l.status = el.value;
   save('leads');
-  if(_prevStatus!=='Won' && l.status==='Won' && window.klyftonNotify){ klyftonNotify('lead_won',{lead:{name:l.name, value:l.value}}); }  // owner text
+  if(_prevStatus!=='Won' && l.status==='Won'){
+    if(window.klyftonNotify){ klyftonNotify('lead_won',{lead:{name:l.name, value:l.value}}); }  // owner text
+    const _job=_jobFromWonLead(l);                                    // rail: Won → a bid-carrying job
+    if(_job) notify(`Job created for ${l.name} → Scheduled`+(_job.bid?' · carries the bid':''));
+  }
   if(l.estSource){ estWriteback('bid', l.estRef, {status:_bidStageToEst(l.status)}); }  // two-way sync
   closeModal();
   renderPipeline();
