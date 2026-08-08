@@ -383,8 +383,8 @@ OPEN-CELL:
 - Accufoam AF1 (0.5#): water-blown · no-mix · highest-yield
 - JM Corbond OC (0.5#): R-3.8/in · code CCRR-1079
 ROOFING:
-- NCFI EnduraTech 10-016 (2.8#): ~2,900 BF/set · R-6.9/in · HFO · ASTM D7425
-- NCFI EnduraTech 10-016 (3.0#): ~2,700 BF/set · R-6.7/in · ~64 psi · HFO
+- NCFI EnduraTech 10-016 (2.8#, HFO): R-6.7/in (aged, @1"; ~R-13@2", R-27@4", R-40@6") · 58 psi compressive · 77 psi tensile · >90% closed cell · Class II vapor retarder @1" · ASTM D7425 · the LOW-GWP (greener) + higher-R option. (verified vs the printed TDS 120722)
+- NCFI EnduraTech 10-011 (3.0#, HFC-245fa): R-6.3/in (@1"; ~R-13@2", R-27@4") · 62 psi compressive · 60 lbf/ft² tensile · >93% closed cell · ICC-ES ESR-3392 · the HIGHER-density/psi option (older blowing agent, higher GWP). (verified vs the printed TDS 031422)
 - UPC Ultra-Thane 230 HFO (2.5-3.0#): HFO roofing/tank · ASTM D7425 (the IDI ~$2,875/set roofing foam)
 GEOTECH / LIFTING (set = 2 barrels ~550 lb = ~1,100 lb):
 - NCFI TerraThane 24-003 / 24-010 / 24-011: dual-component slab lifting/leveling
