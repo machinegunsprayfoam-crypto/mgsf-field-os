@@ -7044,6 +7044,7 @@ function openLeadDetail(id){
   <div class="modal-actions">
     <button class="btn btn-danger" onclick="deleteLead(${id})">DELETE</button>
     <button class="btn btn-cyan" onclick="estimateFromLead(${id})" title="Open the estimator prefilled with this lead">🧾 CREATE BID</button>
+    ${l.status==='Won'?`<button class="btn btn-ghost" onclick="convertLeadToJob(${id})" title="Create a job from this won lead's estimate — carries the bid so margin is measurable">🏗️ CONVERT TO JOB</button>`:''}
     <button class="btn btn-ghost" onclick="sharePortalLink(${id},'${esc((l.name||'').replace(/'/g,"\\'"))}')" title="Generate a private status-portal link to share with this customer">🔗 PORTAL LINK</button>
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="updateLead(${id})">SAVE CHANGES</button>
@@ -7155,6 +7156,16 @@ function _jobFromWonLead(l){
     try{ if(window.renderJobs) renderJobs(); }catch(e){}
     return job;
   }catch(e){ return null; }
+}
+
+// Explicit rail conversion — for a lead already Won (e.g. imported, or won before the auto-hook, or a
+// repeat customer with a NEW estimate). Reuses _jobFromWonLead (idempotent + guarded) and, unlike the
+// auto-path, tells the owner WHY nothing happened instead of failing silently.
+function convertLeadToJob(id){
+  const l=(appState.leads||[]).find(x=>x.id===id); if(!l) return;
+  const job=_jobFromWonLead(l);
+  if(job){ notify(`Job ${job.jobNum||''} created for ${l.name} → Scheduled`+(job.bid?' · carries the bid':''),'success'); try{ playSound('success'); }catch(e){} try{ if(window.renderJobs) renderJobs(); }catch(e){} }
+  else { notify('No convertible estimate for '+(l.name||'this lead')+' — save an estimate first, or a job already exists for it.','alert'); }
 }
 
 function updateLeadStatus(id){

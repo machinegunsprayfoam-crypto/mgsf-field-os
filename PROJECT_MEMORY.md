@@ -196,6 +196,14 @@ _Last updated: 2026-08-07 (pm)._
     cert-expiry findings (expired/≤60d red, ≤120d amber, missing-expiry amber), and the #103 brief severity
     fix means those now actually reach the daily brief's "Needs attention." So cert reminders surface today via
     the audit→brief path (once KV/CREW_CODE live). Marked done rather than duplicate it.
+- **★ #5 CONVERT-TO-JOB button (branch, staged).** Explicit rail conversion on the lead detail modal (shown
+  for Won leads): `convertLeadToJob(id)` reuses `_jobFromWonLead` (idempotent/guarded) for leads the auto-hook
+  misses (imported-Won, won-before-the-hook, repeat customer with a NEW estimate). Unlike the auto-path it
+  INFORMS on skip ("no convertible estimate — save one first, or a job already exists") — no silent no-op.
+  5 tests; SW cache v83→v84; gate **111 / 2769**. (List item #5.)
+  - **#1 (analysis→drafted message) already largely built** — `estimate-followup.js` drafts stale-estimate
+    reheats + `follow-up.js` chases quiet leads, both draft-only; the #103 fix routes audit findings to the
+    brief. Not duplicating; the remaining nicety is surfacing a "N drafts ready" count (deferred, low value).
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
