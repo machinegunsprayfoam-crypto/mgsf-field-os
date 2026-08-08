@@ -183,6 +183,12 @@ _Last updated: 2026-08-07 (pm)._
      scheduling) + a separate `wonDate` stamp.
   Nits left (documented, low): name-string linkage (pre-existing convention), $0-bid exclusion, fixed-amber
   funnel severity. Gate **111 / 2759**. SW cache v82→v83. The reviewer agent earned its keep on its first run.
+- **★ #2 MEASURED-YIELD WRITEBACK (branch, staged).** Closed the loop at the rail's END: `api/job-actuals.js`
+  now computes `doctrineYieldReview(rec)` — for a SINGLE-cell session it takes real yield (BF÷sets) and calls
+  `yield-variance.reviewAgainstDoctrine` to flag when measured field yield diverges >8% from the locked
+  doctrine yield (closed 4200 / roofing 3750). Attached to the normalize output; DETECTION ONLY (never
+  rewrites a locked number — owner's call), never fabricates (mixed-cell/no-BF ⇒ insufficient). So now:
+  log actuals → measured yield vs doctrine surfaces automatically. 5 tests; gate **111 / 2764**. (List item #2.)
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
