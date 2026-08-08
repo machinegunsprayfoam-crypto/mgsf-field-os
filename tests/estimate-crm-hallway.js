@@ -118,5 +118,29 @@ if (se && up) {
   ok("no stashed bid ⇒ estimate saves fine with no bid field (never blocks)", ctx3.appState.estimates[0] && ctx3.appState.estimates[0].bid === undefined);
 }
 
+// ---- Won → JOB conversion (pipeline rail): a won lead spins up a bid-carrying job, idempotently ----
+const jf = grab("_jobFromWonLead");
+ok("_jobFromWonLead present in index.html", !!jf);
+ok("updateLeadStatus converts on the Won transition", /l\.status===['"]Won['"][\s\S]{0,220}_jobFromWonLead\(/.test(html));
+if (jf) {
+  const ctx4 = {
+    appState: {
+      leads: [{ id: 1, name: "TK Barn", status: "Won", value: 30000 }],
+      estimates: [{ id: 9, customer: "TK Barn", service: "closed-cell", state: "MT", value: 30000, bid: { boardFeet: 12000, sets: 3, laborHours: 16, material: 11784, labor: 2048, cost: 13832, sell: 30000, cell: "closed" } }],
+      jobs: [],
+    },
+    save: () => {}, window: {}, Date,
+  };
+  vm.createContext(ctx4); vm.runInContext(jf, ctx4);
+  const job = ctx4._jobFromWonLead(ctx4.appState.leads[0]);
+  ok("Won lead ⇒ a Scheduled job is created", job && job.status === "Scheduled" && ctx4.appState.jobs.length === 1);
+  ok("the job CARRIES the estimate's bid (loop closes) + links back", job.bid && job.bid.cost === 13832 && job.estimateId === 9 && job.value === 30000);
+  ok("idempotent — converting the same won lead again makes no duplicate", ctx4._jobFromWonLead(ctx4.appState.leads[0]) === null && ctx4.appState.jobs.length === 1);
+  // no matching estimate ⇒ no job, never fabricated
+  const ctx5 = { appState: { leads: [{ id: 2, name: "No Est", status: "Won" }], estimates: [], jobs: [] }, save: () => {}, window: {}, Date };
+  vm.createContext(ctx5); vm.runInContext(jf, ctx5);
+  ok("no matching estimate ⇒ no job (never fabricated)", ctx5._jobFromWonLead(ctx5.appState.leads[0]) === null && ctx5.appState.jobs.length === 0);
+}
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
