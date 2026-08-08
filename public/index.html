@@ -5501,6 +5501,23 @@ function calculateBid(){
     html+=`<div class="est-result-line"><span class="lbl">Mobilization (${mob} mi)</span><span>$${mobCost.toFixed(0)}</span></div>`;
   }
 
+  // Capture this estimate's BID BREAKDOWN for the pipeline rail (self-audit disconnect #2). The estimate
+  // record must carry BF/sets/hours/material/labor/cost/sell so a WON job can be compared to logged actuals
+  // (yield-variance) — otherwise quoted-vs-actual margin is unmeasurable. Stashed here (where every scope
+  // total is in scope) and attached in saveEstimate. Never fabricated — summed straight from the results.
+  try{
+    window._lastEstimateBid = {
+      boardFeet: Math.round(results.reduce((s,r)=>s+(Number(r.bf)||0),0)),
+      sets: (Number(foamSets)||0)||null,
+      laborHours: Math.round(results.reduce((s,r)=>s+(Number(r.laborHrs)||0),0)),
+      material: Math.round(Number(totalMat)||0),
+      labor: Math.round(Number(totalLab)||0),
+      cost: Math.round(Number(totalDirect!=null?totalDirect:((Number(totalMat)||0)+(Number(totalLab)||0)))||0),
+      sell: Math.round(Number(totalSell)||0),
+      cell: bidPrimarySvc||null
+    };
+  }catch(e){ window._lastEstimateBid=null; }
+
   const goColor = projectGO?'var(--gr)':'var(--yw)';
   html+=`
   <div class="est-result-line" style="margin-top:4px"><span class="lbl">Total Material</span><span>$${totalMat.toFixed(0)}</span></div>
@@ -5664,6 +5681,9 @@ function saveEstimate(val, name, gm){
     state:document.getElementById('eState').value,market:document.getElementById('eMarket').value};
   // Capture the achieved blended GM so INTEL can track quoted margin vs the doctrine target over time.
   const g=parseFloat(gm); if(Number.isFinite(g)&&g>0) est.gm=Math.round(g*1000)/1000;
+  // Attach the captured bid breakdown so a WON estimate can convert into a MEASURABLE job (pipeline rail):
+  // job carries est.bid → yield-variance compares actual vs bid at the same sell. Only when it's real.
+  try{ const b=window._lastEstimateBid; if(b && Number(b.sell)>0){ est.bid=b; if(b.cell&&!est.service) est.service=b.cell; } }catch(e){}
   appState.estimates.push(est);
   save('estimates');
   // Auto-hallway: the saved estimate flows straight into the CRM pipeline (create/update lead +
