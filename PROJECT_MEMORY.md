@@ -220,6 +220,17 @@ _Last updated: 2026-08-07 (pm)._
   Uses only real quoted numbers, never fabricates. Chains to the brief (severity → "Needs attention"). 4 tests;
   gate **111 / 2778**. (List #6.) So margin is now visible from the moment a bid is saved, not only after a
   job's actuals — the rail earns its keep even pre-go-live-data.
+- **★ WORK HUB — agent operating layer (branch, staged).** New `api/workhub.js`: the AGENT-level
+  coordination layer Clifton asked for ("workstation + work hub + intranet"). Each doer-agent gets a private
+  **WORKSTATION** (status idle/working/blocked/done + current task + a bounded 20-line scratchpad); a shared
+  **WORK HUB** (full-roster board incl. silent agents as idle + open-until-acked job **handoffs** + a recent
+  feed); and an agent↔agent **INTRANET** (direct + "all" broadcast messages, per-agent inbox). It's one level
+  up from the module-level `gearbox` (gearbox = module↔module gears; workhub = agent↔agent break-room/inbox).
+  Pure/deterministic core (time passed in, no Date.now), gated KV persistence (keys `mgsf:workstations` /
+  `mgsf:intranet`, dormant+honest without KV), INTERNAL only — outward still routes through the arms gate.
+  Roster pulled from `agents.js`. 20 tests; registered in tools.js (pm) + SUITES; gate **112 / 2798**.
+  - **NEXT (wiring, follow-on):** have the `agents.js` doers post a station update + handoff on each run; a
+    Command Center "Work Hub" strip showing the board; optionally bridge gearbox events → intranet posts.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
