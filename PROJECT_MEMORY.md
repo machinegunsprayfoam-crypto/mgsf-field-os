@@ -209,6 +209,13 @@ _Last updated: 2026-08-07 (pm)._
   $X quoted", plus an amber warning when estimates aren't converting to jobs (the funnel-middle gap, visible
   at a glance, not just in the brief). Pure helper, 5 tests; SW cache v84→v85; gate **111 / 2774**. (List #3.)
   Recommended trio (#2/#4/#5) + #3 all shipped; #24 confirmed already-covered; #1 already largely built.
+- **★ #6 QUOTED-MARGIN reading (branch, staged).** `business-audit.js` Margin section now uses the rail's
+  captured bids: when no ACTUAL cost+revenue jobs exist yet, it grades blended **quoted** GM =
+  (bid.sell−bid.cost)/bid.sell across bid-carrying estimates+jobs vs the doctrine target, clearly labeled
+  "bids, not actuals" (actual margin still wins once logged). Flags "bidding light" when quoting under target.
+  Uses only real quoted numbers, never fabricates. Chains to the brief (severity → "Needs attention"). 4 tests;
+  gate **111 / 2778**. (List #6.) So margin is now visible from the moment a bid is saved, not only after a
+  job's actuals — the rail earns its keep even pre-go-live-data.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
