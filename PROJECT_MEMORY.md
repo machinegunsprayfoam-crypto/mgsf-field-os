@@ -149,6 +149,15 @@ _Last updated: 2026-08-07 (pm)._
   both vocabularies; verified end-to-end (audit funnel/certs/AR findings now surface in the composed brief).
   4 new tests; gate **111 suites / 2743**. Remaining rail wiring (frontend estimator breakdown → save;
   convert-to-job button) is the follow-on.
+- **★ BUILD HELPERS — repo agents + skill (branch, staged).** Encoded the workflows that worked this
+  session into `.claude/` so every future session/cron builds the same disciplined way (no `.claude/` existed
+  before). Agents: **gate-keeper** (runs `tests/run-all.js` + `node -c` → PASS/FAIL, never rubber-stamps,
+  never edits), **brain-block-author** (grounded brain block end-to-end: block + BRAIN_ORDER + retriever
+  wiring + curriculum + tests, non-fabrication doctrine baked in), **field-os-reviewer** (reviews a diff vs
+  this repo's hard rules — module pattern, doctrine-wins, no secrets, no Sunday scheduling, 1:1 test
+  registration, never-merge-without-OK). Skill: **klyfton-module** (the add-an-api-module-right checklist:
+  pure-core + gated-live, test+SUITES, env docs, reference modules). All frontmatter house-spec valid; gate
+  still **111 / 2743**. Cross-referenced in CLAUDE.md.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
