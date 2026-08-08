@@ -23,7 +23,11 @@ _Last updated: 2026-08-07 (pm)._
   - **Consensus UI** card in Owner Tools.
   - Gate **110 suites / 2673**. 
 - **OWNER DECISIONS STILL OPEN (flagged, NOT changed — pricing is owner-only):** roofing product
-  **NCFI 10-011 (R6.3, 25psi) vs 10-016 (R6.7, 58psi walkable)** — sets R + walkability; **set invoice
+  **NCFI 10-011 (3.0#, HFC-245fa, R-6.3/in, 62 psi) vs 10-016 (2.8#, HFO, R-6.7/in, 58 psi)** — CORRECTED
+  2026-08-08 against the printed NCFI TDS (deep Drive scan): the old "10-011 = 25 psi" note was WRONG (it's
+  62 psi), so BOTH are walkable-strength — the real tradeoff is R-6.3 HFC-245fa (higher psi/density) vs
+  R-6.7 HFO (greener/higher R + Class II VR @1"), NOT walkable-vs-not. Sets roofing R (still UNCONFIRMED in
+  doctrine.js until the pick). Also open: **set invoice
   prices** (implied are back-calculated); **concrete-lifting $10/lb sell rate** flagged ~45% light vs
   $12/SF market; **thermal-barrier (DC315) coating has no price** (bid lists it as an exclusion → price it).
   Manual Drive step waiting: rename+move Workbook V2 into 16_ARCHIVE (connector can't move/rename).
