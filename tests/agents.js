@@ -101,6 +101,12 @@ async function main() {
   const scApproved = await A.runSubCompliance(roster, CNOW, WEBHOOK, { exec: scExec, approved: true });
   ok("approved run dispatches the contactable chases", scApproved.dispatched >= 1);
 
+  // ---- stationFrom: derive Work Hub workstation state from a plan (pure) ----
+  ok("busy plan ⇒ working + a ready/total task line", (() => { const s = A.stationFrom("collector", { count: 3, ready: 2, goal: "chase AR" }, "2026-08-08T10:00:00Z"); return s.agent === "collector" && s.status === "working" && /2 ready \/ 3 steps/.test(s.task) && /1 blocked/.test(s.task); })());
+  ok("all-blocked plan ⇒ blocked status", A.stationFrom("pm", { count: 2, ready: 0 }, "T").status === "blocked");
+  ok("empty plan ⇒ idle + goal shown", (() => { const s = A.stationFrom("pm", { count: 0, ready: 0, goal: "drive jobs" }, "T"); return s.status === "idle" && /Idle/.test(s.task); })());
+  ok("a real plan() feeds stationFrom cleanly (non-idle when it has steps)", (() => { const p = A.plan("collector", JOBS, NOW, {}); const s = A.stationFrom(p.agent, p, "T"); return s.status !== "idle" && s.agent === "collector"; })());
+
   console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 }
