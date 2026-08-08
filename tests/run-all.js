@@ -116,6 +116,7 @@ const SUITES = [
   ["masonry-calc", "masonry takeoff: wall area × unit coverage→block/brick count + mortar + grout for filled cells (standard coverage, ESTIMATE); reinforcing/structural deferred to TMS 402/602 + engineer; no pricing"],
   ["excavation-calc", "excavation/earthwork takeoff: area×depth→bank cubic yards (geometry) + swell (loose/haul) + compaction (fill) + truck loads; soil factors are ESTIMATE (verify geotech); 811 + OSHA Subpart P surfaced; no pricing"],
   ["sitework-calc", "sitework/paving takeoff: asphalt tonnage (area×thickness×density) + aggregate base (cy + tons); density is a typical ESTIMATE (verify mix/DOT); 811/drainage/SWPPP/ADA surfaced; section/subgrade not designed; no pricing"],
+  ["pipeline", "pipeline rail (lead→estimate→job→actuals): normalizes an estimate carrying the bid breakdown, advances a lead without regressing, converts a won estimate into a job that CARRIES the bid (round-trip proven to feed yield-variance), + railFor/funnelHealth next-action visibility — the funnel-middle fix; never fabricates; no persistence"],
 ];
 
 let totalPass = 0, totalFail = 0, suitesFailed = 0;
