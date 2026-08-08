@@ -125,6 +125,21 @@ _Last updated: 2026-08-07 (pm)._
     measurement); analysis-ends-in-a-draft. Both are real features for a future pass.
   - New Drive folder `LNSResourceManager` (8/6) is EMPTY (checked). `Ultimate_SprayFoam_Equipment_Costs_v2.xlsx`
     (8/6) is the equipment-cost sheet already flagged owner-only pricing-reconcile.
+- **★ PIPELINE RAIL backbone (branch, staged) — audit disconnect #2 "the funnel has no middle".** Built
+  `api/pipeline.js` (pure core + endpoint): `estimateRecord()` normalizes an estimator save into a record
+  that CARRIES the bid breakdown (BF/sets/hours/material/labor/cost/sell); `advanceLead()` moves a lead
+  forward without ever regressing (reusable form of the frontend auto-hallway rule); `jobFromEstimate()`
+  converts a won estimate into a JOB that carries the bid forward in the EXACT shape
+  `yield-variance.variance({bid,actual})` + `job-cost` consume; `railFor(customer,…)` = where they sit +
+  the ONE next action; `funnelHealth(…)` quantifies the disconnect ("estimates exist but 0 converted",
+  "jobs carry no bid → not measurable"). **Round-trip PROVEN in tests**: estimate → job.bid → yield-variance
+  produces a real quoted-vs-actual margin delta — the loop closes. Pure/deterministic (no Date.now in core),
+  never fabricates (missing bid field = null), no persistence (frontend/sync persists, same as job-cost).
+  32 tests; gate **111 suites / 2739**.
+  - **NEXT (wiring, follow-on PRs):** (a) thread the estimator's real breakdown into `saveEstimate()` +
+    call `estimate` so the bid is captured on save; (b) add a "convert to job" path on Won; (c) surface
+    `funnelHealth()` as a `business-audit` finding → flows into the daily brief's "Needs attention". Backbone
+    first (this PR), wiring next — the contract is now concrete + tested.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
