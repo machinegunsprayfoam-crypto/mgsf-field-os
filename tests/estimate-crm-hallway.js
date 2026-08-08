@@ -148,5 +148,28 @@ if (jf) {
   ok("no matching estimate ⇒ no job (never fabricated)", ctx5._jobFromWonLead(ctx5.appState.leads[0]) === null && ctx5.appState.jobs.length === 0);
 }
 
+// ---- explicit Convert-to-Job button (list #5): manual conversion, informs on skip (no silent no-op) ----
+const cj = grab("convertLeadToJob");
+ok("convertLeadToJob present in index.html", !!cj);
+ok("Convert-to-Job button shows only for Won leads", /l\.status==='Won'\?`<button[^`]*convertLeadToJob\(/.test(html));
+if (cj && jf) {
+  const notes = [];
+  const ctx6 = {
+    appState: {
+      leads: [{ id: 1, name: "TK Barn", status: "Won", value: 30000 }],
+      estimates: [{ id: 9, customer: "TK Barn", service: "closed-cell", value: 30000, bid: { boardFeet: 12000, sets: 3, laborHours: 16, material: 11784, labor: 2048, cost: 13832, sell: 30000, cell: "closed" } }],
+      jobs: [],
+    },
+    save: () => {}, notify: (m, lvl) => notes.push((lvl || "info") + ": " + m), playSound: () => {}, window: {}, Date,
+  };
+  vm.createContext(ctx6); vm.runInContext(grab("nextJobNum") + "\n" + jf + "\n" + cj, ctx6);
+  ctx6.convertLeadToJob(1);
+  ok("manual convert creates the bid-carrying job", ctx6.appState.jobs.length === 1 && ctx6.appState.jobs[0].bid.cost === 13832);
+  ok("success is announced with the job number", notes.some((n) => /success:.*Job MGSF-\d{4}-\d{3}/.test(n)));
+  // second call ⇒ already converted ⇒ informative skip, NOT silent
+  ctx6.convertLeadToJob(1);
+  ok("re-convert ⇒ no dup + an explicit 'no convertible estimate' alert (never silent)", ctx6.appState.jobs.length === 1 && notes.some((n) => /alert:.*No convertible estimate/.test(n)));
+}
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
