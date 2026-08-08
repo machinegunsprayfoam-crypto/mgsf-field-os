@@ -94,6 +94,13 @@ app's AI features:
 - **Boundaries:** never schedule work/meetings/reminders on **Sundays**; protect family time.
   Brand voice: professional, veteran-owned, direct, confident, practical, blue-collar.
 
+## Build helpers (repo-scoped agents + skills — use them)
+- **Agents** (`.claude/agents/`): `gate-keeper` (run the gate → PASS/FAIL verdict), `brain-block-author`
+  (author a grounded brain block end-to-end + wire retrieval/curriculum/tests), `field-os-reviewer`
+  (review a change against this repo's hard rules before commit/PR).
+- **Skill** (`.claude/skills/`): `klyfton-module` — the checklist for adding/changing an `api/*.js`
+  module the right way (pure-core + gated-live pattern, test + SUITES registration, env docs).
+
 ## Cross-references
 - [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) — authoritative build state · [`db/SETUP.md`](db/SETUP.md) — go-live DB checklist
 - `GET /api/boot` — live self-map · `tests/run-all.js` — the gate
