@@ -98,13 +98,16 @@ function jobFromEstimate(est, opts) {
   const bid = est.bid ? bidFrom(est.bid) : bidFrom(est);
   const customer = txt(est.customer != null ? est.customer : est.name, 120);
   const value = bid.sell != null ? bid.sell : round(num(est.total != null ? est.total : est.value));
+  const service = txt(est.service, 120);
   return {
     id: opts.id != null ? opts.id : null,
+    jobNum: opts.jobNum != null ? String(opts.jobNum) : null,   // caller (frontend) assigns the running number
+    name: (service ? service + " — " : "") + (customer || "Job"), // so the job never renders as "undefined"
     kind: "job",
     estimateId: est.id != null ? est.id : (est.estimateId != null ? est.estimateId : null),
     leadKey: customer ? key(customer) : (est.leadKey || null),
     customer,
-    service: txt(est.service, 120),
+    service,
     cell: txt(est.cell || est.product, 60),
     state: txt(est.state, 8),
     status: "Scheduled",

@@ -50,8 +50,10 @@ console.log("Pipeline rail — lead→estimate→job→actuals\n");
 (() => {
   const est = P.estimateRecord({ customer: "TK Barn", service: "closed-cell", cell: "closed",
     boardFeet: 12000, sets: 3, laborHours: 16, material: 11784, labor: 2048, sell: 30000 }, { id: 111, date: "2026-08-07" });
-  const job = P.jobFromEstimate(est, { id: 222, date: "2026-08-10" });
+  const job = P.jobFromEstimate(est, { id: 222, date: "2026-08-10", jobNum: "MGSF-2026-007" });
   ok("job links back to the estimate id", job.estimateId === 111);
+  ok("job carries a name (never renders as 'undefined')", job.name === "closed-cell — TK Barn");
+  ok("job takes the caller-assigned jobNum", job.jobNum === "MGSF-2026-007");
   ok("job status starts Scheduled", job.status === "Scheduled");
   ok("job value = the bid sell price", job.value === 30000);
   ok("job CARRIES the bid (the whole point — makes margin measurable)", job.bid.boardFeet === 12000 && job.bid.cost === 13832 && job.bid.sell === 30000);

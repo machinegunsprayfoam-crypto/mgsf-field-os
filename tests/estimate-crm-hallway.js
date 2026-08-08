@@ -131,11 +131,17 @@ if (jf) {
     },
     save: () => {}, window: {}, Date,
   };
-  vm.createContext(ctx4); vm.runInContext(jf, ctx4);
+  vm.createContext(ctx4); vm.runInContext(grab("nextJobNum") + "\n" + jf, ctx4);
   const job = ctx4._jobFromWonLead(ctx4.appState.leads[0]);
   ok("Won lead ⇒ a Scheduled job is created", job && job.status === "Scheduled" && ctx4.appState.jobs.length === 1);
   ok("the job CARRIES the estimate's bid (loop closes) + links back", job.bid && job.bid.cost === 13832 && job.estimateId === 9 && job.value === 30000);
-  ok("idempotent — converting the same won lead again makes no duplicate", ctx4._jobFromWonLead(ctx4.appState.leads[0]) === null && ctx4.appState.jobs.length === 1);
+  ok("job gets a jobNum + name (never renders undefined/MGSF-???)", /^MGSF-\d{4}-\d{3}$/.test(job.jobNum) && job.name === "closed-cell — TK Barn");
+  ok("auto-job leaves work date blank (needs scheduling) + records wonDate (no Sunday-stamp)", job.date === "" && /^\d{4}-\d{2}-\d{2}$/.test(job.wonDate));
+  ok("idempotent — converting the SAME estimate again makes no duplicate", ctx4._jobFromWonLead(ctx4.appState.leads[0]) === null && ctx4.appState.jobs.length === 1);
+  // REGRESSION (reviewer blocker #1): a repeat customer who wins a SECOND, different estimate MUST get a 2nd job.
+  ctx4.appState.estimates.push({ id: 10, customer: "TK Barn", service: "roofing", state: "MT", value: 41000, bid: { boardFeet: 9000, sets: 4, laborHours: 22, material: 15000, labor: 3000, cost: 18000, sell: 41000, cell: "roofing" } });
+  const job2 = ctx4._jobFromWonLead(ctx4.appState.leads[0]);
+  ok("repeat customer + NEW estimate ⇒ a SECOND job is created (not silently skipped)", job2 && job2.estimateId === 10 && ctx4.appState.jobs.length === 2, "n=" + ctx4.appState.jobs.length);
   // no matching estimate ⇒ no job, never fabricated
   const ctx5 = { appState: { leads: [{ id: 2, name: "No Est", status: "Won" }], estimates: [], jobs: [] }, save: () => {}, window: {}, Date };
   vm.createContext(ctx5); vm.runInContext(jf, ctx5);
