@@ -204,6 +204,11 @@ _Last updated: 2026-08-07 (pm)._
   - **#1 (analysis→drafted message) already largely built** — `estimate-followup.js` drafts stale-estimate
     reheats + `follow-up.js` chases quiet leads, both draft-only; the #103 fix routes audit findings to the
     brief. Not duplicating; the remaining nicety is surfacing a "N drafts ready" count (deferred, low value).
+- **★ #3 RAIL/FUNNEL TILE on the dashboard (branch, staged).** The Pipeline Health card now leads with a
+  **Funnel line** (`funnelCounts()`, mirrors `api/pipeline.funnelHealth`): "N leads → E estimates → J jobs ·
+  $X quoted", plus an amber warning when estimates aren't converting to jobs (the funnel-middle gap, visible
+  at a glance, not just in the brief). Pure helper, 5 tests; SW cache v84→v85; gate **111 / 2774**. (List #3.)
+  Recommended trio (#2/#4/#5) + #3 all shipped; #24 confirmed already-covered; #1 already largely built.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
