@@ -32,6 +32,14 @@ ok("no CAGE ⇒ 'Pending' placeholder (not invented)", /Pending/.test(kv(d.eleme
 // ---- EIN never appears (private federal ID) ----
 ok("no EIN in output", !/\bEIN\b/i.test(body));
 
+// ---- carrier authority: never an "active USDOT/MC" overclaim (the #21 fix) ----
+ok("default output is SILENT on USDOT (no unverified claim)", !/USDOT/i.test(body));
+ok("default output never claims for-hire MC authority", !/\bMC\b|for-hire|motor carrier/i.test(body));
+const carrier = A.build({ usdot: "1234567" });
+const cb = txt(carrier.elements);
+ok("supplied USDOT prints as a private-carrier line", /USDOT 1234567/.test(cb) && /private carrier/i.test(cb));
+ok("even with a USDOT #, it states no for-hire MC authority (never claims one)", /no for-hire MC authority required/i.test(cb) && !/active\s+(?:USDOT|MC)/i.test(cb));
+
 // ---- caller-supplied real values fill in (no marker then) ----
 const filled = A.build({ cage: "9ABC1", contactName: "C. Behner", pastPerformance: ["City shop — 6000 sqft SPF — 2025"], bonding: "$500K single / $1M aggregate", differentiators: ["Custom diff"] });
 const fb = txt(filled.elements);
