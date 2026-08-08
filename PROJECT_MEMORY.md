@@ -189,6 +189,13 @@ _Last updated: 2026-08-07 (pm)._
   doctrine yield (closed 4200 / roofing 3750). Attached to the normalize output; DETECTION ONLY (never
   rewrites a locked number — owner's call), never fabricates (mixed-cell/no-BF ⇒ insufficient). So now:
   log actuals → measured yield vs doctrine surfaces automatically. 5 tests; gate **111 / 2764**. (List item #2.)
+- **★ #4 RAIL EXPOSED TO THE HIVE (branch, staged).** Added `pipeline` to the tool catalog (`api/tools.js`,
+  category pm) so Klyfton can reason over the rail (railFor/funnelHealth/convert). OpenAPI guard auto-derives
+  the `/api/pipeline` route; tools + openapi suites green. Gate **111 / 2764**. (List item #4.)
+  - **#24 (cert reminders) — already covered, no build needed:** `business-audit.js` already emits Compliance
+    cert-expiry findings (expired/≤60d red, ≤120d amber, missing-expiry amber), and the #103 brief severity
+    fix means those now actually reach the daily brief's "Needs attention." So cert reminders surface today via
+    the audit→brief path (once KV/CREW_CODE live). Marked done rather than duplicate it.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
