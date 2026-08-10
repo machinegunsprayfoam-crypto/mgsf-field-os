@@ -408,14 +408,20 @@ def main():
 
     print("MGSF doctrine reconcile — mgsf-core  vs  klyfton.js DOCTRINE block")
     print("=" * 72)
-    print("%-22s %-11s %-11s %s" % ("constant", "mgsf-core", "klyfton", "status"))
+    if skip_12:
+        print("SKIPPED — mgsf-core SKILL.md and/or the klyfton.js DOCTRINE block are not")
+        print("available here. Expected in CI: the skill lives in Clifton's Claude account,")
+        print("not in this repo. Run locally with --core to check BODY 1 + 2.")
+    else:
+        print("%-22s %-11s %-11s %s" % ("constant", "mgsf-core", "klyfton", "status"))
     print("-" * 72)
     for label, cv, kv, status, note in rows:
         tail = ""
         if status not in ("ok", "— (absent both)"):
             tail = "  <<< " + status + (("  (%s)" % note) if note else "")
         print("%-22s %-11s %-11s %s%s" % (label, cv or "-", kv or "-", status, tail))
-    print("-" * 72)
+    if not skip_12:
+        print("-" * 72)
     problems = mism + only
     if problems:
         known_ct = sum(1 for _, _, _, s, n in rows if s not in ("ok", "— (absent both)") and n)
