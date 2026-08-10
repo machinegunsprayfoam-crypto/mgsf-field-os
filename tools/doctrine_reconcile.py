@@ -428,7 +428,7 @@ def main():
         print("✗ %d issue(s): %d mismatch, %d present-in-only-one (%d known/documented)."
               % (problems, mism, only, known_ct))
         print("  mgsf-core wins — reconcile the unexpected ones; the known one tracks an owner to-do.")
-    else:
+    elif not skip_12:
         print("✓ in sync — every checked constant matches.")
 
     # ---------------- BODY 3: public/estimator.html seed tables ----------------
