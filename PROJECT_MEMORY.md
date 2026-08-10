@@ -252,6 +252,26 @@ _Last updated: 2026-08-07 (pm)._
   in `index.html`: they now say the app-generated statement is clean, name the Drive doc as the thing to
   scrub/replace, and state the correct rule (haul own rig interstate ≥10,001 lb = private carrier → USDOT
   required, for-hire MC NOT needed; free at fmcsa.dot.gov). +4 tests; `sw.js` v86→v87; gate **112 / 2806**.
+- **★ OPS MANAGER — the foreman over the doer agents (PR #117).** New `api/ops-manager.js`: the
+  supervisor Clifton asked for over the 5 doers. Pure `supervise(plans, stampISO)` reads all five
+  doers' plan() outputs and returns: a cross-agent **priority queue ranked by REVENUE/RISK** (role
+  weights: collector/AR 100 > lead-closer 90 > bid-chaser 80 > sub-compliance 70 > pm 50; ready
+  steps rank above blocked), **escalations** (steps blocked on a dark tool, naming the missing env),
+  each agent's **station** (reuses `agents.stationFrom`), **counts**, and a one-line owner **summary**
+  ("N ready across M desks; K blocked. Top: <agent> → <who> (<why>)"). Gated handler wires the real
+  jobs board + subs roster into `agents.plan()`/`planSubCompliance()`. RECOMMENDS + QUEUES ONLY —
+  outward still routes through the arms (act.js) approval gate; never auto-sends, never fabricates.
+  13 tests; registered in tools.js (pm) + SUITES; gate **113 / 2819**.
+  - **NEXT (optional):** a Command Center "Foreman" strip (summary + top-5 approve-queue), like the
+    Work Hub strip; and once ALERTS_WEBHOOK_URL is set, an approve-all-Tier-1 flow.
+- **DRIVE (interactive-session work, not repo):** learned + mapped the real Drive (My Drive, numbered
+  00–17 folders + IDs; authoritative spec = `MGSF_File_System_Architecture_v2.1` in 15_SYSTEM).
+  Authored the **`mgsf-drive-filing`** skill (reconciled to v2.1: My Drive not shared, PERSONAL
+  off-limits, 4 rules, domain edges, naming + header block) — saved to the user skill library AND
+  packaged as `mgsf-drive-filing.skill` in `13_KLYFTON_AI/02_Skills_and_Packs` (verified 4727 B).
+  FOUND: `mgsf-drive-ops` skill has a WRONG fact (cites a shared drive `0ALy2z…` v2.1 retracted) —
+  fix pending. Open Drive cleanup from v2.1 §8: O4 physical inventory count (highest value), O6 six
+  folders missing 00_INDEX (07/09/11/12/13/14/16), O1 loose files at My Drive root.
 _Earlier 8/07 detail below._
 
 _Last updated: 2026-08-07._
