@@ -733,4 +733,4 @@ _Last updated: 2026-08-07._
   an `exclude` option. GATED: inert unless a free hub key is set; returns an Anthropic-shaped
   response so callers are unchanged; never fabricates. +7 tests (klyfton 72, provider 41); gate
   **113 / 2837**. So Klyfton keeps answering if Claude is down / rate-limited — resilience + cost
-  relief. (Not changed: quality-first design keeps Claude PRIMARY; the streaming path still Claude-only.)
+  relief. (Not changed: quality-first design keeps Claude PRIMARY.) FOLLOW-UP (PR #123): the STREAMING path (callClaudeStream, interactive chat) now fails over too — a streaming outage emits the hub answer as one chunk. Both paths ride through an Anthropic outage.
