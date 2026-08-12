@@ -133,9 +133,22 @@ function compose(data) {
     hot.forEach((f) => lines.push(`- ${f.title || f.area}${f.action ? ` → ${f.action}` : ""}`));
   }
 
+  // Foreman's top actions (injected by the handler from ops-manager.supervise()). Surfaces the
+  // highest revenue/risk things to approve — the ONE next move — right in the brief. Pure: read-only.
+  const fx = (data.foreman && Array.isArray(data.foreman.top) ? data.foreman.top : []).slice(0, 3);
+  if (fx.length) {
+    lines.push("");
+    lines.push("Approve next (Foreman):");
+    fx.forEach((p) => {
+      const amt = (num(p.value) > 0) ? ` (${money(num(p.value))})` : "";
+      const blk = p.blocked ? " — BLOCKED (dark tool)" : "";
+      lines.push(`- ${p.label || p.agent} → ${p.who}${amt}${p.action ? `: ${p.action}` : ""}${blk}`);
+    });
+  }
+
   return {
     text: lines.join("\n"),
-    stats: { today: today.length, week, overdue, ar, arLate, invoices: inv.length, cold: cold.length, coldVal, pipeline: pipe, findings: hot.length, calls: callsAll.length },
+    stats: { today: today.length, week, overdue, ar, arLate, invoices: inv.length, cold: cold.length, coldVal, pipeline: pipe, findings: hot.length, calls: callsAll.length, foreman: fx.length },
   };
 }
 
@@ -148,7 +161,17 @@ module.exports = async (req, res) => {
     // Fold the top business-audit findings into the brief (pure audit — degrades to none on any error).
     let findings = [];
     try { const a = require("./business-audit").audit({ leads, jobs, estimates, invoices, certs }, { asOfMs: Date.now() }); findings = (a && a.findings) || []; } catch (e) {}
-    const brief = compose({ jobs, leads, invoices, findings });
+    // Fold the Foreman's top revenue/risk actions in too (ops-manager over the doer agents' plans;
+    // degrades to none on any error). Recommend-only — the brief never dispatches.
+    let foreman = null;
+    try {
+      const ag = require("./agents"); const om = require("./ops-manager");
+      const nowMs = Date.now();
+      const plans = ["pm", "collector", "bid-chaser", "lead-closer"].map((id) => ag.plan(id, jobs, nowMs, process.env));
+      if (typeof ag.planSubCompliance === "function") plans.push(ag.planSubCompliance(Array.isArray(certs) ? certs : [], nowMs, process.env));
+      foreman = om.supervise(plans, new Date().toISOString());
+    } catch (e) {}
+    const brief = compose({ jobs, leads, invoices, findings, foreman });
 
     const wantSend = req.query && String(req.query.send) === "1";
     // Never fire on Sundays — owner boundary (family day). Preview still works any day.

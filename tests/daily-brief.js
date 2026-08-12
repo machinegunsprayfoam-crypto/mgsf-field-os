@@ -123,5 +123,18 @@ ok("missing arrays default safely", B.compose({ jobs: null, leads: undefined }).
 ok("invoice owed exactly > 0.5 is included", B.compose({ invoices: [{ amt: 100, dep: 99 }] }).stats.invoices === 1);
 ok("invoice fully paid by deposit (0 owed) excluded", B.compose({ invoices: [{ amt: 100, dep: 100 }] }).stats.invoices === 0);
 
+// ---- Foreman top actions folded into the brief (injected, like findings) ----
+(() => {
+  const fm = { top: [
+    { agent: "collector", label: "Collector", who: "Ray", action: "AR reminder", value: 5000, blocked: false },
+    { agent: "bid-chaser", label: "Bid Chaser", who: "Deb", action: "reheat bid", value: 0, blocked: true },
+  ] };
+  const b = B.compose({ foreman: fm });
+  ok("brief surfaces 'Approve next (Foreman)' with the top action + $", /Approve next \(Foreman\)/.test(b.text) && /Collector → Ray \(\$5,?000\)/.test(b.text));
+  ok("a blocked foreman item is flagged BLOCKED in the brief", /Deb.*BLOCKED/.test(b.text));
+  ok("foreman count lands in stats", b.stats.foreman === 2);
+  ok("no foreman data ⇒ no Foreman section (backward-compatible)", !/Approve next/.test(B.compose({}).text) && B.compose({}).stats.foreman === 0);
+})();
+
 console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
