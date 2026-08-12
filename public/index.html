@@ -713,6 +713,9 @@
         <h3 style="font-size:13px;color:var(--or);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.05em">Battery · long-term memory</h3>
         <div id="ccBattery"></div>
         <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">A <b>very-large-capacity pack</b> — the persistent memory (pgvector) the machine runs on. Every approval you make is <b style="color:#22c55e">regen</b> that recharges it, so it does more from memory and burns less fuel re-deriving what it already knows.</div>
+        <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Foreman · what to approve next</h3>
+        <div id="ccForeman" style="font-size:12px;line-height:1.6"></div>
+        <div style="opacity:.55;font-size:11px;margin-top:6px;line-height:1.5">The <b>Ops Manager</b> reads all five doer-agents' plans, ranks the crew's next actions by <b>revenue/risk</b> (cash-in-hand AR &gt; speed-to-lead &gt; cooling bid &gt; compliance-halt &gt; throughput), and surfaces what's blocked. Recommends only — every outward step still needs your approval.</div>
         <h3 style="font-size:13px;color:var(--or);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.05em">Agents
           <a href="cube-map.html" target="_blank" rel="noopener" style="float:right;font-size:11px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--or);text-decoration:none;border:1px solid rgba(249,115,22,.35);border-radius:6px;padding:3px 9px">🧊 Council cube-map ↗</a></h3>
         <div id="ccGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
@@ -13499,6 +13502,43 @@ window.renderCommand = async function(){
     set('ccNote','Command Center endpoint unavailable.');
   }
   try{ renderWorkHub(); }catch(e){}
+  try{ renderForeman(); }catch(e){}
+};
+
+// Foreman — the Ops Manager (api/ops-manager.js) rollup: reads the crew's plans, ranks the next
+// actions by revenue/risk, and shows an approve-queue + what's blocked. Recommend-only; every
+// outward step still passes the arms approval gate. Feeds the real jobs board + subs from appState.
+window.renderForeman = async function(){
+  var host = document.getElementById('ccForeman'); if(!host) return;
+  var e = function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  host.innerHTML = '<span style="opacity:.6">Reading the crew…</span>';
+  var jobs = (window.appState && Array.isArray(appState.jobs)) ? appState.jobs : [];
+  var subs = (window.appState && Array.isArray(appState.subs)) ? appState.subs : [];
+  var d = await _sysPost('/api/ops-manager', {jobs:jobs, subs:subs, now:new Date().toISOString()});
+  if(!d || d.__err){ host.innerHTML = '<span style="opacity:.6">Foreman endpoint unavailable — loads once the app is deployed.</span>'; return; }
+  if(d.__gated){ host.innerHTML = '<span style="opacity:.6">Enter the crew code to view the Foreman.</span>'; return; }
+  if(!d.ok){ host.innerHTML = '<span style="opacity:.6">Foreman unavailable ('+e(String(d.error||'?'))+').</span>'; return; }
+  var c = d.counts||{};
+  var head = '<div style="opacity:.8;margin-bottom:8px">'+e(d.summary||'')+'</div>'
+    + '<div style="opacity:.6;font-size:11px;margin-bottom:8px">'+(c.working||0)+' working · '+(c.blocked||0)+' blocked · '+(c.idle||0)+' idle desks · '+(c.ready||0)+' ready action'+((c.ready===1)?'':'s')+(c.escalations?(' · '+c.escalations+' stuck'):'')+'</div>';
+  var top = (d.top||[]).length
+    ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--or);margin-bottom:4px">Approve queue · top by revenue/risk</div>'
+      + d.top.map(function(p,i){
+          var dot = p.blocked ? '<span style="color:#ffcf6b">⛔</span>' : (p.ready ? '<span style="color:#4ad9c4">▲</span>' : '<span style="color:#9aa4b0">•</span>');
+          return '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)">'
+            + (i+1)+'. '+dot+' <b style="color:var(--or)">'+e(p.label||p.agent)+'</b> → <b>'+e(p.who)+'</b>'
+            + (p.stage?' <span style="opacity:.55">['+e(p.stage)+']</span>':'')
+            + (p.action?(' — '+e(p.action)):'')
+            + '<br><span style="opacity:.5;font-size:11px">'+e(p.why||'')+(p.blocked?(' · blocked on '+e(p.blockedBy||'a dark tool')):'')+'</span>'
+            + '</div>';
+        }).join('')
+    : '<span style="opacity:.6">All quiet — no open actions across the crew.</span>';
+  var esc = (d.escalations||[]).length
+    ? '<div style="margin-top:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#ffcf6b;margin-bottom:4px">Blocked — unlock these tools</div>'
+      + d.escalations.map(function(x){ return '<div style="font-size:12px">⛔ <b>'+e(x.who)+'</b> ('+e(x.label||x.agent)+') — set <code>'+e(x.blockedBy||'?')+'</code></div>'; }).join('')
+      + '</div>'
+    : '';
+  host.innerHTML = head + top + esc;
 };
 
 // Work Hub — the agent operating layer (api/workhub.js). Shows each agent's workstation

@@ -262,8 +262,12 @@ _Last updated: 2026-08-07 (pm)._
   jobs board + subs roster into `agents.plan()`/`planSubCompliance()`. RECOMMENDS + QUEUES ONLY —
   outward still routes through the arms (act.js) approval gate; never auto-sends, never fabricates.
   13 tests; registered in tools.js (pm) + SUITES; gate **113 / 2819**.
-  - **NEXT (optional):** a Command Center "Foreman" strip (summary + top-5 approve-queue), like the
-    Work Hub strip; and once ALERTS_WEBHOOK_URL is set, an approve-all-Tier-1 flow.
+  - **Command Center "Foreman" strip — DONE (PR #118).** `renderForeman()` POSTs the real jobs board
+    + subs (from `appState`) to `/api/ops-manager` and renders the one-line summary, the desk counts,
+    the **top-5 approve-queue ranked by revenue/risk** (▲ ready / ⛔ blocked / • in-app, each with its
+    "why"), and an **escalations** block naming the env var to unlock each dark tool. Recommend-only
+    label. Wired into `renderCommand()`; `sw.js` v87→v88; gate **113 / 2819** (frontend-wiring guard).
+  - **NEXT (optional):** once ALERTS_WEBHOOK_URL is set, an approve-all-Tier-1 flow from the queue.
 - **DRIVE (interactive-session work, not repo):** learned + mapped the real Drive (My Drive, numbered
   00–17 folders + IDs; authoritative spec = `MGSF_File_System_Architecture_v2.1` in 15_SYSTEM).
   Authored the **`mgsf-drive-filing`** skill (reconciled to v2.1: My Drive not shared, PERSONAL
