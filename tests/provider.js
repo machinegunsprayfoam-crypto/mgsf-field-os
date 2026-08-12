@@ -124,6 +124,10 @@ ok("parse: garbage ⇒ empty string (no throw)", P.parseResponse("openai", null)
   const r4 = await P.chatWithFallback({ provider: "claude", user: "x", _chat: okAll, _isConfigured: () => false });
   ok("fallback: none configured ⇒ no_configured_provider", r4.ok === false && r4.reason === "no_configured_provider");
 
+  // exclude: skip a named engine (the hive's Claude→hub failover excludes "claude" — the one that just failed)
+  const r5 = await P.chatWithFallback({ provider: "claude", user: "x", exclude: ["claude"], _chat: okAll, _isConfigured: allConf });
+  ok("fallback: exclude skips the named provider (not claude)", r5.ok === true && r5.provider !== "claude" && r5.tried.every((t) => t.provider !== "claude"));
+
   console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

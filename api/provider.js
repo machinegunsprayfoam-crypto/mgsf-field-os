@@ -157,7 +157,8 @@ async function chatWithFallback(opts) {
   opts = opts || {};
   const chatFn = opts._chat || chat;
   const isConf = opts._isConfigured || isConfigured;
-  const chain = fallbackChain(opts.provider || "claude").filter(isConf);
+  const skip = Array.isArray(opts.exclude) ? opts.exclude : [];
+  const chain = fallbackChain(opts.provider || "claude").filter(isConf).filter((id) => skip.indexOf(id) < 0);
   if (!chain.length) return { ok: false, reason: "no_configured_provider", tried: [] };
   const tried = [];
   for (const id of chain) {

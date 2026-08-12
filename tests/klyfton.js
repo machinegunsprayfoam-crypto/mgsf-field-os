@@ -228,5 +228,25 @@ ok("MEMORY_MIND_MAP exported + non-empty", Array.isArray(A.MEMORY_MIND_MAP) && A
 ok("isActionCommand is a function", typeof A.isActionCommand === "function");
 ok("applyMemoryContext is a function", typeof A.applyMemoryContext === "function");
 
+// ---- multi-engine failover: Anthropic payload → provider-hub shape (pure translation) ----
+console.log("\n-- provider-hub failover translation --");
+ok("anthropicPayloadToHub is a function", typeof A.anthropicPayloadToHub === "function");
+(() => {
+  const flat = A.anthropicPayloadToHub({
+    system: "You are Klyfton.",
+    max_tokens: 4000,
+    messages: [
+      { role: "user", content: "How much for 6000 bf?" },
+      { role: "assistant", content: [{ type: "text", text: "Ballpark…" }] },
+      { role: "user", content: [{ type: "text", text: "closed cell" }, { type: "image", source: {} }] },
+    ],
+  });
+  ok("carries the system prompt through", flat.system === "You are Klyfton.");
+  ok("collapses turns into one prefixed user string", /User: How much for 6000 bf\?/.test(flat.user) && /Assistant: Ballpark…/.test(flat.user) && /User: closed cell/.test(flat.user));
+  ok("drops non-text blocks (images) — fallback engines are text-only", !/image/.test(flat.user));
+  ok("carries max_tokens (defaults sanely)", flat.maxTokens === 4000 && A.anthropicPayloadToHub({}).maxTokens === 1500);
+  ok("empty payload ⇒ empty user (caller skips fallback), never throws", A.anthropicPayloadToHub({}).user === "");
+})();
+
 console.log("\n" + (fail ? "✗ " : "✓ ") + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
