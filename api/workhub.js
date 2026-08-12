@@ -174,7 +174,24 @@ module.exports = async (req, res) => {
   }
 };
 
+// Persist an agent's derived station onto the shared board (so agent runs auto-populate the Work
+// Hub + Foreman once KV is attached). Best-effort + GATED: a no-op returning {configured:false}
+// without KV — never throws, never fabricates. Mirrors the handler's "station" action write.
+async function persistStation(agent, patch, stampISO) {
+  if (!KV_ON) return { ok: false, configured: false };
+  try {
+    const id = agentId(agent || (patch && patch.agent));
+    const stations = await kvGet(K_STATIONS);
+    const prev = stations.find((s) => s && s.agent === id);
+    const next = station(prev, Object.assign({ agent: id }, patch || {}), stampISO);
+    const merged = stations.filter((s) => s && s.agent !== id).concat([next]).slice(-100);
+    await kvSet(K_STATIONS, merged);
+    return { ok: true, station: next };
+  } catch (e) { return { ok: false, error: String((e && e.message) || e).slice(0, 120) }; }
+}
+
 module.exports.station = station;
+module.exports.persistStation = persistStation;
 module.exports.normMessage = normMessage;
 module.exports.handoff = handoff;
 module.exports.inbox = inbox;

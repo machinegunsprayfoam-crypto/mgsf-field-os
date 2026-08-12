@@ -238,9 +238,12 @@ _Last updated: 2026-08-07 (pm)._
   `{action:'hub'}` to `/api/workhub`, renders the desk grid (status dot + task + updated-at), open handoffs,
   and the recent intranet feed — dormant-honest (says "Attach Vercel KV…" when `configured:false`, "Enter the
   crew code…" when gated). Wired into `renderCommand()`; `sw.js` v85→v86.
-  - **NEXT (follow-on, optional):** have the `agents.js` doers actually POST station+handoff to workhub KV
-    on each run (currently `stationFrom` is derived + returned, not yet persisted); bridge gearbox events →
-    intranet posts. Both are inert until Vercel KV is attached.
+  - **Station persistence — DONE (PR #119).** `api/workhub.js` gained `persistStation(agent, patch,
+    stampISO)` — gated + honest (returns `{configured:false}` without KV, never throws), mirrors the
+    handler's station write. The `agents.js` handler now calls it best-effort after deriving
+    `out.station`, so **agent runs auto-populate the Work Hub board + Foreman the moment Vercel KV is
+    attached** — no manual station POSTs needed. +1 test (gate **113 / 2820**). (Still open: bridge
+    gearbox events → intranet posts; agent↔agent handoff on cross-stage transitions.)
 - **★ CAPABILITY STATEMENT — USDOT/MC overclaim closed (list #21, PR #116).** The federal-readiness
   checklist flagged that a cap statement overclaims "active USDOT/MC" while USDOT is NOT registered —
   a misrepresentation risk on a federal doc. Root cause: the overclaim is in the **legacy Drive corporate
