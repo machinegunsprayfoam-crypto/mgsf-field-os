@@ -79,6 +79,13 @@ ok("replace-the-slab objection query ⇒ SALES_OBJECTIONS", A.retrieve("customer
 ok("price-shopping/other-quotes query ⇒ SALES_OBJECTIONS", A.retrieve("customer is going to get other quotes and shop around before deciding").blocks.includes("SALES_OBJECTIONS"));
 ok("wait-until-next-year query ⇒ SALES_OBJECTIONS", A.retrieve("customer asks if the job can wait until next year").blocks.includes("SALES_OBJECTIONS"));
 
+// ---- DISCOVERY_QUALIFY: front-of-funnel intake/qualification/discovery queries route here ----
+ok("discovery-call query ⇒ DISCOVERY_QUALIFY", A.retrieve("new lead called wanting a discovery call about spray foam").blocks.includes("DISCOVERY_QUALIFY"));
+ok("qualify-prospect query ⇒ DISCOVERY_QUALIFY", A.retrieve("how do I qualify this prospect before scheduling an assessment").blocks.includes("DISCOVERY_QUALIFY"));
+ok("quote-request/intake query ⇒ DISCOVERY_QUALIFY", A.retrieve("customer wants a quote request for crawl space encapsulation").blocks.includes("DISCOVERY_QUALIFY"));
+ok("out-of-region lead query ⇒ DISCOVERY_QUALIFY", A.retrieve("we got a lead from out of state, is this worth pursuing").blocks.includes("DISCOVERY_QUALIFY"));
+ok("first-call/new-customer query ⇒ DISCOVERY_QUALIFY", A.retrieve("first call with a new customer, what should I ask").blocks.includes("DISCOVERY_QUALIFY"));
+
 // ---- WARRANTY_CALLBACK: post-job "it's doing X again" complaints route to the triage playbook ----
 ok("foam gap/again query ⇒ WARRANTY_CALLBACK", A.retrieve("customer called back saying there is a gap in the foam again").blocks.includes("WARRANTY_CALLBACK"));
 ok("slab settled/covered query ⇒ WARRANTY_CALLBACK", A.retrieve("the slab is settling again, is this covered under our warranty").blocks.includes("WARRANTY_CALLBACK"));

@@ -343,6 +343,30 @@ const BANK = [
     avoid: ["do it for free", "audits are pointless", "skip the test"],
     ref: "PROOF_ECONOMICS: run the audit as a paid diagnostic that converts — credit the fee toward the job; the ACH50/before-after proof sells the scope and justifies the premium",
   },
+  // ---- discovery / lead qualification (grades DISCOVERY_QUALIFY: qualify -> diagnose the root cause ->
+  // route to an assessment (never a price) -> capture, or an honest referral when it's not a fit) ----
+  {
+    id: "disc-diagnose-foam", module: "discovery",
+    q: "New caller says her house is drafty and cold with high energy bills, and asks if spray foam is worth it. What do you ask, and what's the next step?",
+    include: [
+      ["existing insulation", "building type", "new construction or retrofit", "new-build or retrofit", "condensation", "what's the complaint"],
+      ["on-site assessment", "blower door", "blower-door test", "schedule an assessment", "book an assessment"],
+      ["after the assessment", "pricing comes after", "not a price today", "no price until", "defers to doctrine", "no number today"],
+    ],
+    avoid: ["i can quote you", "the price is", "guaranteed savings", "here's what it'll cost"],
+    ref: "DISCOVERY_QUALIFY: diagnose the actual complaint (drafty/cold, high bills, condensation, building type, existing insulation, new-build vs retrofit) before naming a service, then route to an on-site assessment/blower-door test — never quote a price off a phone description; pricing defers to DOCTRINE and the actual assessment.",
+  },
+  {
+    id: "disc-out-of-region", module: "discovery",
+    q: "A caller from Boise, Idaho wants a full re-roof tear-off and shingle replacement — is this a job for us?",
+    include: [
+      ["not a fit", "outside our territory", "not in our service area", "out of region", "outside mt", "outside our footprint"],
+      ["refer", "point them to", "someone local", "a local contractor", "who is local"],
+      ["can't service", "don't overclaim", "won't stretch", "honest", "not our lane"],
+    ],
+    avoid: ["we can make it work", "we'll come do it anyway", "yes we cover idaho", "we service idaho"],
+    ref: "DISCOVERY_QUALIFY/BUSINESS: MGSF's territory is MT, ND, SD, WY and a re-roof tear-off isn't an offered service — an out-of-region, out-of-trade lead isn't a maybe; say so plainly and refer them to someone local rather than stretch a coverage claim MGSF can't back.",
+  },
   // ---- sales objections (grades the SALES_OBJECTIONS brain block: acknowledge -> reframe -> proof/ROI
   // -> financing off-ramp -> honest boundary, without guaranteeing a number or claiming mold elimination) ----
   {
