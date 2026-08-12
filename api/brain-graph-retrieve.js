@@ -23,7 +23,7 @@ const CLUSTER_BLOCKS = {
   "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass)
   "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass)
   "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
-  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES"],     // concrete/lifting/void/soil/seawall
+  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES", "CONCRETE_ENGINEERING"], // concrete/lifting/void/soil/seawall + the deep geotech diagnostic block
   "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE"], // code/irc/scope/trade/calculator/safety
   "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE"], // barrier/air/vapor/moisture/mold
   "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE", "PROOF_ECONOMICS"], // blower door/proof/ACH50 (BPI) + turning proof into money / gov-mandated testing (proof pass)
@@ -78,6 +78,12 @@ const ALIAS = {
   crawlspace: ["foam", "moisture"], attic: ["attic", "foam"], wall: ["foam", "spray"], roof: ["roof", "foam"],
   barn: ["foam", "spray"], shop: ["foam", "spray"], building: ["building", "load"], metal: ["foam", "building"],
   concrete: ["concrete", "soil"], slab: ["concrete", "soil"], seawall: ["concrete", "soil"], soil: ["soil", "concrete"],
+  // Concrete/geotech diagnostics → Soil Stability (carries CONCRETE_ENGINEERING — root-cause diagnosis + poly-lifting physics)
+  settlement: ["soil", "structural"], settle: ["soil", "structural"], heave: ["soil", "structural"], frost: ["soil", "structural"],
+  polyjacking: ["lifting", "concrete"], polyjack: ["lifting", "concrete"], mudjack: ["lifting", "concrete"], mudjacking: ["lifting", "concrete"],
+  pier: ["foundation", "structural"], piling: ["foundation", "structural"], bearing: ["soil", "structural"], capacity: ["soil", "structural"],
+  expansive: ["soil", "structural"], washout: ["soil", "void"], uneven: ["concrete", "structural"], trip: ["concrete", "structural"],
+  hazard: ["concrete", "structural"],
   // Moisture / envelope → Moisture Control
   moisture: ["moisture", "barrier"], vapor: ["vapor", "barrier"], mold: ["mold", "moisture"], air: ["air", "barrier"], sealing: ["air", "barrier"],
   // BPI / blower door → Pressure Testing

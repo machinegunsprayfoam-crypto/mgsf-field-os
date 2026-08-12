@@ -734,3 +734,21 @@ _Last updated: 2026-08-07._
   response so callers are unchanged; never fabricates. +7 tests (klyfton 72, provider 41); gate
   **113 / 2837**. So Klyfton keeps answering if Claude is down / rate-limited — resilience + cost
   relief. (Not changed: quality-first design keeps Claude PRIMARY.) FOLLOW-UP (PR #123): the STREAMING path (callClaudeStream, interactive chat) now fails over too — a streaming outage emits the hub answer as one chunk. Both paths ride through an Anthropic outage.
+
+### 2026-08-12 (cont.) — Brain gains a CONCRETE_ENGINEERING expert block (PR pending)
+- The hive had first-class deep-engineering blocks for the FOAM side (`FOAM_SPECS`,
+  `HVAC_ENGINEERING`) but concrete lifting — half the company name — had only business/service/
+  pricing/equipment coverage scattered across SERVICE_ARCHITECTURE/EQUIPMENT/SUPPLIERS/DOCTRINE and
+  no expert reasoning home. Added **`CONCRETE_ENGINEERING`** in `api/klyfton.js` (registered in
+  `BRAIN_BLOCKS` + `BRAIN_ORDER`, placed right after `HVAC_ENGINEERING` so the two engineering blocks
+  sit together): root-cause slab diagnosis (consolidation vs frost heave vs expansive clay vs
+  washout/void vs poor compaction), the physics of poly lifting vs mudjacking, the honest
+  lift-vs-replace-vs-pier boundary (when polyjacking is NOT the fix → refer to an engineer, even if it
+  costs the job), void fill / soil stab (Terra-Lok) / seawall mechanics, and field QA (port layout,
+  laser-monitored lift, void-fill confirmation). Retrieval: added `CONCRETE_ENGINEERING` to the
+  "Soil Stability" cluster in `api/brain-graph-retrieve.js` + new aliases (settlement, heave, frost,
+  polyjacking, mudjack, pier, piling, bearing, expansive, washout, uneven, trip, hazard). +2
+  curriculum scenarios (`con-diagnosis`, `con-honest-boundary`), +4 retrieve tests, +1 klyfton test.
+  NON-FABRICATION held: every PSI/density/lift-capacity defers to product TDS, all pricing defers to
+  DOCTRINE (soil-stab/seawall PENDING), ends with a licensed-engineer guardrail on structural calls.
+  Gate **113 / 2842**. So Klyfton now reasons like a geotech pro on the concrete side, not just sells it.
