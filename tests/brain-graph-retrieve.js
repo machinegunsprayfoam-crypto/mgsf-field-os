@@ -70,6 +70,15 @@ ok("silica query ⇒ SAFETY_OSHA", A.retrieve("silica dust controls when cutting
 ok("confined-space query ⇒ SAFETY_OSHA", A.retrieve("confined space rules for crawl space encapsulation").blocks.includes("SAFETY_OSHA"));
 ok("SDS query ⇒ SAFETY_OSHA", A.retrieve("where is the SDS for our A-side isocyanate").blocks.includes("SAFETY_OSHA"));
 
+// ---- SALES_OBJECTIONS: objection/rebuttal queries across price, DIY, safety, mold, and replace-the-slab ----
+ok("too-expensive/fiberglass query ⇒ SALES_OBJECTIONS", A.retrieve("customer says spray foam is too expensive and fiberglass is way cheaper").blocks.includes("SALES_OBJECTIONS"));
+ok("DIY/cheaper-guy query ⇒ SALES_OBJECTIONS", A.retrieve("customer wants to DIY it themselves or hire a cheaper guy").blocks.includes("SALES_OBJECTIONS"));
+ok("off-gassing/safety query ⇒ SALES_OBJECTIONS", A.retrieve("is spray foam safe, worried about off-gassing and the smell").blocks.includes("SALES_OBJECTIONS"));
+ok("mold objection query ⇒ SALES_OBJECTIONS", A.retrieve("does spray foam cause mold or trap moisture").blocks.includes("SALES_OBJECTIONS"));
+ok("replace-the-slab objection query ⇒ SALES_OBJECTIONS", A.retrieve("customer wants to just replace the slab instead of lifting it").blocks.includes("SALES_OBJECTIONS"));
+ok("price-shopping/other-quotes query ⇒ SALES_OBJECTIONS", A.retrieve("customer is going to get other quotes and shop around before deciding").blocks.includes("SALES_OBJECTIONS"));
+ok("wait-until-next-year query ⇒ SALES_OBJECTIONS", A.retrieve("customer asks if the job can wait until next year").blocks.includes("SALES_OBJECTIONS"));
+
 // ---- no concept match ⇒ safe non-empty default (never empty, never fabricated) ----
 const none = A.retrieve("zzzz qqqq wwww");
 ok("no-match query still returns identity blocks (non-empty)", none.blocks.length > 0 && A.ALWAYS.every((b) => none.blocks.includes(b)));

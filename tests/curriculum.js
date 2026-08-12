@@ -70,6 +70,31 @@ async function main() {
   ok("good service→compliance-trigger answer passes", C.grade("Because it's public, the job type changes the rulebook — a public concrete lift can trigger prevailing wage / certified payroll plus state registration and maybe a bond, unlike a private driveway.", ctrig).pass);
   ok("'nothing changes, price it the same' FAILS the trigger item", C.grade("Nothing changes — price it the same as a driveway.", ctrig).pass === false);
 
+  // ---- sales objections (grades the SALES_OBJECTIONS brain block: acknowledge -> reframe -> proof/ROI
+  // -> financing off-ramp -> honest boundary) ----
+  const objExp = C.BANK.find((i) => i.id === "obj-expensive");
+  ok("good 'too expensive vs fiberglass' answer passes (reframe + ROI + financing, no guarantee)", C.grade(
+    "I get it, price is a real concern. Foam air-seals and insulates in one step — fiberglass batts don't stop air movement the same way. "
+    + "I can show a payback range off the ROI estimate, but I won't promise a number, it depends on the assessment. And there's $0 down Hearth financing if cash flow is the issue.",
+    objExp
+  ).pass);
+  ok("'we guarantee you'll save half your bill' FAILS the too-expensive item (banned guarantee)", C.grade(
+    "Don't worry about the price — we guarantee you'll save half your heating bill, guaranteed savings, trust me.",
+    objExp
+  ).pass === false);
+
+  const objMold = C.BANK.find((i) => i.id === "obj-mold");
+  ok("good mold-myth answer passes (corrects myth, controls-moisture framing, no elimination claim)", C.grade(
+    "That's a common misconception — closed-cell foam is actually an air barrier and vapor barrier that helps control moisture and condensation, not trap it. "
+    + "I can't promise mold will never come back — that's not something spray foam does; if mold is already present, that's a separate remediation job.",
+    objMold
+  ).pass);
+  ok("'spray foam eliminates mold, guaranteed, mold-proof' FAILS the mold item (banned elimination claim)", C.grade(
+    "Yes, spray foam eliminates mold completely — once we spray it, mold is gone for good, guaranteed, it's basically mold-proof.",
+    objMold
+  ).pass === false);
+  ok("sales-objections module is present in the bank", C.BANK.some((i) => i.module === "sales-objections"));
+
   // ---- runEval wiring ----
   const noFn = await C.runEval();
   ok("runEval with no answer fn ⇒ ok:false, explains it needs a model", noFn.ok === false && noFn.error === "no_answer_fn");

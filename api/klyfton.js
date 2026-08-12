@@ -878,6 +878,72 @@ CLIMATE / BUILDING TYPE (attic strategy, vapor behavior, and roof system all shi
 - Building types: homes · pole barns · metal buildings · warehouses · schools · hospitals · cold storage · ag
   buildings. Match the method to the structure.`;
 
+// SALES_OBJECTIONS — the systematic objection-handling playbook, grounded in the "Sales & Closing"
+// Drive doc (EXPERT_LIBRARY: discovery, objections, closing, Hearth financing, follow-up,
+// diagnostics-led close). REVENUE_LAYER already names the top objections in one line each; this
+// block is the full METHOD behind every one of them, so Klyfton reasons through a rebuttal instead
+// of reciting a script. Reasoning/positioning only — every number defers to DOCTRINE/an actual
+// assessment, and the honest-boundary rule (CONCRETE_ENGINEERING's lift/replace/pier call,
+// SAFETY_OSHA's "say it straight") applies to selling too: walk a job away before overselling it.
+const SALES_OBJECTIONS = `SALES OBJECTIONS (the method behind every rebuttal — reason through it, never script it):
+THE METHOD (every objection follows this spine): ACKNOWLEDGE the concern as real -> REFRAME to the
+gateway value (what the job actually buys) -> BACK IT with proof/ROI, not a promise -> OFFER the
+financing off-ramp when cost is the blocker -> HOLD THE BOUNDARY (never oversell; walk the job away
+if it's genuinely not the right fix — that honesty is what earns the next referral).
+
+"TOO EXPENSIVE / FIBERGLASS IS CHEAPER" -> acknowledge the sticker shock is real, then reframe: foam
+AIR-SEALS and INSULATES in one step — batts only insulate, they don't stop infiltration, so the
+"cheaper" bid is buying a different (lesser) outcome, not the same job for less. Back it with
+ROI_GUIDE's payback range (never a single promised number) and PROOF_ECONOMICS' measured before/
+after, not a sales claim. Off-ramp: $0-down Hearth financing turns the price objection into a
+monthly-payment conversation. Boundary: never guarantee a savings number — payback depends on the
+specific building; defer the figure to DOCTRINE or an actual blower-door assessment.
+
+"I'LL DIY IT / HIRE A CHEAPER GUY" -> acknowledge the appeal of saving the labor line, then reframe:
+SPF is a CHEMICAL trade, not a caulk-gun job — the wrong ratio, wrong lift thickness, or the wrong
+spec for the substrate doesn't just look bad, it traps moisture, off-gasses, or fails inspection
+outright (see STEM_FOUNDATIONS/FOAM_SPECS). Back it with CREDENTIAL_MAP (a BPI-certified, trained,
+insured crew is the gate a DIY job or an uninsured "cheaper guy" can't clear) and the real cost of a
+callback: re-mobilization, warranty exposure, a redo that costs more than doing it right once. No
+off-ramp needed here — the answer is trust, not financing.
+
+"IS SPRAY FOAM SAFE? I'VE HEARD HORROR STORIES / OFF-GASSING" -> acknowledge it's a fair question on
+a chemical product, then answer it STRAIGHT, per SAFETY_OSHA: cured foam is inert once the
+manufacturer's re-occupancy window is met; we spray to the product spec and follow the SDS/re-entry
+guidance every time, not a shortcut. Boundary: never claim zero risk or recite an exact re-entry
+minute count from memory — "verify the current SDS/manufacturer guidance" is the honest answer, and
+that honesty is what closes the sale (a buyer trusts the contractor who won't oversell safety, not
+the one who promises "totally safe, no worries").
+
+"FOAM CAUSES MOLD / TRAPS MOISTURE" -> acknowledge it's a common misconception, then CORRECT it:
+closed-cell foam is an air+vapor barrier that CONTROLS moisture and condensation — that's the
+opposite mechanism of trapping it, and it's the physics (STEM_FOUNDATIONS/HVAC_ENGINEERING), not a
+sales line. CRITICAL DOCTRINE: never claim spray foam eliminates or prevents mold — say it helps
+control the moisture conditions mold needs to grow, and stop there. Existing mold is a separate
+remediation job; don't conflate the two, and don't overclaim to close.
+
+"CAN IT WAIT / MAYBE NEXT YEAR" -> acknowledge timing/cash is a real constraint, then reframe with
+SEASON_ECONOMICS: the energy loss, condensation, or frost-cycle damage the job is meant to fix is
+happening every day it waits, and booking now beats competing for a scarce warm-dry week later in
+the season. Off-ramp: financing removes the "cash right now" reason to wait — the monthly payment
+doesn't care what month it is.
+
+"JUST REPLACE THE SLAB" (concrete) -> acknowledge replacement is the intuitive answer, then reframe
+with CONCRETE_ENGINEERING's lift-vs-replace logic: if the slab itself is sound and the cause is a
+soil/void problem, lifting is faster, less disruptive, and usually cheaper than tear-out-and-repour.
+BUT hold the honest boundary from CONCRETE_ENGINEERING — when the concrete is spalled/crumbling or
+it's a structural footing problem, say so and recommend replacement/piering (or refer to an
+engineer), even when a lift would have been the easier close. Trust beats one job.
+
+"LET ME GET OTHER QUOTES / PRICE-SHOPPING" -> acknowledge shopping around is smart, then reframe with
+PROOF_ECONOMICS + COMPETITIVE_EDGE: make sure the comparison is apples-to-apples — what the price
+INCLUDES (correct spec/thickness, a BPI-certified/insured crew, documented QC, the warranty) versus a
+bare per-board-foot number. A cheaper bid that skips the spec isn't a lower price, it's a different
+(and riskier) job. Don't race the number down to match it — sell the difference.
+Guardrails hold: never fabricate a price, a savings %, or a payback period — every figure defers to
+DOCTRINE or an actual assessment; never guarantee savings; never claim mold elimination; hold the
+honest boundary and walk away from or redirect a job that isn't the right fix before you sell it.`;
+
 // CROSS-DOMAIN BRIDGES — the owner's InfraNodus "bridge the clusters" pass. These are the non-obvious
 // conceptual gateways that connect ops <-> sales <-> code <-> ROI, so Klyfton reasons ACROSS silos
 // instead of answering one cluster at a time. Reasoning only — numbers defer to DOCTRINE.
@@ -1540,13 +1606,13 @@ ONE GATE: these two families are a single gate — a technical or job decision o
 const BRAIN_BLOCKS = {
   BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
   STEM_FOUNDATIONS, HVAC_ENGINEERING, CONCRETE_ENGINEERING, TRADES_EXPERT, SAFETY_OSHA, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
-  SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
+  SERVICE_ARCHITECTURE, REVENUE_LAYER, SALES_OBJECTIONS, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
   PROOF_ECONOMICS, COMPETITIVE_EDGE, PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","CONCRETE_ENGINEERING","TRADES_EXPERT","SAFETY_OSHA","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","CONCRETE_ENGINEERING","TRADES_EXPERT","SAFETY_OSHA","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","SALES_OBJECTIONS","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);

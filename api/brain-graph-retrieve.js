@@ -19,13 +19,13 @@ const GRAPH = require("./brain-graph-data.js");
 // (cluster names/count can shift) — after any re-scan, reconcile this map + ALIAS to the new node
 // vocabulary and keep tests/brain-graph-retrieve.js green (it asserts routing behavior, not names).
 const CLUSTER_BLOCKS = {
-  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY", "SAFETY_OSHA"],   // foam/spray/doctrine/spec/ahj/verify + isocyanate/MDI/re-occupancy is SPF-specific safety
-  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass)
-  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass)
+  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY", "SAFETY_OSHA", "SALES_OBJECTIONS"],   // foam/spray/doctrine/spec/ahj/verify + isocyanate/MDI/re-occupancy is SPF-specific safety + the DIY/off-gassing/safety objection rebuttals
+  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS", "SALES_OBJECTIONS"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass) + the "DIY it" objection leans on CREDENTIAL_MAP
+  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "SALES_OBJECTIONS", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + the objection-handling playbook + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass)
   "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
-  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES", "CONCRETE_ENGINEERING"], // concrete/lifting/void/soil/seawall + the deep geotech diagnostic block
+  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES", "CONCRETE_ENGINEERING", "SALES_OBJECTIONS"], // concrete/lifting/void/soil/seawall + the deep geotech diagnostic block + the "just replace the slab" objection rebuttal
   "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE", "SAFETY_OSHA"], // code/irc/scope/trade/calculator/safety + the hazard->control->standard OSHA expert block
-  "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE"], // barrier/air/vapor/moisture/mold
+  "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE", "SALES_OBJECTIONS"], // barrier/air/vapor/moisture/mold + the "foam causes mold" objection rebuttal (correct the myth, never claim elimination)
   "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE", "PROOF_ECONOMICS"], // blower door/proof/ACH50 (BPI) + turning proof into money / gov-mandated testing (proof pass)
   "Dew Point":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "SEASON_ECONOMICS"], // substrate/dew/wind/temp/lift (spray window) + the cost of the window (gap #2)
 };
@@ -61,6 +61,19 @@ const ALIAS = {
   // Cost / margin → Cost Efficiency (DOCTRINE + ACCOUNTING_FINANCE + ROI_GUIDE)
   margin: ["cost", "roi"], profit: ["cost", "roi"], markup: ["cost"], gm: ["cost"], price: ["cost", "estimate"], pricing: ["cost"], quote: ["cost", "estimate"],
   payback: ["roi", "cost"], savings: ["roi", "cost"], bill: ["roi", "cost"],
+  // Sales objections/rebuttals → Cost Efficiency (carries SALES_OBJECTIONS + ROI_GUIDE + REVENUE_LAYER);
+  // "quote" already aliases to cost/estimate above, "mold" and "moisture" already alias to Moisture
+  // Control below (SALES_OBJECTIONS is wired to both clusters — the mold objection needs both).
+  objection: ["cost", "sale"], expensive: ["cost", "price"], cheaper: ["cost", "price"], afford: ["cost", "price"],
+  quotes: ["cost", "estimate"], worth: ["cost", "roi"], competitor: ["cost", "sale"], shopping: ["cost", "sale"],
+  wait: ["cost", "roi"], guarantee: ["cost", "saving"],
+  // DIY / "cheaper guy" objection → Business Licensing (CREDENTIAL_MAP) + Foam Verification (spec risk)
+  diy: ["license", "foam"], myself: ["license", "foam"],
+  // Safety/off-gassing objection → Foam Verification (SALES_OBJECTIONS) + Safety Compliance (SAFETY_OSHA);
+  // "off-gas"/"off-gassing" tokenizes to "off"+"gas" (hyphen stripped), so alias "gas" not just "offgas".
+  offgas: ["safety", "foam"], gas: ["safety", "foam"], smell: ["safety", "foam"], safe: ["safety", "foam"],
+  // "replace the slab" objection → Soil Stability (CONCRETE_ENGINEERING's lift-vs-replace-vs-pier call)
+  replace: ["concrete", "structural"],
   // Spray window / weather → Dew Point (+ Foam Verification)
   substrate: ["substrate", "spray"], dewpoint: ["dew", "substrate"], condensation: ["dew", "moisture"], humidity: ["dew", "moisture"],
   temperature: ["temp", "substrate"], weather: ["substrate", "wind"], cold: ["substrate", "temp"], hot: ["substrate", "temp"], window: ["substrate"],

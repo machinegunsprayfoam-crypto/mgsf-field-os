@@ -343,6 +343,30 @@ const BANK = [
     avoid: ["do it for free", "audits are pointless", "skip the test"],
     ref: "PROOF_ECONOMICS: run the audit as a paid diagnostic that converts — credit the fee toward the job; the ACH50/before-after proof sells the scope and justifies the premium",
   },
+  // ---- sales objections (grades the SALES_OBJECTIONS brain block: acknowledge -> reframe -> proof/ROI
+  // -> financing off-ramp -> honest boundary, without guaranteeing a number or claiming mold elimination) ----
+  {
+    id: "obj-expensive", module: "sales-objections",
+    q: "Customer says spray foam costs too much and fiberglass is way cheaper — how do you handle it?",
+    include: [
+      ["air seal", "air-seal", "air barrier", "insulate and air seal", "insulation and air sealing"],
+      ["payback", "roi", "energy savings", "estimate", "assessment"],
+      ["financing", "hearth", "$0 down", "0 down", "no money down"],
+    ],
+    avoid: ["guaranteed savings", "we guarantee", "guarantee you'll save", "cut your bill in half"],
+    ref: "SALES_OBJECTIONS/ROI_GUIDE: acknowledge the sticker shock, reframe — foam air-seals AND insulates in one step (batts don't), back it with an ROI_GUIDE payback estimate/range (never a guaranteed number), and offer the $0-down Hearth financing off-ramp; real savings figures come only from an actual blower-door assessment or DOCTRINE.",
+  },
+  {
+    id: "obj-mold", module: "sales-objections",
+    q: "Customer asks: 'Doesn't spray foam cause mold or trap moisture?'",
+    include: [
+      ["myth", "misconception", "not accurate", "not true", "common misunderstanding"],
+      ["air barrier", "vapor barrier", "air/vapor barrier", "moisture control", "controls moisture", "controls condensation"],
+      ["won't eliminate", "doesn't eliminate", "not a mold", "no mold-elimination", "can't promise", "won't guarantee", "not a guarantee"],
+    ],
+    avoid: ["eliminates mold", "gets rid of mold", "kills mold", "stops mold for good", "mold-proof"],
+    ref: "SALES_OBJECTIONS/DOCTRINE: correct the myth, don't overclaim — closed-cell spray foam is an air+vapor barrier that helps CONTROL the moisture/condensation conditions mold needs; never make a mold-elimination or mold-prevention promise, and never guarantee mold won't return.",
+  },
 ];
 
 // Synonym groups: pass if ANY listed variant appears. Deterministic substring match, case-insensitive.
