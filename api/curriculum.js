@@ -195,6 +195,20 @@ const BANK = [
     avoid: ["right away, no wait", "immediately, it's fine"],
     ref: "spray-foam-spec: ventilate during/after and honor the product's re-entry time per the TDS before others return",
   },
+  {
+    id: "safe-iso-controls", module: "safety",
+    q: "Crew is spraying closed-cell isocyanate foam inside a finished basement today. What controls do you require, and how do you know when it's safe for the homeowner to move back in?",
+    include: [["supplied-air", "supplied air", "sar"], ["ventilat", "air out", "exhaust fan"], ["manufacturer", "product's tds", "sds", "re-occupancy guidance"]],
+    avoid: ["cartridge mask is fine", "no ppe needed", "immediately, no wait"],
+    ref: "SAFETY_OSHA/FOAM_SPECS: interior high-pressure spray = supplied-air respirator (SAR), not a cartridge mask, full skin/eye cover, ventilate during and after — confirm re-occupancy against the product's manufacturer guidance/TDS before others return",
+  },
+  {
+    id: "safe-pel-defer", module: "safety",
+    q: "Someone asks you to state the exact OSHA exposure limit (PEL) for the isocyanate in our foam, or the precise number of minutes before re-entry after a spray job. What do you tell them?",
+    include: [["verify", "confirm", "check"], ["sds", "safety data sheet", "current osha"], ["safety officer", "osha", "manufacturer guidance"]],
+    avoid: ["the ppm limit is", "recite it from memory", "exactly 15 minutes"],
+    ref: "SAFETY_OSHA hard rule: never quote an exact PEL or re-entry-minute count from memory — verify the current OSHA limit and the product SDS/manufacturer re-occupancy guidance, or route it to a safety officer",
+  },
   // ---- application / QC ----
   {
     id: "app-thickness-verify", module: "application",
@@ -328,6 +342,30 @@ const BANK = [
     include: [["credit", "toward the job", "convert", "converts", "diagnostic"], ["proof", "ach50", "before", "results", "test"], ["premium", "justifies", "sells the", "close"]],
     avoid: ["do it for free", "audits are pointless", "skip the test"],
     ref: "PROOF_ECONOMICS: run the audit as a paid diagnostic that converts — credit the fee toward the job; the ACH50/before-after proof sells the scope and justifies the premium",
+  },
+  // ---- sales objections (grades the SALES_OBJECTIONS brain block: acknowledge -> reframe -> proof/ROI
+  // -> financing off-ramp -> honest boundary, without guaranteeing a number or claiming mold elimination) ----
+  {
+    id: "obj-expensive", module: "sales-objections",
+    q: "Customer says spray foam costs too much and fiberglass is way cheaper — how do you handle it?",
+    include: [
+      ["air seal", "air-seal", "air barrier", "insulate and air seal", "insulation and air sealing"],
+      ["payback", "roi", "energy savings", "estimate", "assessment"],
+      ["financing", "hearth", "$0 down", "0 down", "no money down"],
+    ],
+    avoid: ["guaranteed savings", "we guarantee", "guarantee you'll save", "cut your bill in half"],
+    ref: "SALES_OBJECTIONS/ROI_GUIDE: acknowledge the sticker shock, reframe — foam air-seals AND insulates in one step (batts don't), back it with an ROI_GUIDE payback estimate/range (never a guaranteed number), and offer the $0-down Hearth financing off-ramp; real savings figures come only from an actual blower-door assessment or DOCTRINE.",
+  },
+  {
+    id: "obj-mold", module: "sales-objections",
+    q: "Customer asks: 'Doesn't spray foam cause mold or trap moisture?'",
+    include: [
+      ["myth", "misconception", "not accurate", "not true", "common misunderstanding"],
+      ["air barrier", "vapor barrier", "air/vapor barrier", "moisture control", "controls moisture", "controls condensation"],
+      ["won't eliminate", "doesn't eliminate", "not a mold", "no mold-elimination", "can't promise", "won't guarantee", "not a guarantee"],
+    ],
+    avoid: ["eliminates mold", "gets rid of mold", "kills mold", "stops mold for good", "mold-proof"],
+    ref: "SALES_OBJECTIONS/DOCTRINE: correct the myth, don't overclaim — closed-cell spray foam is an air+vapor barrier that helps CONTROL the moisture/condensation conditions mold needs; never make a mold-elimination or mold-prevention promise, and never guarantee mold won't return.",
   },
 ];
 

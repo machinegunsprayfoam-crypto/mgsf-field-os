@@ -73,6 +73,22 @@ ok("weather/season query ⇒ brain carries SEASON ECONOMICS", /SEASON ECONOMICS/
 const proofQ = A.assembleBrainBlocks("how do I price a blower door audit and turn the test into a sold job");
 ok("audit/proof query ⇒ brain carries PROOF ECONOMICS", /PROOF ECONOMICS/.test(proofQ));
 
+// ---- SAFETY_OSHA: isocyanate PPE / re-occupancy / fall / silica / confined-space queries pull it ----
+const safetyQ = A.assembleBrainBlocks("what respirator and PPE do we need for isocyanate spraying, and when is re-occupancy safe");
+ok("isocyanate/PPE query ⇒ brain carries SAFETY & OSHA COMPLIANCE", /SAFETY & OSHA COMPLIANCE/.test(safetyQ));
+ok("isocyanate/PPE query ⇒ names supplied-air respirator (SAR), never a fabricated re-entry number", /supplied-air respirator/.test(safetyQ) && /verify the current OSHA limit/.test(safetyQ));
+const confinedQ = A.assembleBrainBlocks("confined space rules for crawl space encapsulation");
+ok("confined-space query ⇒ brain carries SAFETY & OSHA COMPLIANCE", /SAFETY & OSHA COMPLIANCE/.test(confinedQ));
+
+// ---- SALES_OBJECTIONS: objection/rebuttal queries pull the objection-handling playbook ----
+const objQ = A.assembleBrainBlocks("customer says spray foam is too expensive and fiberglass is way cheaper, what do I tell them");
+ok("too-expensive query ⇒ brain carries SALES OBJECTIONS", /SALES OBJECTIONS/.test(objQ));
+ok("too-expensive query ⇒ names the Hearth financing off-ramp", /Hearth financing/.test(objQ));
+const moldObjQ = A.assembleBrainBlocks("does spray foam cause mold or trap moisture, customer is worried");
+ok("mold objection query ⇒ brain carries SALES OBJECTIONS", /SALES OBJECTIONS/.test(moldObjQ));
+ok("mold objection query ⇒ never asserts a bare mold-elimination claim (only the negation)", !/foam eliminates mold\b/i.test(moldObjQ) && !moldObjQ.includes("we eliminate mold"));
+ok("mold objection query ⇒ states the never-claim-elimination hard rule", /never claim spray foam eliminates or prevents mold/.test(moldObjQ) && /never claim mold elimination/.test(moldObjQ));
+
 // ---- brain cost + safety guardrail: retrieval must scope, and must NEVER drop identity/doctrine/gates ----
 // (catches the regression where GraphRAG silently breaks — either returning the FULL brain on every call,
 //  which blows up token cost, or dropping a CORE block, which would strip identity/doctrine/guardrails.)

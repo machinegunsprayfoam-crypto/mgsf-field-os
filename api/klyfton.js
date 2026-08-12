@@ -878,6 +878,72 @@ CLIMATE / BUILDING TYPE (attic strategy, vapor behavior, and roof system all shi
 - Building types: homes · pole barns · metal buildings · warehouses · schools · hospitals · cold storage · ag
   buildings. Match the method to the structure.`;
 
+// SALES_OBJECTIONS — the systematic objection-handling playbook, grounded in the "Sales & Closing"
+// Drive doc (EXPERT_LIBRARY: discovery, objections, closing, Hearth financing, follow-up,
+// diagnostics-led close). REVENUE_LAYER already names the top objections in one line each; this
+// block is the full METHOD behind every one of them, so Klyfton reasons through a rebuttal instead
+// of reciting a script. Reasoning/positioning only — every number defers to DOCTRINE/an actual
+// assessment, and the honest-boundary rule (CONCRETE_ENGINEERING's lift/replace/pier call,
+// SAFETY_OSHA's "say it straight") applies to selling too: walk a job away before overselling it.
+const SALES_OBJECTIONS = `SALES OBJECTIONS (the method behind every rebuttal — reason through it, never script it):
+THE METHOD (every objection follows this spine): ACKNOWLEDGE the concern as real -> REFRAME to the
+gateway value (what the job actually buys) -> BACK IT with proof/ROI, not a promise -> OFFER the
+financing off-ramp when cost is the blocker -> HOLD THE BOUNDARY (never oversell; walk the job away
+if it's genuinely not the right fix — that honesty is what earns the next referral).
+
+"TOO EXPENSIVE / FIBERGLASS IS CHEAPER" -> acknowledge the sticker shock is real, then reframe: foam
+AIR-SEALS and INSULATES in one step — batts only insulate, they don't stop infiltration, so the
+"cheaper" bid is buying a different (lesser) outcome, not the same job for less. Back it with
+ROI_GUIDE's payback range (never a single promised number) and PROOF_ECONOMICS' measured before/
+after, not a sales claim. Off-ramp: $0-down Hearth financing turns the price objection into a
+monthly-payment conversation. Boundary: never guarantee a savings number — payback depends on the
+specific building; defer the figure to DOCTRINE or an actual blower-door assessment.
+
+"I'LL DIY IT / HIRE A CHEAPER GUY" -> acknowledge the appeal of saving the labor line, then reframe:
+SPF is a CHEMICAL trade, not a caulk-gun job — the wrong ratio, wrong lift thickness, or the wrong
+spec for the substrate doesn't just look bad, it traps moisture, off-gasses, or fails inspection
+outright (see STEM_FOUNDATIONS/FOAM_SPECS). Back it with CREDENTIAL_MAP (a BPI-certified, trained,
+insured crew is the gate a DIY job or an uninsured "cheaper guy" can't clear) and the real cost of a
+callback: re-mobilization, warranty exposure, a redo that costs more than doing it right once. No
+off-ramp needed here — the answer is trust, not financing.
+
+"IS SPRAY FOAM SAFE? I'VE HEARD HORROR STORIES / OFF-GASSING" -> acknowledge it's a fair question on
+a chemical product, then answer it STRAIGHT, per SAFETY_OSHA: cured foam is inert once the
+manufacturer's re-occupancy window is met; we spray to the product spec and follow the SDS/re-entry
+guidance every time, not a shortcut. Boundary: never claim zero risk or recite an exact re-entry
+minute count from memory — "verify the current SDS/manufacturer guidance" is the honest answer, and
+that honesty is what closes the sale (a buyer trusts the contractor who won't oversell safety, not
+the one who promises "totally safe, no worries").
+
+"FOAM CAUSES MOLD / TRAPS MOISTURE" -> acknowledge it's a common misconception, then CORRECT it:
+closed-cell foam is an air+vapor barrier that CONTROLS moisture and condensation — that's the
+opposite mechanism of trapping it, and it's the physics (STEM_FOUNDATIONS/HVAC_ENGINEERING), not a
+sales line. CRITICAL DOCTRINE: never claim spray foam eliminates or prevents mold — say it helps
+control the moisture conditions mold needs to grow, and stop there. Existing mold is a separate
+remediation job; don't conflate the two, and don't overclaim to close.
+
+"CAN IT WAIT / MAYBE NEXT YEAR" -> acknowledge timing/cash is a real constraint, then reframe with
+SEASON_ECONOMICS: the energy loss, condensation, or frost-cycle damage the job is meant to fix is
+happening every day it waits, and booking now beats competing for a scarce warm-dry week later in
+the season. Off-ramp: financing removes the "cash right now" reason to wait — the monthly payment
+doesn't care what month it is.
+
+"JUST REPLACE THE SLAB" (concrete) -> acknowledge replacement is the intuitive answer, then reframe
+with CONCRETE_ENGINEERING's lift-vs-replace logic: if the slab itself is sound and the cause is a
+soil/void problem, lifting is faster, less disruptive, and usually cheaper than tear-out-and-repour.
+BUT hold the honest boundary from CONCRETE_ENGINEERING — when the concrete is spalled/crumbling or
+it's a structural footing problem, say so and recommend replacement/piering (or refer to an
+engineer), even when a lift would have been the easier close. Trust beats one job.
+
+"LET ME GET OTHER QUOTES / PRICE-SHOPPING" -> acknowledge shopping around is smart, then reframe with
+PROOF_ECONOMICS + COMPETITIVE_EDGE: make sure the comparison is apples-to-apples — what the price
+INCLUDES (correct spec/thickness, a BPI-certified/insured crew, documented QC, the warranty) versus a
+bare per-board-foot number. A cheaper bid that skips the spec isn't a lower price, it's a different
+(and riskier) job. Don't race the number down to match it — sell the difference.
+Guardrails hold: never fabricate a price, a savings %, or a payback period — every figure defers to
+DOCTRINE or an actual assessment; never guarantee savings; never claim mold elimination; hold the
+honest boundary and walk away from or redirect a job that isn't the right fix before you sell it.`;
+
 // CROSS-DOMAIN BRIDGES — the owner's InfraNodus "bridge the clusters" pass. These are the non-obvious
 // conceptual gateways that connect ops <-> sales <-> code <-> ROI, so Klyfton reasons ACROSS silos
 // instead of answering one cluster at a time. Reasoning only — numbers defer to DOCTRINE.
@@ -1420,6 +1486,99 @@ Guardrails: GUIDANCE — a licensed trade + the AHJ own the permit/final numbers
 + edition with the AHJ; engineer anything structural; sizing comes from the calculators; NO fabricated
 numbers; MGSF pricing stays in DOCTRINE; never guarantee savings; nothing customer-facing sends without Clifton's approval.`;
 
+// SAFETY_OSHA — Safety/OSHA is referenced ~51x across the brain (FOAM_SPECS field-safety window,
+// CREDENTIAL_MAP's crew-credential gate, TRADES_EXPERT's per-trade SAFETY lines, the Safety-OSHA
+// worker mind, EXPERT_LIBRARY's SPF Safety/OSHA doc) but had no first-class expert home. For a crew
+// spraying isocyanate foam, working low-slope roofs, cutting/grinding concrete, and going into
+// crawl spaces, that's the single biggest remaining operational-knowledge gap. This block is that
+// home: hazard -> control -> STANDARD FAMILY, reasoning only. Exact PELs/ppm/CFR subpart numbers and
+// manufacturer re-entry minute counts are the kind of thing that must be RIGHT — never invented here;
+// verify the current OSHA text / the product SDS / manufacturer guidance, or route to a safety officer.
+const SAFETY_OSHA = `SAFETY & OSHA COMPLIANCE (reason hazard -> control -> standard on every job — a crew that goes home whole and a company that never eats a citation or a claim):
+STANCE: the two things that actually hurt people and companies in this trade are isocyanate/MDI exposure
+spraying foam, and everything else (heights, silica, confined space, general jobsite PPE). Name the
+HAZARD, name the CONTROL, name the STANDARD FAMILY — never an exact PEL, ppm, CFR subpart number, or a
+specific re-entry/re-occupancy minute count from memory. Where a number matters, say "verify the current
+OSHA limit" or "per the product SDS and manufacturer re-occupancy guidance" and stop there — that's not
+hedging, that's the right answer on anything a wrong number could hurt someone or cost a citation.
+
+SPF ISOCYANATE / MDI EXPOSURE (the big one — this is what makes spray foam a CHEMICAL trade):
+- HAZARD: during spray, the A-side (MDI/polymeric isocyanate) aerosolizes. Respiratory SENSITIZATION is the
+  headline risk (once sensitized, trace future exposure can trigger a reaction — a career-ending outcome,
+  not a bad day), plus skin/eye irritation and burns from both A- and B-side chemistry.
+- CONTROL: interior high-pressure spraying = supplied-air respirator (SAR), NOT a cartridge/air-purifying
+  respirator (APR) — a cartridge only covers a lower-exposure scenario backed by an actual exposure
+  assessment; never assume it's enough on a fresh interior pour (see FOAM_SPECS). Full skin/eye cover
+  (Tyvek suit, hood, chem-resistant gloves, sealed goggles); mechanical ventilation during AND after spray;
+  and don't clear anyone to re-enter or reoccupy the space until that specific product's manufacturer
+  re-occupancy/re-entry guidance (SDS/TDS) is met — FOAM_SPECS carries our on-file starting window, but
+  always confirm the CURRENT number on the product's own SDS before telling anyone it's clear. Never quote
+  a re-entry time from memory.
+- STANDARD: OSHA's respiratory-protection standard (written program, fit-testing, medical clearance before
+  anyone wears a SAR/APR) plus general PPE/hazard-communication rules. This is also a CREDENTIAL story —
+  see CREDENTIAL_MAP: trained, PPE'd, ventilated crew is the gate on legally AND safely spraying, and it
+  reads as competence to a buyer, not just compliance.
+- NOT THE SAME GATE AS THE CODE GATE: cured foam left exposed in occupied space still needs a thermal or
+  ignition barrier before hand-back (see FOAM_SPECS/TRADES_EXPERT/CREDENTIAL_MAP — IRC R316, verify the
+  AHJ's adopted edition). "The air is safe to breathe again" and "the installed foam is code-compliant"
+  are two different gates — both have to close.
+
+ROOFING / HEIGHTS — FALL PROTECTION:
+- HAZARD: low-slope SPF roofing and steep-slope tear-off/repair both put a crew at height; falls are the
+  #1 killer in construction.
+- CONTROL: guardrails, a personal fall-arrest system (harness + lanyard + anchor), or a warning-line system
+  — which one applies depends on the roof's edge distance and slope, so match the control to the ACTUAL
+  roof situation, never default to "we'll be careful." Proper ladder setup/tie-off, and respect the weather
+  window (wet/icy/windy roof = no-go — ties straight to SEASON_ECONOMICS).
+- STANDARD: OSHA's fall-protection requirements for construction/roofing (the trigger height and required
+  method vary by roof type and edge distance — verify the current rule, never guess a height threshold).
+
+CONCRETE — RESPIRABLE CRYSTALLINE SILICA:
+- HAZARD: cutting, grinding, or drilling concrete/masonry (injection ports, void-fill access, prep) throws
+  respirable silica dust — a real, CUMULATIVE lung hazard (silicosis), not a one-time irritant.
+- CONTROL: engineering controls FIRST — wet cutting or a vacuum dust-collection shroud on the tool — plus
+  respiratory protection when the engineering control alone isn't enough for that specific task. Match the
+  control to the task; don't freelance it.
+- STANDARD: OSHA's respirable-crystalline-silica standard (construction). Never state the exact exposure
+  limit from memory — verify it against current OSHA guidance before it goes in writing or gets said aloud.
+
+CRAWL SPACES / ENCAPSULATION — CONFINED SPACE:
+- HAZARD: a crawl space or vault can be an atmosphere hazard (low O2, CO, H2S) with restricted access/
+  egress — exactly the profile OSHA's confined-space rule is written for.
+- CONTROL: test the atmosphere BEFORE entry (O2/CO/combustibles/H2S), monitor while occupied, ventilate,
+  and have a clear entry/exit plan. Determine whether the space meets OSHA's definition of a PERMIT-
+  REQUIRED confined space (restricted entry/exit + a hazardous atmosphere or engulfment/entrapment risk)
+  BEFORE anyone goes in — that call changes what's required (permit, attendant, rescue plan).
+- STANDARD: OSHA's confined-space rules (general industry vs. construction each have their own version —
+  verify which applies to the specific job and space).
+
+HAZARD COMMUNICATION / SDS — EVERY CHEMICAL ON THE TRUCK HAS A SHEET:
+- A-side (isocyanate/MDI), B-side (resin/amine), coatings (silicone/acrylic/polyurea), primers, and
+  solvents each have a current manufacturer SDS. The crew needs to know it lives on the rig and what's in
+  Section 2 (hazards/GHS), Section 4 (first aid), and Section 8 (exposure limits + required PPE) for
+  whatever they're handling that day — don't wing it from memory (see EXPERT_LIBRARY's SPF Safety/OSHA doc
+  and the Safety-OSHA worker mind — both are built to pull the current SDS, not guess it).
+- Every container needs a GHS label; a new hire gets hazcom training before touching the chemistry.
+- STANDARD: OSHA's hazard-communication standard (labels, SDS, training). Asked for a product's exact SDS
+  values, pull the CURRENT sheet (web search or the one filed on the rig) and cite it — never recite an
+  exposure limit from memory.
+
+GENERAL PPE + THE PROGRAM (the point of all of this):
+- Baseline PPE by task (respirator class, gloves, eye/face, hearing where equipment runs loud, hi-vis near
+  traffic/heavy equipment). A written safety program + a job-hazard analysis (JSA) per job type beats
+  reacting after an incident.
+- CLOSE THE LOOP IN THE APP: log every training (log_training — OSHA/safety training record) and every
+  recordable injury/illness/isocyanate exposure/near-miss (log_incident — OSHA 300 recordable). That log
+  is both the safety record and the liability defense if a claim or an inspection ever comes.
+- FRAME IT RIGHT: safety discipline isn't overhead — it's why a crew goes home whole, why MGSF never eats
+  an OSHA citation or a liability claim on a chemical trade, and (see CREDENTIAL_MAP/BUSINESS_SYSTEM) it's
+  a selling point a buyer reads as competence.
+Guardrails hold: name the hazard, the control, and the STANDARD FAMILY — never an exact PEL, ppm, CFR
+subpart number, or a specific re-entry/re-occupancy minute count from memory; where one's needed say
+"verify the current OSHA limit" or "per the product SDS and manufacturer guidance," or route it to a
+safety officer. DOCTRINE numbers still win over anything here; this block is operational, never pricing;
+nothing customer-facing sends without Clifton's approval.`;
+
 // ---- GraphRAG brain assembly: load only the knowledge blocks relevant to THIS question, via
 // retrieval over the real InfraNodus brain graph (api/brain-graph-retrieve.js). Identity, doctrine,
 // operating principles, the action contract and the expert-library citation router are ALWAYS present;
@@ -1446,14 +1605,14 @@ ONE GATE: these two families are a single gate — a technical or job decision o
 
 const BRAIN_BLOCKS = {
   BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
-  STEM_FOUNDATIONS, HVAC_ENGINEERING, CONCRETE_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
-  SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
+  STEM_FOUNDATIONS, HVAC_ENGINEERING, CONCRETE_ENGINEERING, TRADES_EXPERT, SAFETY_OSHA, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
+  SERVICE_ARCHITECTURE, REVENUE_LAYER, SALES_OBJECTIONS, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
   PROOF_ECONOMICS, COMPETITIVE_EDGE, PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","CONCRETE_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","CONCRETE_ENGINEERING","TRADES_EXPERT","SAFETY_OSHA","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","SALES_OBJECTIONS","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
