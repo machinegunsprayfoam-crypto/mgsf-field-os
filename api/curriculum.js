@@ -195,6 +195,20 @@ const BANK = [
     avoid: ["right away, no wait", "immediately, it's fine"],
     ref: "spray-foam-spec: ventilate during/after and honor the product's re-entry time per the TDS before others return",
   },
+  {
+    id: "safe-iso-controls", module: "safety",
+    q: "Crew is spraying closed-cell isocyanate foam inside a finished basement today. What controls do you require, and how do you know when it's safe for the homeowner to move back in?",
+    include: [["supplied-air", "supplied air", "sar"], ["ventilat", "air out", "exhaust fan"], ["manufacturer", "product's tds", "sds", "re-occupancy guidance"]],
+    avoid: ["cartridge mask is fine", "no ppe needed", "immediately, no wait"],
+    ref: "SAFETY_OSHA/FOAM_SPECS: interior high-pressure spray = supplied-air respirator (SAR), not a cartridge mask, full skin/eye cover, ventilate during and after — confirm re-occupancy against the product's manufacturer guidance/TDS before others return",
+  },
+  {
+    id: "safe-pel-defer", module: "safety",
+    q: "Someone asks you to state the exact OSHA exposure limit (PEL) for the isocyanate in our foam, or the precise number of minutes before re-entry after a spray job. What do you tell them?",
+    include: [["verify", "confirm", "check"], ["sds", "safety data sheet", "current osha"], ["safety officer", "osha", "manufacturer guidance"]],
+    avoid: ["the ppm limit is", "recite it from memory", "exactly 15 minutes"],
+    ref: "SAFETY_OSHA hard rule: never quote an exact PEL or re-entry-minute count from memory — verify the current OSHA limit and the product SDS/manufacturer re-occupancy guidance, or route it to a safety officer",
+  },
   // ---- application / QC ----
   {
     id: "app-thickness-verify", module: "application",

@@ -19,12 +19,12 @@ const GRAPH = require("./brain-graph-data.js");
 // (cluster names/count can shift) — after any re-scan, reconcile this map + ALIAS to the new node
 // vocabulary and keep tests/brain-graph-retrieve.js green (it asserts routing behavior, not names).
 const CLUSTER_BLOCKS = {
-  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY"],   // foam/spray/doctrine/spec/ahj/verify
+  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY", "SAFETY_OSHA"],   // foam/spray/doctrine/spec/ahj/verify + isocyanate/MDI/re-occupancy is SPF-specific safety
   "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass)
   "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass)
   "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
   "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES", "CONCRETE_ENGINEERING"], // concrete/lifting/void/soil/seawall + the deep geotech diagnostic block
-  "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE"], // code/irc/scope/trade/calculator/safety
+  "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE", "SAFETY_OSHA"], // code/irc/scope/trade/calculator/safety + the hazard->control->standard OSHA expert block
   "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE"], // barrier/air/vapor/moisture/mold
   "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE", "PROOF_ECONOMICS"], // blower door/proof/ACH50 (BPI) + turning proof into money / gov-mandated testing (proof pass)
   "Dew Point":          ["FOAM_SPECS", "SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "SEASON_ECONOMICS"], // substrate/dew/wind/temp/lift (spray window) + the cost of the window (gap #2)
@@ -107,6 +107,15 @@ const ALIAS = {
   sprinkler: ["trade", "safety"], suppression: ["trade", "safety"], sitework: ["trade", "code"], paving: ["trade", "code"], asphalt: ["trade", "code"],
   permit: ["code", "trade"], inspection: ["inspection", "code"], ahj: ["code", "trade"],
   crew: ["safety", "trade"], osha: ["safety", "trade"], ppe: ["safety"],
+  // SAFETY_OSHA (job-site safety & OSHA compliance — hazard->control->standard): isocyanate/MDI +
+  // respirator/ventilation/re-occupancy (SPF-specific → also foam), fall/harness (roofing), silica
+  // (concrete), confined space (crawl), hazcom/SDS/hazmat, exposure/sensitization.
+  respirator: ["safety", "foam"], isocyanate: ["safety", "foam"], mdi: ["safety", "foam"],
+  ventilation: ["safety", "foam"], occupancy: ["safety", "foam"], reoccupancy: ["safety", "foam"],
+  reentry: ["safety", "foam"], entry: ["safety", "foam"], thermal: ["safety", "foam"], ignition: ["safety", "foam"],
+  exposure: ["safety", "foam"], sensitization: ["safety", "foam"],
+  silica: ["safety", "trade"], fall: ["safety", "trade"], harness: ["safety", "trade"], confined: ["safety", "trade"],
+  sds: ["safety", "trade"], hazmat: ["safety", "trade"],
 };
 
 function tokenize(q) {
