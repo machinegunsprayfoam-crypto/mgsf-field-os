@@ -713,3 +713,11 @@ _Last updated: 2026-08-07._
 
 ## Cross-references
 - [`CLAUDE.md`](CLAUDE.md) · [`api/klyfton.js`](api/klyfton.js) · [`CAPABILITIES_ROADMAP.md`](CAPABILITIES_ROADMAP.md) · [`OPERATIONS_COMMAND_CENTER.md`](OPERATIONS_COMMAND_CENTER.md)
+
+### 2026-08-12 (cont.) — Foreman folded into the daily brief (PR #121)
+- `api/daily-brief.js` `compose()` now surfaces an **"Approve next (Foreman)"** section — the top
+  1–3 revenue/risk actions (with `$` and a BLOCKED flag), injected the same way as business-audit
+  findings (compose stays pure). The handler computes it via `ops-manager.supervise()` over the doer
+  agents' plans (jobs + certs/subs), degrades to none on any error. `stats.foreman` added. +4 tests
+  (daily-brief 44); gate **113 / 2830**. So Clifton's morning brief now leads with the single
+  highest-$ thing to approve — recommend-only, never dispatches.
