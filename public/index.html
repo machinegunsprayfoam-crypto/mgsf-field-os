@@ -13527,6 +13527,7 @@ window.renderForeman = async function(){
           var dot = p.blocked ? '<span style="color:#ffcf6b">⛔</span>' : (p.ready ? '<span style="color:#4ad9c4">▲</span>' : '<span style="color:#9aa4b0">•</span>');
           return '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)">'
             + (i+1)+'. '+dot+' <b style="color:var(--or)">'+e(p.label||p.agent)+'</b> → <b>'+e(p.who)+'</b>'
+            + ((p.value>0)?(' <span style="color:#4ad9c4">$'+Math.round(p.value)+'</span>'):'')
             + (p.stage?' <span style="opacity:.55">['+e(p.stage)+']</span>':'')
             + (p.action?(' — '+e(p.action)):'')
             + '<br><span style="opacity:.5;font-size:11px">'+e(p.why||'')+(p.blocked?(' · blocked on '+e(p.blockedBy||'a dark tool')):'')+'</span>'

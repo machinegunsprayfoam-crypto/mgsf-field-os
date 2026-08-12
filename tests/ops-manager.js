@@ -54,6 +54,26 @@ ok("summary is one owner line naming the top pick", /ready action/.test(r.summar
 ok("top is capped at 5", Array.isArray(r.top) && r.top.length <= 5);
 ok("foreman is recommend-only (never auto-sends)", /never auto-sends/i.test(r.note));
 
+// ---- $-aware ranking: within one role, the biggest dollars float to the top ----
+const DOLLARS = O.supervise([
+  { ok: true, agent: "collector", label: "Collector", goal: "chase AR", count: 2, ready: 2, steps: [
+    { who: "Small", stage: "invoiced", action: "AR reminder", tool: "arms", live: true, approval: true, value: 500 },
+    { who: "Big", stage: "invoiced", action: "AR reminder", tool: "arms", live: true, approval: true, value: 9000 },
+  ] },
+], "T");
+ok("within a role, the larger $ ranks first (Big $9000 before Small $500)", (() => {
+  const order = DOLLARS.priorities.map((p) => p.who); return order.indexOf("Big") < order.indexOf("Small");
+})(), DOLLARS.priorities.map((p) => p.who + ":$" + p.value).join(", "));
+ok("dollar value is carried onto the item", DOLLARS.priorities[0].value === 9000);
+ok("summary surfaces the top dollar figure", /\$9000/.test(DOLLARS.summary));
+ok("role tier still beats raw dollars (cash-role ranks above a bigger-$ lower role)", (() => {
+  const r = O.supervise([
+    { ok: true, agent: "pm", label: "PM", goal: "g", count: 1, ready: 1, steps: [{ who: "HugePM", stage: "in_progress", action: "x", tool: "portal", live: true, approval: false, value: 999999 }] },
+    { ok: true, agent: "collector", label: "Collector", goal: "g", count: 1, ready: 1, steps: [{ who: "TinyAR", stage: "invoiced", action: "y", tool: "arms", live: true, approval: true, value: 1 }] },
+  ], "T");
+  return r.priorities[0].agent === "collector";
+})());
+
 // ---- empty crew ----
 const empty = O.supervise([], "T");
 ok("empty crew ⇒ 'all quiet', zero counts", /all quiet/i.test(empty.summary) && empty.counts.steps === 0 && empty.priorities.length === 0);

@@ -88,6 +88,7 @@ function plan(agentId, jobs, nowMs, env) {
       live: t ? !!t.live : null,
       approval: outward,                        // outward ⇒ owner must approve
       blockedBy: t && !t.live ? t.gatedBy : null,
+      value: Number((j && (j.value != null ? j.value : (j.bid && j.bid.sell != null ? j.bid.sell : j.sell))) || 0) || 0, // $ at stake (invoice/bid) — feeds the Foreman's $-ranking; 0 when unknown, never fabricated
     };
   });
   const dispatchable = steps.filter((s) => s.live === true);

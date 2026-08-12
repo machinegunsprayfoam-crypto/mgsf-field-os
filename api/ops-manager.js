@@ -56,6 +56,7 @@ function supervise(plans, stampISO) {
         blockedBy: blocked ? (s.blockedBy || null) : null,
         approval: s.approval === true,
         why: role.why,
+        value: Number(s.value) || 0,                 // $ at stake (invoice/bid); 0 when unknown
         // ready steps rank slightly above equal-weight peers; blocked steps sink (owner can't action yet).
         score: role.weight + (ready ? 5 : 0) - (blocked ? 3 : 0),
       };
@@ -65,7 +66,10 @@ function supervise(plans, stampISO) {
     // Normalize for stationFrom (works whether or not the plan carried ready/count).
     stations.push(agents.stationFrom(p.agent, { agent: p.agent, count: steps.length, ready: readyN, goal: p.goal }, stampISO));
   });
-  priorities.sort((a, b) => b.score - a.score ||
+  // Rank: role/readiness tier first (score), then the biggest DOLLARS at stake within the tier,
+  // then a stable name sort. So Collector still outranks PM, but within Collector the largest
+  // overdue invoice floats to the top — numbers-first, and $ is only ever a tiebreaker, never fabricated.
+  priorities.sort((a, b) => b.score - a.score || (b.value || 0) - (a.value || 0) ||
     String(a.agent).localeCompare(String(b.agent)) || String(a.who).localeCompare(String(b.who)));
   const counts = {
     agents: stations.length,
@@ -81,7 +85,7 @@ function supervise(plans, stampISO) {
     ? "All quiet — no open actions across the crew."
     : (counts.ready + " ready action" + (counts.ready === 1 ? "" : "s") + " across " + counts.agents + " desks"
         + (counts.escalations ? ("; " + counts.escalations + " blocked on a dark tool") : "")
-        + (top ? (". Top: " + top.label + " → " + top.who + " (" + top.why + ")") : "."));
+        + (top ? (". Top: " + top.label + " → " + top.who + (top.value > 0 ? (" ($" + Math.round(top.value) + ")") : "") + " (" + top.why + ")") : "."));
   return {
     ok: true, agent: "ops-manager", label: "Ops Manager",
     summary, counts,

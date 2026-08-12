@@ -271,6 +271,12 @@ _Last updated: 2026-08-07 (pm)._
     "why"), and an **escalations** block naming the env var to unlock each dark tool. Recommend-only
     label. Wired into `renderCommand()`; `sw.js` v87→v88; gate **113 / 2819** (frontend-wiring guard).
   - **NEXT (optional):** once ALERTS_WEBHOOK_URL is set, an approve-all-Tier-1 flow from the queue.
+- **★ OPS MANAGER — now DOLLAR-AWARE (PR #120).** `agents.plan()` steps now carry `value` (the job's
+  $ at stake: `j.value` → `j.bid.sell` → `j.sell`, else 0 — never fabricated). `ops-manager.supervise()`
+  ranks by role/readiness tier FIRST, then **biggest dollars within the tier** (Collector still beats
+  PM, but within Collector the largest overdue invoice floats to top), and the summary shows the top
+  `$` figure. Foreman strip shows `$N` per row (`sw.js` v88→v89). +6 tests (agents 39, ops-manager 17);
+  gate **113 / 2826**.
 - **DRIVE (interactive-session work, not repo):** learned + mapped the real Drive (My Drive, numbered
   00–17 folders + IDs; authoritative spec = `MGSF_File_System_Architecture_v2.1` in 15_SYSTEM).
   Authored the **`mgsf-drive-filing`** skill (reconciled to v2.1: My Drive not shared, PERSONAL

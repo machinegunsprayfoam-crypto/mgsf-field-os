@@ -33,6 +33,8 @@ async function main() {
   ok("unknown agent ⇒ error + roster", (() => { const p = A.plan("nope", JOBS, NOW, {}); return p.ok === false && Array.isArray(p.agents); })());
   ok("PM plans open jobs only (skips paid)", (() => { const p = A.plan("pm", JOBS, NOW, {}); return p.count === 5 && !p.steps.find((s) => s.who === "Lou"); })());
   ok("Collector selects only the overdue invoice (Ray, not Kay)", (() => { const p = A.plan("collector", JOBS, NOW, {}); return p.count === 1 && p.steps[0].who === "Ray"; })());
+  ok("plan step carries the job's $ value (feeds the Foreman's $-ranking)", (() => { const p = A.plan("collector", [{ customer: "Val", status: "invoiced", stageAt: NOW - 40 * DAY, email: "v@x.com", value: 7200 }], NOW, {}); return p.steps[0].value === 7200; })());
+  ok("plan step value is 0 (never fabricated) when the job carries no amount", (() => { const p = A.plan("lead-closer", [{ customer: "Nia", status: "new lead", phone: "406" }], NOW, {}); return p.steps[0].value === 0; })());
 
   // ---- buildAction: step → concrete arm skeleton (pure), body left empty (brain fills) ----
   ok("lead ⇒ send_sms to the phone", (() => { const a = A.buildAction({ stage: "lead" }, { phone: "406", customer: "D" }); return a.type === "send_sms" && a.to === "406"; })());
