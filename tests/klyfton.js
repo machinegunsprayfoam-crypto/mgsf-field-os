@@ -61,6 +61,10 @@ ok("electrical query ⇒ brain carries TRADES EXPERT + cites NEC", tr.includes("
 const plumb = A.assembleBrainBlocks("drain and vent sizing plus water heater T&P");
 ok("plumbing query ⇒ TRADES EXPERT + cites IPC", plumb.includes("TRADES EXPERT") && /IPC/.test(plumb));
 
+// ---- concrete engineering: a settled-slab/geotech question pulls the deep CONCRETE ENGINEERING block ----
+const concQ = A.assembleBrainBlocks("slab settled and cracking with frost heave, do we polyjack or pier it");
+ok("concrete/geotech query ⇒ brain carries CONCRETE ENGINEERING", concQ.includes("CONCRETE ENGINEERING"));
+
 // ---- gap-bridge blocks (InfraNodus gaps #1/#2): credential→service map + season→money bridge ----
 const credQ = A.assembleBrainBlocks("what license and certification do I need to legally bid this job");
 ok("credential query ⇒ brain carries CREDENTIAL → SERVICE MAP", /CREDENTIAL . SERVICE MAP/.test(credQ) || /CREDENTIAL/.test(credQ));

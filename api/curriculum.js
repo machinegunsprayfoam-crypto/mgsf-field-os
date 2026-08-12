@@ -226,6 +226,21 @@ const BANK = [
     avoid: ["foam breaks down in water", "not for wet conditions"],
     ref: "seawall-stabilization: closed-cell polyurethane is hydrophobic — designed to cure and seal in wet conditions",
   },
+  // ---- concrete engineering (grades the CONCRETE_ENGINEERING brain block: diagnosis-first + the honest lift boundary) ----
+  {
+    id: "con-diagnosis", module: "concrete",
+    q: "A slab has sunk on one side, the cracks open and close with the seasons, and the soil is clay-heavy. What's likely going on, and what do you check before you scope a fix?",
+    include: [["expansive", "clay", "swell", "shrink"], ["cause", "diagnose", "diagnosis", "root cause", "why it's moving"], ["cyclic", "seasonal", "seasons", "cycles"]],
+    avoid: ["quote a lift", "just lift it", "skip the diagnosis"],
+    ref: "CONCRETE_ENGINEERING: expansive clay soil swells wet/shrinks dry — cyclical, seasonal movement; diagnose the cause before you scope the fix",
+  },
+  {
+    id: "con-honest-boundary", module: "concrete",
+    q: "You get to a settled slab and the concrete itself is badly spalled/crumbling, with a possible structural footing issue underneath. Do you sell a polyjacking lift? What do you tell the customer?",
+    include: [["not the fix", "won't fix it", "polyjacking isn't the answer", "not a lift job"], ["engineer", "structural engineer", "geotechnical engineer"], ["replace", "replacement", "pier", "piering"]],
+    avoid: ["sell them a lift", "quote the lift anyway", "we can lift that"],
+    ref: "CONCRETE_ENGINEERING: when the slab is spalled/crumbling or it's a structural footing problem, polyjacking is NOT the fix — refer to an engineer or recommend replacement/piering, even if it costs the job",
+  },
   // ---- tool-use / bus discipline (grades how Klyfton wields its own tool bag + the arms gate) ----
   {
     id: "tool-bus-noarm", module: "tool-use",

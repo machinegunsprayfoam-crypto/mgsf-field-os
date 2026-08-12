@@ -51,6 +51,12 @@ ok("insurance/bond query ⇒ CREDENTIAL_MAP", A.retrieve("do I need pollution in
 ok("weather/season query ⇒ SEASON_ECONOMICS", A.retrieve("how does the weather and spray window affect my roof price this season").blocks.includes("SEASON_ECONOMICS"));
 ok("coating-window query ⇒ SEASON_ECONOMICS", A.retrieve("can I foam this roof if I cannot coat it until spring").blocks.includes("SEASON_ECONOMICS"));
 
+// ---- concrete engineering: diagnostic/geotech queries pull CONCRETE_ENGINEERING (Soil Stability cluster) ----
+ok("settled-slab query ⇒ CONCRETE_ENGINEERING", A.retrieve("why is my slab settled and what's the frost heave cause").blocks.includes("CONCRETE_ENGINEERING"));
+ok("polyjacking-vs-mudjack query ⇒ CONCRETE_ENGINEERING", A.retrieve("polyjacking vs mudjack for a sunken slab").blocks.includes("CONCRETE_ENGINEERING"));
+ok("pier/replace query ⇒ CONCRETE_ENGINEERING", A.retrieve("expansive soil bearing capacity, do we pier or lift").blocks.includes("CONCRETE_ENGINEERING"));
+ok("trip-hazard flatwork query ⇒ CONCRETE_ENGINEERING", A.retrieve("uneven slab trip hazard washout under the flatwork").blocks.includes("CONCRETE_ENGINEERING"));
+
 // ---- proof pass: turning measurement into money (audit worth / gov-mandated testing / cost of a bad install) ----
 ok("audit-pricing query ⇒ PROOF_ECONOMICS", A.retrieve("what is a blower door audit worth and how do I price it").blocks.includes("PROOF_ECONOMICS"));
 ok("gov-testing-spec query ⇒ PROOF_ECONOMICS", A.retrieve("does this federal spec require air barrier leakage testing or commissioning").blocks.includes("PROOF_ECONOMICS"));

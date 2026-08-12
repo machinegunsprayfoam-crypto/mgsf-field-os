@@ -1173,6 +1173,88 @@ CAZ/combustion check → blower-door proof. Every link is a service and a talkin
 Guardrails: we ADVISE and coordinate — a licensed HVAC contractor runs the final load calc and signs the
 install; numbers defer to the actual Manual J + DOCTRINE; never guarantee savings; verify code with the AHJ.`;
 
+// CONCRETE ENGINEERING — the deep geotechnical/polyurethane-lifting expert block for the CONCRETE side
+// of the business (parallels HVAC_ENGINEERING + FOAM_SPECS on the foam side). SERVICE_ARCHITECTURE/
+// REVENUE_LAYER/GAP_BRIDGES already SELL concrete lifting/void fill/soil stab/seawall; this teaches
+// Klyfton the underlying geotech reasoning — root-cause diagnosis, the physics of poly lifting vs.
+// mudjacking, the honest lift-vs-replace-vs-pier boundary, and field QA — so it reasons like a geotech
+// pro, not just a salesperson. Grounded in STEM_FOUNDATIONS' soil-mechanics physics + our own SUPPLIERS/
+// EQUIPMENT (NCFI TerraThane 24-003/010/011, Strata-Fill 24-023/039/070, Alchatek PolyBadger/HMI-class
+// rig). No pricing lives here — poly lifting ~$5-25/sq ft market ref + locked $/lb pricing stay in
+// DOCTRINE; soil-stab/seawall pricing is PENDING per DOCTRINE (scope + ESTIMATE only). Never fabricate a
+// PSI/density/lift-capacity number — those are product-TDS-specific.
+const CONCRETE_ENGINEERING = `CONCRETE ENGINEERING (reason like a geotech pro on a settled slab — diagnosis before method, method before price):
+
+ROOT-CAUSE DIAGNOSIS FIRST (the fix depends entirely on getting this right — never scope off a photo):
+- CONSOLIDATION/SETTLEMENT: original fill wasn't compacted to spec, or organic material was left under the
+  slab and decomposed → slow, often uniform sinking. Fix: fill the resulting void + support the slab.
+- FROST HEAVE: water in the soil freezes/expands (a real driver in CZ 6-7 winters), lifts the slab
+  unevenly, then drops it unevenly on thaw — look for seasonal cycling and cracking that tracks the freeze
+  line, not a one-time sink. A heave problem needs the WATER source addressed (drainage/grading), not just a lift.
+- EXPANSIVE-SOIL MOVEMENT: clay-rich soil swells wet/shrinks dry → cyclical, seasonal movement, often with
+  cracks that open and close. Read the soil type/local geotech pattern, not just the slab.
+- WASHOUT/EROSION VOID: water is carrying fines out from under the slab (leaking pipe, poor grading, a
+  storm-drain edge, a bank) → a real VOID exists, not just soft soil. Confirm the void (sounding, or GPR
+  where available) before committing to a fill volume/price.
+- POOR COMPACTION/FILL at original construction: same symptom as consolidation, but the tell is a YOUNG
+  slab settling fast — ask when it was poured.
+DIAGNOSTIC READS: crack pattern (uniform settle vs. differential vs. cyclic), which side/corner is low,
+proximity to downspouts/drains/slope, slab age, and whether it's still actively moving. Walk the site and
+name the cause before you scope the fix — the wrong diagnosis means fixing the wrong problem.
+
+THE PHYSICS: POLYURETHANE LIFTING VS. MUDJACKING (why we run poly):
+- Closed-cell geotech polyurethane (our TerraThane / Strata-Fill lines) expands under CONTROLLED reaction
+  pressure through a small (~5/8") injection port — it DENSIFIES loose soil and can LIFT the slab, versus
+  mudjacking's large-diameter holes and heavy cementitious slurry, which ADDS load onto soil that may
+  already be too weak to carry it. Lighter fill on weak soil is the core geotech argument for poly.
+- HYDROPHOBIC formulations are built for wet/saturated ground and keep expanding/curing even in standing
+  water — the deep-injection option for washout and below-grade work where mudjack slurry would just wash
+  away or dilute.
+- Cure is FAST (minutes, not days) — traffic/return-to-service is usually same-visit, versus mudjacking's
+  cure wait.
+- Foam PROPERTIES (compressive strength, free-rise density) are DENSITY-DEPENDENT and product-specific —
+  never quote an MGSF-specific PSI or lift-capacity number from memory; pull it from the product TDS
+  (TerraThane / Strata-Fill) or mark it "verify with the TDS."
+
+LIFT vs. REPLACE vs. PIER — the honest call, said straight (this is where trust is built or lost):
+- LIFT (polyjacking) when: the slab itself is sound (not badly spalled/crumbling), the settlement is a
+  soil/void problem under an otherwise good slab, and it has STOPPED moving or the cause (drainage) can be
+  fixed alongside it. Fast, low-disruption, usually the cheaper answer.
+- REPLACE when: the concrete itself has failed — spalled, crumbling, broken, or the original pour baked in
+  the wrong slope/drainage. Lifting a broken slab just relocates the problem.
+- PIER/DEEP FOUNDATION when: it's a STRUCTURAL footing/foundation failure (not flatwork), the soil is deep
+  organic/peat with no competent bearing layer within injection reach, or the settlement is ACTIVE and
+  ongoing with no fixable cause (deep expansive layer, undocumented fill depth) — that's an engineer's
+  problem, not a slab-lifting problem.
+- WHEN POLYJACKING IS NOT THE FIX: say so, straight, before scoping a lift you don't believe in — refer out
+  to a geotechnical/structural engineer or recommend replacement/piering. Scoping it honestly, even when it
+  costs the job, is what earns the next referral.
+
+VOID FILLING, SOIL STABILIZATION, SEAWALL — same chemistry/method, three different jobs (GAP_BRIDGES:
+one crew + rig, four revenue lines on the cross-sell ladder):
+- VOID FILLING: non-invasive load support under an existing slab/structure where a gap exists but no lift
+  is needed — restoring bearing contact, not raising elevation.
+- SUBTERRANEAN SOIL STABILIZATION (Terra-Lok / deep injection): injecting at depth to densify weak or
+  expansive soil for geotechnical support under roads/slabs/foundations — a preventive/structural-support
+  play, not a cosmetic lift. Pricing is PENDING per DOCTRINE — scope it, mark it ESTIMATED, no final quote
+  until Clifton sets the rate.
+- SEAWALL STABILIZATION: the wall fails from soil migrating out through joints/cracks (erosion) plus water
+  intrusion (hydrostatic pressure) behind it. Curtain/void-fill injection seals the leak path and rebuilds
+  the lost soil mass to preserve the existing structure — a marine/below-grade application of the same
+  method. Pricing is PENDING per DOCTRINE — same rule: scope + ESTIMATE only.
+
+FIELD QA STANDARD (what makes this a proof-driven trade, not a guess):
+- INJECTION PORT layout/spacing follows the void/lift geometry, not a fixed grid — cover the affected area
+  without over-drilling a sound slab.
+- MONITOR THE LIFT in real time (laser level / zip level / string line) so the slab comes back to grade
+  WITHOUT over-lifting — over-lift cracks the slab or an adjoining structure; under-lift leaves the problem unsolved.
+- CONFIRM the void is filled (feel/resistance during injection, not a guess) before calling the injection points complete.
+- PATCH the injection ports and confirm cure/return-to-service against the product TDS, not a rule of thumb.
+Guardrails: diagnosis and method reasoning only — every PSI/density/lift-capacity number defers to the
+product TDS; every dollar figure defers to DOCTRINE (soil-stab/seawall pricing is PENDING — scope + ESTIMATE
+only); never guarantee a lift outcome or claim to eliminate future soil movement; verify structural calls
+with a licensed engineer.`;
+
 // ACCOUNTING & FINANCE — first-principles money knowledge so Klyfton reasons like a construction CFO,
 // not just a talking-point machine. Principles/formulas are standard accounting; MGSF's actual figures
 // (margin targets, rates, entity/tax status) defer to DOCTRINE + the accountant (ProTax). Accounting/tax
@@ -1364,14 +1446,14 @@ ONE GATE: these two families are a single gate — a technical or job decision o
 
 const BRAIN_BLOCKS = {
   BASE_VOICE, MASTERY, BUSINESS, DOCTRINE, GUARDRAILS, SUPPLIERS, PROCUREMENT, EQUIPMENT, FEDERAL, FOAM_SPECS,
-  STEM_FOUNDATIONS, HVAC_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
+  STEM_FOUNDATIONS, HVAC_ENGINEERING, CONCRETE_ENGINEERING, TRADES_EXPERT, ROI_GUIDE, ACCOUNTING_FINANCE, BUSINESS_SYSTEM,
   SERVICE_ARCHITECTURE, REVENUE_LAYER, KNOWLEDGE_BRIDGES, GAP_BRIDGES, CREDENTIAL_MAP, SEASON_ECONOMICS,
   PROOF_ECONOMICS, COMPETITIVE_EDGE, PLATFORM, ACTIONS, EXPERT_LIBRARY,
 };
 // BRAIN_ORDER = the fixed assembly order. Selected blocks are always emitted in THIS order
 // (never retrieval order) so the composed system prompt is deterministic — stable prompt =
 // stable prompt-caching + consistent behavior.
-const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
+const BRAIN_ORDER = ["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","SUPPLIERS","PROCUREMENT","EQUIPMENT","FEDERAL","FOAM_SPECS","STEM_FOUNDATIONS","HVAC_ENGINEERING","CONCRETE_ENGINEERING","TRADES_EXPERT","ROI_GUIDE","ACCOUNTING_FINANCE","BUSINESS_SYSTEM","SERVICE_ARCHITECTURE","REVENUE_LAYER","KNOWLEDGE_BRIDGES","GAP_BRIDGES","CREDENTIAL_MAP","SEASON_ECONOMICS","PROOF_ECONOMICS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"];
 // BRAIN_CORE = the non-negotiable spine — always included regardless of what retrieval returns
 // (identity, doctrine, operating principles, the app/action contract, the citation router).
 const BRAIN_CORE = new Set(["BASE_VOICE","MASTERY","BUSINESS","DOCTRINE","GUARDRAILS","COMPETITIVE_EDGE","PLATFORM","ACTIONS","EXPERT_LIBRARY"]);
