@@ -80,6 +80,14 @@ ok("isocyanate/PPE query ⇒ names supplied-air respirator (SAR), never a fabric
 const confinedQ = A.assembleBrainBlocks("confined space rules for crawl space encapsulation");
 ok("confined-space query ⇒ brain carries SAFETY & OSHA COMPLIANCE", /SAFETY & OSHA COMPLIANCE/.test(confinedQ));
 
+// ---- DISCOVERY_QUALIFY: front-of-funnel intake/qualification queries pull the discovery playbook ----
+const discQ = A.assembleBrainBlocks("new lead called wanting a discovery consultation about their cold drafty house, what do I ask before booking anything");
+ok("discovery query ⇒ brain carries DISCOVERY & LEAD QUALIFICATION", /DISCOVERY & LEAD QUALIFICATION/.test(discQ));
+ok("discovery query ⇒ never says discovery/first-call is when to quote a price (defers pricing to the assessment)", /discovery GATHERS facts — it never prices the job/.test(discQ) && /Never quote a number on this call/.test(discQ));
+const oorQ = A.assembleBrainBlocks("we got a lead from out of state asking for a quote request, is this a fit for us");
+ok("out-of-region lead query ⇒ brain carries DISCOVERY & LEAD QUALIFICATION", /DISCOVERY & LEAD QUALIFICATION/.test(oorQ));
+ok("out-of-region lead query ⇒ states the honest-referral boundary (never overclaims coverage)", /never overclaim MT\/ND\/SD\/WY coverage/.test(oorQ));
+
 // ---- SALES_OBJECTIONS: objection/rebuttal queries pull the objection-handling playbook ----
 const objQ = A.assembleBrainBlocks("customer says spray foam is too expensive and fiberglass is way cheaper, what do I tell them");
 ok("too-expensive query ⇒ brain carries SALES OBJECTIONS", /SALES OBJECTIONS/.test(objQ));
