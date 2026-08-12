@@ -1917,32 +1917,78 @@ async function persistSemanticMemory(facts) {
   try { await Promise.all(facts.map((fact) => semanticMemory.remember(fact))); } catch (e) {}
 }
 
+// PURE: flatten an Anthropic payload into the provider hub's single system+user shape (fallback
+// engines are text-only — no tools, no images). Collapses the turn history into one user string
+// with role prefixes so the single-slot hub keeps context. Testable without a network.
+function anthropicPayloadToHub(payload) {
+  payload = payload || {};
+  const system = typeof payload.system === "string" ? payload.system : "";
+  const blockText = (content) => {
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) return content.filter((b) => b && b.type === "text" && b.text).map((b) => b.text).join("\n");
+    return "";
+  };
+  const user = (Array.isArray(payload.messages) ? payload.messages : [])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+    .map((m) => ({ role: m.role, text: blockText(m.content) }))
+    .filter((t) => t.text && t.text.trim())
+    .map((t) => (t.role === "assistant" ? "Assistant: " : "User: ") + t.text)
+    .join("\n\n");
+  return { system, user, maxTokens: Number(payload.max_tokens) || 1500 };
+}
+
+// FAILOVER: when Anthropic is unreachable/erroring, fail over to the free provider hub
+// (Groq/Gemini/OpenRouter/… via api/provider.js) for a TEXT-ONLY answer — no tools/web, a
+// degraded-but-working reply. Returns an Anthropic-shaped response so callers are unchanged, or
+// null when no other engine is configured or none answered. Skips "claude" (the endpoint that
+// just failed). Gated: inert unless a hub key is set. Never fabricates.
+async function hubFallback(payload, deps) {
+  let hub = deps && deps.provider;
+  if (!hub) { try { hub = require("./provider"); } catch (e) { hub = null; } }
+  if (!hub || typeof hub.chatWithFallback !== "function") return null;
+  const flat = anthropicPayloadToHub(payload);
+  if (!flat.user.trim()) return null;
+  try {
+    const r = await hub.chatWithFallback({ system: flat.system, user: flat.user, maxTokens: flat.maxTokens, exclude: ["claude"] });
+    if (!r || !r.ok || !r.text || !r.text.trim()) return null;
+    return { content: [{ type: "text", text: r.text.trim() }], model: "fallback:" + (r.provider || "hub"), stop_reason: "end_turn", _fallback: true };
+  } catch (e) { return null; }
+}
+
 // One Anthropic call, resuming through pause_turn so server-side web search can finish.
 // `meter` (optional {usd}) accumulates the dollar cost of the call for the monthly cap.
+// If Anthropic fails outright, fail over to the provider hub (resilience + cost relief) when a
+// free engine is configured; otherwise the original error propagates.
 async function callClaude(key, payload, meter) {
   let data;
-  for (let i = 0; i < 4; i++) {
-    const r = await fetch(ANTHROPIC_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!r.ok) {
-      const errText = await r.text();
-      const e = new Error("anthropic_" + r.status);
-      e.detail = errText.slice(0, 300);
-      throw e;
+  try {
+    for (let i = 0; i < 4; i++) {
+      const r = await fetch(ANTHROPIC_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const errText = await r.text();
+        const e = new Error("anthropic_" + r.status);
+        e.detail = errText.slice(0, 300);
+        throw e;
+      }
+      data = await r.json();
+      if (data.stop_reason === "pause_turn") {
+        payload = { ...payload, messages: payload.messages.concat([{ role: "assistant", content: data.content }]) };
+        continue;
+      }
+      break;
     }
-    data = await r.json();
-    if (data.stop_reason === "pause_turn") {
-      payload = { ...payload, messages: payload.messages.concat([{ role: "assistant", content: data.content }]) };
-      continue;
-    }
-    break;
+  } catch (e) {
+    const fb = await hubFallback(payload);
+    if (fb) { try { console.log("[klyfton] anthropic failed (" + (e && e.message) + ") → provider-hub fallback via " + fb.model); } catch (_) {} return fb; }
+    throw e;
   }
   // Cost visibility — one line per call in the Vercel function logs (model + token usage).
   try {
@@ -2721,6 +2767,7 @@ price, a job detail), end with: [[MEMORY]] fact ;; fact [[/MEMORY]] — otherwis
 
 // Exposed for the brain-assembly test harness (tests/brain-assembly.js). No runtime effect on the handler.
 module.exports.assembleBrainBlocks = assembleBrainBlocks;
+module.exports.anthropicPayloadToHub = anthropicPayloadToHub;
 module.exports._BRAIN_ORDER = BRAIN_ORDER;
 module.exports.toolBagBlock = toolBagBlock;
 module.exports.routerToolHint = routerToolHint;

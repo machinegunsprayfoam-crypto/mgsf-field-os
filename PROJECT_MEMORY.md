@@ -721,3 +721,16 @@ _Last updated: 2026-08-07._
   agents' plans (jobs + certs/subs), degrades to none on any error. `stats.foreman` added. +4 tests
   (daily-brief 44); gate **113 / 2830**. So Clifton's morning brief now leads with the single
   highest-$ thing to approve — recommend-only, never dispatches.
+
+### 2026-08-12 (cont.) — Hive gains multi-engine failover (PR #122)
+- The Queen→worker→critic hive was Claude-only; now the core call chokepoint `callClaude()` in
+  `api/klyfton.js` **fails over to the provider hub** (`api/provider.js`: Groq/Gemini/OpenRouter/
+  Cerebras/Together/Grok/Mistral/local) when Anthropic errors — a TEXT-ONLY, degraded-but-working
+  answer (no tools/web). Covers BOTH workers (via `callClaudeTools`) and synth/critic. New pure
+  `anthropicPayloadToHub(payload)` flattens the Anthropic payload → the hub's single system+user
+  shape (drops images/tools, keeps turn context); `hubFallback()` calls `provider.chatWithFallback`
+  with `exclude:["claude"]` (skips the endpoint that just failed). `provider.chatWithFallback` gained
+  an `exclude` option. GATED: inert unless a free hub key is set; returns an Anthropic-shaped
+  response so callers are unchanged; never fabricates. +7 tests (klyfton 72, provider 41); gate
+  **113 / 2837**. So Klyfton keeps answering if Claude is down / rate-limited — resilience + cost
+  relief. (Not changed: quality-first design keeps Claude PRIMARY; the streaming path still Claude-only.)
