@@ -78,5 +78,11 @@ const T1 = "2026-08-08T10:00:00Z", T2 = "2026-08-08T11:00:00Z";
   ok("a message never carries an outward channel (intranet stays inside)", !("email" in W.normMessage({ from: "a", to: "b" }, T1)) && !("sms" in W.normMessage({ from: "a", to: "b" }, T1)));
 })();
 
-console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
-process.exit(fail ? 1 : 0);
+// ---- persistStation: gated + honest (no-op without KV), never throws ----
+// Async: keep the summary + exit INSIDE so the assertion resolves before we tally.
+(async () => {
+  const r = await W.persistStation("collector", { status: "working", task: "chase AR" }, T1);
+  ok("persistStation is dormant-honest without KV (configured:false, no throw)", r && r.ok === false && r.configured === false);
+  console.log("\n" + (fail ? "✗" : "✓") + " " + pass + " passed, " + fail + " failed");
+  process.exit(fail ? 1 : 0);
+})();

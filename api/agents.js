@@ -280,6 +280,7 @@ module.exports = async (req, res) => {
     if (out.ok) {
       try { await logRun(body.agent, out.results, nowMs); } catch (e) {} // record for next time
       try { out.station = stationFrom(out.agent || body.agent, out, new Date().toISOString()); } catch (e) {} // Work Hub state
+      try { const wh = require("./workhub"); if (out.station && wh && wh.persistStation) await wh.persistStation(out.station.agent, { status: out.station.status, task: out.station.task }, new Date().toISOString()); } catch (e) {} // auto-populate the board (gated: no-op without KV)
     }
     res.status(200).json(out);
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 140) }); }
