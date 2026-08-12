@@ -19,11 +19,11 @@ const GRAPH = require("./brain-graph-data.js");
 // (cluster names/count can shift) — after any re-scan, reconcile this map + ALIAS to the new node
 // vocabulary and keep tests/brain-graph-retrieve.js green (it asserts routing behavior, not names).
 const CLUSTER_BLOCKS = {
-  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY", "SAFETY_OSHA", "SALES_OBJECTIONS"],   // foam/spray/doctrine/spec/ahj/verify + isocyanate/MDI/re-occupancy is SPF-specific safety + the DIY/off-gassing/safety objection rebuttals
-  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS", "SALES_OBJECTIONS"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass) + the "DIY it" objection leans on CREDENTIAL_MAP
-  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "SALES_OBJECTIONS", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS"],// cost/margin/roi/job/lead + deal-closing action flow + the objection-handling playbook + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass)
+  "Foam Verification":  ["FOAM_SPECS", "DOCTRINE", "SERVICE_ARCHITECTURE", "MASTERY", "SAFETY_OSHA", "SALES_OBJECTIONS", "WARRANTY_CALLBACK"],   // foam/spray/doctrine/spec/ahj/verify + isocyanate/MDI/re-occupancy is SPF-specific safety + the DIY/off-gassing/safety objection rebuttals + a foam callback (gap/leak) needs FOAM_SPECS' diagnosis alongside the triage playbook
+  "Business Licensing": ["BUSINESS", "FEDERAL", "DOCTRINE", "PROCUREMENT", "CREDENTIAL_MAP", "PROOF_ECONOMICS", "SALES_OBJECTIONS", "WARRANTY_CALLBACK"], // license/insurance/sam/contractor — credentials + gov + credential→service map (gap #1) + gov specs that mandate testing (proof pass) + the "DIY it" objection leans on CREDENTIAL_MAP + "warranty" already aliases here (manufacturer-warranty applicator gate) so a warranty-coverage question also needs WARRANTY_CALLBACK's scope-of-coverage reasoning
+  "Cost Efficiency":    ["DOCTRINE", "ACCOUNTING_FINANCE", "ROI_GUIDE", "REVENUE_LAYER", "SALES_OBJECTIONS", "ACTIONS", "PLATFORM", "SEASON_ECONOMICS", "PROOF_ECONOMICS", "WARRANTY_CALLBACK"],// cost/margin/roi/job/lead + deal-closing action flow + the objection-handling playbook + season/weather cost bridge (gap #2) + what proof/testing is worth (proof pass) + "callback"/"rework" already alias here — a post-job complaint is a cost-and-reputation decision
   "Performance Metrics":["STEM_FOUNDATIONS", "HVAC_ENGINEERING", "BUSINESS_SYSTEM", "EQUIPMENT", "PROCUREMENT", "SUPPLIERS"], // building/load/service + rig/equipment spec + buy-vs-rent/sourcing
-  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES", "CONCRETE_ENGINEERING", "SALES_OBJECTIONS"], // concrete/lifting/void/soil/seawall + the deep geotech diagnostic block + the "just replace the slab" objection rebuttal
+  "Soil Stability":     ["SERVICE_ARCHITECTURE", "STEM_FOUNDATIONS", "GAP_BRIDGES", "CONCRETE_ENGINEERING", "SALES_OBJECTIONS", "WARRANTY_CALLBACK"], // concrete/lifting/void/soil/seawall + the deep geotech diagnostic block + the "just replace the slab" objection rebuttal + a concrete callback (resettled/cracked) needs CONCRETE_ENGINEERING's diagnosis alongside the triage playbook
   "Safety Compliance":  ["TRADES_EXPERT", "STEM_FOUNDATIONS", "FOAM_SPECS", "SERVICE_ARCHITECTURE", "SAFETY_OSHA"], // code/irc/scope/trade/calculator/safety + the hazard->control->standard OSHA expert block
   "Moisture Control":   ["STEM_FOUNDATIONS", "FOAM_SPECS", "HVAC_ENGINEERING", "SERVICE_ARCHITECTURE", "SALES_OBJECTIONS"], // barrier/air/vapor/moisture/mold + the "foam causes mold" objection rebuttal (correct the myth, never claim elimination)
   "Pressure Testing":   ["FOAM_SPECS", "STEM_FOUNDATIONS", "ROI_GUIDE", "PROOF_ECONOMICS"], // blower door/proof/ACH50 (BPI) + turning proof into money / gov-mandated testing (proof pass)
@@ -58,6 +58,12 @@ const ALIAS = {
   // Certifications / credentials → Business Licensing (carries CREDENTIAL_MAP — which credential unlocks which service, gap #1)
   cert: ["license", "business"], certified: ["license", "business"], certification: ["license", "business"], credential: ["license", "business"],
   registration: ["license", "business"], register: ["license", "business"], warranty: ["license", "business"], applicator: ["license", "business"], training: ["license", "business"],
+  // Warranty callback / post-job complaint → Business Licensing (warranty scope/coverage) + Cost Efficiency
+  // (customer/reputation economics) + Foam Verification / Soil Stability (the underlying defect/cause
+  // diagnosis) — all four now carry WARRANTY_CALLBACK. "warranty"/"callback"/"rework" already alias above.
+  comeback: ["cost", "license"], redo: ["cost", "license"], complaint: ["cost", "license"], honor: ["license", "cost"],
+  cover: ["license", "cost"], covered: ["license", "cost"], fix: ["cost", "license"], recurring: ["cost", "license"], again: ["cost", "license"],
+  leaking: ["foam", "cost"], leak: ["foam", "cost"], gap: ["foam", "cost"], settled: ["soil", "cost"], resettle: ["soil", "cost"], crack: ["soil", "cost"],
   // Cost / margin → Cost Efficiency (DOCTRINE + ACCOUNTING_FINANCE + ROI_GUIDE)
   margin: ["cost", "roi"], profit: ["cost", "roi"], markup: ["cost"], gm: ["cost"], price: ["cost", "estimate"], pricing: ["cost"], quote: ["cost", "estimate"],
   payback: ["roi", "cost"], savings: ["roi", "cost"], bill: ["roi", "cost"],

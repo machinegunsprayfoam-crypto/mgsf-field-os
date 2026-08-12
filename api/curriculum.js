@@ -367,6 +367,31 @@ const BANK = [
     avoid: ["eliminates mold", "gets rid of mold", "kills mold", "stops mold for good", "mold-proof"],
     ref: "SALES_OBJECTIONS/DOCTRINE: correct the myth, don't overclaim — closed-cell spray foam is an air+vapor barrier that helps CONTROL the moisture/condensation conditions mold needs; never make a mold-elimination or mold-prevention promise, and never guarantee mold won't return.",
   },
+  // ---- warranty callback (grades the WARRANTY_CALLBACK brain block: triage -> diagnose -> honest
+  // resolution — own a genuine workmanship defect fast, but don't give away free work on new/unrelated
+  // movement from a cause the customer declined to fix, and never invent a warranty term) ----
+  {
+    id: "warr-ours", module: "warranty",
+    q: "A customer calls back three weeks after a foam job saying there's a gap where a spot on the rim joist looks missed. What do you do?",
+    include: [
+      ["missed spot", "workmanship", "our mistake", "install issue", "underspray"],
+      ["fix it fast", "come back and fix", "make it right", "at no cost", "no charge"],
+      ["own it", "no fight", "no pushback", "don't argue", "apologize"],
+    ],
+    avoid: ["charge the customer", "bill them for it", "not our fault", "that's on the homeowner", "new job"],
+    ref: "WARRANTY_CALLBACK: a genuine workmanship defect (missed spot/underspray) is on us — own it, no fight, fix it fast at no cost; that honesty is what earns the referral",
+  },
+  {
+    id: "warr-declined-cause", module: "warranty",
+    q: "Eight months after a polyjacking lift, the customer calls saying the slab is settling again — but you documented at the time that the drainage/grading problem causing it was there and they declined to fix it. How do you handle the callback?",
+    include: [
+      ["drainage", "grading", "declined", "unaddressed cause", "same root cause"],
+      ["not a failed lift", "new movement", "different issue", "not workmanship"],
+      ["paid", "quote", "referral", "verify the workmanship warranty", "signed contract"],
+    ],
+    avoid: ["free of charge", "no cost to you", "covered under warranty", "we'll fix it for free", "our lift failed"],
+    ref: "WARRANTY_CALLBACK/CONCRETE_ENGINEERING: new movement from a cause the customer declined to fix (drainage/grading) is not a failed lift — diagnose and explain it honestly, point back to what was flagged/declined, then offer a paid fix or a referral; never invent a warranty term or give away free work on an unrelated cause",
+  },
 ];
 
 // Synonym groups: pass if ANY listed variant appears. Deterministic substring match, case-insensitive.

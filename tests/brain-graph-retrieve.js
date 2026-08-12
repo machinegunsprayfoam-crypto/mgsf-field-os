@@ -79,6 +79,12 @@ ok("replace-the-slab objection query ⇒ SALES_OBJECTIONS", A.retrieve("customer
 ok("price-shopping/other-quotes query ⇒ SALES_OBJECTIONS", A.retrieve("customer is going to get other quotes and shop around before deciding").blocks.includes("SALES_OBJECTIONS"));
 ok("wait-until-next-year query ⇒ SALES_OBJECTIONS", A.retrieve("customer asks if the job can wait until next year").blocks.includes("SALES_OBJECTIONS"));
 
+// ---- WARRANTY_CALLBACK: post-job "it's doing X again" complaints route to the triage playbook ----
+ok("foam gap/again query ⇒ WARRANTY_CALLBACK", A.retrieve("customer called back saying there is a gap in the foam again").blocks.includes("WARRANTY_CALLBACK"));
+ok("slab settled/covered query ⇒ WARRANTY_CALLBACK", A.retrieve("the slab is settling again, is this covered under our warranty").blocks.includes("WARRANTY_CALLBACK"));
+ok("leak/callback/honor query ⇒ WARRANTY_CALLBACK", A.retrieve("customer complaint about a leak after the job, is it a callback we honor for free").blocks.includes("WARRANTY_CALLBACK"));
+ok("crack/cover query ⇒ WARRANTY_CALLBACK", A.retrieve("crack in the concrete again, do we cover it").blocks.includes("WARRANTY_CALLBACK"));
+
 // ---- no concept match ⇒ safe non-empty default (never empty, never fabricated) ----
 const none = A.retrieve("zzzz qqqq wwww");
 ok("no-match query still returns identity blocks (non-empty)", none.blocks.length > 0 && A.ALWAYS.every((b) => none.blocks.includes(b)));
