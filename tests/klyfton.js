@@ -89,6 +89,11 @@ ok("mold objection query ⇒ brain carries SALES OBJECTIONS", /SALES OBJECTIONS/
 ok("mold objection query ⇒ never asserts a bare mold-elimination claim (only the negation)", !/foam eliminates mold\b/i.test(moldObjQ) && !moldObjQ.includes("we eliminate mold"));
 ok("mold objection query ⇒ states the never-claim-elimination hard rule", /never claim spray foam eliminates or prevents mold/.test(moldObjQ) && /never claim mold elimination/.test(moldObjQ));
 
+// ---- WARRANTY_CALLBACK: a post-job "it's doing X again" callback query pulls the triage playbook ----
+const callbackQ = A.assembleBrainBlocks("customer called back saying the slab settled again and there's a gap in the foam, is it covered under warranty");
+ok("callback query ⇒ brain carries WARRANTY CALLBACK", /WARRANTY CALLBACK/.test(callbackQ));
+ok("callback query ⇒ never invents a warranty duration/term (defers to the signed contract)", /never fabricate a warranty duration/.test(callbackQ) && /OWNER INPUT REQUIRED/.test(callbackQ));
+
 // ---- brain cost + safety guardrail: retrieval must scope, and must NEVER drop identity/doctrine/gates ----
 // (catches the regression where GraphRAG silently breaks — either returning the FULL brain on every call,
 //  which blows up token cost, or dropping a CORE block, which would strip identity/doctrine/guardrails.)
