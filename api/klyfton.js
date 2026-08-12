@@ -2337,19 +2337,32 @@ function sseSend(res, obj) {
 // One streaming Anthropic call. Forwards text deltas via onText; returns the full text.
 // Used only for the synthesizer (no tools → no pause_turn to resume mid-stream).
 async function callClaudeStream(key, payload, onText, meter) {
-  const r = await fetch(ANTHROPIC_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({ ...payload, stream: true }),
-  });
-  if (!r.ok) {
-    const errText = await r.text();
-    const e = new Error("anthropic_" + r.status);
-    e.detail = errText.slice(0, 300);
+  let r;
+  try {
+    r = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({ ...payload, stream: true }),
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      const e = new Error("anthropic_" + r.status);
+      e.detail = errText.slice(0, 300);
+      throw e;
+    }
+  } catch (e) {
+    // Streaming outage → fail over to the provider hub (non-streamed; emit the whole answer once).
+    const fb = await hubFallback(payload);
+    if (fb) {
+      const t = textFrom(fb.content);
+      try { console.log("[klyfton] stream anthropic failed (" + (e && e.message) + ") → provider-hub fallback via " + fb.model); } catch (_) {}
+      if (t && onText) onText(t);
+      return { text: t || "", model: fb.model };
+    }
     throw e;
   }
   const reader = r.body.getReader();
