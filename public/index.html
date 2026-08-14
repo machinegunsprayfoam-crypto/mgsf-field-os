@@ -2502,14 +2502,20 @@ function switchModule(id){
   if(id==='dashboard'){ if(window.initDashboard) try{ initDashboard(); }catch(e){} if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.renderPipelineHealth) renderPipelineHealth(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
-    try{ adminLoad(); }catch(e){ console.error('adminLoad failed', e); try{ notify('Admin failed to load: '+((e&&e.message)||e),'alert'); }catch(_){} }
-    if(window.renderDataManager) renderDataManager();
-    if(window.renderApiKeys) renderApiKeys();
-    try{ const pu=document.getElementById('pricingUrl'); if(pu) pu.value=_pricingCsvUrl(); if(window.renderPricingPanel) renderPricingPanel(); }catch(e){}
-    if(window.renderCrew) renderCrew();
-    if(window.renderTimecards) renderTimecards();
-    if(window.renderVoiceSettings) renderVoiceSettings();
-    if(window.klyMemRefresh) klyMemRefresh();
+    // Resilient loader: each sub-panel runs isolated so one bad saved record can't kill the whole
+    // Admin area (that's what left it dead before). Failures are collected and surfaced by name so
+    // the culprit is identifiable on the owner's device instead of failing silently.
+    const _adminFail=[];
+    const _run=(label,fn)=>{ try{ if(typeof fn==='function') fn(); }catch(e){ console.error('admin sub-panel failed:',label,e); _adminFail.push(label); } };
+    _run('settings', window.adminLoad);
+    _run('data', window.renderDataManager);
+    _run('apiKeys', window.renderApiKeys);
+    _run('pricing', ()=>{ const pu=document.getElementById('pricingUrl'); if(pu) pu.value=_pricingCsvUrl(); if(window.renderPricingPanel) renderPricingPanel(); });
+    _run('crew', window.renderCrew);
+    _run('timecards', window.renderTimecards);
+    _run('voice', window.renderVoiceSettings);
+    _run('memory', window.klyMemRefresh);
+    if(_adminFail.length){ try{ notify('Admin loaded, but these sections had trouble: '+_adminFail.join(', ')+'. Everything else works — screenshot this for Clifton.','alert'); }catch(_){} }
   }
 }
 
