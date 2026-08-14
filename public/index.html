@@ -2502,7 +2502,7 @@ function switchModule(id){
   if(id==='dashboard'){ if(window.initDashboard) try{ initDashboard(); }catch(e){} if(window.renderOpsBrief) renderOpsBrief(); if(window.renderDashMetrics) renderDashMetrics(); if(window.renderPipelineHealth) renderPipelineHealth(); if(window.tcReminderCheck) tcReminderCheck(); if(window.renderKeyAlerts) renderKeyAlerts(); }
   if(id==='admin'){
     if(appRole!=='full'){ notify('Admin requires full access','alert'); return; }
-    adminLoad();
+    try{ adminLoad(); }catch(e){ console.error('adminLoad failed', e); try{ notify('Admin failed to load: '+((e&&e.message)||e),'alert'); }catch(_){} }
     if(window.renderDataManager) renderDataManager();
     if(window.renderApiKeys) renderApiKeys();
     try{ const pu=document.getElementById('pricingUrl'); if(pu) pu.value=_pricingCsvUrl(); if(window.renderPricingPanel) renderPricingPanel(); }catch(e){}
@@ -6050,11 +6050,12 @@ function forgotPassword(){ const err=document.getElementById('loginError'); if(e
 function onPinSuccess(role, name){
   // Upgrade any legacy plaintext crew PINs to hashes now that we're in (purges plaintext at rest).
   try{ migrateCrewPins(); }catch(e){}
-  // Apply admin overrides to MGSF constants
-  adminApplyOverrides();
-  // Owner-only Admin panel (settings, PINs, crew, pricing) — full access only.
+  // Owner-only Admin panel (settings, PINs, crew, pricing) — full access only. Reveal the tab FIRST,
+  // so a failure applying saved overrides can never hide the owner's Admin nav.
   const adminNav = document.getElementById('nav-admin');
   if(adminNav) adminNav.style.display = role==='full'?'flex':'none';
+  // Apply admin overrides to MGSF constants — tolerant: a bad saved blob must never abort login setup.
+  try{ adminApplyOverrides(); }catch(e){ console.warn('adminApplyOverrides failed — using defaults', e); }
   // Field crew + view-only: lock the estimator/pricing builder; field keeps jobs/JSA/clock/photos.
   if(role==='readonly' || role==='field'){
     const estMod = document.getElementById('mod-estimate');
@@ -6067,13 +6068,17 @@ function onPinSuccess(role, name){
 }
 
 // ── ADMIN — Load, Save, Apply ────────────────────────────────
+// Tolerant read of the saved admin blob. A corrupted mgsf_admin_v1 must NEVER throw — an unguarded
+// JSON.parse here was silently killing the whole Admin panel (and hiding the Admin nav on login,
+// since adminApplyOverrides runs first in onPinSuccess). Same hardening the login PIN read already uses.
+function admSaved(){ try{ return JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}')||{}; }catch(e){ console.warn('admSaved: bad mgsf_admin_v1, using defaults', e); return {}; } }
 const CONS_CATS = ['walls','gable','rimjoist','roofing','coating','lifting','insul_removal','bpi','fireproofing','crawlspace','custom'];
 let _admConsTab = 'walls';
 let _admConsEdits = {};  // unsaved edits per category, flushed on save or tab switch
 
 // ── Foam pricing editor ──
 function adminRenderFoam(){
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved = admSaved();
   const fp = saved.foamPrices||{};
   const catColor = {CC:'var(--cy)',OC:'var(--gr)',Roof:'var(--or)'};
   const catLabel = {CC:'CC',OC:'OC',Roof:'RF'};
@@ -6104,7 +6109,7 @@ function adminFoamLive(k){
 
 // ── Geo/Lifting pricing editor ──
 function adminRenderGeo(){
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved = admSaved();
   const gp = saved.geoPrices||{};
   const rows = EST_GEO.map(p=>{
     const pl = gp[p.k]!==undefined ? gp[p.k].priceLb : p.priceLb;
@@ -6126,7 +6131,7 @@ function adminGeoLive(k){
 
 // ── Coating pricing editor ──
 function adminRenderCoat(){
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved = admSaved();
   const cp = saved.coatPrices||{};
   const rows = EST_COAT.map(p=>{
     const cg = cp[p.k]!==undefined ? cp[p.k].costGal : p.costGal;
@@ -6174,7 +6179,7 @@ function adminFlushConsTab(){
 }
 function adminGetConsItems(cat){
   if(_admConsEdits[cat]) return _admConsEdits[cat];
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved = admSaved();
   if(saved.consPrices && saved.consPrices[cat]) return JSON.parse(JSON.stringify(saved.consPrices[cat]));
   return JSON.parse(JSON.stringify(CONS_QUICK[cat]||[]));
 }
@@ -6224,7 +6229,7 @@ const ADMIN_DEFAULTS = {
 };
 
 function adminLoad(){
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved = admSaved();
   const v = k => saved[k]!==undefined ? saved[k] : ADMIN_DEFAULTS[k];
   document.getElementById('adm-labor-installer').value  = v('laborInstaller');
   document.getElementById('adm-labor-helper').value     = v('laborHelper');
@@ -6281,7 +6286,7 @@ async function adminSave(){
   // PINs are stored as SHA-256 hashes — never plaintext. Only update if the user typed a new 4-digit
   // PIN; otherwise keep the prior hash (migrating any legacy plaintext PIN to a hash on this save).
   const pf = gs('adm-pin-full'), pr = gs('adm-pin-read');
-  const existing = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const existing = admSaved();
   data.pinFullHash = (pf.length===4 && /^\d{4}$/.test(pf)) ? await sha256Hex(pf)
     : (existing.pinFullHash || (existing.pinFull ? await sha256Hex(existing.pinFull) : undefined));
   data.pinReadHash = (pr.length===4 && /^\d{4}$/.test(pr)) ? await sha256Hex(pr)
@@ -6602,7 +6607,7 @@ function adminReset(){
   notify('Settings reset to defaults','alert');
 }
 function adminApplyOverrides(){
-  const saved = JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved = admSaved();
   const v = (k,def) => saved[k]!==undefined ? saved[k] : def;
   // Apply to MGSF object
   if(typeof MGSF !== 'undefined'){
@@ -6688,7 +6693,7 @@ function adminDownloadCSV(rows, filename){
   a.download=filename; a.click(); URL.revokeObjectURL(a.href);
 }
 function adminDownloadFoamCSV(){
-  const saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved=admSaved();
   const fp=saved.foamPrices||{};
   const rows=[['key','name','category','setCost','yieldBF']];
   EST_FOAM.forEach(p=>{
@@ -6700,7 +6705,7 @@ function adminDownloadFoamCSV(){
   notify('Foam pricing CSV downloaded','ok');
 }
 function adminDownloadGeoCSV(){
-  const saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved=admSaved();
   const gp=saved.geoPrices||{};
   const rows=[['key','name','priceLb']];
   EST_GEO.forEach(p=>{
@@ -6711,7 +6716,7 @@ function adminDownloadGeoCSV(){
   notify('Geo pricing CSV downloaded','ok');
 }
 function adminDownloadCoatCSV(){
-  const saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved=admSaved();
   const cp=saved.coatPrices||{};
   const rows=[['key','name','costGal','galPer100','coatsDefault']];
   EST_COAT.forEach(p=>{
@@ -6765,7 +6770,7 @@ function adminParseFoamCSV(text){
   const ki=hdr.indexOf('key'),ni=hdr.indexOf('name'),ci=hdr.indexOf('category');
   const sci=hdr.indexOf('setcost'),ybi=hdr.indexOf('yieldbf');
   if(sci<0||ybi<0){ notify('Foam CSV needs columns: setCost, yieldBF','alert'); return; }
-  const saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved=admSaved();
   const fp=saved.foamPrices||{};
   let upd=0,add=0;
   rows.slice(1).forEach(r=>{
@@ -6788,7 +6793,7 @@ function adminParseGeoCSV(text){
   const hdr=rows[0].map(h=>h.trim().toLowerCase());
   const ki=hdr.indexOf('key'),ni=hdr.indexOf('name'),pi=hdr.indexOf('pricelb');
   if(pi<0){ notify('Geo CSV needs column: priceLb','alert'); return; }
-  const saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved=admSaved();
   const gp=saved.geoPrices||{};
   let upd=0,add=0;
   rows.slice(1).forEach(r=>{
@@ -6811,7 +6816,7 @@ function adminParseCoatCSV(text){
   const ki=hdr.indexOf('key'),ni=hdr.indexOf('name');
   const cgi=hdr.indexOf('costgal'),g1i=hdr.indexOf('galper100'),cdi=hdr.indexOf('coatsdefault');
   if(cgi<0||g1i<0){ notify('Coat CSV needs columns: costGal, galPer100','alert'); return; }
-  const saved=JSON.parse(localStorage.getItem('mgsf_admin_v1')||'{}');
+  const saved=admSaved();
   const cp=saved.coatPrices||{};
   let upd=0,add=0;
   rows.slice(1).forEach(r=>{
