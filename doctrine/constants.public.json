@@ -1,0 +1,53 @@
+{
+  "_meta": {
+    "GENERATED": "Do not hand-edit. Regenerate with tools/make_public_constants.py.",
+    "authority": "constants.json in mgsf-core is the source of truth. If this file and that one disagree, that one wins and this one is stale -- regenerate it.",
+    "derived_from": "mgsf-core/reference/constants.json",
+    "source_effective_date": "2026-08-05",
+    "why_partial": "This repo is public. Only the pricing keys the drift check needs are copied. The company block -- tax and registration identifiers, street address, phone -- is never included."
+  },
+  "gross_margin_targets": {
+    "commercial": 0.5,
+    "government": 0.45,
+    "industrial": 0.48,
+    "residential": 0.55
+  },
+  "job_minimum": {
+    "amount": 1200.0
+  },
+  "labor_rate_per_hr": {
+    "helper": {
+      "rate": 48.0
+    },
+    "installer": {
+      "rate": 80.0
+    }
+  },
+  "material_cost_per_bf": {
+    "closed_cell_hfo": {
+      "rate": 0.6918
+    },
+    "open_cell": {
+      "rate": 0.1483
+    },
+    "spf_roofing": {
+      "rate": 0.7333
+    }
+  },
+  "state_multipliers": {
+    "MT": 1.0,
+    "ND": 1.05,
+    "SD": 1.0,
+    "WY": 1.12
+  },
+  "yield": {
+    "measured_actual": {
+      "closed_cell_bf_per_set": 4200,
+      "open_cell_bf_per_set": null,
+      "roofing_bf_per_set": 3750
+    }
+  },
+  "yield_chain": {
+    "net_factor": 0.81
+  }
+}
