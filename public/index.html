@@ -9297,7 +9297,7 @@ function renderSkills(){
 // ============================================================
 // DOCUMENT LIBRARY
 // ============================================================
-let docLib = JSON.parse(localStorage.getItem('mgsf_docs')||'[]');
+let docLib = (function(){ try{ return JSON.parse(localStorage.getItem('mgsf_docs')||'[]')||[]; }catch(e){ console.warn('mgsf_docs corrupt — resetting to empty', e); return []; } })();
 
 function saveDocLib(){ try{ localStorage.setItem('mgsf_docs', JSON.stringify(docLib)); }catch(e){} }
 
